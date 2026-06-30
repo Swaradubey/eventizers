@@ -1,7 +1,23 @@
 import axios from "axios";
 
+// Normalize base URL dynamically
+const getBaseURL = (): string => {
+  let rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  rawUrl = rawUrl.trim();
+  
+  if (rawUrl.endsWith("/")) {
+    rawUrl = rawUrl.slice(0, -1);
+  }
+  
+  if (!rawUrl.endsWith("/api")) {
+    rawUrl = `${rawUrl}/api`;
+  }
+  
+  return rawUrl;
+};
+
 const API = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
+  baseURL: getBaseURL(),
   withCredentials: true,
 });
 

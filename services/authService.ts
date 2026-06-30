@@ -16,13 +16,28 @@ export const register = async (name: string, email: string, password: string): P
   return response.data;
 };
 
+
 /**
  * Log in a user
  */
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
-  const response = await API.post<AuthResponse>("/auth/login", { email, password });
-  return response.data;
+  const baseURL = API.defaults.baseURL || "";
+  const endpoint = "/auth/login";
+  const finalURL = baseURL.endsWith("/") ? `${baseURL}auth/login` : `${baseURL}/auth/login`;
+
+  console.log("[Temporary Log] API Base URL:", baseURL);
+  console.log("[Temporary Log] Final Login Endpoint:", finalURL);
+
+  try {
+    const response = await API.post<AuthResponse>("/auth/login", { email, password });
+    console.log("[Temporary Log] Login response status:", response.status);
+    return response.data;
+  } catch (error: any) {
+    console.log("[Temporary Log] Login response status (error):", error.response?.status || "No response");
+    throw error;
+  }
 };
+
 
 /**
  * Log out the current user
