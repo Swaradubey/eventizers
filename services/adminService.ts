@@ -1,6 +1,11 @@
 import API from "./api";
 import { Event } from "./eventService";
 import { User } from "../context/AuthContext";
+import { Guest } from "../types/guestTypes";
+import { Invitation } from "../types/invitationTypes";
+import { TicketTier } from "../types/ticketingTypes";
+import { CheckInGuest, CheckInSummary } from "../types/checkInTypes";
+import { Registry } from "../types/registryTypes";
 
 export interface AdminDashboardStats {
   totalEvents: number;
@@ -37,6 +42,43 @@ interface AdminEventResponse {
   success: boolean;
   event: AdminEvent;
   message?: string;
+}
+
+// Admin Guest type with creator info
+export interface AdminGuest extends Guest {
+  eventTitle: string;
+  eventCreator?: {
+    name: string;
+    email: string;
+  } | null;
+  isCheckedIn?: boolean;
+}
+
+// Admin Invitation type with creator info
+export interface AdminInvitation extends Invitation {
+  eventTitle?: string;
+  eventCreator?: {
+    name: string;
+    email: string;
+  } | null;
+}
+
+// Admin TicketTier type with creator info
+export interface AdminTicketTier extends TicketTier {
+  eventTitle?: string;
+  eventCreator?: {
+    name: string;
+    email: string;
+  } | null;
+}
+
+// Admin Registry type with creator info
+export interface AdminRegistry extends Registry {
+  eventTitle?: string;
+  eventCreator?: {
+    name: string;
+    email: string;
+  } | null;
 }
 
 export const adminLogin = async (email: string, password: string): Promise<AdminAuthResponse> => {
@@ -87,6 +129,138 @@ export const deleteAdminEvent = async (id: string): Promise<any> => {
   return response.data;
 };
 
+interface AdminEventGuestsResponse {
+  success: boolean;
+  guests: Guest[];
+}
+
+export const getAdminEventGuests = async (eventId: string): Promise<AdminEventGuestsResponse> => {
+  const response = await API.get<AdminEventGuestsResponse>(`/admin/events/${eventId}/guests`);
+  return response.data;
+};
+
+export const getAdminGuests = async (): Promise<{ success: boolean; guests: AdminGuest[] }> => {
+  const response = await API.get<{ success: boolean; guests: AdminGuest[] }>("/admin/guests");
+  return response.data;
+};
+
+export const updateAdminGuest = async (id: string, payload: Partial<Guest>): Promise<{ success: boolean; guest: Guest }> => {
+  const response = await API.put<{ success: boolean; guest: Guest }>(`/admin/guests/${id}`, payload);
+  return response.data;
+};
+
+export const deleteAdminGuest = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/guests/${id}`);
+  return response.data;
+};
+
+export const getAdminInvitations = async (): Promise<{ success: boolean; invitations: AdminInvitation[] }> => {
+  const response = await API.get<{ success: boolean; invitations: AdminInvitation[] }>("/admin/invitations");
+  return response.data;
+};
+
+export const updateAdminInvitation = async (id: string, payload: Partial<Invitation>): Promise<{ success: boolean; invitation: Invitation }> => {
+  const response = await API.put<{ success: boolean; invitation: Invitation }>(`/admin/invitations/${id}`, payload);
+  return response.data;
+};
+
+export const deleteAdminInvitation = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/invitations/${id}`);
+  return response.data;
+};
+
+export const getAdminTicketing = async (): Promise<{ success: boolean; tiers: AdminTicketTier[] }> => {
+  const response = await API.get<{ success: boolean; tiers: AdminTicketTier[] }>("/admin/ticketing");
+  return response.data;
+};
+
+export const updateAdminTicketTier = async (
+  tierId: string,
+  payload: Partial<TicketTier>
+): Promise<{ success: boolean; message: string; tier: TicketTier }> => {
+  const response = await API.patch<{ success: boolean; message: string; tier: TicketTier }>(
+    `/admin/ticketing/tiers/${tierId}`,
+    payload
+  );
+  return response.data;
+};
+
+export const deleteAdminTicketTier = async (
+  tierId: string
+): Promise<{ success: boolean; deleted: boolean; archived: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; deleted: boolean; archived: boolean; message: string }>(
+    `/admin/ticketing/tiers/${tierId}`
+  );
+  return response.data;
+};
+
+export const getAdminCheckInEvents = async (): Promise<{ success: boolean; events: { id: string; title: string }[] }> => {
+  const response = await API.get<{ success: boolean; events: { id: string; title: string }[] }>("/admin/check-ins/events");
+  return response.data;
+};
+
+export const getAdminCheckInSummary = async (eventId: string): Promise<{ success: boolean; summary: CheckInSummary }> => {
+  const response = await API.get<{ success: boolean; summary: CheckInSummary }>(`/admin/check-ins/events/${eventId}/summary`);
+  return response.data;
+};
+
+export const getAdminCheckInGuests = async (
+  eventId: string,
+  params: { search?: string; status?: string; page?: number; limit?: number } = {}
+): Promise<{ success: boolean; guests: CheckInGuest[]; pagination: any }> => {
+  const response = await API.get<{ success: boolean; guests: CheckInGuest[]; pagination: any }>(
+    `/admin/check-ins/events/${eventId}/guests`,
+    { params }
+  );
+  return response.data;
+};
+
+export const checkInAdminGuestManual = async (
+  eventId: string,
+  guestId: string,
+  latitude?: number,
+  longitude?: number
+): Promise<{ success: boolean; message: string; checkIn: any }> => {
+  const response = await API.post<{ success: boolean; message: string; checkIn: any }>(
+    `/admin/check-ins/events/${eventId}/manual`,
+    { guestId, latitude, longitude }
+  );
+  return response.data;
+};
+
+export const checkInAdminGuestScan = async (
+  eventId: string,
+  qrCode: string,
+  latitude?: number,
+  longitude?: number
+): Promise<{ success: boolean; message: string; guest: any; checkIn: any }> => {
+  const response = await API.post<{ success: boolean; message: string; guest: any; checkIn: any }>(
+    `/admin/check-ins/events/${eventId}/scan`,
+    { qrCode, latitude, longitude }
+  );
+  return response.data;
+};
+
+export const undoAdminCheckIn = async (checkInId: string): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/check-ins/${checkInId}`);
+  return response.data;
+};
+
+export const getAdminRegistries = async (): Promise<{ success: boolean; registries: AdminRegistry[] }> => {
+  const response = await API.get<{ success: boolean; registries: AdminRegistry[] }>("/admin/registries");
+  return response.data;
+};
+
+export const updateAdminRegistry = async (id: string, payload: Partial<Registry>): Promise<{ success: boolean; registry: Registry }> => {
+  const response = await API.put<{ success: boolean; registry: Registry }>(`/admin/registries/${id}`, payload);
+  return response.data;
+};
+
+export const deleteAdminRegistry = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/registries/${id}`);
+  return response.data;
+};
+
 const adminService = {
   adminLogin,
   adminLogout,
@@ -97,6 +271,25 @@ const adminService = {
   createAdminEvent,
   updateAdminEvent,
   deleteAdminEvent,
+  getAdminEventGuests,
+  getAdminGuests,
+  updateAdminGuest,
+  deleteAdminGuest,
+  getAdminInvitations,
+  updateAdminInvitation,
+  deleteAdminInvitation,
+  getAdminTicketing,
+  updateAdminTicketTier,
+  deleteAdminTicketTier,
+  getAdminCheckInEvents,
+  getAdminCheckInSummary,
+  getAdminCheckInGuests,
+  checkInAdminGuestManual,
+  checkInAdminGuestScan,
+  undoAdminCheckIn,
+  getAdminRegistries,
+  updateAdminRegistry,
+  deleteAdminRegistry,
 };
 
 export default adminService;

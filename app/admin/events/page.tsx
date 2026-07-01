@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import EventModal from "../../../components/EventModal";
-import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
+import adminService, { AdminEvent } from "../../../services/adminService";
 import { Guest } from "../../../types/guestTypes";
 import {
   LogOut,
@@ -19,16 +20,11 @@ import {
   AlertCircle,
   X,
   CheckCircle,
-  Sparkles,
   Menu,
-  Users,
-  TrendingUp,
-  Zap,
 } from "lucide-react";
-import { useSidebar } from "../../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function AdminDashboardPage() {
+function AdminEventsPageContent() {
   const { user, loading: authLoading, logout } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
@@ -43,10 +39,6 @@ export default function AdminDashboardPage() {
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
   const [viewingEvent, setViewingEvent] = useState<AdminEvent | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
-  // Dashboard stats
-  const [dashboardStats, setDashboardStats] = useState<AdminDashboardStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
 
   // Guest list for view modal
   const [eventGuests, setEventGuests] = useState<Guest[]>([]);
@@ -78,34 +70,16 @@ export default function AdminDashboardPage() {
         setEvents(data.events || []);
       }
     } catch (err: any) {
-      console.error("Admin Dashboard: Failed to fetch events:", err);
+      console.error("Admin Events Page: Failed to fetch events:", err);
       setError(err.response?.data?.error || err.message || "Failed to fetch admin events.");
     } finally {
       setLoadingEvents(false);
     }
   };
 
-  // Fetch aggregated statistics
-  const fetchDashboardStats = async () => {
-    if (!user || user.role !== "ADMIN") return;
-    setLoadingStats(true);
-    try {
-      const data = await adminService.getAdminStats();
-      if (data && data.success && data.stats) {
-        setDashboardStats(data.stats);
-      }
-    } catch (err: any) {
-      console.error("Admin Dashboard: Failed to fetch stats:", err);
-      triggerToast("Unable to load platform statistics.", "error");
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
   useEffect(() => {
     if (user && user.role === "ADMIN") {
       fetchEvents();
-      fetchDashboardStats();
     }
   }, [user]);
 
@@ -145,10 +119,7 @@ export default function AdminDashboardPage() {
       const res = await adminService.deleteAdminEvent(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Event deleted successfully by Admin!");
-        // Optimistic UI state update: remove row without full refresh
         setEvents((prev) => prev.filter((e) => e.id !== deleteConfirmId));
-        // Refresh statistics
-        fetchDashboardStats();
       }
     } catch (err: any) {
       console.error(err);
@@ -162,7 +133,6 @@ export default function AdminDashboardPage() {
   const handleSuccess = (message: string) => {
     triggerToast(message);
     fetchEvents();
-    fetchDashboardStats();
   };
 
   // Format date readable
@@ -203,12 +173,9 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      {/* Main container with padding top to clear fixed navbar */}
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
-        {/* Top bar with Heading, Admin Label, and Sign Out */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
-            {/* Hamburger Button for Mobile Sidebar */}
             <button
               onClick={() => setIsOpen(true)}
               className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
@@ -217,17 +184,12 @@ export default function AdminDashboardPage() {
               <Menu className="w-5 h-5 text-[#2D1B3D]" />
             </button>
             <div>
-              <div className="flex items-center gap-2">
-                <h1
-                  className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
-                  Admin Dashboard
-                </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/25">
-                  Admin
-                </span>
-              </div>
+              <h1
+                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                Events
+              </h1>
               <p className="text-sm text-[#2D1B3D]/60 mt-1">
                 Manage all events across the entire platform
               </p>
@@ -242,7 +204,6 @@ export default function AdminDashboardPage() {
           </button>
         </div>
 
-        {/* Success/Error Toast */}
         <AnimatePresence>
           {toast && (
             <motion.div
@@ -267,123 +228,7 @@ export default function AdminDashboardPage() {
           )}
         </AnimatePresence>
 
-        {/* KPI Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {loadingStats ? (
-            // Skeleton loaders
-            <>
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm backdrop-blur-sm animate-pulse"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-xl bg-[#E8C4B8]/20" />
-                    <div className="flex-1">
-                      <div className="h-3 w-20 bg-[#E8C4B8]/20 rounded mb-2" />
-                      <div className="h-7 w-14 bg-[#E8C4B8]/30 rounded" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </>
-          ) : (
-            // Actual KPI cards
-            <>
-              {/* Total Events */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm backdrop-blur-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-[#C9A84C]" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Total Events
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {dashboardStats?.totalEvents ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Total Guests */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm backdrop-blur-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-[#6B8F71]/10 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-[#6B8F71]" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Total Guests
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {dashboardStats?.totalGuests ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Avg. RSVP Rate */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm backdrop-blur-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-[#B07BAC]/10 flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 text-[#B07BAC]" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Avg. RSVP Rate
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {dashboardStats?.averageRsvpRate ?? 0}%
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Messages Sent */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm backdrop-blur-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-[#D4845E]/10 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-5 h-5 text-[#D4845E]" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Messages Sent
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {dashboardStats?.messagesSent ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </div>
-
-        {/* Inner page content container */}
         <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
-          {/* Top Actions bar */}
           {!loadingEvents && events.length > 0 && (
             <div className="flex justify-between items-center mb-6">
               <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
@@ -399,7 +244,6 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Loading Indicator */}
           {loadingEvents ? (
             <div className="flex-1 flex flex-col items-center justify-center py-24">
               <div className="w-8 h-8 border-3 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
@@ -418,7 +262,6 @@ export default function AdminDashboardPage() {
               </button>
             </div>
           ) : events.length === 0 ? (
-            /* Empty State */
             <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
                 <Calendar className="w-8 h-8 text-[#C9A84C]" />
@@ -436,7 +279,6 @@ export default function AdminDashboardPage() {
               </button>
             </div>
           ) : (
-            /* Events Table */
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -547,7 +389,6 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* CREATE / EDIT EVENT MODAL */}
       <EventModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -556,7 +397,6 @@ export default function AdminDashboardPage() {
         isAdmin={true}
       />
 
-      {/* EVENT DETAILS VIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -751,7 +591,6 @@ export default function AdminDashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* DELETE CONFIRMATION DIALOG */}
       <AnimatePresence>
         {deleteConfirmId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -796,5 +635,17 @@ export default function AdminDashboardPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function AdminEventsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      </div>
+    }>
+      <AdminEventsPageContent />
+    </Suspense>
   );
 }

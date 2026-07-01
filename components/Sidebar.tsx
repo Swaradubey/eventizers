@@ -13,6 +13,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -30,33 +31,33 @@ export default function Sidebar() {
         },
         {
           label: "Events",
-          href: "/admin/dashboard",
+          href: "/admin/events",
           icon: Calendar,
-          disabled: true,
         },
         {
           label: "Guests",
-          href: "/admin/dashboard",
+          href: "/admin/guests",
           icon: Users,
-          disabled: true,
         },
         {
           label: "Invitations",
-          href: "/admin/dashboard",
+          href: "/admin/invitations",
           icon: Mail,
-          disabled: true,
         },
         {
           label: "Ticketing",
-          href: "/admin/dashboard",
+          href: "/admin/ticketing",
           icon: Ticket,
-          disabled: true,
         },
         {
           label: "Check-In",
-          href: "/admin/dashboard",
+          href: "/admin/check-in",
           icon: UserCheck,
-          disabled: true,
+        },
+        {
+          label: "Registries",
+          href: "/admin/registries",
+          icon: Gift,
         },
       ]
     : [
@@ -90,6 +91,11 @@ export default function Sidebar() {
           href: "/dashboard/check-in",
           icon: UserCheck,
         },
+        {
+          label: "Registries",
+          href: "/dashboard/registries",
+          icon: Gift,
+        },
       ];
 
 
@@ -97,11 +103,8 @@ export default function Sidebar() {
   // Helper to determine if menu item is active
   const isActive = (href: string, disabled?: boolean) => {
     if (disabled) return false;
-    if (isAdminPath) {
-      return href === "/admin/dashboard" && pathname === "/admin/dashboard";
-    }
-    if (href === "/dashboard") {
-      return pathname === "/dashboard";
+    if (href === "/admin/dashboard" || href === "/dashboard") {
+      return pathname === href;
     }
     return pathname?.startsWith(href);
   };

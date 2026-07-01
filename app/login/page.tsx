@@ -15,10 +15,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, redirect to dashboard page
+  // If user is already logged in, redirect to appropriate dashboard
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      if (user.role === "ADMIN") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     }
   }, [user, router]);
 
