@@ -30,7 +30,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, isOpen, setIsOpen, setIsCollapsed } = useSidebar();
-  const isDashboard = pathname?.startsWith("/dashboard");
+  const isDashboard = pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin/dashboard");
 
   const handleCreateEventClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -161,7 +161,7 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? "/dashboard" : "/login"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/login"}
                   className={`text-sm font-medium transition-colors ${
                     active ? "text-[#2D1B3D]" : "text-[#2D1B3D]/70 hover:text-[#2D1B3D]"
                   }`}
@@ -283,7 +283,7 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? "/dashboard" : "/login"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/login"}
                   className={`text-sm font-medium transition-colors ${
                     active ? "text-[#2D1B3D]" : "text-[#2D1B3D]/80 hover:text-[#2D1B3D]"
                   }`}

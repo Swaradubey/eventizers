@@ -2,11 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
+import adminService from "../services/adminService";
 
 export interface User {
   id: number;
   name: string;
   email: string;
+  role?: "USER" | "ADMIN";
   createdAt: string;
   updatedAt: string;
 }
@@ -16,6 +18,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<User>;
+  adminLogin: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
@@ -51,6 +54,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setError(null);
     try {
       const response = await authService.login(email, password);
+      if (response && response.success && response.user) {
+        if (response.token) {
+          localStorage.setItem("token", response.token);
+        }
+        setUser(response.user);
+        return response.user;
+      }
+      throw new Error("Invalid server response");
+    } catch (err: any) {
+      let message = err.response?.data?.error || "Login failed. Please check your credentials.";
+      if (message === "User not found." || message === "Incorrect password.") {
+        message = "Invalid email or password.";
+      }
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const adminLogin = async (email: string, password: string): Promise<User> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminService.adminLogin(email, password);
       if (response && response.success && response.user) {
         if (response.token) {
           localStorage.setItem("token", response.token);
@@ -113,6 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         error,
         login,
+        adminLogin,
         register,
         logout,
         setError,

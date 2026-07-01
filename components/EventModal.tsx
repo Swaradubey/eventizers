@@ -4,12 +4,14 @@ import React, { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, Tag, Info, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import eventService, { Event } from "../services/eventService";
+import adminService from "../services/adminService";
 
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (message: string) => void;
   eventToEdit?: Event | null;
+  isAdmin?: boolean;
 }
 
 const EVENT_TYPES = [
@@ -32,6 +34,7 @@ export default function EventModal({
   onClose,
   onSuccess,
   eventToEdit = null,
+  isAdmin = false,
 }: EventModalProps) {
   const [formData, setFormData] = useState({
     title: "",
@@ -157,12 +160,22 @@ export default function EventModal({
         coverImage: formData.coverImage.trim() || undefined,
       };
 
-      if (eventToEdit && eventToEdit.id) {
-        await eventService.updateEvent(eventToEdit.id, payload);
-        onSuccess("Event updated successfully!");
+      if (isAdmin) {
+        if (eventToEdit && eventToEdit.id) {
+          await adminService.updateAdminEvent(eventToEdit.id, payload);
+          onSuccess("Event updated successfully!");
+        } else {
+          await adminService.createAdminEvent(payload);
+          onSuccess("Event created successfully!");
+        }
       } else {
-        await eventService.createEvent(payload);
-        onSuccess("Event created successfully!");
+        if (eventToEdit && eventToEdit.id) {
+          await eventService.updateEvent(eventToEdit.id, payload);
+          onSuccess("Event updated successfully!");
+        } else {
+          await eventService.createEvent(payload);
+          onSuccess("Event created successfully!");
+        }
       }
       onClose();
     } catch (err: any) {

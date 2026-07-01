@@ -20,43 +20,86 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen, setIsOpen, isCollapsed, setIsCollapsed } = useSidebar();
 
-  const menuItems = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Events",
-      href: "/dashboard/events",
-      icon: Calendar,
-    },
-    {
-      label: "Guests",
-      href: "/dashboard/guests",
-      icon: Users,
-    },
-    {
-      label: "Invitations",
-      href: "/dashboard/invitations",
-      icon: Mail,
-    },
-    {
-      label: "Ticketing",
-      href: "/dashboard/ticketing",
-      icon: Ticket,
-    },
-    {
-      label: "Check-In",
-      href: "/dashboard/check-in",
-      icon: UserCheck,
-    },
-  ];
+  const isAdminPath = pathname?.startsWith("/admin");
+  const menuItems = isAdminPath
+    ? [
+        {
+          label: "Dashboard",
+          href: "/admin/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Events",
+          href: "/admin/dashboard",
+          icon: Calendar,
+          disabled: true,
+        },
+        {
+          label: "Guests",
+          href: "/admin/dashboard",
+          icon: Users,
+          disabled: true,
+        },
+        {
+          label: "Invitations",
+          href: "/admin/dashboard",
+          icon: Mail,
+          disabled: true,
+        },
+        {
+          label: "Ticketing",
+          href: "/admin/dashboard",
+          icon: Ticket,
+          disabled: true,
+        },
+        {
+          label: "Check-In",
+          href: "/admin/dashboard",
+          icon: UserCheck,
+          disabled: true,
+        },
+      ]
+    : [
+        {
+          label: "Dashboard",
+          href: "/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Events",
+          href: "/dashboard/events",
+          icon: Calendar,
+        },
+        {
+          label: "Guests",
+          href: "/dashboard/guests",
+          icon: Users,
+        },
+        {
+          label: "Invitations",
+          href: "/dashboard/invitations",
+          icon: Mail,
+        },
+        {
+          label: "Ticketing",
+          href: "/dashboard/ticketing",
+          icon: Ticket,
+        },
+        {
+          label: "Check-In",
+          href: "/dashboard/check-in",
+          icon: UserCheck,
+        },
+      ];
 
 
 
   // Helper to determine if menu item is active
-  const isActive = (href: string) => {
+  const isActive = (href: string, disabled?: boolean) => {
+    if (disabled) return false;
+    if (isAdminPath) {
+      return href === "/admin/dashboard" && pathname === "/admin/dashboard";
+    }
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
@@ -130,18 +173,27 @@ export default function Sidebar() {
           <ul className="sidebar-menu" role="list">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.href);
+              const disabled = (item as any).disabled;
+              const active = isActive(item.href, disabled);
 
               return (
                 <li key={item.label} role="listitem">
                   <Link
                     href={item.href}
-                    onClick={() => setIsOpen(false)}
+                    onClick={(e) => {
+                      if (disabled) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setIsOpen(false);
+                    }}
                     aria-label={collapsed ? item.label : undefined}
                     aria-current={active ? "page" : undefined}
                     className={`sidebar-menu-item ${
                       active ? "sidebar-menu-item--active" : ""
-                    } ${collapsed ? "sidebar-menu-item--collapsed" : ""}`}
+                    } ${collapsed ? "sidebar-menu-item--collapsed" : ""} ${
+                      disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
+                    }`}
                   >
                     {/* Active background pill */}
                     {active && (

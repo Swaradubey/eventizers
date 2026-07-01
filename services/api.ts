@@ -47,8 +47,8 @@ API.interceptors.response.use(
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
           sessionStorage.removeItem("token");
-          // Redirect to login page
-          window.location.href = "/login";
+          const isAdminRoute = window.location.pathname.startsWith("/admin");
+          window.location.href = isAdminRoute ? "/admin/login" : "/login";
         }
       }
     }
