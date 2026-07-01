@@ -49,7 +49,7 @@ function TicketingPageContent() {
   const [tiers, setTiers] = useState<TicketTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -409,7 +409,7 @@ function TicketingPageContent() {
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
-        
+
         {/* Top Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -457,7 +457,7 @@ function TicketingPageContent() {
             <button
               onClick={handleCreateClick}
               disabled={events.length === 0}
-              className="flex items-center gap-2.5 px-7 py-3 text-base font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none whitespace-nowrap min-h-[54px] flex-shrink-0"
+              className="flex items-center gap-2.5 px-5 py-3 text-base font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none whitespace-nowrap min-h-[54px] flex-shrink-0"
             >
               <Plus className="w-5 h-5" />
               New Ticket Tier
@@ -606,7 +606,7 @@ function TicketingPageContent() {
 
             {/* List and Filtering Workspace */}
             <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col">
-              
+
               {/* Search filter bar */}
               <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6 w-full">
                 <div className="relative w-full sm:max-w-xs">
@@ -682,7 +682,7 @@ function TicketingPageContent() {
                     const sold = tier.quantitySold || 0;
                     const cap = tier.capacity || 0;
                     const percentage = cap > 0 ? Math.min(100, Math.round((sold / cap) * 100)) : 0;
-                    
+
                     return (
                       <motion.div
                         key={tier.id}
@@ -706,19 +706,18 @@ function TicketingPageContent() {
 
                             {/* Status Badge */}
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
-                                tier.status === "ACTIVE"
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${tier.status === "ACTIVE"
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   : tier.status === "INACTIVE"
-                                  ? "bg-gray-50 text-gray-700 border-gray-200"
-                                  : tier.status === "SOLD_OUT"
-                                  ? "bg-red-50 text-red-700 border-red-200"
-                                  : tier.status === "SCHEDULED"
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                                  : tier.status === "EXPIRED"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-gray-50 text-gray-600 border-gray-200"
-                              }`}
+                                    ? "bg-gray-50 text-gray-700 border-gray-200"
+                                    : tier.status === "SOLD_OUT"
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : tier.status === "SCHEDULED"
+                                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                                        : tier.status === "EXPIRED"
+                                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                                          : "bg-gray-50 text-gray-600 border-gray-200"
+                                }`}
                             >
                               {tier.status.replace("_", " ")}
                             </span>
@@ -741,7 +740,7 @@ function TicketingPageContent() {
                             <span>Sales Progress</span>
                             <span>{percentage}%</span>
                           </div>
-                          
+
                           {/* Progress pill */}
                           <div className="w-full h-2 bg-[#E8C4B8]/25 rounded-full overflow-hidden mb-2">
                             <div
