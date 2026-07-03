@@ -32,6 +32,13 @@ export default function AdminRegistriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stats state
+  const [stats, setStats] = useState({
+    totalRegistries: 0,
+    activeRegistries: 0,
+    totalContributions: 0,
+  });
+
   // Filters and search
   const [search, setSearch] = useState("");
 
@@ -72,9 +79,14 @@ export default function AdminRegistriesPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await adminService.getAdminRegistries();
-      if (data && data.success) {
-        setRegistries(data.registries || []);
+      const result = await adminService.getAdminRegistries();
+      if (result && result.success) {
+        const registriesData = result?.data?.registries;
+        const registries = Array.isArray(registriesData) ? registriesData : [];
+        setRegistries(registries);
+        if (result?.data?.stats) {
+          setStats(result.data.stats);
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -177,16 +189,29 @@ export default function AdminRegistriesPage() {
 
   // Filtered registries list for search
   const filteredRegistries = registries.filter((r) => {
+    const searchLower = search.toLowerCase();
+    const matchesTitle = r.title.toLowerCase().includes(searchLower);
+    const matchesType = r.type.toLowerCase().includes(searchLower);
+    const matchesEventTitle = (r.eventTitle || "").toLowerCase().includes(searchLower);
+    const matchesUserName = (r.eventCreator?.name || "").toLowerCase().includes(searchLower);
+    const matchesUserEmail = (r.eventCreator?.email || "").toLowerCase().includes(searchLower);
+    const statusText = r.isActive ? "active" : "inactive";
+    const matchesStatus = statusText.includes(searchLower);
+
     return (
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.type.toLowerCase().includes(search.toLowerCase()) ||
-      (r.eventTitle && r.eventTitle.toLowerCase().includes(search.toLowerCase()))
+      matchesTitle ||
+      matchesType ||
+      matchesEventTitle ||
+      matchesUserName ||
+      matchesUserEmail ||
+      matchesStatus
     );
   });
 
   // Calculate platform metrics
-  const totalRaisedFunds = registries.reduce((sum, r) => sum + (r.currentAmount || 0), 0);
-  const activeRegistriesCount = registries.filter((r) => r.isActive).length;
+  const totalRaisedFunds = stats.totalContributions !== undefined ? stats.totalContributions : registries.reduce((sum, r) => sum + (r.currentAmount || 0), 0);
+  const totalRegistriesCount = stats.totalRegistries !== undefined ? stats.totalRegistries : registries.length;
+  const activeRegistriesCount = stats.activeRegistries !== undefined ? stats.activeRegistries : registries.filter((r) => r.isActive).length;
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -290,7 +315,7 @@ export default function AdminRegistriesPage() {
                   Total Registries
                 </p>
                 <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
-                  {loading ? "..." : registries.length}
+                  {loading ? "..." : totalRegistriesCount}
                 </p>
               </div>
             </div>

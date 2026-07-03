@@ -81,6 +81,20 @@ export interface AdminRegistry extends Registry {
   } | null;
 }
 
+export interface AdminRegistriesData {
+  registries: AdminRegistry[];
+  stats: {
+    totalRegistries: number;
+    activeRegistries: number;
+    totalContributions: number;
+  };
+}
+
+export interface AdminRegistriesResponse {
+  success: boolean;
+  data: AdminRegistriesData;
+}
+
 export const adminLogin = async (email: string, password: string): Promise<AdminAuthResponse> => {
   const response = await API.post<AdminAuthResponse>("/admin/login", { email, password });
   return response.data;
@@ -246,8 +260,8 @@ export const undoAdminCheckIn = async (checkInId: string): Promise<{ success: bo
   return response.data;
 };
 
-export const getAdminRegistries = async (): Promise<{ success: boolean; registries: AdminRegistry[] }> => {
-  const response = await API.get<{ success: boolean; registries: AdminRegistry[] }>("/admin/registries");
+export const getAdminRegistries = async (): Promise<AdminRegistriesResponse> => {
+  const response = await API.get<AdminRegistriesResponse>("/admin/registries");
   return response.data;
 };
 

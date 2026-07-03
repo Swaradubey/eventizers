@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Gift,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -59,6 +60,11 @@ export default function Sidebar() {
           href: "/admin/registries",
           icon: Gift,
         },
+        {
+          label: "Messages",
+          href: "/admin/messages",
+          icon: MessageSquare,
+        },
       ]
     : [
         {
@@ -95,6 +101,11 @@ export default function Sidebar() {
           label: "Registries",
           href: "/dashboard/registries",
           icon: Gift,
+        },
+        {
+          label: "Messages",
+          href: "/dashboard/messages",
+          icon: MessageSquare,
         },
       ];
 
