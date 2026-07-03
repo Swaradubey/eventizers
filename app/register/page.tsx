@@ -245,8 +245,15 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-                  window.location.href = `${apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl}/auth/google`;
+                  let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+                  apiUrl = apiUrl.trim();
+                  if (apiUrl.endsWith("/")) {
+                    apiUrl = apiUrl.slice(0, -1);
+                  }
+                  if (!apiUrl.endsWith("/api")) {
+                    apiUrl = `${apiUrl}/api`;
+                  }
+                  window.location.assign(`${apiUrl}/auth/google`);
                 }}
                 className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-[#E8C4B8]/40 rounded-xl bg-white hover:bg-[#FAF8F5] text-sm font-semibold text-[#2D1B3D] shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#C9A84C]/50"
               >
