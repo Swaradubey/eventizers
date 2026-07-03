@@ -55,11 +55,29 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
   return response.data;
 };
 
+/**
+ * Direct password reset for local development
+ */
+export const resetPasswordDirect = async (
+  email: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<AuthResponse> => {
+  const response = await API.post<AuthResponse>("/auth/reset-password-direct", {
+    email,
+    newPassword,
+    confirmPassword,
+  });
+  return response.data;
+};
+
 const authService = {
   register,
   login,
   logout,
   getCurrentUser,
+  resetPasswordDirect,
 };
 
 export default authService;
+

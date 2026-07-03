@@ -127,6 +127,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await authService.logout();
       localStorage.removeItem("token");
       setUser(null);
+      if (typeof window !== "undefined") {
+        if (window.location.pathname.startsWith("/admin")) {
+          window.location.href = "/admin/login";
+        } else if (window.location.pathname.startsWith("/dashboard")) {
+          window.location.href = "/login";
+        }
+      }
     } catch (err) {
       console.error("Error during logout:", err);
     } finally {

@@ -46,21 +46,23 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {/* Branding Header */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 group mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B3D] flex items-center justify-center transition-transform group-hover:scale-105">
-            <Sparkles className="w-5 h-5 text-[#C9A84C]" />
-          </div>
-          <span
-            className="font-display text-2xl font-bold text-[#2D1B3D]"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            Eventizers
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex flex-col items-center">
+        <div className="flex items-center justify-center gap-4 flex-wrap mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 group">
+            <div className="w-10 h-10 rounded-xl bg-[#2D1B3D] flex items-center justify-center transition-transform group-hover:scale-105">
+              <Sparkles className="w-5 h-5 text-[#C9A84C]" />
+            </div>
+            <span
+              className="font-display text-2xl font-bold text-[#2D1B3D]"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              Eventizers
+            </span>
+          </Link>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/20 whitespace-nowrap">
+            Admin Portal
           </span>
-        </Link>
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] mb-2 border border-[#C9A84C]/20">
-          Admin Portal
-        </span>
+        </div>
         <h2 className="text-3xl font-display font-semibold text-[#2D1B3D] tracking-tight">
           Admin Sign In
         </h2>
