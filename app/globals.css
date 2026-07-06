@@ -512,3 +512,9 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Hide duplicate sidebar mobile toggle next to page headings */
+button[aria-label="Open navigation"] {
+  display: none !important;
+}
+

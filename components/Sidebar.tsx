@@ -15,6 +15,8 @@ import {
   PanelLeftOpen,
   Gift,
   MessageSquare,
+  Shield,
+  CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -106,6 +108,16 @@ export default function Sidebar() {
           label: "Messages",
           href: "/dashboard/messages",
           icon: MessageSquare,
+        },
+        {
+          label: "Security",
+          href: "/dashboard/security",
+          icon: Shield,
+        },
+        {
+          label: "Billing",
+          href: "/dashboard/billing",
+          icon: CreditCard,
         },
       ];
 
