@@ -25,6 +25,7 @@ export interface PaymentMethod {
 
 export interface Invoice {
   id: string;
+  invoiceNumber?: string;
   amount: number;
   currency: string;
   status: string;

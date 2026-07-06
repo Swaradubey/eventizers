@@ -394,12 +394,6 @@ export default function BillingPage() {
                     <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
                     <p className="text-xs font-semibold text-[#2D1B3D]">Failed to load invoices</p>
                   </div>
-                ) : invoices.length === 0 ? (
-                  <div className="border-2 border-dashed border-[#E8C4B8]/30 bg-white rounded-2xl p-10 flex flex-col items-center justify-center text-center h-48">
-                    <Receipt className="w-10 h-10 text-[#C9A84C]/60 mb-2" />
-                    <p className="text-sm font-semibold text-[#2D1B3D]">No Invoices Found</p>
-                    <p className="text-xs text-[#2D1B3D]/40 mt-1">You do not have any invoices under this subscription yet.</p>
-                  </div>
                 ) : (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
@@ -414,40 +408,50 @@ export default function BillingPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#E8C4B8]/10">
-                          {invoices.map((invoice) => (
-                            <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
-                              <td className="py-3 px-5 font-semibold text-[#2D1B3D]">{invoice.id}</td>
-                              <td className="py-3 px-5 text-[#2D1B3D]/80">
-                                {new Date(invoice.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                              </td>
-                              <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
-                                {invoice.currency === "USD" ? "$" : invoice.currency}
-                                {invoice.amount.toFixed(2)}
-                              </td>
-                              <td className="py-3 px-5">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  invoice.status === "Paid"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-250"
-                                    : "bg-amber-50 text-amber-700 border-amber-250"
-                                }`}>
-                                  {invoice.status}
-                                </span>
-                              </td>
-                              <td className="py-3 px-5 text-right">
-                                <button
-                                  onClick={() => handleDownloadInvoice(invoice.id)}
-                                  className="p-1.5 text-[#C9A84C] hover:text-[#2D1B3D] hover:bg-[#FAF8F5] rounded-lg border border-[#E8C4B8]/10 transition-colors inline-flex items-center justify-center"
-                                  title="Download Invoice"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </button>
+                          {invoices.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
+                                No invoices available.
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            invoices.map((invoice) => (
+                              <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
+                                <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
+                                  {invoice.invoiceNumber || invoice.id}
+                                </td>
+                                <td className="py-3 px-5 text-[#2D1B3D]/80">
+                                  {new Date(invoice.date).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </td>
+                                <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
+                                  {invoice.currency === "USD" ? "$" : invoice.currency}
+                                  {invoice.amount.toFixed(2)}
+                                </td>
+                                <td className="py-3 px-5">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                    invoice.status === "Paid"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-250"
+                                      : "bg-amber-50 text-amber-700 border-amber-250"
+                                  }`}>
+                                    {invoice.status}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-5 text-right">
+                                  <button
+                                    onClick={() => handleDownloadInvoice(invoice.invoiceNumber || invoice.id)}
+                                    className="p-1.5 text-[#C9A84C] hover:text-[#2D1B3D] hover:bg-[#FAF8F5] rounded-lg border border-[#E8C4B8]/10 transition-colors inline-flex items-center justify-center"
+                                    title="Download Invoice"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
