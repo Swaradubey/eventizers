@@ -15,6 +15,45 @@ export interface BillingInfoResponse {
   plans: Plan[];
 }
 
+export interface PaymentMethod {
+  cardBrand: string;
+  last4: string;
+  expiryMonth: string;
+  expiryYear: string;
+  status: string;
+}
+
+export interface Invoice {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  date: string;
+  downloadUrl: string;
+}
+
+export interface PaymentMethodResponse {
+  success: boolean;
+  data: PaymentMethod;
+}
+
+export interface InvoicesResponse {
+  success: boolean;
+  data: Invoice[];
+}
+
+export interface SetupIntentResponse {
+  clientSecret: string;
+}
+
+export interface SubscribeResponse {
+  success?: boolean;
+  requiresPaymentMethod?: boolean;
+  clientSecret?: string;
+  currentPlan?: string;
+  usage?: BillingUsage;
+}
+
 export const BillingAPI = {
   getBillingInfo: async (): Promise<BillingInfoResponse> => {
     const response = await API.get<BillingInfoResponse>("/dashboard/billing");
@@ -26,8 +65,33 @@ export const BillingAPI = {
     return response.data;
   },
 
+  subscribeToPlan: async (planId: string): Promise<SubscribeResponse> => {
+    const response = await API.post<SubscribeResponse>("/plans/subscribe", { planId });
+    return response.data;
+  },
+
   getBillingUsage: async (): Promise<BillingUsage> => {
     const response = await API.get<BillingUsage>("/dashboard/billing/usage");
+    return response.data;
+  },
+
+  getPaymentMethod: async (): Promise<PaymentMethodResponse> => {
+    const response = await API.get<PaymentMethodResponse>("/user/billing/payment-method");
+    return response.data;
+  },
+
+  createSetupIntent: async (): Promise<SetupIntentResponse> => {
+    const response = await API.post<SetupIntentResponse>("/user/billing/setup-intent");
+    return response.data;
+  },
+
+  updatePaymentMethod: async (paymentMethodId: string): Promise<PaymentMethodResponse> => {
+    const response = await API.post<PaymentMethodResponse>("/user/billing/payment-method", { paymentMethodId });
+    return response.data;
+  },
+
+  getInvoices: async (): Promise<InvoicesResponse> => {
+    const response = await API.get<InvoicesResponse>("/user/billing/invoices");
     return response.data;
   }
 };

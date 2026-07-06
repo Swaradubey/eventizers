@@ -275,6 +275,83 @@ export const deleteAdminRegistry = async (id: string): Promise<{ success: boolea
   return response.data;
 };
 
+// Admin Billing Types
+export interface AdminBillingUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  plan: string;
+  subscriptionStatus: string;
+  billingStatus: string;
+  planStartDate: string;
+  planExpiryDate: string;
+  usage: {
+    eventsCreated: number;
+    eventsLimit: number;
+    guestsUsed: number;
+    guestsLimit: number;
+    messagesUsed: number;
+    messagesLimit: number;
+    updatedAt: string;
+  };
+}
+
+export interface AdminBillingStats {
+  totalSubscribers: number;
+  freeUsers: number;
+  paidUsers: number;
+  activeSubscriptions: number;
+  expiredPlans: number;
+  monthlyRevenue: number;
+}
+
+export interface AdminBillingUsersResponse {
+  success: boolean;
+  users: AdminBillingUser[];
+}
+
+export interface AdminBillingStatsResponse {
+  success: boolean;
+  stats: AdminBillingStats;
+}
+
+// Admin Billing API functions
+export const getAdminBillingStats = async (): Promise<AdminBillingStatsResponse> => {
+  const response = await API.get<AdminBillingStatsResponse>("/admin/billing/stats");
+  return response.data;
+};
+
+export const getAdminBillingUsers = async (): Promise<AdminBillingUsersResponse> => {
+  const response = await API.get<AdminBillingUsersResponse>("/admin/billing/users");
+  return response.data;
+};
+
+export const updateAdminBillingPlan = async (userId: number, plan: string): Promise<any> => {
+  const response = await API.patch(`/admin/billing/users/${userId}/plan`, { plan });
+  return response.data;
+};
+
+export const resetAdminUserUsage = async (userId: number, type: "events" | "guests" | "messages" | "all"): Promise<any> => {
+  const response = await API.post(`/admin/billing/users/${userId}/reset-usage`, { type });
+  return response.data;
+};
+
+export const updateAdminUserSubscriptionStatus = async (userId: number, status: string): Promise<any> => {
+  const response = await API.patch(`/admin/billing/users/${userId}/subscription-status`, { status });
+  return response.data;
+};
+
+export const updateAdminUserBillingStatus = async (userId: number, status: string): Promise<any> => {
+  const response = await API.patch(`/admin/billing/users/${userId}/billing-status`, { status });
+  return response.data;
+};
+
+export const deleteAdminUser = async (userId: number): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`);
+  return response.data;
+};
+
 const adminService = {
   adminLogin,
   adminLogout,
@@ -304,6 +381,14 @@ const adminService = {
   getAdminRegistries,
   updateAdminRegistry,
   deleteAdminRegistry,
+  getAdminBillingStats,
+  getAdminBillingUsers,
+  updateAdminBillingPlan,
+  resetAdminUserUsage,
+  updateAdminUserSubscriptionStatus,
+  updateAdminUserBillingStatus,
+  deleteAdminUser,
 };
 
 export default adminService;
+

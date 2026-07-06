@@ -67,6 +67,11 @@ export default function Sidebar() {
           href: "/admin/messages",
           icon: MessageSquare,
         },
+        {
+          label: "Billing",
+          href: "/admin/billing",
+          icon: CreditCard,
+        },
       ]
     : [
         {
