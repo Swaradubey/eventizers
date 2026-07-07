@@ -192,18 +192,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* ─── Section label ─── */}
-        {!collapsed && (
-          <div className="sidebar-section-label">
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.2 }}
-            >
-              Navigation
-            </motion.span>
-          </div>
-        )}
 
         {/* ─── Navigation items ─── */}
         <nav className="sidebar-nav" role="navigation" aria-label="Main navigation">
