@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar";
@@ -26,10 +26,12 @@ import {
   Pause,
   RefreshCw,
   MoreVertical,
-  ChevronDown
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "../../../context/SidebarContext";
+import axios from "axios";
 
 export default function AdminBillingPage() {
   const { user, loading: authLoading } = useAuth();
@@ -44,9 +46,22 @@ export default function AdminBillingPage() {
 
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("ALL");
   const [billingFilter, setBillingFilter] = useState("ALL");
   const [subFilter, setSubFilter] = useState("ALL");
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+
+  // Sorting states
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Modal states
   const [selectedUser, setSelectedUser] = useState<AdminBillingUser | null>(null);
@@ -57,6 +72,9 @@ export default function AdminBillingPage() {
   const [updating, setUpdating] = useState(false);
   const [activeActionsUserId, setActiveActionsUserId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Request cancellation controller ref
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Authentication check
   useEffect(() => {
@@ -69,57 +87,113 @@ export default function AdminBillingPage() {
     }
   }, [user, authLoading, router]);
 
-  // Load billing database from API (with single auto-retry)
-  const fetchBillingData = async () => {
+  // Load billing database from API
+  const fetchBillingData = async (
+    currentPage: number = page,
+    currentSearch: string = debouncedSearch,
+    currentPlan: string = planFilter,
+    currentBilling: string = billingFilter,
+    currentSub: string = subFilter,
+    currentSortBy: string = sortBy,
+    currentSortOrder: string = sortOrder
+  ) => {
+    // Cancel the previous request if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create a new AbortController
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
+
     try {
-      try {
-        const [usersData, statsData] = await Promise.all([
-          adminService.getAdminBillingUsers(),
-          adminService.getAdminBillingStats()
-        ]);
-
-        if (usersData && usersData.success) {
-          setUsers(usersData.users);
-        }
-        if (statsData && statsData.success) {
-          setStats(statsData.stats);
-        }
-        setLoading(false);
-        return;
-      } catch (firstErr) {
-        console.warn("First load attempt failed, retrying once...", firstErr);
-      }
-
-      // Retry once
       const [usersData, statsData] = await Promise.all([
-        adminService.getAdminBillingUsers(),
+        adminService.getAdminBillingUsers(
+          {
+            page: currentPage,
+            limit,
+            search: currentSearch,
+            currentPlan,
+            billingStatus: currentBilling,
+            subscriptionStatus: currentSub,
+            sortBy: currentSortBy,
+            sortOrder: currentSortOrder
+          },
+          controller.signal
+        ),
         adminService.getAdminBillingStats()
       ]);
 
       if (usersData && usersData.success) {
-        setUsers(usersData.users);
+        setUsers(usersData.users || []);
+        if (usersData.pagination) {
+          setTotalUsers(usersData.pagination.total);
+          setTotalPages(usersData.pagination.totalPages);
+          setHasNextPage(usersData.pagination.hasNextPage);
+          setHasPreviousPage(usersData.pagination.hasPreviousPage);
+        } else {
+          setTotalUsers((usersData.users || []).length);
+          setTotalPages(1);
+          setHasNextPage(false);
+          setHasPreviousPage(false);
+        }
       }
       if (statsData && statsData.success) {
         setStats(statsData.stats);
       }
+      setLoading(false);
     } catch (err: any) {
-      console.error("Error loading admin billing data after retry:", err);
+      // If the request was cancelled, ignore the error
+      if (axios.isCancel(err)) {
+        return;
+      }
+      console.error("Error loading admin billing data:", err);
       setError(
         err.response?.data?.error ||
           "Unable to load admin billing data. Please verify database connection."
       );
-    } finally {
       setLoading(false);
     }
   };
 
+  // Cleanup request on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // Fetch data when filters or sorting change (resets to page 1)
   useEffect(() => {
     if (user && user.role === "ADMIN") {
-      fetchBillingData();
+      setPage(1);
+      fetchBillingData(
+        1,
+        debouncedSearch,
+        planFilter,
+        billingFilter,
+        subFilter,
+        sortBy,
+        sortOrder
+      );
     }
-  }, [user]);
+  }, [debouncedSearch, planFilter, billingFilter, subFilter, sortBy, sortOrder, user]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -256,23 +330,73 @@ export default function AdminBillingPage() {
     return `${used} / ${limit}`;
   };
 
-  // Filter & Search logic
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase());
+  // Page selection change helper
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    fetchBillingData(
+      newPage,
+      debouncedSearch,
+      planFilter,
+      billingFilter,
+      subFilter,
+      sortBy,
+      sortOrder
+    );
+    // Smooth scroll position
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-    const matchesPlan =
-      planFilter === "ALL" || u.plan.toUpperCase() === planFilter;
+  // Column header sorting click helper
+  const handleSort = (field: string) => {
+    const isAsc = sortBy === field && sortOrder === "asc";
+    const newOrder = isAsc ? "desc" : "asc";
+    setSortBy(field);
+    setSortOrder(newOrder);
+  };
 
-    const matchesBilling =
-      billingFilter === "ALL" || u.billingStatus.toUpperCase() === billingFilter;
+  // Ellipsis page number list generator
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      
+      let start = Math.max(2, page - 1);
+      let end = Math.min(totalPages - 1, page + 1);
+      
+      if (page <= 2) {
+        end = 3;
+      }
+      if (page >= totalPages - 1) {
+        start = totalPages - 2;
+      }
+      
+      if (start > 2) {
+        pages.push("...");
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
 
-    const matchesSub =
-      subFilter === "ALL" || u.subscriptionStatus.toUpperCase() === subFilter;
-
-    return matchesSearch && matchesPlan && matchesBilling && matchesSub;
-  });
+  // Server-side paginated and filtered users list
+  const filteredUsers = users;
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -283,10 +407,10 @@ export default function AdminBillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      <main className="flex-1 flex flex-col max-w-full w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -306,7 +430,7 @@ export default function AdminBillingPage() {
             </p>
           </div>
           <button
-            onClick={fetchBillingData}
+            onClick={() => fetchBillingData()}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none disabled:opacity-55 self-end sm:self-auto"
           >
@@ -316,7 +440,7 @@ export default function AdminBillingPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {loading || !stats ? (
             // Stats Skeletons
             [...Array(6)].map((_, i) => (
@@ -510,7 +634,7 @@ export default function AdminBillingPage() {
                 {error || "We're having trouble retrieving the billing registry right now. Please try refreshing the data."}
               </p>
               <button
-                onClick={fetchBillingData}
+                onClick={() => fetchBillingData()}
                 className="mt-5 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-all"
               >
                 Try Again
@@ -527,22 +651,117 @@ export default function AdminBillingPage() {
               </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap">
+            <div className="flex-1 overflow-x-auto relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center z-10 transition-opacity">
+                  <div className="w-8 h-8 border-4 border-[#2D1B3D]/20 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                </div>
+              )}
+              <table className={`w-full text-left border-collapse whitespace-nowrap transition-opacity duration-150 ${loading ? "opacity-50 pointer-events-none" : ""}`}>
                 <thead>
                   <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">User Name</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Email</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Role</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Current Plan</th>
+                    <th 
+                      onClick={() => handleSort("name")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        User Name
+                        {sortBy === "name" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("email")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Email
+                        {sortBy === "email" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("role")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Role
+                        {sortBy === "role" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("plan")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Current Plan
+                        {sortBy === "plan" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
                     <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Events Created</th>
                     <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Guests Used</th>
                     <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Messages Used</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Billing Status</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Subscription Status</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Plan Start Date</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Plan Expiry Date</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Last Updated</th>
+                    <th 
+                      onClick={() => handleSort("billingStatus")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Billing Status
+                        {sortBy === "billingStatus" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("subscriptionStatus")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Subscription Status
+                        {sortBy === "subscriptionStatus" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("planStartDate")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Plan Start Date
+                        {sortBy === "planStartDate" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("planExpiryDate")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Plan Expiry Date
+                        {sortBy === "planExpiryDate" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("created_at")}
+                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Last Updated
+                        {sortBy === "created_at" && (
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        )}
+                      </div>
+                    </th>
                     <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
@@ -712,6 +931,47 @@ export default function AdminBillingPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredUsers.length > 0 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-[#E8C4B8]/20 text-xs text-[#2D1B3D]/70 font-semibold select-none">
+              <div>
+                Showing {totalUsers > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, totalUsers)} of {totalUsers} Users
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1 || loading}
+                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
+                >
+                  Previous
+                </button>
+                {getPageNumbers().map((p, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => typeof p === "number" && handlePageChange(p)}
+                    disabled={p === "..." || loading}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                      p === page
+                        ? "bg-[#2D1B3D] text-white shadow-sm font-bold"
+                        : p === "..."
+                        ? "cursor-default text-[#2D1B3D]/40"
+                        : "bg-white border border-[#E8C4B8]/30 hover:bg-[#F0EBE8] text-[#2D1B3D]"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages || loading}
+                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

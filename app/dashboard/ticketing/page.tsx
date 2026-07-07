@@ -28,6 +28,7 @@ import {
   Activity,
   PlusCircle,
   Clock,
+  ShoppingCart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -58,6 +59,7 @@ function TicketingPageContent() {
   const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [buyingTierId, setBuyingTierId] = useState<string | null>(null);
 
   // Form states
   const [formName, setFormName] = useState("");
@@ -387,6 +389,26 @@ function TicketingPageContent() {
     } finally {
       setIsDeleting(false);
       setDeleteConfirmId(null);
+    }
+  };
+
+  // Handle Buy Ticket
+  const handleBuyTicket = async (tierId: string) => {
+    if (!selectedEventId || !tierId) return;
+    setBuyingTierId(tierId);
+    try {
+      const res = await ticketingService.createCheckoutSession(selectedEventId, tierId, 1);
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        triggerToast("Failed to initiate checkout. No checkout URL returned.", "error");
+      }
+    } catch (err: any) {
+      console.error("Buy ticket error:", err);
+      const errMsg = err.response?.data?.error || "Error initiating checkout session.";
+      triggerToast(errMsg, "error");
+    } finally {
+      setBuyingTierId(null);
     }
   };
 
@@ -779,6 +801,18 @@ function TicketingPageContent() {
                           </div>
 
                           <div className="flex gap-1.5">
+                            <button
+                              onClick={() => tier.id && handleBuyTicket(tier.id)}
+                              disabled={buyingTierId !== null || tier.status !== "ACTIVE"}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-white bg-[#C9A84C] hover:bg-[#b0903c] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm focus:outline-none"
+                            >
+                              {buyingTierId === tier.id ? (
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              ) : (
+                                <ShoppingCart className="w-3 h-3" />
+                              )}
+                              Buy Ticket
+                            </button>
                             <button
                               onClick={() => handleEditClick(tier)}
                               aria-label={`Edit ${tier.name}`}

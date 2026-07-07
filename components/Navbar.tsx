@@ -30,7 +30,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, isOpen, setIsOpen, setIsCollapsed } = useSidebar();
-  const isDashboard = pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin/dashboard");
+  const isDashboard = pathname?.startsWith("/dashboard") || (pathname?.startsWith("/admin") && pathname !== "/admin/login");
 
   const handleCreateEventClick = (e: React.MouseEvent) => {
     e.preventDefault();

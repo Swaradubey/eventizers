@@ -306,9 +306,30 @@ export interface AdminBillingStats {
   monthlyRevenue: number;
 }
 
+export interface GetBillingUsersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  currentPlan?: string;
+  billingStatus?: string;
+  subscriptionStatus?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
 export interface AdminBillingUsersResponse {
   success: boolean;
   users: AdminBillingUser[];
+  data?: AdminBillingUser[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 }
 
 export interface AdminBillingStatsResponse {
@@ -322,8 +343,14 @@ export const getAdminBillingStats = async (): Promise<AdminBillingStatsResponse>
   return response.data;
 };
 
-export const getAdminBillingUsers = async (): Promise<AdminBillingUsersResponse> => {
-  const response = await API.get<AdminBillingUsersResponse>("/admin/billing/users");
+export const getAdminBillingUsers = async (
+  params: GetBillingUsersParams = {},
+  signal?: AbortSignal
+): Promise<AdminBillingUsersResponse> => {
+  const response = await API.get<AdminBillingUsersResponse>("/admin/billing/users", {
+    params,
+    signal
+  });
   return response.data;
 };
 

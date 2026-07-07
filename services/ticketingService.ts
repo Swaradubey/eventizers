@@ -49,6 +49,29 @@ export const deleteTicketTier = async (tierId: string): Promise<DeleteTicketTier
   return response.data;
 };
 
+export const createCheckoutSession = async (
+  eventId: string,
+  ticketTierId: string,
+  quantity: number
+): Promise<{ checkoutUrl: string; sessionId: string }> => {
+  const response = await API.post<{ checkoutUrl: string; sessionId: string }>("/tickets/create-checkout-session", {
+    eventId,
+    ticketTierId,
+    quantity,
+  });
+  return response.data;
+};
+
+export const getMyTickets = async (): Promise<{ success: boolean; tickets: any[] }> => {
+  const response = await API.get<{ success: boolean; tickets: any[] }>("/tickets/my-tickets");
+  return response.data;
+};
+
+export const getSessionDetails = async (sessionId: string): Promise<{ success: boolean; order: any }> => {
+  const response = await API.get<{ success: boolean; order: any }>(`/tickets/session/${sessionId}`);
+  return response.data;
+};
+
 const ticketingService = {
   getTicketingEvents,
   getEventSummary,
@@ -57,6 +80,9 @@ const ticketingService = {
   createTicketTier,
   updateTicketTier,
   deleteTicketTier,
+  createCheckoutSession,
+  getMyTickets,
+  getSessionDetails,
 };
 
 export default ticketingService;

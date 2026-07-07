@@ -62,7 +62,7 @@ export default function ChangePlanModal({ isOpen, onClose, user, onSave, updatin
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -171,17 +171,17 @@ export default function ChangePlanModal({ isOpen, onClose, user, onSave, updatin
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 mt-8">
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl transition-all focus:outline-none"
+            className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl transition-all focus:outline-none flex items-center justify-center"
             disabled={updating}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center justify-center min-w-[120px] px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-55 disabled:pointer-events-none"
+            className="w-full sm:w-auto flex items-center justify-center min-w-[120px] px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-55 disabled:pointer-events-none"
             disabled={updating || selectedPlan === user.plan.toLowerCase()}
           >
             {updating ? (

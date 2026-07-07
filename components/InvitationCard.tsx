@@ -13,6 +13,64 @@ interface InvitationCardProps {
   size?: "sm" | "md" | "lg";
 }
 
+const getCategoryBadgeStyles = (type: string) => {
+  const normalized = type.toLowerCase();
+  if (normalized.includes("birthday")) {
+    return "bg-gradient-to-r from-pink-500/25 to-rose-500/35 border-pink-200/20";
+  }
+  if (normalized.includes("wedding")) {
+    return "bg-gradient-to-r from-purple-500/25 to-indigo-500/35 border-purple-200/20";
+  }
+  if (normalized.includes("corporate")) {
+    return "bg-gradient-to-r from-blue-500/25 to-indigo-600/35 border-blue-200/20";
+  }
+  if (normalized.includes("dinner")) {
+    return "bg-gradient-to-r from-amber-500/25 to-yellow-600/35 border-amber-200/20";
+  }
+  if (normalized.includes("baby")) {
+    return "bg-gradient-to-r from-emerald-500/20 to-teal-500/30 border-emerald-200/20";
+  }
+  if (normalized.includes("charity") || normalized.includes("gala")) {
+    return "bg-gradient-to-r from-yellow-500/25 to-amber-600/35 border-yellow-200/20";
+  }
+  if (normalized.includes("music") || normalized.includes("live")) {
+    return "bg-gradient-to-r from-violet-500/25 to-fuchsia-600/35 border-violet-200/20";
+  }
+  if (normalized.includes("anniversary")) {
+    return "bg-gradient-to-r from-orange-500/25 to-rose-500/35 border-orange-200/20";
+  }
+  return "bg-white/20 border-white/20";
+};
+
+const getButtonGradient = (type: string) => {
+  const normalized = type.toLowerCase();
+  if (normalized.includes("birthday")) {
+    return "bg-gradient-to-r from-[#e07090] to-[#c25070]";
+  }
+  if (normalized.includes("wedding")) {
+    return "bg-gradient-to-r from-[#9070c0] to-[#7050a0]";
+  }
+  if (normalized.includes("corporate")) {
+    return "bg-gradient-to-r from-[#4080b0] to-[#286088]";
+  }
+  if (normalized.includes("dinner")) {
+    return "bg-gradient-to-r from-[#907030] to-[#705018]";
+  }
+  if (normalized.includes("baby")) {
+    return "bg-gradient-to-r from-[#4a9a4a] to-[#337a33]";
+  }
+  if (normalized.includes("charity") || normalized.includes("gala")) {
+    return "bg-gradient-to-r from-[#a07820] to-[#805e10]";
+  }
+  if (normalized.includes("music") || normalized.includes("live")) {
+    return "bg-gradient-to-r from-[#9970d0] to-[#734aa6]";
+  }
+  if (normalized.includes("anniversary")) {
+    return "bg-gradient-to-r from-[#c06840] to-[#a04b28]";
+  }
+  return "bg-gradient-to-r from-[#2D1B3D] to-[#1A1118]";
+};
+
 export default function InvitationCard({
   type,
   title,
@@ -25,76 +83,85 @@ export default function InvitationCard({
   emoji,
   size = "md",
 }: InvitationCardProps) {
-  const sizeClasses = {
-    sm: "w-52",
-    md: "w-64",
-    lg: "w-72",
-  };
-
   return (
-    <div
-      className={`invite-card card-border-gold flex flex-col ${sizeClasses[size]} shrink-0`}
-    >
+    <div className="premium-invite-card group flex flex-col h-full w-full">
       {/* Card header / banner */}
-      <div
-        className="h-28 flex items-center justify-center relative overflow-hidden"
-        style={{ background: gradient }}
-      >
-        <span className="text-5xl" role="img" aria-label={type}>
+      <div className="h-32 flex items-center justify-center relative overflow-hidden select-none">
+        {/* Background gradient container that scales on hover */}
+        <div 
+          className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105" 
+          style={{ background: gradient }}
+        />
+        
+        {/* Glossy overlays */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/30 mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+        {/* Floating Emoji */}
+        <span 
+          className="text-6xl relative z-10 transform transition-transform duration-500 ease-out group-hover:scale-110 drop-shadow-sm" 
+          role="img" 
+          aria-label={type}
+        >
           {emoji}
         </span>
-        <div className="absolute top-3 left-3">
+
+        {/* Category Glass Badge */}
+        <div className="absolute top-4 left-4 z-10">
           <span
-            className="text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.2)",
-              color: "white",
-              backdropFilter: "blur(4px)",
-            }}
+            className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full backdrop-blur-md text-white border shadow-[0_2px_8px_rgba(0,0,0,0.03)] transition-colors duration-300 ${getCategoryBadgeStyles(type)}`}
           >
             {type}
           </span>
         </div>
       </div>
 
+      {/* Thin Gold Gradient Divider Line */}
+      <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[#C9A84C]/25 to-transparent relative z-10" />
+
       {/* Card body */}
-      <div className="p-4 flex flex-col gap-3 flex-1">
+      <div className="p-6 flex flex-col gap-4 flex-1 relative z-10 bg-white/10">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-[#2D1B3D]/40 mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2D1B3D]/40 mb-1.5">
             You&apos;re invited to
           </p>
           <h3
-            className="font-display text-lg font-semibold text-[#2D1B3D] leading-tight"
+            className="font-display text-xl font-bold text-[#2D1B3D] leading-[1.25] group-hover:text-[#4A2D6B] transition-colors duration-300"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             {title}
           </h3>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] text-[#2D1B3D]/60">
-            <Calendar className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
-            <span>{date}</span>
+        {/* Metadata section */}
+        <div className="flex flex-col gap-2.5 my-1">
+          <div className="flex items-center gap-3 text-[15px] text-[#2D1B3D]/65 leading-relaxed font-medium">
+            <Calendar className="w-[18px] h-[18px] shrink-0 opacity-85" style={{ color: accentColor }} />
+            <span className="truncate">{date}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#2D1B3D]/60">
-            <Clock className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
-            <span>{time}</span>
+          <div className="flex items-center gap-3 text-[15px] text-[#2D1B3D]/65 leading-relaxed font-medium">
+            <Clock className="w-[18px] h-[18px] shrink-0 opacity-85" style={{ color: accentColor }} />
+            <span className="truncate">{time}</span>
           </div>
           {venue && (
-            <div className="flex items-center gap-1.5 text-[11px] text-[#2D1B3D]/60">
-              <MapPin className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
-              <span className="truncate">{venue}</span>
+            <div className="flex items-center gap-3 text-[15px] text-[#2D1B3D]/65 leading-relaxed font-medium">
+              <MapPin className="w-[18px] h-[18px] shrink-0 opacity-85" style={{ color: accentColor }} />
+              <span className="truncate" title={venue}>{venue}</span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-[11px] text-[#2D1B3D]/60">
-            <Users className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
-            <span>{host}</span>
+          <div className="flex items-center gap-3 text-[15px] text-[#2D1B3D]/65 leading-relaxed font-medium">
+            <Users className="w-[18px] h-[18px] shrink-0 opacity-85" style={{ color: accentColor }} />
+            <span className="truncate" title={host}>{host}</span>
           </div>
         </div>
 
+        {/* RSVP button */}
         <button
-          className="mt-auto w-full py-2 rounded-full text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95"
-          style={{ backgroundColor: accentColor }}
+          className={`mt-auto w-full py-3 rounded-[16px] text-xs font-bold text-white shadow-md rsvp-button-custom ${getButtonGradient(type)}`}
+          style={{ 
+            '--accent-color': accentColor, 
+            '--accent-glow': `${accentColor}40` 
+          } as React.CSSProperties}
         >
           RSVP Now
         </button>
@@ -102,3 +169,4 @@ export default function InvitationCard({
     </div>
   );
 }
+

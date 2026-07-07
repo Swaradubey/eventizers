@@ -80,7 +80,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
   ].filter(inv => inv.amount > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -95,7 +95,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 sm:p-8 text-[#2D1B3D] font-body"
+        className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#E8C4B8]/30 z-10 p-6 sm:p-8 text-[#2D1B3D] font-body"
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
@@ -105,8 +105,8 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               Billing Profile
             </span>
             <h3
-              className="text-2xl sm:text-3xl font-semibold font-display mt-1"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              className="text-2xl sm:text-3xl font-semibold font-display mt-1 break-words"
+              style={{ fontFamily: "'Playfair Display', serif", overflowWrap: "break-word", wordBreak: "break-word" }}
             >
               {user.name}
             </h3>
@@ -126,11 +126,11 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               <h4 className="text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider mb-2">
                 User Details
               </h4>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0 w-full">
                 <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                <div className="truncate">
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Email Address</p>
-                  <p className="text-xs font-semibold truncate">{user.email}</p>
+                  <p className="text-xs font-semibold break-all" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{user.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -144,7 +144,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                 <CheckCircle className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Status</p>
-                  <div className="flex gap-2 mt-0.5">
+                  <div className="flex flex-wrap gap-2 mt-0.5">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       user.subscriptionStatus === "ACTIVE" 
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
@@ -277,8 +277,8 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               No invoice history available for Free plan.
             </div>
           ) : (
-            <div className="border border-[#E8C4B8]/25 rounded-2xl overflow-hidden bg-white shadow-sm">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="border border-[#E8C4B8]/25 rounded-2xl overflow-x-auto bg-white shadow-sm">
+              <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                 <thead>
                   <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold">
                     <th className="py-2.5 px-4">Invoice #</th>
@@ -311,11 +311,11 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 mt-8">
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8">
           <button
             disabled={deleting}
             onClick={() => setShowConfirmDelete(true)}
-            className="px-5 py-2.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-4 h-4" />
             Delete User
@@ -323,7 +323,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           <button
             disabled={deleting}
             onClick={onClose}
-            className="px-6 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Close Profile
           </button>
@@ -361,18 +361,18 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                 </ul>
                 <p className="font-semibold text-red-600 mt-2">This action cannot be undone.</p>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col sm:flex-row justify-end gap-3">
                 <button
                   disabled={deleting}
                   onClick={() => setShowConfirmDelete(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={deleting}
                   onClick={handleDeleteUserConfirm}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {deleting ? (
                     <>

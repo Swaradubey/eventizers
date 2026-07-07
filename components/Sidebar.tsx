@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Shield,
   CreditCard,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -71,6 +72,11 @@ export default function Sidebar() {
           label: "Billing",
           href: "/admin/billing",
           icon: CreditCard,
+        },
+        {
+          label: "Settings",
+          href: "/admin/settings",
+          icon: Settings,
         },
       ]
     : [
