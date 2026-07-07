@@ -105,16 +105,45 @@ export default function Hero() {
           {/* Soft ambient glow behind heading */}
           <div className="hero-heading-glow" />
 
-          {/* Heading */}
-          <h1 className="hero-heading">
-            <span className="hero-heading-line">Create Any Event</span>
-            <span className="hero-heading-line">
-              <span className="gold-accent">in Under</span>
-            </span>
-            <span className="hero-heading-line">
-              <span className="gold-accent">60 Seconds</span>
-            </span>
-          </h1>
+          {/* Heading container with decorative cards */}
+          <div className="hero-heading-container">
+            {/* Left Decorative Invitation Card - Birthday */}
+            <div className="hero-deco-card left-card" aria-hidden="true">
+              <div className="hero-deco-card-inner">
+                <div className="hero-deco-card-badge">BIRTHDAY</div>
+                <div className="hero-deco-card-invite">You’re invited to</div>
+                <div className="hero-deco-card-title">Maya’s 5th Birthday</div>
+                <div className="hero-deco-card-details">Sat, June 14 · 2:00 PM</div>
+                <div className="hero-deco-card-footer">Hosted by The Patels</div>
+              </div>
+            </div>
+
+            {/* Heading */}
+            <h1 className="hero-heading">
+              <span className="hero-heading-line">Create Any Event</span>
+              <span className="hero-heading-line">
+                <span className="gold-accent">in Under</span>
+              </span>
+              <span className="hero-heading-line">
+                <span className="gold-accent">60 Seconds</span>
+              </span>
+            </h1>
+
+            {/* Right Decorative Invitation Card - Wedding */}
+            <div className="hero-deco-card right-card" aria-hidden="true">
+              <div className="hero-deco-card-inner">
+                <div className="hero-deco-card-badge">WEDDING</div>
+                <div className="hero-deco-card-invite">You’re invited to</div>
+                <div className="hero-deco-card-title">Liam & Sofia</div>
+                <div className="hero-deco-card-details">
+                  Sept 21 · 5:00 PM
+                  <br />
+                  Vineyard Estate
+                </div>
+                <div className="hero-deco-card-footer">Together with their families</div>
+              </div>
+            </div>
+          </div>
 
           {/* Subtitle */}
           <p className="hero-subtitle">
