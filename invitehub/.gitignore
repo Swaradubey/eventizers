@@ -13,6 +13,9 @@ build/
 *.log
 .DS_Store
 Thumbs.db
-.vscode/
-coverage/
-tsconfig.tsbuildinfo
+
+# Ignore backend and session SQL files
+../backend/
+../NeonDB.session.sql
+backend/
+*.session.sql
