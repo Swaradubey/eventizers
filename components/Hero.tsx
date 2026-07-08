@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, ChevronDown, Wand2, Play } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/navigation";
+import templateService, { Template } from "../services/templateService";
+import eventService from "../services/eventService";
+import API from "../services/api";
 
 const eventTypes = [
   "Birthday",
@@ -31,15 +36,44 @@ const guestLists = [
   "VIP Guests",
 ];
 
+const fallbackTemplates = [
+  { id: "tpl-birthday-maya", name: "Maya's 5th Birthday (Birthday) 🎂", category: "Birthday" },
+  { id: "tpl-wedding-liam", name: "Liam & Sofia Wedding (Wedding) 💍", category: "Wedding" },
+  { id: "tpl-corporate-launch", name: "Annual Product Launch (Corporate) 🚀", category: "Corporate" },
+  { id: "tpl-dinner-party", name: "Supper Club No. 7 (Dinner Party) 🍽️", category: "Dinner Party" },
+  { id: "tpl-baby-shower", name: "A Little One is Coming (Baby Shower) 🍼", category: "Baby Shower" },
+  { id: "tpl-charity-gala", name: "Bright Futures Gala (Charity Gala) ✨", category: "Charity Gala" },
+  { id: "tpl-live-music", name: "Rooftop Sessions (Live Music) 🎵", category: "Live Music" },
+  { id: "tpl-anniversary-james", name: "25 Years Together (Anniversary) 🥂", category: "Anniversary" }
+];
+
 const tabs = ["AI Create", "Template", "Upload Existing"];
 
 export default function Hero() {
+  const { user } = useAuth();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState(0);
   const [prompt, setPrompt] = useState("");
   const [eventType, setEventType] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [guestList, setGuestList] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  // Template tab states
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateTitle, setTemplateTitle] = useState("");
+  const [templateVenue, setTemplateVenue] = useState("");
+  const [templateDate, setTemplateDate] = useState("");
+  const [templateTime, setTemplateTime] = useState("");
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const examples = [
     "A whimsical garden birthday party for my daughter turning 5",
@@ -47,11 +81,141 @@ export default function Hero() {
     "A casual corporate networking night downtown",
   ];
 
+  // Fetch templates when tab is activated
+  useEffect(() => {
+    if (activeTab === 1 && templates.length === 0) {
+      const fetchTemplates = async () => {
+        setLoadingTemplates(true);
+        setErrorMsg(null);
+        try {
+          const data = await templateService.getTemplates();
+          setTemplates(data || []);
+          if (data && data.length > 0) {
+            setSelectedTemplateId(data[0].id);
+          } else {
+            setSelectedTemplateId(fallbackTemplates[0].id);
+          }
+        } catch (err: any) {
+          console.error("Failed to load templates:", err);
+          setErrorMsg("Could not load templates from server. Falling back to default list.");
+          setSelectedTemplateId(fallbackTemplates[0].id);
+        } finally {
+          setLoadingTemplates(false);
+        }
+      };
+      fetchTemplates();
+    }
+  }, [activeTab, templates.length]);
+
   const handleGenerate = async () => {
+    if (!user) {
+      setErrorMsg("Please sign in first to generate an AI event.");
+      setTimeout(() => router.push("/login"), 2000);
+      return;
+    }
+
+    if (!prompt.trim()) {
+      setErrorMsg("Please describe your event first.");
+      return;
+    }
+
     setGenerating(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setGenerating(false);
-    alert("🎉 Your event has been generated! (Demo)");
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await API.post("/events/ai-generate", {
+        prompt: prompt.trim(),
+        eventType: eventType || undefined,
+        guestCount: guestCount || undefined,
+        date: date || undefined,
+        time: time || undefined,
+        guestListName: guestList || undefined
+      });
+
+      if (res.data && res.data.success) {
+        setSuccessMsg("🎉 Event generated successfully by AI!");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error(err);
+      const status = err.response?.status;
+      const serverError = err.response?.data?.error;
+
+      if (
+        status === 429 ||
+        (serverError && (
+          serverError.toLowerCase().includes("quota") ||
+          serverError.toLowerCase().includes("unavailable") ||
+          serverError.toLowerCase().includes("rate limit")
+        ))
+      ) {
+        setErrorMsg(
+          "Gemini service is temporarily unavailable. Please try again in a few moments."
+        );
+      } else if (
+        status === 401 ||
+        status === 403 ||
+        (serverError && (
+          serverError.toLowerCase().includes("invalid gemini api key") ||
+          serverError.toLowerCase().includes("unauthorized")
+        ))
+      ) {
+        setErrorMsg("Invalid Gemini API key.");
+      } else if (
+        serverError && serverError.toLowerCase().includes("gemini api key is not configured")
+      ) {
+        setErrorMsg("Gemini API key is not configured.");
+      } else {
+        setErrorMsg(serverError || "Failed to generate event with AI. Please try again.");
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!user) {
+      setErrorMsg("Please sign in first to create an event.");
+      setTimeout(() => router.push("/login"), 2000);
+      return;
+    }
+
+    if (!templateTitle.trim() || !templateVenue.trim() || !templateDate || !templateTime) {
+      setErrorMsg("Please fill in all fields (Title, Venue, Date, Time) to create the event.");
+      return;
+    }
+
+    setCreatingEvent(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const selectedTpl = (templates.length > 0 ? templates : fallbackTemplates).find(t => t.id === selectedTemplateId);
+      const res = await eventService.createEvent({
+        title: templateTitle.trim(),
+        venue: templateVenue.trim(),
+        eventDate: templateDate,
+        eventTime: templateTime,
+        eventType: selectedTpl?.category || "Other",
+        // @ts-ignore
+        templateId: selectedTemplateId
+      });
+
+      if (res && res.success) {
+        setSuccessMsg("🎉 Event created successfully from template!");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.response?.data?.error || err.message || "Failed to create event from template.");
+    } finally {
+      setCreatingEvent(false);
+    }
   };
 
   return (
@@ -196,7 +360,11 @@ export default function Hero() {
               {tabs.map((tab, i) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(i)}
+                  onClick={() => {
+                    setActiveTab(i);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
                   className={`flex-1 text-xs font-medium py-2 px-3 rounded-lg transition-all ${
                     activeTab === i
                       ? "bg-white text-[#2D1B3D] shadow-sm"
@@ -207,6 +375,18 @@ export default function Hero() {
                 </button>
               ))}
             </div>
+
+            {/* Error/Success Feedbacks */}
+            {errorMsg && (
+              <div className="p-3 mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl transition-all">
+                {errorMsg}
+              </div>
+            )}
+            {successMsg && (
+              <div className="p-3 mb-4 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl transition-all">
+                {successMsg}
+              </div>
+            )}
 
             {activeTab === 0 && (
               <div className="space-y-4">
@@ -281,6 +461,8 @@ export default function Hero() {
                     <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Date</label>
                     <input
                       type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
                       className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
                     />
                   </div>
@@ -290,6 +472,8 @@ export default function Hero() {
                     <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Time</label>
                     <input
                       type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
                       className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
                     />
                   </div>
@@ -310,7 +494,6 @@ export default function Hero() {
                       {guestLists.map((g) => (
                         <option key={g}>{g}</option>
                       ))}
-                      <option>+ Create new list</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
                   </div>
@@ -338,16 +521,108 @@ export default function Hero() {
             )}
 
             {activeTab === 1 && (
-              <div className="text-center py-10 text-[#2D1B3D]/40 text-sm">
-                Browse hundreds of ready-made templates →{" "}
-                <a href="#templates" className="underline text-[#C9A84C]">
-                  See Templates
-                </a>
+              <div className="space-y-4 text-left">
+                {/* Selected Template */}
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin" />
+                    <span className="text-xs text-[#2D1B3D]/60 ml-2">Loading templates...</span>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
+                      Select Template
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 pr-9 cursor-pointer font-medium"
+                      >
+                        {(templates.length > 0 ? templates : fallbackTemplates).map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Template Fields */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
+                      Event Title
+                    </label>
+                    <input
+                      type="text"
+                      value={templateTitle}
+                      onChange={(e) => setTemplateTitle(e.target.value)}
+                      placeholder="E.g., Maya's 5th Birthday Party"
+                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
+                      Venue
+                    </label>
+                    <input
+                      type="text"
+                      value={templateVenue}
+                      onChange={(e) => setTemplateVenue(e.target.value)}
+                      placeholder="E.g., Sweet Retreat Bakery"
+                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Date</label>
+                      <input
+                        type="date"
+                        value={templateDate}
+                        onChange={(e) => setTemplateDate(e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Time</label>
+                      <input
+                        type="time"
+                        value={templateTime}
+                        onChange={(e) => setTemplateTime(e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCreateFromTemplate}
+                  disabled={creatingEvent}
+                  className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 mt-2"
+                  style={{ backgroundColor: "#2D1B3D" }}
+                >
+                  {creatingEvent ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating event…
+                    </>
+                  ) : (
+                    <>
+                      Create Event from Template
+                    </>
+                  )}
+                </button>
               </div>
             )}
 
             {activeTab === 2 && (
-              <div className="border-2 border-dashed border-[#E8C4B8]/60 rounded-xl p-10 text-center">
+              <div className="border-2 border-dashed border-[#E8C4B8]/60 rounded-xl p-10 text-center text-xs">
                 <p className="text-[#2D1B3D]/40 text-sm">
                   Drag & drop an existing invitation image or PDF
                 </p>
@@ -358,8 +633,6 @@ export default function Hero() {
             )}
           </div>
         </div>
-
-
       </div>
     </section>
   );
