@@ -13,3 +13,7 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# VS Code
+.vscode/
+*.code-workspace

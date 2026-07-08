@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
-import EventModal from "../../../components/EventModal";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import Navbar from "../../../invitehub/components/Navbar";
+import EventModal from "../../../invitehub/components/EventModal";
 import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
 import { Guest } from "../../../types/guestTypes";
 import {
@@ -25,7 +25,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useSidebar } from "../../../context/SidebarContext";
+import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminDashboardPage() {

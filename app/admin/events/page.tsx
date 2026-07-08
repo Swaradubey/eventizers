@@ -2,10 +2,10 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
-import EventModal from "../../../components/EventModal";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import { useSidebar } from "../../../invitehub/context/SidebarContext";
+import Navbar from "../../../invitehub/components/Navbar";
+import EventModal from "../../../invitehub/components/EventModal";
 import adminService, { AdminEvent } from "../../../services/adminService";
 import { Guest } from "../../../types/guestTypes";
 import {

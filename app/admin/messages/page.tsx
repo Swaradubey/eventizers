@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import { useSidebar } from "../../../invitehub/context/SidebarContext";
+import Navbar from "../../../invitehub/components/Navbar";
 import messageService, { Message, UserStats, MessageDetail } from "../../../services/messageService";
 import {
   LogOut,

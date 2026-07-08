@@ -1,4 +1,4 @@
-import { User } from "../context/AuthContext";
+import { User } from "../invitehub/context/AuthContext";
 import API from "./api";
 
 interface AuthResponse {

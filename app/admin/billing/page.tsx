@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import Navbar from "../../../invitehub/components/Navbar";
 import adminService, {
   AdminBillingUser,
   AdminBillingStats
 } from "../../../services/adminService";
-import BillingDetailsModal from "../../../components/admin/billing/BillingDetailsModal";
-import ChangePlanModal from "../../../components/admin/billing/ChangePlanModal";
+import BillingDetailsModal from "../../../invitehub/components/admin/billing/BillingDetailsModal";
+import ChangePlanModal from "../../../invitehub/components/admin/billing/ChangePlanModal";
 import {
   RotateCcw,
   AlertCircle,
@@ -30,7 +30,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSidebar } from "../../../context/SidebarContext";
+import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import axios from "axios";
 
 export default function AdminBillingPage() {

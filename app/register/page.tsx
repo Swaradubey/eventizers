@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../invitehub/context/AuthContext";
 import { Sparkles, ArrowRight, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 

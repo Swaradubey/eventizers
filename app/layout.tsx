@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "../context/AuthContext";
-import { ThemeProvider } from "../context/ThemeContext";
+import { AuthProvider } from "../invitehub/context/AuthContext";
+import { ThemeProvider } from "../invitehub/context/ThemeContext";
 
 export const metadata: Metadata = {
   title: "InviteHub – Premium E-Invitation Platform",

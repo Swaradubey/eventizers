@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import Navbar from "../../../invitehub/components/Navbar";
 import { BillingAPI, BillingInfoResponse, PaymentMethod, Invoice } from "../../../services/billingService";
 import API from "../../../services/api";
-import BillingUsageCard from "../../../components/dashboard/billing/BillingUsageCard";
-import PlanCard from "../../../components/dashboard/billing/PlanCard";
-import UpdatePaymentMethodModal from "../../../components/dashboard/billing/UpdatePaymentMethodModal";
-import useBillingUsage from "../../../hooks/useBillingUsage";
+import BillingUsageCard from "../../../invitehub/components/dashboard/billing/BillingUsageCard";
+import PlanCard from "../../../invitehub/components/dashboard/billing/PlanCard";
+import UpdatePaymentMethodModal from "../../../invitehub/components/dashboard/billing/UpdatePaymentMethodModal";
+import useBillingUsage from "../../../invitehub/hooks/useBillingUsage";
 import {
   RotateCcw,
   AlertCircle,

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
-import { useSidebar } from "../../../context/SidebarContext";
-import { useTheme } from "../../../context/ThemeContext";
+import { useAuth } from "../../../invitehub/context/AuthContext";
+import Navbar from "../../../invitehub/components/Navbar";
+import { useSidebar } from "../../../invitehub/context/SidebarContext";
+import { useTheme } from "../../../invitehub/context/ThemeContext";
 import userSettingsService from "../../../services/userSettingsService";
 import {
   AdminProfileData,
