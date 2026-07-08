@@ -59,16 +59,21 @@ export default function SecurityPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await securityService.getSecurityDashboard();
-      if (res && res.success && res.data) {
+      const [summaryRes, alertsRes, logsRes] = await Promise.all([
+        securityService.getSecuritySummary(),
+        securityService.getSecurityAlerts(),
+        securityService.getSecurityAuditLogs(),
+      ]);
+
+      if (summaryRes?.success && alertsRes?.success && logsRes?.success) {
         setStats({
-          activeAlerts: Number(res.data.stats?.activeAlerts || 0),
-          duplicateTickets: Number(res.data.stats?.duplicateTickets || 0),
-          failedVerifications: Number(res.data.stats?.failedVerifications || 0),
-          securityScore: Number(res.data.stats?.securityScore ?? 100),
+          activeAlerts: Number(summaryRes.data?.activeAlerts || 0),
+          duplicateTickets: Number(summaryRes.data?.duplicateTickets || 0),
+          failedVerifications: Number(summaryRes.data?.failedVerifications || 0),
+          securityScore: Number(summaryRes.data?.securityScore ?? 100),
         });
-        setAlerts(Array.isArray(res.data.alerts) ? res.data.alerts : []);
-        setAuditLogs(Array.isArray(res.data.auditLogs) ? res.data.auditLogs : []);
+        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+        setAuditLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
       } else {
         setError("Invalid response format received from server.");
       }

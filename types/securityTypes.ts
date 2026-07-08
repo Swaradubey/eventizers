@@ -33,3 +33,27 @@ export interface SecurityDashboardResponse {
   success: boolean;
   data: SecurityDashboardData;
 }
+
+export interface SecuritySummary {
+  activeAlerts: number;
+  duplicateTickets: number;
+  failedVerifications: number;
+  securityScore: number;
+  recentLogs: number;
+}
+
+export interface SecuritySummaryResponse {
+  success: boolean;
+  data: SecuritySummary;
+}
+
+export interface SecurityAlertsResponse {
+  success: boolean;
+  data: SecurityAlert[];
+}
+
+export interface SecurityAuditLogsResponse {
+  success: boolean;
+  data: AuditLog[];
+}
+
