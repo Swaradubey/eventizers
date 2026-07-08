@@ -14,10 +14,10 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"],
       "@/components/*": ["./invitehub/components/*"],
       "@/context/*": ["./invitehub/context/*"],
-      "@/hooks/*": ["./invitehub/hooks/*"]
+      "@/hooks/*": ["./invitehub/hooks/*"],
+      "@/*": ["./*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
