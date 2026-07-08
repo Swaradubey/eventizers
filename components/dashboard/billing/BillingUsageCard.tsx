@@ -71,24 +71,24 @@ export default function BillingUsageCard({
         {/* Events Created */}
         <UsageProgress
           label="Events Created"
-          used={usage.eventsCreated}
-          limit={usage.eventsLimit}
+          used={usage.eventsCreated ?? 0}
+          limit={usage.eventsLimit ?? 10}
           colorClass="bg-gradient-to-r from-amber-500 to-[#C9A84C]"
         />
 
         {/* Guests This Month */}
         <UsageProgress
           label="Guests This Month"
-          used={usage.guestsUsed}
-          limit={usage.guestsLimit}
+          used={usage.guestsUsed ?? 0}
+          limit={usage.guestsLimit ?? 25}
           colorClass="bg-gradient-to-r from-[#7A9E7E] to-emerald-600"
         />
 
         {/* Messages Sent */}
         <UsageProgress
           label="Messages Sent"
-          used={usage.messagesSent !== undefined ? usage.messagesSent : (usage.messagesUsed || 0)}
-          limit={usage.messagesLimit}
+          used={usage.messagesSent !== undefined ? usage.messagesSent : (usage.messagesUsed ?? 0)}
+          limit={usage.messagesLimit ?? 100}
           colorClass="bg-gradient-to-r from-[#9070c0] to-indigo-600"
         />
       </div>

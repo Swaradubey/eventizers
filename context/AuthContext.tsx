@@ -58,6 +58,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (response.token) {
           localStorage.setItem("token", response.token);
         }
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("showSparkle", "true");
+        }
         setUser(response.user);
         return response.user;
       }
@@ -83,6 +86,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (response.token) {
           localStorage.setItem("token", response.token);
         }
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("showSparkle", "true");
+        }
         setUser(response.user);
         return response.user;
       }
@@ -107,6 +113,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (response && response.success && response.user) {
         if (response.token) {
           localStorage.setItem("token", response.token);
+        }
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("showSparkle", "true");
         }
         setUser(response.user);
         return response.user;

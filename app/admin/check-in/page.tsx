@@ -134,7 +134,7 @@ export default function AdminCheckInPage() {
     if (resetPage) setPage(1);
 
     try {
-      const [sumRes, guestsRes] = await Promise.all([
+      const [sumResult, guestsResult] = await Promise.allSettled([
         adminService.getAdminCheckInSummary(eventId),
         adminService.getAdminCheckInGuests(eventId, {
           search: search.trim() || undefined,
@@ -144,14 +144,52 @@ export default function AdminCheckInPage() {
         }),
       ]);
 
-      if (sumRes.success) setSummary(sumRes.summary);
-      if (guestsRes.success) {
-        setGuests(guestsRes.guests || []);
-        setTotalPages(guestsRes.pagination?.totalPages || 1);
+      // Handle summary independently — failure here doesn't block attendee list
+      if (sumResult.status === "fulfilled") {
+        if (sumResult.value.success) {
+          setSummary(sumResult.value.summary);
+        } else {
+          console.error(
+            `Check-In Page: Summary returned success=false for eventId=${eventId}:`,
+            sumResult.value
+          );
+        }
+      } else {
+        console.error(
+          `Check-In Page: Failed to fetch check-in summary for eventId=${eventId}:`,
+          {
+            message: (sumResult.reason as any)?.message,
+            status: (sumResult.reason as any)?.response?.status,
+            data: (sumResult.reason as any)?.response?.data,
+          }
+        );
       }
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to load event check-in details.");
+
+      // Handle guests — this is the primary content; failure sets the error state
+      if (guestsResult.status === "fulfilled") {
+        const guestsRes = guestsResult.value;
+        if (guestsRes.success) {
+          setGuests(guestsRes.guests || []);
+          setTotalPages(guestsRes.pagination?.totalPages || 1);
+        } else {
+          console.error(
+            `Check-In Page: Guests endpoint returned success=false for eventId=${eventId}:`,
+            guestsRes
+          );
+          setError("Failed to load attendees. The server returned an error.");
+        }
+      } else {
+        const err = guestsResult.reason as any;
+        console.error(
+          `Check-In Page: Failed to fetch attendees for eventId=${eventId} (status=${statusFilter}, page=${currentPage}):`,
+          {
+            message: err?.message,
+            status: err?.response?.status,
+            data: err?.response?.data,
+          }
+        );
+        setError("Failed to load event check-in details.");
+      }
     } finally {
       setLoading(false);
     }

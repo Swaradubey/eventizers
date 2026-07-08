@@ -174,7 +174,12 @@ export default function GuestsPage() {
     e.preventDefault();
     setFormError(null);
 
-    if (!formName || !formEmail || !formEventId) {
+    if (!formEventId) {
+      setFormError("Please select a valid event.");
+      return;
+    }
+
+    if (!formName || !formEmail) {
       setFormError("Please fill out all required fields.");
       return;
     }

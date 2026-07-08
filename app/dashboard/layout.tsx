@@ -3,6 +3,7 @@
 import React from "react";
 import { SidebarProvider, useSidebar } from "../../context/SidebarContext";
 import Sidebar from "../../components/Sidebar";
+import SparkleEffect from "../../components/SparkleEffect";
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -11,6 +12,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#FAF8F5] flex text-[#2D1B3D]">
       {/* Responsive Left Sidebar */}
       <Sidebar />
+
+      {/* Sparkle effect on login */}
+      <SparkleEffect />
 
       {/* Main Content Area */}
       <div

@@ -11,6 +11,9 @@ function LoginSuccessHandler() {
     const token = searchParams.get("token");
     if (token) {
       localStorage.setItem("token", token);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("showSparkle", "true");
+      }
       // Direct assignment forces a fresh page reload so that AuthContext parses the token
       window.location.href = "/dashboard";
     } else {
