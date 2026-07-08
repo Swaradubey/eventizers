@@ -4,6 +4,9 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./invitehub/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./invitehub/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./invitehub/context/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
