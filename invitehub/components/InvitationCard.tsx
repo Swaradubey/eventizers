@@ -10,6 +10,7 @@ interface InvitationCardProps {
   gradient: string;
   accentColor: string;
   emoji: string;
+  image?: string;
   size?: "sm" | "md" | "lg";
 }
 
@@ -81,35 +82,58 @@ export default function InvitationCard({
   gradient,
   accentColor,
   emoji,
+  image,
   size = "md",
 }: InvitationCardProps) {
   return (
     <div className="premium-invite-card group flex flex-col h-full w-full">
       {/* Card header / banner */}
-      <div className="h-32 flex items-center justify-center relative overflow-hidden select-none">
-        {/* Background gradient container that scales on hover */}
-        <div 
-          className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105" 
-          style={{ background: gradient }}
-        />
-        
-        {/* Glossy overlays */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/30 mix-blend-overlay pointer-events-none" />
-        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="h-40 flex items-center justify-center relative overflow-hidden select-none">
+        {image ? (
+          <>
+            <img 
+              src={image} 
+              alt={title}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" 
+            />
+            {/* Rich gradient overlay for premium look & readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#2D1B3D]/75 via-[#2D1B3D]/25 to-black/35 pointer-events-none transition-opacity duration-350 group-hover:opacity-90" />
+            
+            {/* Subtle color-dodge overlay glow using accentColor */}
+            <div 
+              className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none mix-blend-color-dodge"
+              style={{
+                background: `radial-gradient(circle at center, ${accentColor} 0%, transparent 70%)`
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {/* Background gradient container that scales on hover */}
+            <div 
+              className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105" 
+              style={{ background: gradient }}
+            />
+            
+            {/* Glossy overlays */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/30 mix-blend-overlay pointer-events-none" />
+            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-        {/* Floating Emoji */}
-        <span 
-          className="text-6xl relative z-10 transform transition-transform duration-500 ease-out group-hover:scale-110 drop-shadow-sm" 
-          role="img" 
-          aria-label={type}
-        >
-          {emoji}
-        </span>
+            {/* Floating Emoji */}
+            <span 
+              className="text-6xl relative z-10 transform transition-transform duration-500 ease-out group-hover:scale-110 drop-shadow-sm" 
+              role="img" 
+              aria-label={type}
+            >
+              {emoji}
+            </span>
+          </>
+        )}
 
         {/* Category Glass Badge */}
         <div className="absolute top-4 left-4 z-10">
           <span
-            className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full backdrop-blur-md text-white border shadow-[0_2px_8px_rgba(0,0,0,0.03)] transition-colors duration-300 ${getCategoryBadgeStyles(type)}`}
+            className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full backdrop-blur-md text-white border shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-colors duration-300 ${getCategoryBadgeStyles(type)}`}
           >
             {type}
           </span>

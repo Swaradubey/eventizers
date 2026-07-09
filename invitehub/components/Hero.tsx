@@ -136,11 +136,11 @@ export default function Hero() {
       if (res.data && res.data.success) {
         setSuccessMsg("🎉 Event generated successfully by AI!");
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/dashboard/events");
         }, 1500);
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
       const status = err.response?.status;
       const serverError = err.response?.data?.error;
 

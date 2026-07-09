@@ -21,6 +21,7 @@ import {
   CheckCircle,
   Menu,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -375,6 +376,13 @@ function EventsPageContent() {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                            title="Design Invitation"
+                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleEditClick(event)}
                             title="Edit event"
                             className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
@@ -519,10 +527,17 @@ function EventsPageContent() {
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => router.push(`/dashboard/invitations?eventId=${viewingEvent.id}`)}
+                  className="px-5 py-2 text-xs font-semibold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Design Invitation
+                </button>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+                  className="px-5 py-2 text-xs font-semibold text-[#2D1B3D] bg-[#FAF8F5] border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl active:scale-95 transition-all focus:outline-none"
                 >
                   Close
                 </button>
