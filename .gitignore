@@ -16,3 +16,7 @@ Thumbs.db
 .vscode/
 coverage/
 tsconfig.tsbuildinfo
+
+# Ignore backend and session SQL files
+backend/
+*.session.sql
