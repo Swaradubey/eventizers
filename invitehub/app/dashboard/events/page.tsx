@@ -25,6 +25,21 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const getTemplateImage = (templateId?: string | null) => {
+  if (!templateId) return null;
+  const mapping: Record<string, string> = {
+    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
+    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
+    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
+    "tpl-dinner-party": "/assets/templates/dinner.jpg",
+    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
+    "tpl-charity-gala": "/assets/templates/gala.jpg",
+    "tpl-live-music": "/assets/templates/music.jpg",
+    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+  };
+  return mapping[templateId] || null;
+};
+
 function EventsPageContent() {
   const { user, loading: authLoading, logout } = useAuth();
   const { setIsOpen } = useSidebar();
@@ -452,10 +467,10 @@ function EventsPageContent() {
                 </button>
               </div>
 
-              {viewingEvent.coverImage && (
+              {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
                 <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
                   <img
-                    src={viewingEvent.coverImage}
+                    src={viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || ""}
                     alt={viewingEvent.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {

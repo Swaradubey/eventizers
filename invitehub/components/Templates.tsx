@@ -3,6 +3,15 @@
 import { motion, useReducedMotion } from "framer-motion";
 import InvitationCard from "./InvitationCard";
 
+import birthdayImg from "../public/assets/templates/birthday.jpg";
+import weddingImg from "../public/assets/templates/wedding.jpg";
+import corporateImg from "../public/assets/templates/corporate.jpg";
+import dinnerImg from "../public/assets/templates/dinner.jpg";
+import babyshowerImg from "../public/assets/templates/babyshower.jpg";
+import galaImg from "../public/assets/templates/gala.jpg";
+import musicImg from "../public/assets/templates/music.jpg";
+import anniversaryImg from "../public/assets/templates/anniversary.jpg";
+
 const cards = [
   {
     type: "Birthday",
@@ -13,7 +22,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #f9c5d1 0%, #f5a7b8 100%)",
     accentColor: "#e07090",
     emoji: "🎂",
-    image: "/assets/templates/birthday.jpg",
+    image: birthdayImg,
   },
   {
     type: "Wedding",
@@ -25,7 +34,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #d4b8e8 0%, #b8a0d4 100%)",
     accentColor: "#9070c0",
     emoji: "💍",
-    image: "/assets/templates/wedding.jpg",
+    image: weddingImg,
   },
   {
     type: "Corporate",
@@ -37,7 +46,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #a8c8e8 0%, #80a8d0 100%)",
     accentColor: "#4080b0",
     emoji: "🚀",
-    image: "/assets/templates/corporate.jpg",
+    image: corporateImg,
   },
   {
     type: "Dinner Party",
@@ -48,7 +57,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #d4c8a0 0%, #c0b080 100%)",
     accentColor: "#907030",
     emoji: "🍽️",
-    image: "/assets/templates/dinner.jpg",
+    image: dinnerImg,
   },
   {
     type: "Baby Shower",
@@ -60,7 +69,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #c8e8c8 0%, #a8d0a8 100%)",
     accentColor: "#4a9a4a",
     emoji: "🍼",
-    image: "/assets/templates/babyshower.jpg",
+    image: babyshowerImg,
   },
   {
     type: "Charity Gala",
@@ -72,7 +81,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #c9a84c 0%, #a07820 100%)",
     accentColor: "#a07820",
     emoji: "✨",
-    image: "/assets/templates/gala.jpg",
+    image: galaImg,
   },
   {
     type: "Live Music",
@@ -84,7 +93,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #2D1B3D 0%, #4a2a6a 100%)",
     accentColor: "#9970d0",
     emoji: "🎵",
-    image: "/assets/templates/music.jpg",
+    image: musicImg,
   },
   {
     type: "Anniversary",
@@ -96,7 +105,7 @@ const cards = [
     gradient: "linear-gradient(135deg, #e8c4b8 0%, #d0a090 100%)",
     accentColor: "#c06840",
     emoji: "🥂",
-    image: "/assets/templates/anniversary.jpg",
+    image: anniversaryImg,
   },
 ];
 

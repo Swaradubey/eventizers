@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Calendar, Clock, MapPin, Users } from "lucide-react";
 
 interface InvitationCardProps {
@@ -10,7 +11,7 @@ interface InvitationCardProps {
   gradient: string;
   accentColor: string;
   emoji: string;
-  image?: string;
+  image?: string | any;
   size?: "sm" | "md" | "lg";
 }
 
@@ -85,16 +86,23 @@ export default function InvitationCard({
   image,
   size = "md",
 }: InvitationCardProps) {
+  const [imageError, setImageError] = useState(false);
+
+  const showImage = image && !imageError;
+  const imgSrc = typeof image === 'string' ? image : image?.src;
+
   return (
     <div className="premium-invite-card group flex flex-col h-full w-full">
       {/* Card header / banner */}
       <div className="h-40 flex items-center justify-center relative overflow-hidden select-none">
-        {image ? (
+        {showImage ? (
           <>
             <img 
-              src={image} 
+              src={imgSrc} 
               alt={title}
+              onError={() => setImageError(true)}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" 
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
             {/* Rich gradient overlay for premium look & readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#2D1B3D]/75 via-[#2D1B3D]/25 to-black/35 pointer-events-none transition-opacity duration-350 group-hover:opacity-90" />

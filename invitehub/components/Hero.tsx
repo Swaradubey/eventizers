@@ -201,7 +201,8 @@ export default function Hero() {
         eventTime: templateTime,
         eventType: selectedTpl?.category || "Other",
         // @ts-ignore
-        templateId: selectedTemplateId
+        templateId: selectedTemplateId,
+        selectedTemplateId: selectedTemplateId
       });
 
       if (res && res.success) {
