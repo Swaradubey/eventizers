@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../invitehub/context/AuthContext";
-import { Sparkles, ArrowRight, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { Sparkles, ArrowRight, User, Lock, Mail, Eye, EyeOff, Phone } from "lucide-react";
 import Link from "next/link";
 
 export default function RegisterPage() {
@@ -12,6 +12,7 @@ export default function RegisterPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,8 +41,23 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !phoneNumber || !password || !confirmPassword) {
       setError("Please fill in all fields.");
+      return;
+    }
+
+    const validateAndFormatIndianMobile = (phone: string) => {
+      const cleaned = phone.trim().replace(/[\s\-()]/g, "");
+      if (/^\+91[6-9]\d{9}$/.test(cleaned)) return cleaned;
+      if (/^91[6-9]\d{9}$/.test(cleaned)) return `+${cleaned}`;
+      if (/^0[6-9]\d{9}$/.test(cleaned)) return `+91${cleaned.slice(1)}`;
+      if (/^[6-9]\d{9}$/.test(cleaned)) return `+91${cleaned}`;
+      return null;
+    };
+
+    const formattedPhone = validateAndFormatIndianMobile(phoneNumber);
+    if (!formattedPhone) {
+      setError("Please enter a valid Indian mobile number (e.g., +91 98765 43210 or 9876543210).");
       return;
     }
 
@@ -57,7 +73,10 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      await register(name, email, password);
+      // The register function from useAuth expects (name, email, phoneNumber, password)
+      // We pass the phone number state as requested:
+      // await register(name, email, password, phoneNumber);
+      await register(name, email, formattedPhone, password);
       // Navigation is handled by the useEffect watching `user` state above.
       // This ensures the router.push fires only AFTER React commits the
       // setUser update, so the Navbar sees the authenticated user immediately.
@@ -156,6 +175,35 @@ export default function RegisterPage() {
                   }}
                   className="block w-full pl-10 pr-3 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 focus:border-[#C9A84C] text-sm transition-all"
                   placeholder="name@example.com"
+                />
+              </div>
+            </div>
+
+            {/* Phone Number Field */}
+            <div>
+              <label
+                htmlFor="phoneNumber"
+                className="block text-xs font-semibold uppercase tracking-wider text-[#2D1B3D]/70 mb-2 font-body"
+              >
+                Phone Number
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-4 w-4 text-[#2D1B3D]/40" />
+                </div>
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  className="block w-full pl-10 pr-3 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 focus:border-[#C9A84C] text-sm transition-all"
+                  placeholder="+91 98765 43210"
                 />
               </div>
             </div>
