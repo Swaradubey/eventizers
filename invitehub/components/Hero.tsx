@@ -61,6 +61,8 @@ export default function Hero() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [aiEventData, setAiEventData] = useState<any | null>(null);
+  const [savingEvent, setSavingEvent] = useState(false);
 
   // Template tab states
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -122,9 +124,10 @@ export default function Hero() {
     setGenerating(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setAiEventData(null);
 
     try {
-      const res = await API.post("/events/ai-generate", {
+      const res = await API.post("/ai/generate-event", {
         prompt: prompt.trim(),
         eventType: eventType || undefined,
         guestCount: guestCount || undefined,
@@ -133,11 +136,9 @@ export default function Hero() {
         guestListName: guestList || undefined
       });
 
-      if (res.data && res.data.success) {
-        setSuccessMsg("🎉 Event generated successfully by AI!");
-        setTimeout(() => {
-          router.push("/dashboard/events");
-        }, 1500);
+      if (res.data) {
+        setAiEventData(res.data);
+        setSuccessMsg("🎉 AI Event plan generated! Please review it below.");
       }
     } catch (err: any) {
       console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
@@ -173,6 +174,65 @@ export default function Hero() {
       }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleSaveAiEvent = async () => {
+    if (!aiEventData || !user) return;
+
+    setSavingEvent(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const formattedDescription = `${aiEventData.description || ""}
+
+✨ **Theme**: ${aiEventData.theme || "TBD"}
+💰 **Estimated Budget**: ${aiEventData.estimatedBudget || "TBD"}
+
+📅 **Schedule**:
+${aiEventData.schedule?.map((item: string) => `• ${item}`).join('\n') || 'None'}
+
+🎈 **Decor**:
+${aiEventData.decor?.map((item: string) => `• ${item}`).join('\n') || 'None'}
+
+🍴 **Food & Drink**:
+${aiEventData.food?.map((item: string) => `• ${item}`).join('\n') || 'None'}
+
+🎮 **Activities**:
+${aiEventData.activities?.map((item: string) => `• ${item}`).join('\n') || 'None'}
+
+✅ **Checklist**:
+${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'None'}`;
+
+      const res = await eventService.createEvent({
+        title: aiEventData.title || "AI Generated Event",
+        description: formattedDescription,
+        venue: "TBD Venue",
+        eventDate: date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        eventTime: time || "18:00",
+        eventType: eventType || "Other",
+        status: "draft",
+      });
+
+      if (res && res.success) {
+        setSuccessMsg("🎉 Event created successfully and saved to your dashboard!");
+        setAiEventData(null);
+        setPrompt("");
+        setEventType("");
+        setGuestCount("");
+        setDate("");
+        setTime("");
+        setGuestList("");
+        setTimeout(() => {
+          router.push("/dashboard/events");
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.response?.data?.error || err.message || "Failed to save event to dashboard.");
+    } finally {
+      setSavingEvent(false);
     }
   };
 
@@ -518,6 +578,131 @@ export default function Hero() {
                     </>
                   )}
                 </button>
+
+                {aiEventData && (
+                  <div className="mt-6 p-5 bg-white border border-[#E8C4B8]/40 rounded-2xl shadow-inner text-left text-[#2D1B3D]/95 space-y-4 max-h-[500px] overflow-y-auto">
+                    <div className="flex justify-between items-start border-b border-[#E8C4B8]/20 pb-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-[#2D1B3D] leading-tight">
+                          {aiEventData.title}
+                        </h3>
+                        <p className="text-[10px] text-[#2D1B3D]/60 mt-1">
+                          ✨ Theme: <span className="font-semibold text-[#C9A84C]">{aiEventData.theme}</span>
+                        </p>
+                      </div>
+                      <div className="bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#E8C4B8]/20 text-[9px] font-bold text-[#C9A84C] whitespace-nowrap">
+                        Budget: {aiEventData.estimatedBudget}
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] leading-relaxed text-[#2D1B3D]/80">
+                      <p>{aiEventData.description}</p>
+                    </div>
+
+                    {/* Timeline Schedule */}
+                    {aiEventData.schedule && aiEventData.schedule.length > 0 && (
+                      <div className="space-y-1 pt-2 border-t border-[#E8C4B8]/10">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                          📅 Proposed Timeline
+                        </h4>
+                        <ul className="space-y-0.5">
+                          {aiEventData.schedule.map((item: string, idx: number) => (
+                            <li key={idx} className="text-[11px] flex items-start gap-1">
+                              <span className="text-[#C9A84C] shrink-0 font-semibold">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Emojis/Details Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E8C4B8]/10 text-[11px]">
+                      {/* Decor */}
+                      {aiEventData.decor && aiEventData.decor.length > 0 && (
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                            🎈 Decor Ideas
+                          </h4>
+                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                            {aiEventData.decor.map((item: string, idx: number) => (
+                              <li key={idx}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Food */}
+                      {aiEventData.food && aiEventData.food.length > 0 && (
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                            🍴 Food & Drink
+                          </h4>
+                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                            {aiEventData.food.map((item: string, idx: number) => (
+                              <li key={idx}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Activities */}
+                      {aiEventData.activities && aiEventData.activities.length > 0 && (
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                            🎮 Games & Activities
+                          </h4>
+                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                            {aiEventData.activities.map((item: string, idx: number) => (
+                              <li key={idx}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Checklist */}
+                      {aiEventData.checklist && aiEventData.checklist.length > 0 && (
+                        <div className="space-y-0.5">
+                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                            ✅ Plan Checklist
+                          </h4>
+                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                            {aiEventData.checklist.map((item: string, idx: number) => (
+                              <li key={idx}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t border-[#E8C4B8]/20">
+                      <button
+                        onClick={() => setAiEventData(null)}
+                        disabled={savingEvent}
+                        className="flex-1 py-2 rounded-xl border border-[#E8C4B8]/60 text-xs font-semibold text-[#2D1B3D] bg-white hover:bg-[#FAF8F5] active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleSaveAiEvent}
+                        disabled={savingEvent}
+                        className="flex-[2] py-2 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+                        style={{ backgroundColor: "#2D1B3D" }}
+                      >
+                        {savingEvent ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Saving Event...
+                          </>
+                        ) : (
+                          <>
+                            Confirm & Create Event
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

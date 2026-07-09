@@ -94,15 +94,15 @@ export default function InvitationCard({
   return (
     <div className="premium-invite-card group flex flex-col h-full w-full">
       {/* Card header / banner */}
-      <div className="h-40 flex items-center justify-center relative overflow-hidden select-none">
+      <div className="h-56 sm:h-64 md:h-72 w-full flex items-center justify-center relative overflow-hidden select-none bg-neutral-100/50">
         {showImage ? (
           <>
             <img 
               src={imgSrc} 
               alt={title}
               onError={() => setImageError(true)}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" 
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110" 
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
             />
             {/* Rich gradient overlay for premium look & readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#2D1B3D]/75 via-[#2D1B3D]/25 to-black/35 pointer-events-none transition-opacity duration-350 group-hover:opacity-90" />

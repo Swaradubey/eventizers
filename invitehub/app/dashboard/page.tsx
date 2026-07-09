@@ -566,7 +566,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl border border-[#E8C4B8]/30 z-10 p-6 sm:px-8 text-[#2D1B3D] font-body"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -603,11 +603,11 @@ export default function DashboardPage() {
 
               <div className="space-y-3 mt-4 text-sm text-[#2D1B3D]/90">
                 {viewingEvent.description && (
-                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full overflow-hidden">
                     <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1">
                       Description
                     </p>
-                    <p className="text-sm whitespace-pre-line">{viewingEvent.description}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{viewingEvent.description}</p>
                   </div>
                 )}
 
