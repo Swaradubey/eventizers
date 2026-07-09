@@ -47,13 +47,28 @@ const fallbackTemplates = [
   { id: "tpl-anniversary-james", name: "25 Years Together (Anniversary) 🥂", category: "Anniversary" }
 ];
 
+const getTemplateImage = (templateId?: string | null) => {
+  if (!templateId) return null;
+  const mapping: Record<string, string> = {
+    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
+    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
+    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
+    "tpl-dinner-party": "/assets/templates/dinner.jpg",
+    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
+    "tpl-charity-gala": "/assets/templates/gala.jpg",
+    "tpl-live-music": "/assets/templates/music.jpg",
+    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+  };
+  return mapping[templateId] || null;
+};
+
 const tabs = ["AI Create", "Template", "Upload Existing"];
 
 export default function Hero() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [prompt, setPrompt] = useState("");
   const [eventType, setEventType] = useState("");
   const [guestCount, setGuestCount] = useState("");
@@ -65,6 +80,7 @@ export default function Hero() {
   const [savingEvent, setSavingEvent] = useState(false);
 
   // Template tab states
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -417,7 +433,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           {/* Form card */}
           <div id="hero-form" className="hero-form-card">
             {/* Tabs */}
-            <div className="flex gap-1 bg-[#F0EBE8] rounded-xl p-1 mb-5">
+            <div className="flex p-1 bg-[#F5F2F0] rounded-[14px] mb-6 shadow-inner border border-[#E8C4B8]/30">
               {tabs.map((tab, i) => (
                 <button
                   key={tab}
@@ -426,10 +442,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     setErrorMsg(null);
                     setSuccessMsg(null);
                   }}
-                  className={`flex-1 text-xs font-medium py-2 px-3 rounded-lg transition-all ${
+                  className={`flex-1 text-[13px] font-semibold py-2 px-3 rounded-[10px] transition-all duration-200 ${
                     activeTab === i
-                      ? "bg-white text-[#2D1B3D] shadow-sm"
-                      : "text-[#2D1B3D]/50 hover:text-[#2D1B3D]/70"
+                      ? "bg-white text-[#2D1B3D] shadow-[0_2px_8px_rgba(45,27,61,0.08)]"
+                      : "text-[#2D1B3D]/50 hover:text-[#2D1B3D]/80 hover:bg-white/40"
                   }`}
                 >
                   {tab}
@@ -707,23 +723,102 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             )}
 
             {activeTab === 1 && (
-              <div className="space-y-4 text-left">
-                {/* Selected Template */}
-                {loadingTemplates ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="w-5 h-5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin" />
-                    <span className="text-xs text-[#2D1B3D]/60 ml-2">Loading templates...</span>
+              <div className="space-y-6 text-left animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* Template Selection Section */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-[#2D1B3D]">Choose from editable templates</h3>
+                  
+                  {/* Category Pills */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Community", "Networking", "Private Dinner", "Fundraiser", "Graduation"].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
+                          selectedCategory === cat 
+                            ? "bg-[#9070c0] text-white border-[#9070c0] shadow-sm" 
+                            : "bg-white text-[#2D1B3D]/60 border-[#E8C4B8]/50 hover:border-[#9070c0]/40 hover:text-[#2D1B3D]"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
                   </div>
-                ) : (
+
+                  {/* Templates Grid */}
+                  {loadingTemplates ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="w-5 h-5 border-2 border-[#9070c0]/30 border-t-[#9070c0] rounded-full animate-spin" />
+                      <span className="text-xs text-[#2D1B3D]/60 ml-3 font-medium">Loading templates...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-2 pb-2">
+                      {(templates.length > 0 ? templates : fallbackTemplates)
+                        .filter(t => selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Private Dinner" && t.category === "Dinner Party") || (selectedCategory === "Fundraiser" && t.category === "Charity Gala"))
+                        .map(tpl => (
+                        <div 
+                          key={tpl.id}
+                          onClick={() => setSelectedTemplateId(tpl.id)}
+                          className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white ${
+                            selectedTemplateId === tpl.id 
+                              ? "border-[#9070c0] shadow-[0_4px_12px_rgba(144,112,192,0.2)] ring-1 ring-[#9070c0]" 
+                              : "border-[#E8C4B8]/50 hover:border-[#9070c0]/50 hover:shadow-md hover:-translate-y-1"
+                          }`}
+                        >
+                          {/* Preview Area */}
+                          <div className="h-[150px] w-full bg-gradient-to-br from-[#F5F2F0] to-[#E8C4B8]/20 relative overflow-hidden">
+                             {((tpl as any).imageUrl || getTemplateImage(tpl.id)) ? (
+                               <>
+                                 <img src={(tpl as any).imageUrl || getTemplateImage(tpl.id)!} alt={tpl.name} className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+                                 {/* Subtle dark gradient overlay */}
+                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                               </>
+                             ) : (
+                               <>
+                                 <div className="absolute inset-0 bg-gradient-to-br from-[#9070c0]/5 to-[#C9A84C]/10 mix-blend-multiply transition-opacity duration-300 group-hover:opacity-80" />
+                                 <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-300">
+                                    <Sparkles className="w-8 h-8" />
+                                 </div>
+                               </>
+                             )}
+                             {/* Selection indicator */}
+                             <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition-all duration-300 ${
+                               selectedTemplateId === tpl.id ? "bg-[#9070c0] scale-100 opacity-100" : "bg-white/80 scale-75 opacity-0 group-hover:opacity-100"
+                             }`}>
+                               {selectedTemplateId === tpl.id && (
+                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                   <path d="M10 3L4.5 8.5L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                 </svg>
+                               )}
+                             </div>
+                          </div>
+                          {/* Card Content */}
+                          <div className="p-3 flex flex-col gap-1 bg-white flex-1">
+                             <span className="text-[9px] font-bold tracking-wider uppercase text-[#9070c0] truncate">{tpl.category}</span>
+                             <h4 className="text-[11px] font-semibold text-[#2D1B3D] leading-snug line-clamp-2">{tpl.name}</h4>
+                          </div>
+                        </div>
+                      ))}
+                      {(templates.length > 0 ? templates : fallbackTemplates).filter(t => selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Private Dinner" && t.category === "Dinner Party") || (selectedCategory === "Fundraiser" && t.category === "Charity Gala")).length === 0 && (
+                        <div className="col-span-full py-8 text-center text-[#2D1B3D]/50 text-xs">
+                          No templates found for this category.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Event Details Form */}
+                <div className="space-y-4 pt-5 border-t border-[#E8C4B8]/30">
+                  <h4 className="text-xs font-semibold text-[#2D1B3D]/80 mb-2">Event Details</h4>
+                  
+                  {/* Select Template Dropdown */}
                   <div className="relative">
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                      Select Template
-                    </label>
                     <div className="relative">
                       <select
                         value={selectedTemplateId}
                         onChange={(e) => setSelectedTemplateId(e.target.value)}
-                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 pr-9 cursor-pointer font-medium"
+                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 pr-9 cursor-pointer font-medium transition-all hover:bg-white"
                       >
                         {(templates.length > 0 ? templates : fallbackTemplates).map((t) => (
                           <option key={t.id} value={t.id}>
@@ -734,76 +829,68 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
                     </div>
                   </div>
-                )}
 
-                {/* Template Fields */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                      Event Title
-                    </label>
-                    <input
-                      type="text"
-                      value={templateTitle}
-                      onChange={(e) => setTemplateTitle(e.target.value)}
-                      placeholder="E.g., Maya's 5th Birthday Party"
-                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                      Venue
-                    </label>
-                    <input
-                      type="text"
-                      value={templateVenue}
-                      onChange={(e) => setTemplateVenue(e.target.value)}
-                      placeholder="E.g., Sweet Retreat Bakery"
-                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Date</label>
                       <input
-                        type="date"
-                        value={templateDate}
-                        onChange={(e) => setTemplateDate(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                        type="text"
+                        value={templateTitle}
+                        onChange={(e) => setTemplateTitle(e.target.value)}
+                        placeholder="Event Title (e.g. Maya's 5th Birthday)"
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Time</label>
                       <input
-                        type="time"
-                        value={templateTime}
-                        onChange={(e) => setTemplateTime(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
+                        type="text"
+                        value={templateVenue}
+                        onChange={(e) => setTemplateVenue(e.target.value)}
+                        placeholder="Venue (e.g. Sweet Retreat Bakery)"
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <input
+                          type="date"
+                          value={templateDate}
+                          onChange={(e) => setTemplateDate(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <input
+                          type="time"
+                          value={templateTime}
+                          onChange={(e) => setTemplateTime(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={handleCreateFromTemplate}
+                    disabled={creatingEvent}
+                    className="w-full py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:hover:translate-y-0 mt-4"
+                    style={{ backgroundColor: "#9070c0" }}
+                  >
+                    {creatingEvent ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Creating event…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4" />
+                        Create Event from Template
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                <button
-                  onClick={handleCreateFromTemplate}
-                  disabled={creatingEvent}
-                  className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 mt-2"
-                  style={{ backgroundColor: "#2D1B3D" }}
-                >
-                  {creatingEvent ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Creating event…
-                    </>
-                  ) : (
-                    <>
-                      Create Event from Template
-                    </>
-                  )}
-                </button>
               </div>
             )}
 
