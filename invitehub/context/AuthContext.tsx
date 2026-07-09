@@ -8,6 +8,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  phoneNumber?: string;
   role?: "USER" | "ADMIN";
   createdAt: string;
   updatedAt: string;
@@ -19,7 +20,7 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<User>;
   adminLogin: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, phoneNumber: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
@@ -105,11 +106,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<User> => {
+  const register = async (name: string, email: string, phoneNumber: string, password: string): Promise<User> => {
     setLoading(true);
     setError(null);
     try {
-      const response = await authService.register(name, email, password);
+      const response = await authService.register(name, email, phoneNumber, password);
       if (response && response.success && response.user) {
         if (response.token) {
           localStorage.setItem("token", response.token);
