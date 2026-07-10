@@ -166,6 +166,25 @@ export default function BillingPage() {
   const handleUpdatePlan = async (planId: string) => {
     setUpdating(true);
     try {
+      // Enterprise still uses Contact Sales
+      if (planId === "enterprise") {
+        window.open("mailto:sales@invitehub.com", "_blank");
+        return;
+      }
+
+      // Pro and Business use Stripe Checkout
+      if (planId === "pro" || planId === "business") {
+        const res = await BillingAPI.createCheckoutSession(planId);
+        if (res && res.url) {
+          window.location.assign(res.url);
+          return;
+        }
+        triggerToast("Failed to start checkout. Please try again.", "error");
+        setUpdating(false);
+        return;
+      }
+
+      // Free plan - use direct subscription update
       const res = await BillingAPI.subscribeToPlan(planId);
       if (res && res.requiresPaymentMethod && res.clientSecret) {
         // Stripe Customer needs a payment method.

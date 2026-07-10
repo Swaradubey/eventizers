@@ -16,8 +16,8 @@ import { BillingAPI, PaymentMethod } from "../../../services/billingService";
 let stripePromise: Promise<Stripe | null> | null = null;
 const getStripePromise = () => {
   if (!stripePromise) {
-    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    if (key) {
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+    if (key && (key.startsWith("pk_test_") || key.startsWith("pk_live_"))) {
       stripePromise = loadStripe(key);
     }
   }
