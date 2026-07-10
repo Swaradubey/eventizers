@@ -98,6 +98,42 @@ const cards = [
     emoji: "🥂",
     image: "/assets/templates/anniversary.jpg",
   },
+  {
+    type: "Graduation",
+    title: "Graduation Gala",
+    date: "Fri, June 19",
+    time: "7:00 PM",
+    host: "Hosted by The Office of the Dean",
+    venue: "University Grand Hall",
+    gradient: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)",
+    accentColor: "#d4af37",
+    emoji: "🎓",
+    image: "/assets/templates/graduation_gala.jpg",
+  },
+  {
+    type: "Community",
+    title: "Community Meetup",
+    date: "Sat, May 16",
+    time: "3:00 PM",
+    host: "Oakwood Neighborhood",
+    venue: "Oakwood Community Park",
+    gradient: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    accentColor: "#11998e",
+    emoji: "🏡",
+    image: "/assets/templates/community_meetup.jpg",
+  },
+  {
+    type: "Networking",
+    title: "Professional Networking",
+    date: "Thu, Oct 15",
+    time: "6:30 PM",
+    host: "Metro Business Alliance",
+    venue: "The Summit Boardroom",
+    gradient: "linear-gradient(135deg, #2b5876 0%, #4e4376 100%)",
+    accentColor: "#6f86d6",
+    emoji: "🤝",
+    image: "/assets/templates/networking_professional.jpg",
+  },
 ];
 
 const Sparkle = ({ className }: { className: string }) => (
@@ -192,13 +228,13 @@ export default function Templates() {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           variants={containerVariants}
-          className="flex overflow-x-auto gap-6 snap-x snap-mandatory scrollbar-hide px-6 -mx-6 pb-8 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap xl:justify-center xl:gap-6 relative z-10"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10"
         >
           {cards.map((card) => (
             <motion.div
               key={card.title}
               variants={cardVariants}
-              className="snap-center shrink-0 w-[85vw] sm:w-[320px] md:w-full md:shrink md:snap-align-none xl:w-[calc(20%-20px)] flex flex-col"
+              className="w-full flex flex-col"
             >
               <InvitationCard {...card} />
             </motion.div>

@@ -44,7 +44,16 @@ const fallbackTemplates = [
   { id: "tpl-baby-shower", name: "A Little One is Coming (Baby Shower) 🍼", category: "Baby Shower" },
   { id: "tpl-charity-gala", name: "Bright Futures Gala (Charity Gala) ✨", category: "Charity Gala" },
   { id: "tpl-live-music", name: "Rooftop Sessions (Live Music) 🎵", category: "Live Music" },
-  { id: "tpl-anniversary-james", name: "25 Years Together (Anniversary) 🥂", category: "Anniversary" }
+  { id: "tpl-anniversary-james", name: "25 Years Together (Anniversary) 🥂", category: "Anniversary" },
+  { id: "tpl-grad-gala", name: "Graduation Gala 🎓", category: "Graduation" },
+  { id: "tpl-grad-class2026", name: "Class of 2026 Celebration 🥂", category: "Graduation" },
+  { id: "tpl-grad-degree", name: "Degree Award Ceremony 📜", category: "Graduation" },
+  { id: "tpl-comm-meetup", name: "Community Meetup 🏡", category: "Community" },
+  { id: "tpl-comm-celebration", name: "Neighbourhood Celebration 🎈", category: "Community" },
+  { id: "tpl-comm-volunteer", name: "Volunteer Appreciation Event 💖", category: "Community" },
+  { id: "tpl-net-professional", name: "Professional Networking Evening 🤝", category: "Networking" },
+  { id: "tpl-net-founders", name: "Founders & Creators Meetup 💡", category: "Networking" },
+  { id: "tpl-net-connections", name: "Business Connections Night 📈", category: "Networking" }
 ];
 
 const getTemplateImage = (templateId?: string | null) => {
@@ -58,6 +67,15 @@ const getTemplateImage = (templateId?: string | null) => {
     "tpl-charity-gala": "/assets/templates/gala.jpg",
     "tpl-live-music": "/assets/templates/music.jpg",
     "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
+    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
+    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
+    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
+    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
+    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
+    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
+    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
+    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
   };
   return mapping[templateId] || null;
 };
