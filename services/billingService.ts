@@ -55,6 +55,17 @@ export interface SubscribeResponse {
   usage?: BillingUsage;
 }
 
+export interface CheckoutSessionResponse {
+  url: string;
+}
+
+export interface CheckoutSessionStatusResponse {
+  status: string;
+  paymentStatus: string;
+  plan: string | null;
+  subscriptionStatus: string | null;
+}
+
 export const BillingAPI = {
   getBillingInfo: async (): Promise<BillingInfoResponse> => {
     const response = await API.get<BillingInfoResponse>("/dashboard/billing");
@@ -93,6 +104,16 @@ export const BillingAPI = {
 
   getInvoices: async (): Promise<InvoicesResponse> => {
     const response = await API.get<InvoicesResponse>("/user/billing/invoices");
+    return response.data;
+  },
+
+  createCheckoutSession: async (plan: string): Promise<CheckoutSessionResponse> => {
+    const response = await API.post<CheckoutSessionResponse>("/stripe/create-checkout-session", { plan });
+    return response.data;
+  },
+
+  getCheckoutSessionStatus: async (sessionId: string): Promise<CheckoutSessionStatusResponse> => {
+    const response = await API.get<CheckoutSessionStatusResponse>(`/stripe/checkout-session/${sessionId}`);
     return response.data;
   }
 };
