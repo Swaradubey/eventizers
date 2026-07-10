@@ -18,6 +18,7 @@ import {
   Shield,
   CreditCard,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -119,6 +120,11 @@ export default function Sidebar() {
           label: "Messages",
           href: "/dashboard/messages",
           icon: MessageSquare,
+        },
+        {
+          label: "Analytics",
+          href: "/dashboard/analytics",
+          icon: BarChart3,
         },
         {
           label: "Security",
