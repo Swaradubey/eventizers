@@ -174,44 +174,84 @@ export default function GuestsPage() {
     e.preventDefault();
     setFormError(null);
 
+    // Validate guest name
+    if (!formName || !formName.trim()) {
+      setFormError("Guest name is required.");
+      return;
+    }
+
+    // Validate email address
+    if (!formEmail || !formEmail.trim()) {
+      setFormError("Email address is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formEmail.trim())) {
+      setFormError("Please enter a valid email address.");
+      return;
+    }
+
+    // Validate event selection
     if (!formEventId) {
       setFormError("Please select a valid event.");
       return;
     }
-
-    if (!formName || !formEmail) {
-      setFormError("Please fill out all required fields.");
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(formEventId)) {
+      setFormError("Invalid event selected. Please select a valid event.");
       return;
     }
+
+    // Validate status selection
+    const validStatuses = ["invited", "confirmed", "declined", "pending"];
+    if (!formStatus || !validStatuses.includes(formStatus)) {
+      setFormError("Please select a valid status.");
+      return;
+    }
+
+    // Handle optional phone number properly (null when blank)
+    const cleanPhone = (formPhone && formPhone.trim() !== "") ? formPhone.trim() : null;
 
     setSubmitting(true);
     try {
       if (editingGuest) {
         const payload = {
           eventId: formEventId,
-          name: formName,
-          email: formEmail,
-          phone: formPhone || undefined,
+          name: formName.trim(),
+          email: formEmail.trim().toLowerCase(),
+          phone: cleanPhone,
           status: formStatus,
         };
         const res = await guestService.updateGuest(editingGuest.id!, payload);
         if (res.success) {
           triggerToast("Guest updated successfully!");
           setIsAddEditModalOpen(false);
+          // Clear form fields
+          setFormName("");
+          setFormEmail("");
+          setFormPhone("");
+          setFormStatus("invited");
+          setFormEventId(events[0]?.id || "");
           fetchData();
         }
       } else {
         const payload = {
           eventId: formEventId,
-          name: formName,
-          email: formEmail,
-          phone: formPhone || undefined,
+          name: formName.trim(),
+          email: formEmail.trim().toLowerCase(),
+          phone: cleanPhone,
           status: formStatus,
         };
         const res = await guestService.createGuest(payload);
         if (res.success) {
           triggerToast("Guest created successfully!");
           setIsAddEditModalOpen(false);
+          // Clear form fields
+          setFormName("");
+          setFormEmail("");
+          setFormPhone("");
+          setFormStatus("invited");
+          setFormEventId(events[0]?.id || "");
           fetchData();
         }
       }

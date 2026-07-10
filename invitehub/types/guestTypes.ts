@@ -4,7 +4,7 @@ export interface Guest {
   eventTitle?: string;
   name: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   status: "invited" | "confirmed" | "declined" | "pending";
   createdAt?: string;
   updatedAt?: string;
