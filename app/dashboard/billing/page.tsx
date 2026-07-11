@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function BillingPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
 
   // Load dynamic billing usage
@@ -84,6 +84,10 @@ export default function BillingPage() {
       }
       if (invRes && invRes.success) {
         setInvoices(invRes.data);
+      }
+
+      if (refreshUser) {
+        await refreshUser();
       }
     } catch (err: any) {
       console.error("Error loading billing data:", err);
@@ -195,6 +199,9 @@ export default function BillingPage() {
         triggerToast(`Successfully subscribed to the ${planId.toUpperCase()} plan!`);
         await fetchBillingData();
         refetchUsage();
+        if (refreshUser) {
+          await refreshUser();
+        }
       } else {
         triggerToast("Failed to update your subscription plan.", "error");
       }
