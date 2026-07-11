@@ -31,6 +31,11 @@ export interface Invoice {
   status: string;
   date: string;
   downloadUrl: string;
+  planName?: string;
+  billingPeriod?: string;
+  customerName?: string;
+  customerEmail?: string;
+  transactionId?: string;
 }
 
 export interface PaymentMethodResponse {
@@ -57,6 +62,13 @@ export interface SubscribeResponse {
 
 export interface CheckoutSessionResponse {
   url: string;
+}
+
+export interface CheckoutSessionStatusResponse {
+  status: string;
+  paymentStatus: string;
+  plan: string | null;
+  subscriptionStatus: string | null;
 }
 
 export const BillingAPI = {
@@ -102,6 +114,11 @@ export const BillingAPI = {
 
   createCheckoutSession: async (plan: string): Promise<CheckoutSessionResponse> => {
     const response = await API.post<CheckoutSessionResponse>("/stripe/create-checkout-session", { plan });
+    return response.data;
+  },
+
+  getCheckoutSessionStatus: async (sessionId: string): Promise<CheckoutSessionStatusResponse> => {
+    const response = await API.get<CheckoutSessionStatusResponse>(`/stripe/checkout-session/${sessionId}`);
     return response.data;
   }
 };

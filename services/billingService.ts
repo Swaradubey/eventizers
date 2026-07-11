@@ -31,6 +31,11 @@ export interface Invoice {
   status: string;
   date: string;
   downloadUrl: string;
+  planName?: string;
+  billingPeriod?: string;
+  customerName?: string;
+  customerEmail?: string;
+  transactionId?: string;
 }
 
 export interface PaymentMethodResponse {

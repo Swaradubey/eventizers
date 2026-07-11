@@ -420,8 +420,11 @@ export default function BillingPage() {
                         <thead>
                           <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
                             <th className="py-3 px-5">Invoice Number</th>
-                            <th className="py-3 px-5">Date</th>
+                            <th className="py-3 px-5">Plan</th>
+                            <th className="py-3 px-5">Billing Period</th>
+                            <th className="py-3 px-5">Customer</th>
                             <th className="py-3 px-5">Amount</th>
+                            <th className="py-3 px-5">Transaction ID</th>
                             <th className="py-3 px-5">Status</th>
                             <th className="py-3 px-5 text-right">Download</th>
                           </tr>
@@ -429,7 +432,7 @@ export default function BillingPage() {
                         <tbody className="divide-y divide-[#E8C4B8]/10">
                           {invoices.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
+                              <td colSpan={8} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
                                 No invoices available.
                               </td>
                             </tr>
@@ -440,15 +443,21 @@ export default function BillingPage() {
                                   {invoice.invoiceNumber || invoice.id}
                                 </td>
                                 <td className="py-3 px-5 text-[#2D1B3D]/80">
-                                  {new Date(invoice.date).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
+                                  {invoice.planName || "Pro"}
+                                </td>
+                                <td className="py-3 px-5 text-[#2D1B3D]/65 text-[11px]">
+                                  {invoice.billingPeriod || "Monthly"}
+                                </td>
+                                <td className="py-3 px-5 text-[#2D1B3D]/80">
+                                  <div className="font-medium">{invoice.customerName || "Customer"}</div>
+                                  <div className="text-[10px] text-[#2D1B3D]/50">{invoice.customerEmail}</div>
                                 </td>
                                 <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
                                   {invoice.currency === "USD" ? "$" : invoice.currency}
                                   {invoice.amount.toFixed(2)}
+                                </td>
+                                <td className="py-3 px-5 font-mono text-[10px] text-[#2D1B3D]/60">
+                                  {invoice.transactionId || "-"}
                                 </td>
                                 <td className="py-3 px-5">
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
