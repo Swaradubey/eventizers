@@ -51,7 +51,8 @@ export default function BillingPage() {
   // Payment method & Invoices states
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [billingLoading, setBillingLoading] = useState(true);
+  // True only during the very first fetch; never reset to true on background refreshes.
+  const [initialBillingLoading, setInitialBillingLoading] = useState(true);
   const [billingError, setBillingError] = useState<string | null>(null);
 
   // Action states
@@ -76,21 +77,20 @@ export default function BillingPage() {
   // Load billing data from backend
   const fetchBillingData = useCallback(async (isRefresh = false) => {
     const id = ++currentFetchId.current;
-    
-    if (!hasLoadedData.current || isRefresh) {
-      if (!isRefresh) {
-        setLoading(true);
-        setBillingLoading(true);
-      }
-      setError(null);
-      setBillingError(null);
+
+    // On initial load, show skeletons. On refresh, keep existing data visible.
+    if (!isRefresh) {
+      setLoading(true);
+      setInitialBillingLoading(true);
     }
-    
+    setError(null);
+    setBillingError(null);
+
     try {
       const res = await BillingAPI.getBillingInfo();
-      
+
       if (id !== currentFetchId.current) return;
-      
+
       if (res && res.success) {
         setBillingInfo(res);
         hasLoadedData.current = true;
@@ -100,7 +100,7 @@ export default function BillingPage() {
         }
       }
 
-      // Load payment method and invoices in parallel, catching errors individually so one doesn't fail the other
+      // Load payment method and invoices in parallel, catching errors individually
       const [pmRes, invRes] = await Promise.all([
         BillingAPI.getPaymentMethod().catch(err => {
           console.error("Error fetching payment method", err);
@@ -117,10 +117,10 @@ export default function BillingPage() {
       if (pmRes && pmRes.success) {
         setPaymentMethod(pmRes.data);
       } else if (pmRes && pmRes.success === false) {
-        // Successful response but explicitly no payment method
+        // Server responded but user has no payment method on file
         setPaymentMethod(null);
       }
-      
+
       if (invRes && invRes.success) {
         setInvoices(invRes.data || []);
       }
@@ -140,7 +140,7 @@ export default function BillingPage() {
     } finally {
       if (id === currentFetchId.current) {
         setLoading(false);
-        setBillingLoading(false);
+        setInitialBillingLoading(false);
       }
     }
   }, []);
@@ -190,11 +190,14 @@ export default function BillingPage() {
   };
 
   useEffect(() => {
-    if (user && fetchedUserId.current !== user.id) {
+    // Wait for auth initialisation to complete before fetching billing data.
+    // This prevents a spurious fetch (and skeleton flash) during SSR hydration
+    // when user is momentarily null.
+    if (!authLoading && user && fetchedUserId.current !== user.id) {
       fetchedUserId.current = user.id;
       fetchBillingData();
     }
-  }, [user, fetchBillingData]);
+  }, [authLoading, user, fetchBillingData]);
 
   // Toast auto-dismiss effect
   useEffect(() => {
@@ -251,8 +254,10 @@ export default function BillingPage() {
     }
   };
 
-  // Loader skeleton
-  if (authLoading || !user) {
+  // Show a spinner only while auth is still initialising (hydration phase).
+  // Once authLoading is false, we know whether the user is logged in or not.
+  // The redirect effect above will handle the unauthenticated case.
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
@@ -352,7 +357,7 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                {billingLoading ? (
+                {initialBillingLoading ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
                 ) : billingError ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
@@ -452,7 +457,7 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                {billingLoading ? (
+                {initialBillingLoading ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
                 ) : billingError ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
