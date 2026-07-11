@@ -31,6 +31,7 @@ function BillingSuccessContent() {
     let cancelled = false;
     let attempts = 0;
     const MAX_ATTEMPTS = 5;
+    let timeoutId: NodeJS.Timeout;
 
     const checkSession = async () => {
       if (cancelled) return;
@@ -43,7 +44,7 @@ function BillingSuccessContent() {
         if (res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete") {
           setPlan(res.plan);
           setPageState("success");
-          // Refresh user context and query plans after successful payment
+          
           try {
             await Promise.all([
               refreshUser(),
@@ -52,6 +53,11 @@ function BillingSuccessContent() {
           } catch (refreshErr) {
             console.error("Error refreshing subscription state:", refreshErr);
           }
+          
+          // Redirect automatically once successful
+          setTimeout(() => {
+            if (!cancelled) router.push("/dashboard/billing");
+          }, 2000);
           return;
         }
 
@@ -59,29 +65,35 @@ function BillingSuccessContent() {
           if (attempts >= MAX_ATTEMPTS) {
             setPlan(res.plan);
             setPageState("success");
+            setTimeout(() => {
+              if (!cancelled) router.push("/dashboard/billing");
+            }, 2000);
             return;
           }
           setPageState("pending");
+          timeoutId = setTimeout(checkSession, 2000);
         } else {
           setPageState("pending");
+          timeoutId = setTimeout(checkSession, 2000);
         }
       } catch (err: any) {
         if (cancelled) return;
         if (attempts >= MAX_ATTEMPTS) {
           setErrorMessage(err.response?.data?.error || "Unable to confirm your subscription.");
           setPageState("error");
+        } else {
+          timeoutId = setTimeout(checkSession, 2000);
         }
       }
     };
 
     checkSession();
-    const interval = setInterval(checkSession, 2000);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timeoutId);
     };
-  }, [sessionId]);
+  }, [sessionId, refreshUser, router]);
 
   const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "Subscription";
 

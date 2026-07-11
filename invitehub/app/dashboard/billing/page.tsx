@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar";
@@ -69,47 +69,81 @@ export default function BillingPage() {
     }
   }, [user, authLoading, router]);
 
+  const hasLoadedData = useRef(false);
+  const currentFetchId = useRef(0);
+  const fetchedUserId = useRef<number | null>(null);
+
   // Load billing data from backend
-  const fetchBillingData = async () => {
-    setLoading(true);
-    setError(null);
-    setBillingLoading(true);
-    setBillingError(null);
+  const fetchBillingData = useCallback(async (isRefresh = false) => {
+    const id = ++currentFetchId.current;
+    
+    if (!hasLoadedData.current || isRefresh) {
+      if (!isRefresh) {
+        setLoading(true);
+        setBillingLoading(true);
+      }
+      setError(null);
+      setBillingError(null);
+    }
+    
     try {
       const res = await BillingAPI.getBillingInfo();
+      
+      if (id !== currentFetchId.current) return;
+      
       if (res && res.success) {
         setBillingInfo(res);
+        hasLoadedData.current = true;
       } else {
-        setError("Invalid response format received from server.");
+        if (!hasLoadedData.current) {
+          setError("Invalid response format received from server.");
+        }
       }
 
-      // Load payment method and invoices in parallel
+      // Load payment method and invoices in parallel, catching errors individually so one doesn't fail the other
       const [pmRes, invRes] = await Promise.all([
-        BillingAPI.getPaymentMethod(),
-        BillingAPI.getInvoices()
+        BillingAPI.getPaymentMethod().catch(err => {
+          console.error("Error fetching payment method", err);
+          return null;
+        }),
+        BillingAPI.getInvoices().catch(err => {
+          console.error("Error fetching invoices", err);
+          return null;
+        })
       ]);
+
+      if (id !== currentFetchId.current) return;
 
       if (pmRes && pmRes.success) {
         setPaymentMethod(pmRes.data);
+      } else if (pmRes && pmRes.success === false) {
+        // Successful response but explicitly no payment method
+        setPaymentMethod(null);
       }
+      
       if (invRes && invRes.success) {
-        setInvoices(invRes.data);
+        setInvoices(invRes.data || []);
       }
     } catch (err: any) {
+      if (id !== currentFetchId.current) return;
       console.error("Error loading billing data:", err);
-      setError(
-        err.response?.data?.error ||
-          "Unable to load billing information. Please verify database connection."
-      );
-      setBillingError(
-        err.response?.data?.error ||
-          "Unable to load payment or invoice information."
-      );
+      if (!hasLoadedData.current) {
+        setError(
+          err.response?.data?.error ||
+            "Unable to load billing information. Please verify database connection."
+        );
+        setBillingError(
+          err.response?.data?.error ||
+            "Unable to load payment or invoice information."
+        );
+      }
     } finally {
-      setLoading(false);
-      setBillingLoading(false);
+      if (id === currentFetchId.current) {
+        setLoading(false);
+        setBillingLoading(false);
+      }
     }
-  };
+  }, []);
 
   // Open the Stripe Elements modal for updating payment method
   const handleOpenUpdateModal = () => {
@@ -156,10 +190,11 @@ export default function BillingPage() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && fetchedUserId.current !== user.id) {
+      fetchedUserId.current = user.id;
       fetchBillingData();
     }
-  }, [user]);
+  }, [user, fetchBillingData]);
 
   // Toast auto-dismiss effect
   useEffect(() => {
@@ -248,7 +283,7 @@ export default function BillingPage() {
           <button
             onClick={() => {
               refreshUser();
-              fetchBillingData();
+              fetchBillingData(true);
               refetchUsage();
             }}
             className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none self-end sm:self-auto"
@@ -280,7 +315,7 @@ export default function BillingPage() {
             </p>
             <button
               onClick={() => {
-                fetchBillingData();
+                fetchBillingData(true);
                 refetchUsage();
               }}
               className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
