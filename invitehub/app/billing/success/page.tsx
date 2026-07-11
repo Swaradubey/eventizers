@@ -45,8 +45,10 @@ function BillingSuccessContent() {
           setPageState("success");
           // Refresh user context and query plans after successful payment
           try {
-            await refreshUser();
-            await BillingAPI.getCurrentPlan();
+            await Promise.all([
+              refreshUser(),
+              BillingAPI.getBillingInfo(),
+            ]);
           } catch (refreshErr) {
             console.error("Error refreshing subscription state:", refreshErr);
           }
