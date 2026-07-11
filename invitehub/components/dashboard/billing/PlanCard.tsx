@@ -13,8 +13,8 @@ interface PlanCardProps {
 }
 
 export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCardProps) {
-  const isPro = plan.id === "pro";
-  const isEnterprise = plan.id === "enterprise";
+  const isPro = plan.id.toLowerCase().trim() === "pro";
+  const isEnterprise = plan.id.toLowerCase().trim() === "enterprise";
 
   // Determine pricing text
   let priceText = `$${plan.price}/mo`;
@@ -28,7 +28,7 @@ export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCa
   let buttonText = "Upgrade";
   if (isCurrent) {
     buttonText = "Current Plan";
-  } else if (plan.id === "free") {
+  } else if (plan.id.toLowerCase().trim() === "free") {
     buttonText = "Downgrade";
   } else if (isEnterprise) {
     buttonText = "Contact Sales";

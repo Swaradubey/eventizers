@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BillingAPI from "@/services/billingService";
 import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
 
 type PageState = "loading" | "success" | "pending" | "error" | "invalid";
 
@@ -14,6 +15,7 @@ function BillingSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams ? searchParams.get("session_id") : null;
+  const { refreshUser } = useAuth();
 
   const [pageState, setPageState] = useState<PageState>("loading");
   const [plan, setPlan] = useState<string | null>(null);
@@ -41,6 +43,13 @@ function BillingSuccessContent() {
         if (res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete") {
           setPlan(res.plan);
           setPageState("success");
+          // Refresh user context and query plans after successful payment
+          try {
+            await refreshUser();
+            await BillingAPI.getCurrentPlan();
+          } catch (refreshErr) {
+            console.error("Error refreshing subscription state:", refreshErr);
+          }
           return;
         }
 

@@ -21,8 +21,18 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const normalizePlan = (plan: string | undefined | null): string => {
+  if (!plan) return "FREE";
+  const p = plan.toUpperCase().trim();
+  if (p === "FREE") return "FREE";
+  if (p === "PRO") return "PRO";
+  if (p === "BUSINESS") return "BUSINESS";
+  if (p === "ENTERPRISE") return "ENTERPRISE";
+  return p;
+};
+
 export default function BillingPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
 
   // Load dynamic billing usage
@@ -237,6 +247,7 @@ export default function BillingPage() {
           </div>
           <button
             onClick={() => {
+              refreshUser();
               fetchBillingData();
               refetchUsage();
             }}
@@ -510,7 +521,7 @@ export default function BillingPage() {
                   >
                     <PlanCard
                       plan={plan}
-                      isCurrent={billingInfo.currentPlan === plan.id}
+                      isCurrent={normalizePlan(billingInfo.currentPlan) === normalizePlan(plan.id)}
                       onSelect={handleUpdatePlan}
                       updating={updating}
                     />

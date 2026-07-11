@@ -10,6 +10,7 @@ export interface User {
   email: string;
   phoneNumber?: string;
   role?: "USER" | "ADMIN";
+  plan?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +24,7 @@ interface AuthContextType {
   register: (name: string, email: string, phoneNumber: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,17 +34,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const response = await authService.getCurrentUser();
+      if (response && response.success && response.user) {
+        setUser(response.user);
+      }
+    } catch (err) {
+      console.log("No active authenticated session.");
+    }
+  };
+
   // Check session validity on component mount (refresh)
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await authService.getCurrentUser();
-        if (response && response.success && response.user) {
-          setUser(response.user);
-        }
-      } catch (err) {
-        // Safe to ignore unauthorized logs during initial load
-        console.log("No active authenticated session.");
+        await refreshUser();
       } finally {
         setLoading(false);
       }
@@ -162,6 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         register,
         logout,
         setError,
+        refreshUser,
       }}
     >
       {children}
