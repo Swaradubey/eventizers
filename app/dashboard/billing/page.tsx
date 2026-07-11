@@ -672,7 +672,7 @@ export default function BillingPage() {
                               ) : (
                                 <button
                                   key={n}
-                                  onClick={() => handleInvoicePageChange(n)}
+                                  onClick={() => handleInvoicePageChange(n as number)}
                                   disabled={invoiceLoading || n === p}
                                   aria-current={n === p ? "page" : undefined}
                                   className={`min-w-[32px] px-2 py-1.5 text-xs font-bold rounded-lg transition-all ${
