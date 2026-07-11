@@ -82,6 +82,11 @@ export const BillingAPI = {
     return response.data;
   },
 
+  getCurrentPlan: async (): Promise<{ success: boolean; currentPlan: string }> => {
+    const response = await API.get<{ success: boolean; currentPlan: string }>("/plans/current-plan");
+    return response.data;
+  },
+
   subscribeToPlan: async (planId: string): Promise<SubscribeResponse> => {
     const response = await API.post<SubscribeResponse>("/plans/subscribe", { planId });
     return response.data;

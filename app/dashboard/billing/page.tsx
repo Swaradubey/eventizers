@@ -65,42 +65,67 @@ export default function BillingPage() {
     setError(null);
     setBillingLoading(true);
     setBillingError(null);
+
+    // 1. Fetch main billing info (plan, plans list, usage defaults)
     try {
       const res = await BillingAPI.getBillingInfo();
       if (res && res.success) {
         setBillingInfo(res);
       } else {
+        console.error("Billing info failed or invalid response shape:", res);
         setError("Invalid response format received from server.");
       }
+    } catch (err: any) {
+      console.error("Billing info request failed:", err);
+      const errMsg = err.response?.data?.error || err.message || "Unable to load billing information. Please verify database connection.";
+      setError(errMsg);
+    } finally {
+      setLoading(false);
+    }
 
-      // Load payment method and invoices in parallel
-      const [pmRes, invRes] = await Promise.all([
+    // 2. Fetch payment method and invoices in parallel using Promise.allSettled
+    try {
+      const [pmResult, invResult] = await Promise.allSettled([
         BillingAPI.getPaymentMethod(),
         BillingAPI.getInvoices()
       ]);
 
-      if (pmRes && pmRes.success) {
-        setPaymentMethod(pmRes.data);
+      // Handle payment method result
+      if (pmResult.status === "fulfilled") {
+        const pmRes = pmResult.value;
+        if (pmRes && pmRes.success) {
+          setPaymentMethod(pmRes.data);
+        } else {
+          setBillingError("Invalid payment method response.");
+        }
+      } else {
+        console.error("Payment method fetch rejected:", pmResult.reason);
+        const pmErrMsg = pmResult.reason.response?.data?.error || pmResult.reason.message || "Unable to load payment information.";
+        setBillingError(pmErrMsg);
       }
-      if (invRes && invRes.success) {
-        setInvoices(invRes.data);
+
+      // Handle invoices result
+      if (invResult.status === "fulfilled") {
+        const invRes = invResult.value;
+        if (invRes && invRes.success) {
+          setInvoices(invRes.data || []);
+        } else {
+          setBillingError(prev => prev || "Invalid invoices response.");
+        }
+      } else {
+        console.error("Invoices fetch rejected:", invResult.reason);
+        const invErrMsg = invResult.reason.response?.data?.error || invResult.reason.message || "Unable to load invoice information.";
+        setBillingError(prev => prev || invErrMsg);
       }
 
       if (refreshUser) {
         await refreshUser();
       }
     } catch (err: any) {
-      console.error("Error loading billing data:", err);
-      setError(
-        err.response?.data?.error ||
-          "Unable to load billing information. Please verify database connection."
-      );
-      setBillingError(
-        err.response?.data?.error ||
-          "Unable to load payment or invoice information."
-      );
+      console.error("Parallel fetch error:", err);
+      const generalErrMsg = err.response?.data?.error || err.message || "Unable to load payment or invoice information.";
+      setBillingError(generalErrMsg);
     } finally {
-      setLoading(false);
       setBillingLoading(false);
     }
   };
@@ -362,7 +387,7 @@ export default function BillingPage() {
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <p className="text-[9px] text-[#2D1B3D]/40 uppercase tracking-wider">Expiration Date</p>
-                        <p className="font-semibold text-[#2D1B3D]">Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear.slice(-2)}</p>
+                        <p className="font-semibold text-[#2D1B3D]">Expires {paymentMethod.expiryMonth || ""}/{(paymentMethod.expiryYear || "").slice(-2)}</p>
                       </div>
 
                       <button
@@ -460,8 +485,8 @@ export default function BillingPage() {
                                   <div className="text-[10px] text-[#2D1B3D]/50">{invoice.customerEmail}</div>
                                 </td>
                                 <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
-                                  {invoice.currency === "USD" ? "$" : invoice.currency}
-                                  {invoice.amount.toFixed(2)}
+                                  {invoice.currency === "USD" ? "$" : (invoice.currency || "")}
+                                  {(invoice.amount ?? 0).toFixed(2)}
                                 </td>
                                 <td className="py-3 px-5 font-mono text-[10px] text-[#2D1B3D]/60">
                                   {invoice.transactionId || "-"}
@@ -507,7 +532,7 @@ export default function BillingPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                {billingInfo.plans.map((plan, index) => (
+                {billingInfo?.plans?.map((plan, index) => (
                   <motion.div
                     key={plan.id}
                     initial={{ opacity: 0, y: 15 }}
@@ -517,7 +542,7 @@ export default function BillingPage() {
                   >
                     <PlanCard
                       plan={plan}
-                      isCurrent={billingInfo.currentPlan === plan.id}
+                      isCurrent={billingInfo?.currentPlan === plan.id}
                       onSelect={handleUpdatePlan}
                       updating={updating}
                     />
