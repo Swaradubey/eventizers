@@ -45,7 +45,16 @@ export interface PaymentMethodResponse {
 
 export interface InvoicesResponse {
   success: boolean;
-  data: Invoice[];
+  invoices?: Invoice[];
+  pagination?: {
+    currentPage: number;
+    pageSize: number;
+    totalInvoices: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+  error?: string;
 }
 
 export interface SetupIntentResponse {
@@ -72,8 +81,9 @@ export interface CheckoutSessionStatusResponse {
 }
 
 export const BillingAPI = {
-  getBillingInfo: async (): Promise<BillingInfoResponse> => {
-    const response = await API.get<BillingInfoResponse>("/dashboard/billing");
+  getBillingInfo: async (bypassCache = false): Promise<BillingInfoResponse> => {
+    const params = bypassCache ? { _t: Date.now() } : undefined;
+    const response = await API.get<BillingInfoResponse>("/dashboard/billing", { params });
     return response.data;
   },
   
@@ -82,8 +92,9 @@ export const BillingAPI = {
     return response.data;
   },
 
-  getCurrentPlan: async (): Promise<{ success: boolean; currentPlan: string }> => {
-    const response = await API.get<{ success: boolean; currentPlan: string }>("/plans/current-plan");
+  getCurrentPlan: async (bypassCache = false): Promise<{ success: boolean; currentPlan: string }> => {
+    const params = bypassCache ? { _t: Date.now() } : undefined;
+    const response = await API.get<{ success: boolean; currentPlan: string }>("/plans/current-plan", { params });
     return response.data;
   },
 
@@ -112,8 +123,10 @@ export const BillingAPI = {
     return response.data;
   },
 
-  getInvoices: async (): Promise<InvoicesResponse> => {
-    const response = await API.get<InvoicesResponse>("/user/billing/invoices");
+  getInvoices: async (page = 1, limit = 5): Promise<InvoicesResponse> => {
+    const response = await API.get<InvoicesResponse>("/user/billing/invoices", {
+      params: { page, limit }
+    });
     return response.data;
   },
 

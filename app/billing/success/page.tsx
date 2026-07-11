@@ -9,7 +9,7 @@ import BillingAPI from "@/services/billingService";
 import { useAuth } from "@/context/AuthContext";
 import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
-type PageState = "loading" | "success" | "pending" | "error" | "invalid";
+type PageState = "loading" | "verifying" | "success" | "pending" | "error" | "invalid";
 
 function BillingSuccessContent() {
   const searchParams = useSearchParams();
@@ -30,7 +30,7 @@ function BillingSuccessContent() {
 
     let cancelled = false;
     let attempts = 0;
-    const MAX_ATTEMPTS = 5;
+    const MAX_ATTEMPTS = 30;
 
     const checkSession = async () => {
       if (cancelled) return;
@@ -40,16 +40,41 @@ function BillingSuccessContent() {
 
         if (cancelled) return;
 
-        if (res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete") {
+        const isActive = res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete";
+        const paymentDone = res.status === "complete" || res.paymentStatus === "paid";
+
+        if (isActive) {
+          // Subscription is active — now verify the backend database is in sync
+          setPageState("verifying");
           setPlan(res.plan);
-          setPageState("success");
-          refreshUser();
+          try {
+            // Await the DB sync check: call getCurrentPlan to confirm the backend stored the plan
+            const planRes = await BillingAPI.getCurrentPlan();
+            const dbPlan = planRes.currentPlan?.toLowerCase();
+            const expectedPlan = res.plan?.toLowerCase();
+            if (!cancelled && dbPlan === expectedPlan) {
+              // DB is synced — await refreshUser so AuthContext is fresh too
+              await refreshUser();
+              if (!cancelled) {
+                setPageState("success");
+              }
+              return;
+            }
+          } catch {
+            // If verification fails, still show success — the proactive sync in getCheckoutSessionStatus
+            // already updated the DB, or the webhook will shortly.
+          }
+          if (!cancelled) {
+            await refreshUser();
+            setPageState("success");
+          }
           return;
         }
 
-        if (res.status === "complete" || res.paymentStatus === "paid") {
+        if (paymentDone) {
           if (attempts >= MAX_ATTEMPTS) {
             setPlan(res.plan);
+            await refreshUser();
             setPageState("success");
             return;
           }
@@ -81,6 +106,8 @@ function BillingSuccessContent() {
     switch (pageState) {
       case "success":
         return "Payment successful";
+      case "verifying":
+        return "Finalizing your subscription";
       case "pending":
         return "Payment confirmed";
       case "error":
@@ -95,7 +122,9 @@ function BillingSuccessContent() {
   const getDescription = () => {
     switch (pageState) {
       case "success":
-        return `Your ${planLabel} subscription has been activated. It may take a few seconds for your account to update.`;
+        return `Your ${planLabel} subscription has been activated. You can now access all ${planLabel} features.`;
+      case "verifying":
+        return "Syncing your subscription with your account…";
       case "pending":
         return "Your payment completed, but account activation is still pending. Please wait...";
       case "error":
@@ -110,7 +139,7 @@ function BillingSuccessContent() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white border border-[#E8C4B8]/30 rounded-3xl shadow-xl overflow-hidden p-8 flex flex-col items-center text-center">
-        {pageState === "loading" && (
+        {(pageState === "loading" || pageState === "verifying") && (
           <div className="w-20 h-20 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mb-6 shadow-sm">
             <Loader2 className="w-10 h-10 text-[#C9A84C] animate-spin" />
           </div>
@@ -143,7 +172,7 @@ function BillingSuccessContent() {
 
         {pageState === "pending" && (
           <p className="text-xs text-[#C9A84C] font-semibold mb-4">
-            Please return to Billing and refresh in a few seconds.
+            Please wait while we activate your subscription…
           </p>
         )}
 

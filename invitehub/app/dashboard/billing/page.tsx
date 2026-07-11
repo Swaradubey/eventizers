@@ -122,7 +122,11 @@ export default function BillingPage() {
       }
 
       if (invRes && invRes.success) {
-        setInvoices(invRes.data || []);
+        setInvoices(invRes.invoices ?? []);
+      } else if (invRes === null) {
+        setBillingError("Unable to load invoices. Please try again.");
+      } else if (invRes && invRes.success === false) {
+        setBillingError(invRes.error || "Unable to load invoices.");
       }
     } catch (err: any) {
       if (id !== currentFetchId.current) return;

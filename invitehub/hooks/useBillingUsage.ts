@@ -9,8 +9,6 @@ export const useBillingUsage = (enabled: boolean = true) => {
   const hasLoadedOnce = useRef(false);
 
   const fetchUsage = useCallback(async () => {
-    // Only show the loading skeleton on the very first fetch.
-    // Subsequent background refreshes silently update data.
     if (!hasLoadedOnce.current) {
       setLoading(true);
     }

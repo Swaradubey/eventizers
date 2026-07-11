@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../invitehub/context/AuthContext";
 import Navbar from "../../../invitehub/components/Navbar";
@@ -41,7 +41,13 @@ export default function BillingPage() {
   // Payment method & Invoices states
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [billingLoading, setBillingLoading] = useState(true);
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoiceTotalPages, setInvoiceTotalPages] = useState(1);
+  const [invoiceTotalCount, setInvoiceTotalCount] = useState(0);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  // True only during the very first fetch; never reset to true on background refreshes.
+  const [initialBillingLoading, setInitialBillingLoading] = useState(true);
   const [billingError, setBillingError] = useState<string | null>(null);
 
   // Action states
@@ -52,6 +58,11 @@ export default function BillingPage() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
+  const hasLoadedData = useRef(false);
+  const currentFetchId = useRef(0);
+  const fetchedUserId = useRef<number | null>(null);
+  const invoiceFetchId = useRef(0);
+
   // Authentication check
   useEffect(() => {
     if (!authLoading && !user) {
@@ -60,75 +71,87 @@ export default function BillingPage() {
   }, [user, authLoading, router]);
 
   // Load billing data from backend
-  const fetchBillingData = async () => {
-    setLoading(true);
+  const fetchBillingData = useCallback(async (isRefresh = false) => {
+    const id = ++currentFetchId.current;
+
+    // On initial load, show skeletons. On refresh, keep existing data visible.
+    if (!isRefresh) {
+      setLoading(true);
+      setInitialBillingLoading(true);
+    }
     setError(null);
-    setBillingLoading(true);
     setBillingError(null);
 
-    // 1. Fetch main billing info (plan, plans list, usage defaults)
     try {
-      const res = await BillingAPI.getBillingInfo();
+      // Add cache-busting timestamp to prevent stale cached responses
+      const res = await BillingAPI.getBillingInfo(true);
+
+      if (id !== currentFetchId.current) return;
+
       if (res && res.success) {
         setBillingInfo(res);
+        hasLoadedData.current = true;
       } else {
-        console.error("Billing info failed or invalid response shape:", res);
-        setError("Invalid response format received from server.");
+        if (!hasLoadedData.current) {
+          setError("Invalid response format received from server.");
+        }
       }
-    } catch (err: any) {
-      console.error("Billing info request failed:", err);
-      const errMsg = err.response?.data?.error || err.message || "Unable to load billing information. Please verify database connection.";
-      setError(errMsg);
-    } finally {
-      setLoading(false);
-    }
 
-    // 2. Fetch payment method and invoices in parallel using Promise.allSettled
-    try {
-      const [pmResult, invResult] = await Promise.allSettled([
-        BillingAPI.getPaymentMethod(),
-        BillingAPI.getInvoices()
+      // Load payment method in parallel with first page of invoices
+      const [pmRes, invRes] = await Promise.all([
+        BillingAPI.getPaymentMethod().catch(err => {
+          console.error("Error fetching payment method", err);
+          return null;
+        }),
+        BillingAPI.getInvoices(1, 5).catch(err => {
+          console.error("Error fetching invoices", err);
+          return null;
+        })
       ]);
 
-      // Handle payment method result
-      if (pmResult.status === "fulfilled") {
-        const pmRes = pmResult.value;
-        if (pmRes && pmRes.success) {
-          setPaymentMethod(pmRes.data);
-        } else {
-          setBillingError("Invalid payment method response.");
-        }
-      } else {
-        console.error("Payment method fetch rejected:", pmResult.reason);
-        const pmErrMsg = pmResult.reason.response?.data?.error || pmResult.reason.message || "Unable to load payment information.";
-        setBillingError(pmErrMsg);
+      if (id !== currentFetchId.current) return;
+
+      if (pmRes && pmRes.success) {
+        setPaymentMethod(pmRes.data);
+      } else if (pmRes && pmRes.success === false) {
+        setPaymentMethod(null);
       }
 
-      // Handle invoices result
-      if (invResult.status === "fulfilled") {
-        const invRes = invResult.value;
-        if (invRes && invRes.success) {
-          setInvoices(invRes.data || []);
-        } else {
-          setBillingError(prev => prev || "Invalid invoices response.");
+      if (invRes && invRes.success && invRes.pagination) {
+        setInvoices(invRes.invoices ?? []);
+        const p = invRes.pagination;
+        setInvoicePage(p.currentPage);
+        setInvoiceTotalPages(p.totalPages);
+        setInvoiceTotalCount(p.totalInvoices);
+        setInvoiceError(null);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[InvoiceDev] initial page=1 | invoices=", (invRes.invoices ?? []).length, "total=", p.totalInvoices);
         }
-      } else {
-        console.error("Invoices fetch rejected:", invResult.reason);
-        const invErrMsg = invResult.reason.response?.data?.error || invResult.reason.message || "Unable to load invoice information.";
-        setBillingError(prev => prev || invErrMsg);
-      }
-
-      if (refreshUser) {
-        await refreshUser();
+      } else if (invRes === null) {
+        setInvoiceError("Unable to load invoices. Please try again.");
+      } else if (invRes && invRes.success === false) {
+        setInvoiceError(invRes.error || "Unable to load invoices.");
       }
     } catch (err: any) {
-      console.error("Parallel fetch error:", err);
-      const generalErrMsg = err.response?.data?.error || err.message || "Unable to load payment or invoice information.";
-      setBillingError(generalErrMsg);
+      if (id !== currentFetchId.current) return;
+      console.error("Error loading billing data:", err);
+      if (!hasLoadedData.current) {
+        setError(
+          err.response?.data?.error ||
+            "Unable to load billing information. Please verify database connection."
+        );
+        setBillingError(
+          err.response?.data?.error ||
+            "Unable to load payment or invoice information."
+        );
+      }
     } finally {
-      setBillingLoading(false);
+      if (id === currentFetchId.current) {
+        setLoading(false);
+        setInitialBillingLoading(false);
+      }
     }
-  };
+  }, []);
 
   // Open the Stripe Elements modal for updating payment method
   const handleOpenUpdateModal = () => {
@@ -174,11 +197,86 @@ export default function BillingPage() {
     }
   };
 
+  // Paginated invoice fetch
+  const handleInvoicePageChange = async (newPage: number) => {
+    if (newPage < 1 || newPage > invoiceTotalPages || newPage === invoicePage) return;
+
+    const id = ++invoiceFetchId.current;
+    setInvoiceLoading(true);
+    setInvoiceError(null);
+
+    try {
+      const invRes = await BillingAPI.getInvoices(newPage, 5);
+      if (id !== invoiceFetchId.current) return;
+
+      if (invRes && invRes.success && invRes.pagination) {
+        const p = invRes.pagination;
+        // Page correction: if currentPage exceeds totalPages, move to last valid page
+        let targetPage = newPage;
+        if (p.currentPage > p.totalPages && p.totalPages > 0) {
+          targetPage = p.totalPages;
+          if (id !== invoiceFetchId.current) return;
+          const correctedRes = await BillingAPI.getInvoices(targetPage, 5);
+          if (id !== invoiceFetchId.current) return;
+          if (correctedRes && correctedRes.success && correctedRes.pagination) {
+            const cp = correctedRes.pagination;
+            setInvoices(correctedRes.invoices ?? []);
+            setInvoicePage(cp.currentPage);
+            setInvoiceTotalPages(cp.totalPages);
+            setInvoiceTotalCount(cp.totalInvoices);
+            setInvoiceError(null);
+          }
+          return;
+        }
+        setInvoices(invRes.invoices ?? []);
+        setInvoicePage(p.currentPage);
+        setInvoiceTotalPages(p.totalPages);
+        setInvoiceTotalCount(p.totalInvoices);
+        setInvoiceError(null);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[InvoiceDev] page change to", targetPage, "| invoices=", (invRes.invoices ?? []).length, "total=", p.totalInvoices);
+        }
+      } else if (invRes === null) {
+        setInvoiceError("Unable to load invoices. Please try again.");
+      } else if (invRes && invRes.success === false) {
+        setInvoiceError(invRes.error || "Unable to load invoices.");
+      }
+    } catch {
+      setInvoiceError("An unexpected error occurred while loading invoices.");
+    } finally {
+      if (id === invoiceFetchId.current) {
+        setInvoiceLoading(false);
+      }
+    }
+
+    // Scroll to invoice section
+    const el = document.getElementById("invoice-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   useEffect(() => {
-    if (user) {
+    // Wait for auth initialisation to complete before fetching billing data.
+    // This prevents a spurious fetch (and skeleton flash) during SSR hydration
+    // when user is momentarily null.
+    if (!authLoading && user && fetchedUserId.current !== user.id) {
+      fetchedUserId.current = user.id;
       fetchBillingData();
     }
-  }, [user]);
+  }, [authLoading, user, fetchBillingData]);
+
+  // Refetch when the page regains focus (e.g. user returns from Stripe checkout or another tab)
+  useEffect(() => {
+    if (!authLoading && user) {
+      const handleFocus = () => {
+        fetchBillingData(true);
+        refetchUsage();
+      };
+      window.addEventListener("focus", handleFocus);
+      return () => window.removeEventListener("focus", handleFocus);
+    }
+  }, [authLoading, user, fetchBillingData, refetchUsage]);
 
   // Toast auto-dismiss effect
   useEffect(() => {
@@ -238,8 +336,10 @@ export default function BillingPage() {
     }
   };
 
-  // Loader skeleton
-  if (authLoading || !user) {
+  // Show a spinner only while auth is still initialising (hydration phase).
+  // Once authLoading is false, we know whether the user is logged in or not.
+  // The redirect effect above will handle the unauthenticated case.
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
@@ -269,7 +369,8 @@ export default function BillingPage() {
           </div>
           <button
             onClick={() => {
-              fetchBillingData();
+              refreshUser();
+              fetchBillingData(true);
               refetchUsage();
             }}
             className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none self-end sm:self-auto"
@@ -301,7 +402,7 @@ export default function BillingPage() {
             </p>
             <button
               onClick={() => {
-                fetchBillingData();
+                fetchBillingData(true);
                 refetchUsage();
               }}
               className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
@@ -338,7 +439,7 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                {billingLoading ? (
+                {initialBillingLoading ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
                 ) : billingError ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
@@ -428,7 +529,7 @@ export default function BillingPage() {
               </div>
 
               {/* Invoice History Section (Takes 2 columns) */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6" id="invoice-section">
                 <div>
                   <h2 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Invoice History
@@ -438,38 +539,43 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                {billingLoading ? (
+                {initialBillingLoading ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
-                ) : billingError ? (
+                ) : invoiceError ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
                     <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                    <p className="text-xs font-semibold text-[#2D1B3D]">Failed to load invoices</p>
+                    <p className="text-xs font-semibold text-[#2D1B3D]">{invoiceError}</p>
+                    <button
+                      onClick={() => fetchBillingData(true)}
+                      className="mt-4 px-4 py-2 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
+                    <Receipt className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
+                    <p className="text-xs font-semibold text-[#2D1B3D]/50">No invoices available.</p>
                   </div>
                 ) : (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="py-3 px-5">Invoice Number</th>
-                            <th className="py-3 px-5">Plan</th>
-                            <th className="py-3 px-5">Billing Period</th>
-                            <th className="py-3 px-5">Customer</th>
-                            <th className="py-3 px-5">Amount</th>
-                            <th className="py-3 px-5">Transaction ID</th>
-                            <th className="py-3 px-5">Status</th>
-                            <th className="py-3 px-5 text-right">Download</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E8C4B8]/10">
-                          {invoices.length === 0 ? (
-                            <tr>
-                              <td colSpan={8} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
-                                No invoices available.
-                              </td>
+                  <>
+                    <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
+                              <th className="py-3 px-5">Invoice Number</th>
+                              <th className="py-3 px-5">Plan</th>
+                              <th className="py-3 px-5">Billing Period</th>
+                              <th className="py-3 px-5">Customer</th>
+                              <th className="py-3 px-5">Amount</th>
+                              <th className="py-3 px-5">Transaction ID</th>
+                              <th className="py-3 px-5">Status</th>
+                              <th className="py-3 px-5 text-right">Download</th>
                             </tr>
-                          ) : (
-                            invoices.map((invoice) => (
+                          </thead>
+                          <tbody className="divide-y divide-[#E8C4B8]/10">
+                            {invoices.map((invoice) => (
                               <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
                                 <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
                                   {invoice.invoiceNumber || invoice.id}
@@ -510,12 +616,88 @@ export default function BillingPage() {
                                   </button>
                                 </td>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                    {invoiceLoading && (
+                      <div className="flex items-center justify-center py-2">
+                        <div className="w-5 h-5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {invoiceTotalPages > 1 && (
+                      <div className="flex items-center justify-center gap-1 sm:gap-2 pt-2">
+                        <button
+                          onClick={() => handleInvoicePageChange(invoicePage - 1)}
+                          disabled={invoicePage <= 1 || invoiceLoading}
+                          aria-label="Previous invoice page"
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#E8C4B8]/30 bg-white text-[#2D1B3D] hover:bg-[#FAF8F5] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const p = invoicePage;
+                            const t = invoiceTotalPages;
+                            if (t <= 7) {
+                              return Array.from({ length: t }, (_, i) => i + 1).map((n) => (
+                                <button
+                                  key={n}
+                                  onClick={() => handleInvoicePageChange(n)}
+                                  disabled={invoiceLoading || n === p}
+                                  aria-current={n === p ? "page" : undefined}
+                                  className={`min-w-[32px] px-2 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    n === p
+                                      ? "bg-[#2D1B3D] text-white shadow-sm"
+                                      : "bg-white text-[#2D1B3D] border border-[#E8C4B8]/30 hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed"
+                                  }`}
+                                >
+                                  {n}
+                                </button>
+                              ));
+                            }
+                            const pages: (number | string)[] = [1];
+                            if (p > 3) pages.push("...");
+                            const start = Math.max(2, p - 1);
+                            const end = Math.min(t - 1, p + 1);
+                            for (let i = start; i <= end; i++) pages.push(i);
+                            if (p < t - 2) pages.push("...");
+                            if (t > 1) pages.push(t);
+                            return pages.map((n, idx) =>
+                              n === "..." ? (
+                                <span key={`e-${idx}`} className="px-1 text-xs text-[#2D1B3D]/50 select-none">
+                                  ...
+                                </span>
+                              ) : (
+                                <button
+                                  key={n}
+                                  onClick={() => handleInvoicePageChange(n)}
+                                  disabled={invoiceLoading || n === p}
+                                  aria-current={n === p ? "page" : undefined}
+                                  className={`min-w-[32px] px-2 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    n === p
+                                      ? "bg-[#2D1B3D] text-white shadow-sm"
+                                      : "bg-white text-[#2D1B3D] border border-[#E8C4B8]/30 hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed"
+                                  }`}
+                                >
+                                  {n}
+                                </button>
+                              )
+                            );
+                          })()}
+                        </div>
+                        <button
+                          onClick={() => handleInvoicePageChange(invoicePage + 1)}
+                          disabled={invoicePage >= invoiceTotalPages || invoiceLoading}
+                          aria-label="Next invoice page"
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#E8C4B8]/30 bg-white text-[#2D1B3D] hover:bg-[#FAF8F5] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
