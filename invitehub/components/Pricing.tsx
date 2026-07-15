@@ -99,65 +99,87 @@ export default function Pricing() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 items-start">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`rounded-2xl p-7 border transition-all ${
-                plan.highlight
-                  ? "border-[#C9A84C]/40 shadow-xl scale-[1.02] bg-[#2D1B3D] text-white"
-                  : "border-[#E8C4B8]/30 shadow-sm bg-white hover:shadow-md"
-              }`}
-            >
-              {plan.highlight && (
-                <div className="inline-block text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#C9A84C] text-[#2D1B3D] mb-4">
-                  Most Popular
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto px-4 pt-10 pb-16">
+          {plans.map((plan) => {
+            const isFeatured = plan.highlight;
+            return (
+              <div
+                key={plan.name}
+                className={`relative rounded-[32px] p-10 flex flex-col justify-between transition-all duration-300 ${
+                  isFeatured
+                    ? "bg-gradient-to-br from-[#5B5EFF] to-[#08B8D9] text-white shadow-2xl shadow-blue-500/15 lg:scale-[1.03] h-full lg:h-[calc(100%+24px)] lg:-translate-y-3 hover:-translate-y-2 lg:hover:-translate-y-5 hover:shadow-2xl hover:shadow-blue-500/25 z-10"
+                    : "h-full bg-white border border-[#E5E7EB] text-[#0F1E36] shadow-sm hover:-translate-y-2 hover:shadow-xl hover:shadow-gray-200"
+                }`}
+              >
+                <div className="flex flex-col h-full justify-between gap-8">
+                  <div className="flex flex-col gap-6">
+                    {/* Badge & Plan Name */}
+                    <div>
+                      {isFeatured && (
+                        <div className="mb-4">
+                          <span className="inline-flex items-center rounded-full bg-gradient-to-r from-[#FF5E3A] to-[#FF2A6D] px-4 py-1 text-[11px] font-extrabold uppercase tracking-widest text-white shadow-md shadow-red-500/10">
+                            Most Popular
+                          </span>
+                        </div>
+                      )}
+                      <h3 className={`text-3xl font-bold font-body tracking-tight ${isFeatured ? "text-white" : "text-[#0F1E36]"}`}>
+                        {plan.name}
+                      </h3>
+                      <p className={`text-sm mt-2 ${isFeatured ? "text-white/80" : "text-slate-500"}`}>
+                        {plan.desc}
+                      </p>
+                    </div>
+
+                    {/* Pricing */}
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-5xl font-extrabold tracking-tight ${isFeatured ? "text-white" : "text-[#0F1E36]"}`}>
+                        ${annual ? plan.price.annual : plan.price.monthly}
+                      </span>
+                      <span className={`text-sm font-semibold tracking-wide ${isFeatured ? "text-white/70" : "text-slate-400"}`}>
+                        /month
+                      </span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className={`h-[1px] w-full ${isFeatured ? "bg-white/10" : "bg-slate-100"}`} />
+
+                    {/* Features List */}
+                    <ul className="space-y-4 text-left">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-3 text-sm font-medium">
+                          {isFeatured ? (
+                            <div className="flex-shrink-0 w-5 h-5 rounded-full border border-white flex items-center justify-center text-white">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="flex-shrink-0 w-5 h-5 rounded-full border border-emerald-500 flex items-center justify-center text-emerald-500">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                          <span className={isFeatured ? "text-white/90" : "text-slate-700"}>
+                            {feature}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* CTA Button */}
+                  <div className="pt-4">
+                    <button
+                      className={`w-full h-[60px] rounded-full text-base font-bold transition-all duration-300 active:scale-[0.98] focus:outline-none flex items-center justify-center ${
+                        isFeatured
+                          ? "bg-white text-[#5B5EFF] hover:brightness-110 shadow-lg shadow-white/10"
+                          : "bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] text-white hover:brightness-110 shadow-lg shadow-[#8B5CF6]/15"
+                      }`}
+                    >
+                      {plan.cta}
+                    </button>
+                  </div>
                 </div>
-              )}
-              <h3
-                className={`font-display text-2xl font-bold mb-1 ${plan.highlight ? "text-white" : "text-[#2D1B3D]"}`}
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                {plan.name}
-              </h3>
-              <p className={`text-sm mb-5 ${plan.highlight ? "text-white/60" : "text-[#2D1B3D]/50"}`}>
-                {plan.desc}
-              </p>
-
-              <div className="mb-6">
-                <span
-                  className={`text-4xl font-bold ${plan.highlight ? "text-white" : "text-[#2D1B3D]"}`}
-                >
-                  ${annual ? plan.price.annual : plan.price.monthly}
-                </span>
-                <span className={`text-sm ml-1 ${plan.highlight ? "text-white/50" : "text-[#2D1B3D]/40"}`}>
-                  /month
-                </span>
               </div>
-
-              <button
-                className={`w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] mb-6`}
-                style={{
-                  backgroundColor: plan.highlight ? "#C9A84C" : "#2D1B3D",
-                  color: "white",
-                }}
-              >
-                {plan.cta}
-              </button>
-
-              <ul className="space-y-2.5">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm">
-                    <Check
-                      className="w-4 h-4 shrink-0 mt-0.5"
-                      style={{ color: plan.highlight ? "#C9A84C" : plan.color }}
-                    />
-                    <span className={plan.highlight ? "text-white/80" : "text-[#2D1B3D]/70"}>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

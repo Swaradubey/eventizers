@@ -53,7 +53,7 @@ export default function AdminBillingPage() {
 
   // Pagination states
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit] = useState(5);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -135,10 +135,12 @@ export default function AdminBillingPage() {
           setHasNextPage(usersData.pagination.hasNextPage);
           setHasPreviousPage(usersData.pagination.hasPreviousPage);
         } else {
-          setTotalUsers((usersData.users || []).length);
-          setTotalPages(1);
-          setHasNextPage(false);
-          setHasPreviousPage(false);
+          const fetchedCount = (usersData.users || []).length;
+          setTotalUsers(fetchedCount);
+          const calculatedTotalPages = Math.ceil(fetchedCount / limit) || 1;
+          setTotalPages(calculatedTotalPages);
+          setHasNextPage(currentPage < calculatedTotalPages);
+          setHasPreviousPage(currentPage > 1);
         }
       }
       if (statsData && statsData.success) {
@@ -397,6 +399,10 @@ export default function AdminBillingPage() {
 
   // Server-side paginated and filtered users list
   const filteredUsers = users;
+  
+  const isServerPaginated = totalUsers > users.length;
+  const startIndex = isServerPaginated ? 0 : (page - 1) * limit;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -766,7 +772,7 @@ export default function AdminBillingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {filteredUsers.map((u) => {
+                  {paginatedUsers.map((u) => {
                     const isDropdownActive = activeActionsUserId === u.id;
 
                     return (

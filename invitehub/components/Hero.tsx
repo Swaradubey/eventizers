@@ -352,9 +352,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       </div>
 
       {/* Main two-column layout */}
-      <div className="hero-content">
+      <div className="hero-content !max-w-[1400px] !w-full !px-4 sm:!px-6 lg:!px-8 mx-auto">
         {/* ─── Left Column: Text + Form ─── */}
-        <div className="hero-left">
+        <div className="hero-left !max-w-full">
           {/* AI Badge */}
           <div className="hero-ai-badge">
             <Sparkles className="sparkle-icon" />
@@ -449,7 +449,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           </div>
 
           {/* Form card */}
-          <div id="hero-form" className="hero-form-card">
+          <div id="hero-form" className="hero-form-card !max-w-[1400px] !w-full mx-auto">
             {/* Tabs */}
             <div className="flex p-1 bg-[#F5F2F0] rounded-[14px] mb-6 shadow-inner border border-[#E8C4B8]/30">
               {tabs.map((tab, i) => (
@@ -770,7 +770,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       <span className="text-xs text-[#2D1B3D]/60 ml-3 font-medium">Loading templates...</span>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-2 pb-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 max-h-[600px] overflow-y-auto pr-2 pb-2">
                       {(templates.length > 0 ? templates : fallbackTemplates)
                         .filter(t => selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Private Dinner" && t.category === "Dinner Party") || (selectedCategory === "Fundraiser" && t.category === "Charity Gala"))
                         .map(tpl => (
@@ -784,7 +784,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           }`}
                         >
                           {/* Preview Area */}
-                          <div className="h-[150px] w-full bg-gradient-to-br from-[#F5F2F0] to-[#E8C4B8]/20 relative overflow-hidden">
+                          <div className="aspect-[4/3] w-full bg-gradient-to-br from-[#F5F2F0] to-[#E8C4B8]/20 relative overflow-hidden">
                              {((tpl as any).imageUrl || getTemplateImage(tpl.id)) ? (
                                <>
                                  <img src={(tpl as any).imageUrl || getTemplateImage(tpl.id)!} alt={tpl.name} className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />

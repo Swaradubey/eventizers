@@ -62,8 +62,10 @@ export const createCheckoutSession = async (
   return response.data;
 };
 
-export const getMyTickets = async (): Promise<{ success: boolean; tickets: any[] }> => {
-  const response = await API.get<{ success: boolean; tickets: any[] }>("/tickets/my-tickets");
+export const getMyTickets = async (eventId?: string): Promise<{ success: boolean; tickets: any[] }> => {
+  const response = await API.get<{ success: boolean; tickets: any[] }>(
+    eventId ? `/tickets/my-tickets?eventId=${eventId}` : "/tickets/my-tickets"
+  );
   return response.data;
 };
 

@@ -38,6 +38,10 @@ export default function AdminDashboardPage() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const EVENTS_PER_PAGE = 5;
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
@@ -76,6 +80,7 @@ export default function AdminDashboardPage() {
       const data = await adminService.getAdminEvents();
       if (data && data.success) {
         setEvents(data.events || []);
+        setCurrentPage(1);
       }
     } catch (err: any) {
       console.error("Admin Dashboard: Failed to fetch events:", err);
@@ -109,13 +114,20 @@ export default function AdminDashboardPage() {
     }
   }, [user]);
 
-  // Handle toast timers
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Handle empty page after deletion
+  useEffect(() => {
+    const maxPage = Math.ceil(events.length / EVENTS_PER_PAGE);
+    if (currentPage > maxPage && maxPage > 0) {
+      setCurrentPage(maxPage);
+    }
+  }, [events.length, currentPage]);
 
   const triggerToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -189,6 +201,51 @@ export default function AdminDashboardPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Pagination Calculations
+  const totalPages = Math.ceil(events.length / EVENTS_PER_PAGE);
+  const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
+  const paginatedEvents = events.slice(startIndex, startIndex + EVENTS_PER_PAGE);
+
+  // Ellipsis page number list generator
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 2) {
+        end = 3;
+      }
+      if (currentPage >= totalPages - 1) {
+        start = totalPages - 2;
+      }
+      
+      if (start > 2) {
+        pages.push("...");
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
   };
 
   if (authLoading || !user || user.role !== "ADMIN") {
@@ -441,7 +498,8 @@ export default function AdminDashboardPage() {
               </button>
             </div>
           ) : (
-            /* Events Table */
+            <>
+            {/* Events Table */}
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -476,7 +534,7 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {events.map((event) => (
+                  {paginatedEvents.map((event) => (
                     <tr
                       key={event.id}
                       className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
@@ -548,6 +606,51 @@ export default function AdminDashboardPage() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            {events.length > 0 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-[#E8C4B8]/20 text-xs text-[#2D1B3D]/70 font-semibold select-none">
+                <div>
+                  Showing {events.length > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + EVENTS_PER_PAGE, events.length)} of {events.length} events
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
+                    aria-label="Previous page"
+                  >
+                    Previous
+                  </button>
+                  {getPageNumbers().map((p, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => typeof p === "number" && setCurrentPage(p)}
+                      disabled={p === "..."}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                        p === currentPage
+                          ? "bg-[#2D1B3D] text-white shadow-sm font-bold"
+                          : p === "..."
+                          ? "cursor-default text-[#2D1B3D]/40"
+                          : "bg-white border border-[#E8C4B8]/30 hover:bg-[#F0EBE8] text-[#2D1B3D]"
+                      }`}
+                      aria-label={typeof p === "number" ? `Page ${p}` : "Ellipsis"}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
+                    aria-label="Next page"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       </main>
