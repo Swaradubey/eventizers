@@ -10,6 +10,9 @@ import adminService, {
 } from "../../../services/adminService";
 import BillingDetailsModal from "../../../components/admin/billing/BillingDetailsModal";
 import ChangePlanModal from "../../../components/admin/billing/ChangePlanModal";
+import Pagination from "../../../components/Pagination";
+
+export const dynamic = "force-dynamic";
 import {
   RotateCcw,
   AlertCircle,
@@ -941,45 +944,15 @@ export default function AdminBillingPage() {
           )}
 
           {/* Pagination Controls */}
-          {filteredUsers.length > 0 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-[#E8C4B8]/20 text-xs text-[#2D1B3D]/70 font-semibold select-none">
-              <div>
-                Showing {totalUsers > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, totalUsers)} of {totalUsers} Users
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1 || loading}
-                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
-                >
-                  Previous
-                </button>
-                {getPageNumbers().map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => typeof p === "number" && handlePageChange(p)}
-                    disabled={p === "..." || loading}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                      p === page
-                        ? "bg-[#2D1B3D] text-white shadow-sm font-bold"
-                        : p === "..."
-                        ? "cursor-default text-[#2D1B3D]/40"
-                        : "bg-white border border-[#E8C4B8]/30 hover:bg-[#F0EBE8] text-[#2D1B3D]"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page === totalPages || loading}
-                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalUsers}
+            limit={limit}
+            onPageChange={handlePageChange}
+            loading={loading}
+            itemName="Users"
+          />
         </div>
       </main>
 

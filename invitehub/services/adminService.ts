@@ -33,9 +33,18 @@ export interface AdminEvent extends Event {
   };
 }
 
-interface AdminEventsResponse {
+export interface AdminEventsResponse {
   success: boolean;
   events: AdminEvent[];
+  data?: AdminEvent[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 }
 
 interface AdminEventResponse {
@@ -115,8 +124,10 @@ export const getAdminStats = async (): Promise<AdminStatsResponse> => {
   return response.data;
 };
 
-export const getAdminEvents = async (): Promise<AdminEventsResponse> => {
-  const response = await API.get<AdminEventsResponse>("/admin/events");
+export const getAdminEvents = async (page?: number, limit?: number): Promise<AdminEventsResponse> => {
+  const response = await API.get<AdminEventsResponse>("/admin/events", {
+    params: { page, limit }
+  });
   return response.data;
 };
 

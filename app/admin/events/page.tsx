@@ -7,6 +7,8 @@ import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import EventModal from "../../../invitehub/components/EventModal";
 import adminService, { AdminEvent } from "../../../services/adminService";
+import Pagination from "../../../invitehub/components/Pagination";
+
 import { Guest } from "../../../types/guestTypes";
 import {
   LogOut,
@@ -24,6 +26,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+export const dynamic = "force-dynamic";
+
 function AdminEventsPageContent() {
   const { user, loading: authLoading, logout } = useAuth();
   const { setIsOpen } = useSidebar();
@@ -33,6 +37,12 @@ function AdminEventsPageContent() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const EVENTS_PER_PAGE = 5;
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,14 +70,21 @@ function AdminEventsPageContent() {
   }, [user, authLoading, router]);
 
   // Fetch events across all users
-  const fetchEvents = async () => {
+  const fetchEvents = async (pageToFetch: number = currentPage) => {
     if (!user || user.role !== "ADMIN") return;
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await adminService.getAdminEvents();
+      const data = await adminService.getAdminEvents(pageToFetch, EVENTS_PER_PAGE);
       if (data && data.success) {
         setEvents(data.events || []);
+        if (data.pagination) {
+          setTotalEvents(data.pagination.total);
+          setTotalPages(data.pagination.totalPages);
+        } else {
+          setTotalEvents((data.events || []).length);
+          setTotalPages(1);
+        }
       }
     } catch (err: any) {
       console.error("Admin Events Page: Failed to fetch events:", err);
@@ -79,9 +96,17 @@ function AdminEventsPageContent() {
 
   useEffect(() => {
     if (user && user.role === "ADMIN") {
-      fetchEvents();
+      fetchEvents(currentPage);
     }
-  }, [user]);
+  }, [user, currentPage]);
+
+  // Handle empty page after deletion
+  useEffect(() => {
+    const maxPage = Math.ceil(totalEvents / EVENTS_PER_PAGE);
+    if (currentPage > maxPage && maxPage > 0) {
+      setCurrentPage(maxPage);
+    }
+  }, [totalEvents, currentPage]);
 
   // Handle toast timers
   useEffect(() => {
@@ -119,7 +144,7 @@ function AdminEventsPageContent() {
       const res = await adminService.deleteAdminEvent(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Event deleted successfully by Admin!");
-        setEvents((prev) => prev.filter((e) => e.id !== deleteConfirmId));
+        fetchEvents(currentPage);
       }
     } catch (err: any) {
       console.error(err);
@@ -132,7 +157,7 @@ function AdminEventsPageContent() {
   // Callback on successful create/edit
   const handleSuccess = (message: string) => {
     triggerToast(message);
-    fetchEvents();
+    fetchEvents(currentPage);
   };
 
   // Format date readable
@@ -229,10 +254,10 @@ function AdminEventsPageContent() {
         </AnimatePresence>
 
         <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
-          {!loadingEvents && events.length > 0 && (
+          {!loadingEvents && totalEvents > 0 && (
             <div className="flex justify-between items-center mb-6">
               <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                {events.length} {events.length === 1 ? "Event" : "Events"} Found Across Platform
+                {totalEvents} {totalEvents === 1 ? "Event" : "Events"} Found Across Platform
               </span>
               <button
                 onClick={handleCreateClick}
@@ -255,7 +280,7 @@ function AdminEventsPageContent() {
               <h3 className="text-lg font-semibold text-[#2D1B3D]">Failed to load events</h3>
               <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
               <button
-                onClick={fetchEvents}
+                onClick={() => fetchEvents()}
                 className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
               >
                 Try Again
@@ -386,6 +411,16 @@ function AdminEventsPageContent() {
               </table>
             </div>
           )}
+          
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalEvents}
+            limit={EVENTS_PER_PAGE}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loadingEvents}
+            itemName="events"
+          />
         </div>
       </main>
 

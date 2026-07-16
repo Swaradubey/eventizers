@@ -6,6 +6,8 @@ import { useAuth } from "../../../invitehub/context/AuthContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import EventModal from "../../../invitehub/components/EventModal";
 import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
+import Pagination from "../../../invitehub/components/Pagination";
+
 import { Guest } from "../../../types/guestTypes";
 import {
   LogOut,
@@ -28,6 +30,8 @@ import {
 import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
+export const dynamic = "force-dynamic";
+
 export default function AdminDashboardPage() {
   const { user, loading: authLoading, logout } = useAuth();
   const { setIsOpen } = useSidebar();
@@ -37,6 +41,12 @@ export default function AdminDashboardPage() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const EVENTS_PER_PAGE = 5;
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,14 +78,21 @@ export default function AdminDashboardPage() {
   }, [user, authLoading, router]);
 
   // Fetch events across all users
-  const fetchEvents = async () => {
+  const fetchEvents = async (pageToFetch: number = currentPage) => {
     if (!user || user.role !== "ADMIN") return;
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await adminService.getAdminEvents();
+      const data = await adminService.getAdminEvents(pageToFetch, EVENTS_PER_PAGE);
       if (data && data.success) {
         setEvents(data.events || []);
+        if (data.pagination) {
+          setTotalEvents(data.pagination.total);
+          setTotalPages(data.pagination.totalPages);
+        } else {
+          setTotalEvents((data.events || []).length);
+          setTotalPages(1);
+        }
       }
     } catch (err: any) {
       console.error("Admin Dashboard: Failed to fetch events:", err);
@@ -104,10 +121,23 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (user && user.role === "ADMIN") {
-      fetchEvents();
+      fetchEvents(currentPage);
+    }
+  }, [user, currentPage]);
+
+  useEffect(() => {
+    if (user && user.role === "ADMIN") {
       fetchDashboardStats();
     }
   }, [user]);
+
+  // Handle empty page after deletion
+  useEffect(() => {
+    const maxPage = Math.ceil(totalEvents / EVENTS_PER_PAGE);
+    if (currentPage > maxPage && maxPage > 0) {
+      setCurrentPage(maxPage);
+    }
+  }, [totalEvents, currentPage]);
 
   // Handle toast timers
   useEffect(() => {
@@ -145,8 +175,7 @@ export default function AdminDashboardPage() {
       const res = await adminService.deleteAdminEvent(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Event deleted successfully by Admin!");
-        // Optimistic UI state update: remove row without full refresh
-        setEvents((prev) => prev.filter((e) => e.id !== deleteConfirmId));
+        fetchEvents(currentPage);
         // Refresh statistics
         fetchDashboardStats();
       }
@@ -161,7 +190,7 @@ export default function AdminDashboardPage() {
   // Callback on successful create/edit
   const handleSuccess = (message: string) => {
     triggerToast(message);
-    fetchEvents();
+    fetchEvents(currentPage);
     fetchDashboardStats();
   };
 
@@ -389,10 +418,10 @@ export default function AdminDashboardPage() {
         {/* Inner page content container */}
         <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
           {/* Top Actions bar */}
-          {!loadingEvents && events.length > 0 && (
+          {!loadingEvents && totalEvents > 0 && (
             <div className="flex justify-between items-center mb-6">
               <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                {events.length} {events.length === 1 ? "Event" : "Events"} Found Across Platform
+                {totalEvents} {totalEvents === 1 ? "Event" : "Events"} Found Across Platform
               </span>
               <button
                 onClick={handleCreateClick}
@@ -416,7 +445,7 @@ export default function AdminDashboardPage() {
               <h3 className="text-lg font-semibold text-[#2D1B3D]">Failed to load events</h3>
               <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
               <button
-                onClick={fetchEvents}
+                onClick={() => fetchEvents()}
                 className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
               >
                 Try Again
@@ -549,6 +578,16 @@ export default function AdminDashboardPage() {
               </table>
             </div>
           )}
+          
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalEvents}
+            limit={EVENTS_PER_PAGE}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loadingEvents}
+            itemName="events"
+          />
         </div>
       </main>
 

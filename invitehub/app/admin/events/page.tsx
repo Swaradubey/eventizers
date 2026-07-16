@@ -7,6 +7,8 @@ import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import EventModal from "../../../components/EventModal";
 import adminService, { AdminEvent } from "../../../services/adminService";
+import Pagination from "../../../components/Pagination";
+
 import { Guest } from "../../../types/guestTypes";
 import {
   LogOut,
@@ -24,6 +26,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+export const dynamic = "force-dynamic";
+
 function AdminEventsPageContent() {
   const { user, loading: authLoading, logout } = useAuth();
   const { setIsOpen } = useSidebar();
@@ -36,6 +40,8 @@ function AdminEventsPageContent() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const EVENTS_PER_PAGE = 5;
 
   // Modal states
@@ -64,15 +70,21 @@ function AdminEventsPageContent() {
   }, [user, authLoading, router]);
 
   // Fetch events across all users
-  const fetchEvents = async () => {
+  const fetchEvents = async (pageToFetch: number = currentPage) => {
     if (!user || user.role !== "ADMIN") return;
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await adminService.getAdminEvents();
+      const data = await adminService.getAdminEvents(pageToFetch, EVENTS_PER_PAGE);
       if (data && data.success) {
         setEvents(data.events || []);
-        setCurrentPage(1);
+        if (data.pagination) {
+          setTotalEvents(data.pagination.total);
+          setTotalPages(data.pagination.totalPages);
+        } else {
+          setTotalEvents((data.events || []).length);
+          setTotalPages(1);
+        }
       }
     } catch (err: any) {
       console.error("Admin Events Page: Failed to fetch events:", err);
@@ -84,9 +96,9 @@ function AdminEventsPageContent() {
 
   useEffect(() => {
     if (user && user.role === "ADMIN") {
-      fetchEvents();
+      fetchEvents(currentPage);
     }
-  }, [user]);
+  }, [user, currentPage]);
 
   // Handle toast timers
   useEffect(() => {
@@ -98,11 +110,11 @@ function AdminEventsPageContent() {
 
   // Handle empty page after deletion
   useEffect(() => {
-    const maxPage = Math.ceil(events.length / EVENTS_PER_PAGE);
+    const maxPage = Math.ceil(totalEvents / EVENTS_PER_PAGE);
     if (currentPage > maxPage && maxPage > 0) {
       setCurrentPage(maxPage);
     }
-  }, [events.length, currentPage]);
+  }, [totalEvents, currentPage]);
 
   const triggerToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -132,7 +144,7 @@ function AdminEventsPageContent() {
       const res = await adminService.deleteAdminEvent(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Event deleted successfully by Admin!");
-        setEvents((prev) => prev.filter((e) => e.id !== deleteConfirmId));
+        fetchEvents(currentPage);
       }
     } catch (err: any) {
       console.error(err);
@@ -145,7 +157,7 @@ function AdminEventsPageContent() {
   // Callback on successful create/edit
   const handleSuccess = (message: string) => {
     triggerToast(message);
-    fetchEvents();
+    fetchEvents(currentPage);
   };
 
   // Format date readable
@@ -175,49 +187,7 @@ function AdminEventsPageContent() {
   };
 
   // Pagination Calculations
-  const totalPages = Math.ceil(events.length / EVENTS_PER_PAGE);
   const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
-  const paginatedEvents = events.slice(startIndex, startIndex + EVENTS_PER_PAGE);
-
-  // Ellipsis page number list generator
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
-    
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      pages.push(1);
-      
-      let start = Math.max(2, currentPage - 1);
-      let end = Math.min(totalPages - 1, currentPage + 1);
-      
-      if (currentPage <= 2) {
-        end = 3;
-      }
-      if (currentPage >= totalPages - 1) {
-        start = totalPages - 2;
-      }
-      
-      if (start > 2) {
-        pages.push("...");
-      }
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-      
-      if (end < totalPages - 1) {
-        pages.push("...");
-      }
-      
-      pages.push(totalPages);
-    }
-    
-    return pages;
-  };
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -287,10 +257,10 @@ function AdminEventsPageContent() {
         </AnimatePresence>
 
         <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
-          {!loadingEvents && events.length > 0 && (
+          {!loadingEvents && totalEvents > 0 && (
             <div className="flex justify-between items-center mb-6">
               <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                {events.length} {events.length === 1 ? "Event" : "Events"} Found Across Platform
+                {totalEvents} {totalEvents === 1 ? "Event" : "Events"} Found Across Platform
               </span>
               <button
                 onClick={handleCreateClick}
@@ -313,7 +283,7 @@ function AdminEventsPageContent() {
               <h3 className="text-lg font-semibold text-[#2D1B3D]">Failed to load events</h3>
               <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
               <button
-                onClick={fetchEvents}
+                onClick={() => fetchEvents()}
                 className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
               >
                 Try Again
@@ -371,7 +341,7 @@ function AdminEventsPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {paginatedEvents.map((event) => (
+                  {events.map((event) => (
                     <tr
                       key={event.id}
                       className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
@@ -446,48 +416,15 @@ function AdminEventsPageContent() {
           )}
 
           {/* Pagination Controls */}
-          {events.length > 0 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-[#E8C4B8]/20 text-xs text-[#2D1B3D]/70 font-semibold select-none">
-              <div>
-                Showing {events.length > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + EVENTS_PER_PAGE, events.length)} of {events.length} events
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
-                  aria-label="Previous page"
-                >
-                  Previous
-                </button>
-                {getPageNumbers().map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => typeof p === "number" && setCurrentPage(p)}
-                    disabled={p === "..."}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                      p === currentPage
-                        ? "bg-[#2D1B3D] text-white shadow-sm font-bold"
-                        : p === "..."
-                        ? "cursor-default text-[#2D1B3D]/40"
-                        : "bg-white border border-[#E8C4B8]/30 hover:bg-[#F0EBE8] text-[#2D1B3D]"
-                    }`}
-                    aria-label={typeof p === "number" ? `Page ${p}` : "Ellipsis"}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
-                  aria-label="Next page"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalEvents}
+            limit={EVENTS_PER_PAGE}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loadingEvents}
+            itemName="events"
+          />
         </div>
       </main>
 
