@@ -69,8 +69,22 @@ export const getMyTickets = async (eventId?: string): Promise<{ success: boolean
   return response.data;
 };
 
-export const getSessionDetails = async (sessionId: string): Promise<{ success: boolean; order: any }> => {
-  const response = await API.get<{ success: boolean; order: any }>(`/tickets/session/${sessionId}`);
+export const getSessionDetails = async (
+  sessionId: string
+): Promise<{ success: boolean; status?: string; order?: any; ticket?: any; message?: string }> => {
+  const response = await API.get<{ success: boolean; status?: string; order?: any; ticket?: any; message?: string }>(
+    `/tickets/session/${sessionId}`
+  );
+  return response.data;
+};
+
+export const verifyPayment = async (
+  sessionId: string
+): Promise<{ success: boolean; status?: string; order?: any; ticket?: any; message?: string }> => {
+  const response = await API.post<{ success: boolean; status?: string; order?: any; ticket?: any; message?: string }>(
+    `/tickets/verify`,
+    { sessionId }
+  );
   return response.data;
 };
 
@@ -85,6 +99,7 @@ const ticketingService = {
   createCheckoutSession,
   getMyTickets,
   getSessionDetails,
+  verifyPayment,
 };
 
 export default ticketingService;

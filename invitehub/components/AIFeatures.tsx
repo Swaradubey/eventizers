@@ -1,4 +1,8 @@
+"use client";
+
 import { CheckCircle2 } from "lucide-react";
+import InvitationCard from "./InvitationCard";
+import { templateCards } from "../lib/templateData";
 
 const features = [
   "Event Page",
@@ -11,30 +15,38 @@ const features = [
   "Venue Suggestions",
 ];
 
-const previewCards = [
-  {
-    type: "Charity Gala",
-    title: "Bright Futures Gala",
-    date: "Nov 15 · 8:00 PM · Grand Ballroom",
-    host: "Bright Futures Foundation",
-    gradient: "linear-gradient(135deg, #c9a84c 0%, #a07820 100%)",
-    emoji: "✨",
-  },
-  {
-    type: "Dinner Party",
-    title: "Supper Club No. 7",
-    date: "Fri, May 30 · 7:30 PM",
-    host: "Hosted by Chef Amara",
-    gradient: "linear-gradient(135deg, #d4c8a0 0%, #c0b080 100%)",
-    emoji: "🍽️",
-  },
-];
+const leftCardData = templateCards.find((c) => c.title === "Bright Futures Gala") || {
+  type: "Charity Gala",
+  title: "Bright Futures Gala",
+  date: "Nov 15",
+  time: "8:00 PM",
+  host: "Bright Futures Foundation",
+  venue: "Grand Ballroom",
+  gradient: "linear-gradient(135deg, #c9a84c 0%, #a07820 100%)",
+  accentColor: "#a07820",
+  emoji: "✨",
+  image: "/assets/templates/gala.jpg",
+};
+
+const rightCardData = templateCards.find((c) => c.title === "Supper Club No. 7") || {
+  type: "Dinner Party",
+  title: "Supper Club No. 7",
+  date: "Fri, May 30",
+  time: "7:30 PM",
+  host: "Hosted by Chef Amara",
+  gradient: "linear-gradient(135deg, #d4c8a0 0%, #c0b080 100%)",
+  accentColor: "#907030",
+  emoji: "🍽️",
+  image: "/assets/templates/dinner.jpg",
+};
+
+const floatingCards = [leftCardData, rightCardData];
 
 export default function AIFeatures() {
   return (
-    <section className="py-24 bg-[#2D1B3D] overflow-hidden">
+    <section className="py-16 md:py-24 bg-[#2D1B3D] overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left: text */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-[#C9A84C] mb-4">
@@ -63,38 +75,20 @@ export default function AIFeatures() {
           </div>
 
           {/* Right: floating preview cards */}
-          <div className="relative flex items-center justify-center min-h-[360px]">
-            {previewCards.map((card, i) => (
+          <div className="relative flex flex-col sm:flex-row lg:block items-center justify-center min-h-[420px] sm:min-h-[440px] md:min-h-[400px] lg:min-h-[440px] pt-4 sm:pt-0">
+            {floatingCards.map((card, i) => (
               <div
                 key={card.title}
-                className={`invite-card absolute w-56 shadow-2xl ${i === 0
-                  ? "rotate-[-4deg] left-4 top-4"
-                  : "rotate-[5deg] right-4 top-16"
-                  }`}
-                style={{ zIndex: i === 0 ? 2 : 1 }}
+                className={`w-60 sm:w-64 md:w-56 lg:w-64 relative sm:absolute transition-all duration-300 ${
+                  i === 0
+                    ? "rotate-[-3deg] sm:rotate-[-4deg] sm:left-2 md:left-2 lg:left-4 top-0 sm:top-2 md:top-2 lg:top-4 z-[2] mb-6 sm:mb-0"
+                    : "rotate-[3deg] sm:rotate-[5deg] sm:right-2 md:right-2 lg:right-4 top-0 sm:top-14 md:top-16 lg:top-20 z-[1]"
+                }`}
               >
-                <div
-                  className="h-24 flex items-center justify-center"
-                  style={{ background: card.gradient }}
-                >
-                  <span className="text-5xl">{card.emoji}</span>
-                </div>
-                <div className="p-4 bg-white">
-                  <p className="text-[9px] uppercase tracking-widest text-[#2D1B3D]/40 mb-0.5">
-                    {card.type}
-                  </p>
-                  <p
-                    className="font-display text-base font-semibold text-[#2D1B3D] leading-tight mb-1"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
-                    {card.title}
-                  </p>
-                  <p className="text-[10px] text-[#2D1B3D]/50">{card.date}</p>
-                  <p className="text-[10px] text-[#2D1B3D]/40">{card.host}</p>
-                </div>
+                <InvitationCard {...card} variant="floating-preview" />
               </div>
             ))}
-            <p className="absolute bottom-0 text-center text-xs text-[#FAF8F5]/30 w-full">
+            <p className="absolute -bottom-2 sm:bottom-0 text-center text-xs text-[#FAF8F5]/40 w-full select-none pointer-events-none">
               AI designed these in seconds
             </p>
           </div>

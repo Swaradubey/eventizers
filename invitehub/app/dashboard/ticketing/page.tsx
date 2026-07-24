@@ -59,6 +59,9 @@ function TicketingPageContent() {
   const [myTicketsLoading, setMyTicketsLoading] = useState(true);
   const [myTicketsError, setMyTicketsError] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  // Verification states
+  const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "success" | "failed" | "timed_out">("idle");
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
@@ -120,53 +123,93 @@ function TicketingPageContent() {
     }
   }, [toast]);
 
+  // Perform single verification check
+  const verifyPaymentSession = async (sid: string, eventId: string) => {
+    try {
+      const res = await ticketingService.getSessionDetails(sid);
+      if (res.success && (res.status === "confirmed" || res.order?.status === "PAID")) {
+        setVerificationState("success");
+        setIsVerifyingPayment(false);
+        setVerificationError(null);
+        triggerToast("Ticket purchased successfully!", "success");
+
+        // Clean up search params to make page refresh idempotent
+        const url = new URL(window.location.href);
+        url.searchParams.delete("success");
+        url.searchParams.delete("session_id");
+        window.history.pushState({}, "", url.toString());
+
+        // Refresh ticket list and summary data
+        fetchTicketingData(eventId);
+        return true;
+      } else if (res.status === "failed" || res.success === false) {
+        setVerificationState("failed");
+        setIsVerifyingPayment(false);
+        setVerificationError(res.message || "Payment verification failed.");
+        triggerToast(res.message || "Payment verification failed.", "error");
+        return false;
+      }
+    } catch (err: any) {
+      console.error("Error verifying payment status:", err);
+    }
+    return false;
+  };
+
   // Poll payment verification status on redirection back from Stripe
   useEffect(() => {
     let poll: any;
-    const checkPaymentStatus = async () => {
-      if (isSuccess && sessionId && selectedEventId) {
-        setIsVerifyingPayment(true);
-        let attempts = 0;
-        const maxAttempts = 10;
-        const intervalTime = 2000; // 2 seconds
+    if (isSuccess && sessionId && selectedEventId) {
+      setIsVerifyingPayment(true);
+      setVerificationState("verifying");
+      setVerificationError(null);
 
-        poll = setInterval(async () => {
-          try {
+      let attempts = 0;
+      const maxAttempts = 12; // 12 attempts * 2s = 24 seconds limit
+      const intervalTime = 2000; // 2 seconds
+
+      verifyPaymentSession(sessionId, selectedEventId).then((confirmed) => {
+        if (!confirmed) {
+          poll = setInterval(async () => {
             attempts++;
-            const res = await ticketingService.getSessionDetails(sessionId);
-            if (res.success && res.order && res.order.status === "PAID") {
+            const isConfirmed = await verifyPaymentSession(sessionId, selectedEventId);
+            if (isConfirmed || attempts >= maxAttempts) {
               clearInterval(poll);
-              setIsVerifyingPayment(false);
-              triggerToast("Ticket purchased successfully!", "success");
-              // Clear query params to make it idempotent
-              const url = new URL(window.location.href);
-              url.searchParams.delete("success");
-              url.searchParams.delete("session_id");
-              window.history.pushState({}, "", url.toString());
-              // Refresh data
-              fetchTicketingData(selectedEventId);
-            } else if (attempts >= maxAttempts) {
-              clearInterval(poll);
-              setIsVerifyingPayment(false);
-              triggerToast("Payment verification timed out. Please refresh.", "error");
+              if (!isConfirmed && attempts >= maxAttempts) {
+                setVerificationState("timed_out");
+                setIsVerifyingPayment(false);
+                setVerificationError("Payment verification timed out. If your payment was completed, click Retry Verification.");
+                triggerToast("Payment verification timed out.", "error");
+              }
             }
-          } catch (err) {
-            console.error("Error verifying payment status:", err);
-            if (attempts >= maxAttempts) {
-              clearInterval(poll);
-              setIsVerifyingPayment(false);
-              triggerToast("Failed to verify payment status.", "error");
-            }
-          }
-        }, intervalTime);
-      }
-    };
+          }, intervalTime);
+        }
+      });
+    }
 
-    checkPaymentStatus();
     return () => {
       if (poll) clearInterval(poll);
     };
   }, [isSuccess, sessionId, selectedEventId]);
+
+  const handleRetryVerification = async () => {
+    const sid = sessionId || new URL(window.location.href).searchParams.get("session_id");
+    const eid = selectedEventId || new URL(window.location.href).searchParams.get("eventId");
+    if (!sid || !eid) {
+      triggerToast("No session ID found to verify.", "error");
+      return;
+    }
+
+    setIsVerifyingPayment(true);
+    setVerificationState("verifying");
+    setVerificationError(null);
+
+    const confirmed = await verifyPaymentSession(sid, eid);
+    if (!confirmed) {
+      setVerificationState("failed");
+      setIsVerifyingPayment(false);
+      setVerificationError("Could not verify payment with the server yet. Please try again or contact support.");
+    }
+  };
 
   // Handle cancelled payment notification
   useEffect(() => {
@@ -934,10 +977,26 @@ function TicketingPageContent() {
                 </div>
               </div>
 
-              {isVerifyingPayment && (
+              {/* Payment Verification Banner */}
+              {isVerifyingPayment && verificationState === "verifying" && (
                 <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 text-xs font-semibold flex items-center gap-3">
                   <div className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin flex-shrink-0"></div>
                   <span>Verifying your ticket payment with the server. Please wait...</span>
+                </div>
+              )}
+
+              {(verificationState === "failed" || verificationState === "timed_out") && (
+                <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <span>{verificationError || "Payment verification failed."}</span>
+                  </div>
+                  <button
+                    onClick={handleRetryVerification}
+                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm"
+                  >
+                    Retry Verification
+                  </button>
                 </div>
               )}
 
@@ -964,7 +1023,7 @@ function TicketingPageContent() {
                     Retry
                   </button>
                 </div>
-              ) : myTickets.length === 0 ? (
+              ) : myTickets.length === 0 && verificationState !== "verifying" ? (
                 // Empty state
                 <div className="flex flex-col items-center justify-center text-center py-12 bg-[#FAF8F5]/30 rounded-2xl border border-dashed border-[#E8C4B8]/60">
                   <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-4">

@@ -13,6 +13,7 @@ interface InvitationCardProps {
   emoji: string;
   image?: string | any;
   size?: "sm" | "md" | "lg";
+  variant?: "default" | "floating-preview";
 }
 
 const getCategoryBadgeStyles = (type: string) => {
@@ -53,11 +54,74 @@ export default function InvitationCard({
   emoji,
   image,
   size = "md",
+  variant = "default",
 }: InvitationCardProps) {
   const [imageError, setImageError] = useState(false);
 
   const showImage = image && !imageError;
   const imgSrc = typeof image === 'string' ? image : image?.src;
+
+  if (variant === "floating-preview") {
+    return (
+      <div className="group flex flex-col h-full w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-black/[0.06] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)]">
+        {/* Upper Portion: Image */}
+        <div className="h-32 sm:h-36 md:h-40 w-full relative overflow-hidden bg-neutral-100 shrink-0">
+          {showImage ? (
+            <>
+              <img
+                src={imgSrc}
+                alt={title}
+                onError={() => setImageError(true)}
+                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/10 pointer-events-none" />
+            </>
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ background: gradient }}
+            />
+          )}
+
+          {/* Category Glass Badge on Top Left of Image */}
+          <div className="absolute top-2.5 left-2.5 z-10">
+            <span
+              className={`text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full backdrop-blur-md border shadow-sm transition-colors duration-300 flex items-center gap-1 ${getCategoryBadgeStyles(type)}`}
+            >
+              {type}
+            </span>
+          </div>
+        </div>
+
+        {/* Divider line */}
+        <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-neutral-200 to-transparent relative z-10" />
+
+        {/* Clean White Content Area below image */}
+        <div className="p-3.5 sm:p-4 flex flex-col gap-1 bg-white flex-1 min-w-0">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2D1B3D]/50 truncate">
+            {type}
+          </p>
+          <h3
+            className="font-display text-sm sm:text-base font-bold text-[#2D1B3D] leading-snug truncate group-hover:text-[#4A2D6B] transition-colors duration-300"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+            title={title}
+          >
+            {title}
+          </h3>
+          <div className="flex items-center gap-1.5 text-[11px] text-[#2D1B3D]/70 font-medium mt-0.5 truncate">
+            <Calendar className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} strokeWidth={2} />
+            <span className="truncate">{date}{time ? ` · ${time}` : ''}</span>
+          </div>
+          {host && (
+            <div className="flex items-center gap-1.5 text-[10px] text-[#2D1B3D]/55 truncate">
+              <Users className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} strokeWidth={2} />
+              <span className="truncate">{host}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="group flex flex-col h-full w-full bg-white rounded-[24px] overflow-hidden cursor-pointer shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/[0.04] transition-all duration-300 ease-out hover:-translate-y-[6px] hover:scale-[1.02] hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)]">

@@ -138,7 +138,7 @@ function SuccessPageContent() {
         {/* CTA Buttons */}
         <div className="w-full flex flex-col gap-3">
           <Link
-            href="/dashboard/my-tickets"
+            href="/dashboard/ticketing"
             className="w-full py-3.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl text-center shadow-md transition-all focus:outline-none"
           >
             Go to My Tickets

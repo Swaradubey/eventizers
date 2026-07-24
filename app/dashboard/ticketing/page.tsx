@@ -38,6 +38,9 @@ function TicketingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryEventId = searchParams?.get("eventId") || null;
+  const isSuccess = searchParams?.get("success") === "true";
+  const sessionId = searchParams?.get("session_id") || null;
+  const isCanceled = searchParams?.get("canceled") === "true";
 
   // Events list for dropdown switcher
   const [events, setEvents] = useState<{ id: string; title: string }[]>([]);
@@ -50,6 +53,15 @@ function TicketingPageContent() {
   const [tiers, setTiers] = useState<TicketTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // My Tickets States
+  const [myTickets, setMyTickets] = useState<any[]>([]);
+  const [myTicketsLoading, setMyTicketsLoading] = useState(true);
+  const [myTicketsError, setMyTicketsError] = useState<string | null>(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  // Verification states
+  const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "success" | "failed" | "timed_out">("idle");
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
@@ -111,6 +123,104 @@ function TicketingPageContent() {
     }
   }, [toast]);
 
+  // Perform single verification check
+  const verifyPaymentSession = async (sid: string, eventId: string) => {
+    try {
+      const res = await ticketingService.getSessionDetails(sid);
+      if (res.success && (res.status === "confirmed" || res.order?.status === "PAID")) {
+        setVerificationState("success");
+        setIsVerifyingPayment(false);
+        setVerificationError(null);
+        triggerToast("Ticket purchased successfully!", "success");
+
+        // Clean up search params to make page refresh idempotent
+        const url = new URL(window.location.href);
+        url.searchParams.delete("success");
+        url.searchParams.delete("session_id");
+        window.history.pushState({}, "", url.toString());
+
+        // Refresh ticket list and summary data
+        fetchTicketingData(eventId);
+        return true;
+      } else if (res.status === "failed" || res.success === false) {
+        setVerificationState("failed");
+        setIsVerifyingPayment(false);
+        setVerificationError(res.message || "Payment verification failed.");
+        triggerToast(res.message || "Payment verification failed.", "error");
+        return false;
+      }
+    } catch (err: any) {
+      console.error("Error verifying payment status:", err);
+    }
+    return false;
+  };
+
+  // Poll payment verification status on redirection back from Stripe
+  useEffect(() => {
+    let poll: any;
+    if (isSuccess && sessionId && selectedEventId) {
+      setIsVerifyingPayment(true);
+      setVerificationState("verifying");
+      setVerificationError(null);
+
+      let attempts = 0;
+      const maxAttempts = 12; // 12 attempts * 2s = 24 seconds limit
+      const intervalTime = 2000; // 2 seconds
+
+      verifyPaymentSession(sessionId, selectedEventId).then((confirmed) => {
+        if (!confirmed) {
+          poll = setInterval(async () => {
+            attempts++;
+            const isConfirmed = await verifyPaymentSession(sessionId, selectedEventId);
+            if (isConfirmed || attempts >= maxAttempts) {
+              clearInterval(poll);
+              if (!isConfirmed && attempts >= maxAttempts) {
+                setVerificationState("timed_out");
+                setIsVerifyingPayment(false);
+                setVerificationError("Payment verification timed out. If your payment was completed, click Retry Verification.");
+                triggerToast("Payment verification timed out.", "error");
+              }
+            }
+          }, intervalTime);
+        }
+      });
+    }
+
+    return () => {
+      if (poll) clearInterval(poll);
+    };
+  }, [isSuccess, sessionId, selectedEventId]);
+
+  const handleRetryVerification = async () => {
+    const sid = sessionId || new URL(window.location.href).searchParams.get("session_id");
+    const eid = selectedEventId || new URL(window.location.href).searchParams.get("eventId");
+    if (!sid || !eid) {
+      triggerToast("No session ID found to verify.", "error");
+      return;
+    }
+
+    setIsVerifyingPayment(true);
+    setVerificationState("verifying");
+    setVerificationError(null);
+
+    const confirmed = await verifyPaymentSession(sid, eid);
+    if (!confirmed) {
+      setVerificationState("failed");
+      setIsVerifyingPayment(false);
+      setVerificationError("Could not verify payment with the server yet. Please try again or contact support.");
+    }
+  };
+
+  // Handle cancelled payment notification
+  useEffect(() => {
+    if (isCanceled) {
+      triggerToast("Ticket purchase canceled.", "error");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("canceled");
+      window.history.pushState({}, "", url.toString());
+    }
+  }, [isCanceled]);
+
   // Lock body scroll when add/edit modal is open
   useEffect(() => {
     if (!isAddEditModalOpen) return;
@@ -163,6 +273,22 @@ function TicketingPageContent() {
     }
   }, [user, queryEventId]);
 
+  const fetchMyTicketsData = async (eventId: string) => {
+    setMyTicketsLoading(true);
+    setMyTicketsError(null);
+    try {
+      const res = await ticketingService.getMyTickets(eventId);
+      if (res.success) {
+        setMyTickets(res.tickets || []);
+      }
+    } catch (err: any) {
+      console.error("Error fetching my tickets:", err);
+      setMyTicketsError(err.response?.data?.error || "Failed to load your tickets.");
+    } finally {
+      setMyTicketsLoading(false);
+    }
+  };
+
   // Load ticketing stats and tiers when selected event changes
   const fetchTicketingData = async (eventId: string) => {
     setLoading(true);
@@ -172,6 +298,7 @@ function TicketingPageContent() {
       const [summaryRes, tiersRes] = await Promise.all([
         ticketingService.getEventSummary(eventId),
         ticketingService.getEventTiers(eventId),
+        fetchMyTicketsData(eventId),
       ]);
 
       if (activeRequestEventIdRef.current !== eventId) return;
@@ -828,6 +955,150 @@ function TicketingPageContent() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ───── MY TICKETS SECTION ───── */}
+            <div className="mt-8 bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3
+                    className="text-2xl font-semibold text-[#2D1B3D] font-display"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    My Tickets
+                  </h3>
+                  <p className="text-xs text-[#2D1B3D]/60 mt-1">Your purchased tickets for this event</p>
+                </div>
+              </div>
+
+              {/* Payment Verification Banner */}
+              {isVerifyingPayment && verificationState === "verifying" && (
+                <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 text-xs font-semibold flex items-center gap-3">
+                  <div className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin flex-shrink-0"></div>
+                  <span>Verifying your ticket payment with the server. Please wait...</span>
+                </div>
+              )}
+
+              {(verificationState === "failed" || verificationState === "timed_out") && (
+                <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <span>{verificationError || "Payment verification failed."}</span>
+                  </div>
+                  <button
+                    onClick={handleRetryVerification}
+                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm"
+                  >
+                    Retry Verification
+                  </button>
+                </div>
+              )}
+
+              {myTicketsLoading ? (
+                // Skeletons loader for tickets
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-40 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : myTicketsError ? (
+                // Error state
+                <div className="flex flex-col items-center justify-center text-center py-12">
+                  <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
+                  <h4 className="text-sm font-semibold text-[#2D1B3D]">Error loading tickets</h4>
+                  <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{myTicketsError}</p>
+                  <button
+                    onClick={() => selectedEventId && fetchMyTicketsData(selectedEventId)}
+                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : myTickets.length === 0 && verificationState !== "verifying" ? (
+                // Empty state
+                <div className="flex flex-col items-center justify-center text-center py-12 bg-[#FAF8F5]/30 rounded-2xl border border-dashed border-[#E8C4B8]/60">
+                  <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-4">
+                    <Ticket className="w-6 h-6 text-[#C9A84C]" />
+                  </div>
+                  <p className="text-sm font-semibold text-[#2D1B3D]/60">You have not purchased any tickets for this event yet</p>
+                </div>
+              ) : (
+                // Tickets Grid
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {myTickets.map((ticket) => {
+                    const tierName = ticket.items?.map((i: any) => i.ticketTier?.name).join(", ") || "N/A";
+                    const quantity = ticket.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0;
+                    const paidDate = formatDateTime(ticket.paidAt || ticket.createdAt);
+
+                    return (
+                      <motion.div
+                        key={ticket.id}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group hover:shadow-md hover:border-[#C9A84C]/40 transition-all duration-200"
+                      >
+                        {/* Decorative ticket notch left & right */}
+                        <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white border border-[#E8C4B8]/40 rounded-full -translate-y-1/2 z-10 hidden sm:block"></div>
+                        <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white border border-[#E8C4B8]/40 rounded-full -translate-y-1/2 z-10 hidden sm:block"></div>
+
+                        <div>
+                          <div className="flex justify-between items-start gap-4 mb-3">
+                            <div>
+                              <h4 className="text-sm font-bold text-[#2D1B3D] truncate max-w-[160px]">
+                                {ticket.event?.title || "Event Name"}
+                              </h4>
+                              <p className="text-[10px] font-bold text-[#C9A84C] mt-0.5 uppercase tracking-wider">
+                                {tierName}
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200">
+                              ACTIVE
+                            </span>
+                          </div>
+
+                          <div className="border-t border-dashed border-[#E8C4B8]/40 my-3"></div>
+
+                          <div className="grid grid-cols-2 gap-y-2.5 text-[10px] font-medium text-[#2D1B3D]/70">
+                            <div>
+                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Quantity</p>
+                              <p className="font-bold text-[#2D1B3D] mt-0.5">{quantity} Ticket{quantity > 1 ? "s" : ""}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Amount Paid</p>
+                              <p className="font-bold text-[#2D1B3D] mt-0.5">{parseFloat(ticket.totalAmount).toLocaleString()} {ticket.currency}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Purchase Date</p>
+                              <p className="font-bold text-[#2D1B3D] mt-0.5">{paidDate}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Booking ID</p>
+                              <p className="font-mono font-bold text-[#2D1B3D] mt-0.5 truncate max-w-[100px] cursor-help" title={ticket.id}>
+                                #{ticket.id.slice(-8).toUpperCase()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-[#E8C4B8]/20 flex justify-between items-center">
+                          <span className="text-[9px] font-mono text-[#2D1B3D]/40">Status: PAID</span>
+                          <button
+                            onClick={() => {
+                              alert(`Booking Details:\nEvent: ${ticket.event?.title}\nTier: ${tierName}\nQuantity: ${quantity}\nPaid: ${parseFloat(ticket.totalAmount).toLocaleString()} ${ticket.currency}\nBooking Reference: ${ticket.id}`);
+                            }}
+                            className="text-[10px] font-bold text-[#C9A84C] hover:text-[#b0903c] transition-colors"
+                          >
+                            View Ticket
+                          </button>
                         </div>
                       </motion.div>
                     );
