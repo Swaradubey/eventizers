@@ -7,7 +7,7 @@ const useCases = [
   {
     title: "Consumers",
     desc: "Birthdays, weddings, dinners, and personal celebrations.",
-    image: "/assets/events/consumers.png",
+    image: "/images/event-types/consumers.webp",
     alt: "Elegant celebration dinner party with golden candlelight and champagne glasses",
     theme: {
       accentGradient: "from-[#E6B83E] to-[#F3D794]",
@@ -16,7 +16,7 @@ const useCases = [
   {
     title: "Businesses",
     desc: "Conferences, launches, networking, and team events.",
-    image: "/assets/events/businesses.png",
+    image: "/images/event-types/businesses.webp",
     alt: "Modern corporate conference and executive networking event",
     theme: {
       accentGradient: "from-[#3B82F6] to-[#60A5FA]",
@@ -25,7 +25,7 @@ const useCases = [
   {
     title: "Nonprofits",
     desc: "Fundraisers, galas, donation drives, and community events.",
-    image: "/assets/events/nonprofits.png",
+    image: "/images/event-types/nonprofits.webp",
     alt: "Elegant charity fundraising gala and community awards ceremony",
     theme: {
       accentGradient: "from-[#10B981] to-[#34D399]",
@@ -34,7 +34,7 @@ const useCases = [
   {
     title: "Enterprises",
     desc: "Multi-team events with SSO, approvals, and analytics.",
-    image: "/assets/events/enterprises.png",
+    image: "/images/event-types/enterprises.webp",
     alt: "Large scale enterprise technology summit and corporate convention",
     theme: {
       accentGradient: "from-[#8B5CF6] to-[#A78BFA]",
