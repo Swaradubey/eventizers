@@ -7,7 +7,8 @@ export default function AnalyticsIllustration() {
         viewBox="0 0 340 195"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-auto drop-shadow-sm select-none"
+        className="w-full max-w-full h-auto drop-shadow-sm select-none block"
+        style={{ maxWidth: "100%", width: "100%", height: "auto" }}
       >
         <defs>
           {/* Main Purple Background Gradient */}

@@ -41,10 +41,10 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="hiw-section">
-      <div className="hiw-container">
+    <section id="how-it-works" className="hiw-section" style={{ overflow: "hidden", width: "100%", maxWidth: "100%" }}>
+      <div className="hiw-container" style={{ width: "100%", maxWidth: "80rem", overflow: "hidden" }}>
         {/* Section Header */}
-        <div className="text-center" style={{ marginBottom: "clamp(2rem, 4vw, 4rem)" }}>
+        <div className="text-center" style={{ marginBottom: "clamp(2rem, 4vw, 4rem)", width: "100%", maxWidth: "100%" }}>
           {/* Badge */}
           <div className="hiw-badge">
             <Layers className="hiw-badge-icon" />
@@ -61,7 +61,7 @@ export default function HowItWorks() {
         </div>
 
         {/* Timeline grid */}
-        <div className="hiw-timeline">
+        <div className="hiw-timeline" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
           {/* Desktop timeline connector line */}
           <div className="hiw-timeline-line" />
 
