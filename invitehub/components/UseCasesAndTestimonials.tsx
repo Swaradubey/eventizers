@@ -1,46 +1,43 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 
 const useCases = [
   {
     title: "Consumers",
     desc: "Birthdays, weddings, dinners, and personal celebrations.",
-    emoji: "🎉",
+    image: "/assets/events/consumers.png",
+    alt: "Elegant celebration dinner party with golden candlelight and champagne glasses",
     theme: {
       accentGradient: "from-[#E6B83E] to-[#F3D794]",
-      iconBg: "from-[#FFFDF5] to-[#FCEECF]",
-      iconBorder: "border-[#E6B83E]/20 shadow-[0_8px_20px_-6px_rgba(230,184,62,0.25)]",
     },
   },
   {
     title: "Businesses",
     desc: "Conferences, launches, networking, and team events.",
-    emoji: "🏢",
+    image: "/assets/events/businesses.png",
+    alt: "Modern corporate conference and executive networking event",
     theme: {
       accentGradient: "from-[#3B82F6] to-[#60A5FA]",
-      iconBg: "from-[#F0F7FF] to-[#D8EAFF]",
-      iconBorder: "border-[#3B82F6]/20 shadow-[0_8px_20px_-6px_rgba(59,130,246,0.25)]",
     },
   },
   {
     title: "Nonprofits",
     desc: "Fundraisers, galas, donation drives, and community events.",
-    emoji: "🤝",
+    image: "/assets/events/nonprofits.png",
+    alt: "Elegant charity fundraising gala and community awards ceremony",
     theme: {
       accentGradient: "from-[#10B981] to-[#34D399]",
-      iconBg: "from-[#F0FDF4] to-[#DCFCE7]",
-      iconBorder: "border-[#10B981]/20 shadow-[0_8px_20px_-6px_rgba(16,185,129,0.25)]",
     },
   },
   {
     title: "Enterprises",
     desc: "Multi-team events with SSO, approvals, and analytics.",
-    emoji: "⚡",
+    image: "/assets/events/enterprises.png",
+    alt: "Large scale enterprise technology summit and corporate convention",
     theme: {
       accentGradient: "from-[#8B5CF6] to-[#A78BFA]",
-      iconBg: "from-[#FAF5FF] to-[#F3E8FF]",
-      iconBorder: "border-[#8B5CF6]/20 shadow-[0_8px_20px_-6px_rgba(139,92,246,0.25)]",
     },
   },
 ];
@@ -111,7 +108,7 @@ export default function UseCasesAndTestimonials() {
   return (
     <>
       {/* Use cases */}
-      <section className="relative py-28 md:py-32 overflow-hidden bg-[#FFFCF8]">
+      <section className="relative py-24 md:py-32 overflow-hidden bg-[#FFFCF8] w-full">
         {/* Ambient glow orbs & mesh gradient with noise */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
           {/* Soft purple radial glow */}
@@ -129,7 +126,7 @@ export default function UseCasesAndTestimonials() {
           </svg>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 z-10">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 w-full">
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -155,36 +152,47 @@ export default function UseCasesAndTestimonials() {
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={containerVariants}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 w-full"
           >
             {useCases.map((uc) => (
               <motion.div
                 key={uc.title}
                 variants={cardVariants}
-                className="group relative overflow-hidden p-8 rounded-[24px] bg-white/40 backdrop-blur-xl border border-white/60 hover:border-white/80 shadow-[0_12px_40px_-15px_rgba(45,27,61,0.04),0_1px_2px_rgba(45,27,61,0.01)] hover:shadow-[0_24px_48px_-15px_rgba(45,27,61,0.12)] hover:-translate-y-2 transition-all duration-500 ease-out cursor-pointer flex flex-col items-start min-h-[280px]"
+                className="group relative overflow-hidden rounded-[24px] bg-white/60 backdrop-blur-xl border border-white/80 shadow-[0_12px_40px_-15px_rgba(45,27,61,0.06),0_1px_2px_rgba(45,27,61,0.02)] hover:shadow-[0_24px_48px_-15px_rgba(45,27,61,0.14)] hover:-translate-y-1.5 transition-all duration-500 ease-out cursor-pointer flex flex-col h-full w-full"
               >
                 {/* Thin top accent line using card theme color */}
-                <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${uc.theme.accentGradient} opacity-85 group-hover:opacity-100 transition-opacity`} />
+                <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${uc.theme.accentGradient} opacity-85 group-hover:opacity-100 transition-opacity z-20`} />
 
-                {/* Premium Icon Area */}
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${uc.theme.iconBg} ${uc.theme.iconBorder} flex items-center justify-center mb-8 group-hover:scale-105 transition-transform duration-300`}>
-                  <span className="text-2xl select-none">
-                    {uc.emoji}
-                  </span>
+                {/* Premium Image Area */}
+                <div className="relative w-full aspect-[16/10] overflow-hidden rounded-t-[23px] bg-[#F7F3EE]">
+                  <Image
+                    src={uc.image}
+                    alt={uc.alt}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 ease-out"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </div>
 
-                {/* Category Title */}
-                <h3
-                  className="font-display text-[26px] font-bold text-[#2D1B3D] mb-4"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
-                  {uc.title}
-                </h3>
+                {/* Card Text Content */}
+                <div className="p-6 sm:p-7 flex flex-col flex-grow justify-between">
+                  <div>
+                    {/* Category Title */}
+                    <h3
+                      className="font-display text-2xl font-bold text-[#2D1B3D] mb-2.5"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      {uc.title}
+                    </h3>
 
-                {/* Description */}
-                <p className="text-[16px] text-[#2D1B3D]/70 leading-[1.7] font-medium">
-                  {uc.desc}
-                </p>
+                    {/* Description */}
+                    <p className="text-[15px] text-[#2D1B3D]/75 leading-relaxed font-medium">
+                      {uc.desc}
+                    </p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </motion.div>
