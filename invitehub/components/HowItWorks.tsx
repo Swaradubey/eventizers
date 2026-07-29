@@ -44,7 +44,7 @@ export default function HowItWorks() {
     <section id="how-it-works" className="hiw-section">
       <div className="hiw-container">
         {/* Section Header */}
-        <div className="text-center" style={{ marginBottom: "4rem" }}>
+        <div className="text-center" style={{ marginBottom: "clamp(2rem, 4vw, 4rem)" }}>
           {/* Badge */}
           <div className="hiw-badge">
             <Layers className="hiw-badge-icon" />
