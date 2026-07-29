@@ -1,10 +1,13 @@
-import { Wand2, Send, BarChart3, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
+import AiIllustration from "./illustrations/AiIllustration";
+import ChannelsIllustration from "./illustrations/ChannelsIllustration";
+import AnalyticsIllustration from "./illustrations/AnalyticsIllustration";
 
 const steps = [
   {
-    icon: Wand2,
+    illustration: AiIllustration,
     accentColor: "#C9A84C",
-    iconContainerClass: "hiw-icon-container-gold",
+    illustrationContainerClass: "hiw-illustration-container-gold",
     badgeClass: "hiw-step-badge-gold",
     cardClass: "hiw-card-gold",
     dotColor: "#C9A84C",
@@ -13,9 +16,9 @@ const steps = [
     body: "Describe your event and let AI build the page, invitation, RSVP questions, and reminder schedule in seconds.",
   },
   {
-    icon: Send,
+    illustration: ChannelsIllustration,
     accentColor: "#7A9E7E",
-    iconContainerClass: "hiw-icon-container-emerald",
+    illustrationContainerClass: "hiw-illustration-container-emerald",
     badgeClass: "hiw-step-badge-emerald",
     cardClass: "hiw-card-emerald",
     dotColor: "#7A9E7E",
@@ -24,9 +27,9 @@ const steps = [
     body: "Send beautiful invitations over email, SMS, and WhatsApp with personalized greetings and one-click RSVP.",
   },
   {
-    icon: BarChart3,
+    illustration: AnalyticsIllustration,
     accentColor: "#9070c0",
-    iconContainerClass: "hiw-icon-container-purple",
+    illustrationContainerClass: "hiw-illustration-container-purple",
     badgeClass: "hiw-step-badge-purple",
     cardClass: "hiw-card-purple",
     dotColor: "#9070c0",
@@ -72,7 +75,7 @@ export default function HowItWorks() {
 
           {/* Step Cards */}
           {steps.map((step, idx) => {
-            const Icon = step.icon;
+            const Illustration = step.illustration;
             const stepNum = String(idx + 1).padStart(2, "0");
 
             return (
@@ -85,14 +88,11 @@ export default function HowItWorks() {
 
                 {/* Card */}
                 <div className={`hiw-card ${step.cardClass}`}>
-                  {/* Icon container */}
+                  {/* Premium SaaS Illustration Container */}
                   <div
-                    className={`hiw-icon-container ${step.iconContainerClass}`}
+                    className={`hiw-illustration-container ${step.illustrationContainerClass}`}
                   >
-                    <Icon
-                      className="hiw-icon"
-                      style={{ color: step.accentColor }}
-                    />
+                    <Illustration />
                   </div>
 
                   {/* Step badge */}
