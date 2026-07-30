@@ -1430,6 +1430,8 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: #C9A84C;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .hiw-badge-icon {
@@ -1450,6 +1452,7 @@ body {
   margin-bottom: 1rem;
   word-break: break-word;
   overflow-wrap: anywhere;
+  white-space: normal;
   max-width: 100%;
 }
 
@@ -1461,6 +1464,7 @@ body {
   margin: 0 auto;
   word-break: break-word;
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* Timeline container */
@@ -1677,6 +1681,7 @@ body {
   min-width: 0;
   word-break: break-word;
   overflow-wrap: anywhere;
+  white-space: normal;
   box-sizing: border-box;
 }
 
@@ -1691,6 +1696,7 @@ body {
   min-width: 0;
   word-break: break-word;
   overflow-wrap: anywhere;
+  white-space: normal;
   box-sizing: border-box;
 }
 
@@ -1700,7 +1706,7 @@ body {
 .hiw-card-purple:hover { border-color: rgba(144, 112, 192, 0.3); }
 
 /* ═══════════════════════════════════════════════════════════
-   MEDIA QUERIES (DEFINED AFTER BASE CLASSES TO PRESERVE OVERRIDES)
+   MEDIA QUERIES FOR HOW IT WORKS
    ═══════════════════════════════════════════════════════════ */
 
 @media (max-width: 1023px) {
@@ -1723,6 +1729,7 @@ body {
     gap: 1.5rem;
     width: 100%;
     max-width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .hiw-vertical-line {
@@ -1784,13 +1791,15 @@ body {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .hiw-timeline {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
     align-items: stretch;
   }
+}
 
+@media (min-width: 768px) {
   .hiw-timeline-line {
     display: block;
     position: absolute;
@@ -1841,6 +1850,13 @@ body {
 }
 
 @media (min-width: 1024px) {
+  .hiw-timeline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
   .hiw-timeline {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 2rem;
@@ -2326,5 +2342,74 @@ html[data-theme="dark"] .bg-gray-50 {
 /* Modals overlays & portalled elements */
 html[data-theme="dark"] .bg-\[\#2D1B3D\]\/60 {
   background-color: rgba(18, 10, 26, 0.7) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INVITATION DESIGNER PREVIEW LAYOUT RULES
+   ═══════════════════════════════════════════════════════════ */
+
+.invitation-preview {
+  width: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: white;
+}
+
+.invitation-image-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.invitation-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.invitation-content {
+  position: relative;
+  width: 100%;
+  padding: 24px 32px 32px;
+  box-sizing: border-box;
+  background: white;
+  height: auto;
+}
+
+@media (max-width: 1024px) {
+  .invitation-content {
+    padding: 20px 24px 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .invitation-content {
+    padding: 16px 18px 24px;
+  }
+}
+
+.invitation-title {
+  position: static;
+  margin: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.invitation-subtitle {
+  position: static;
+  margin-top: 8px;
+  margin-bottom: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.invitation-description {
+  position: static;
+  margin-top: 28px;
+  margin-bottom: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
 }
 

@@ -943,51 +943,62 @@ function InvitationDesignerPageContent() {
               </div>
 
               {/* Mockup Container */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-3xl p-6 shadow-sm flex flex-col items-center">
+              <div className="bg-white border border-[#E8C4B8]/30 rounded-3xl p-6 shadow-sm flex flex-col items-center w-full">
                 <span className="text-[10px] font-bold text-[#2D1B3D]/40 uppercase tracking-widest mb-4">Live Preview Screen</span>
 
                 {/* Device Screen frame */}
                 <div
-                  className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-[#E8C4B8]/30 min-h-[550px] flex flex-col transition-all duration-300"
-                  style={{ backgroundColor: invitation.backgroundColor }}
+                  className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-[#E8C4B8]/30 transition-all duration-300"
+                  style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                 >
                   {/* Image cover preview */}
-                  {invitation.imageUrl ? (
-                    <div className="w-full bg-[#F0EBE8]/60 flex items-center justify-center" style={{ minHeight: "180px", maxHeight: "300px" }}>
+                  <div className="invitation-image-wrapper">
+                    {invitation.imageUrl ? (
                       <img
                         src={invitation.imageUrl}
                         alt="Invitation cover"
-                        className="w-full h-full object-contain"
+                        className="invitation-image"
                       />
-                    </div>
-                  ) : (
-                    <div className="w-full h-24 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
-                      <span className="text-xs text-[#2D1B3D]/20 italic">No cover image uploaded</span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-32 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
+                        <span className="text-xs text-[#2D1B3D]/20 italic">No cover image uploaded</span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Body Text preview */}
                   <div
-                    className="flex-1 p-8 flex flex-col justify-between items-center text-center space-y-6"
-                    style={{ textAlign: invitation.textAlignment as any, color: invitation.textColor }}
+                    className="invitation-content flex flex-col justify-between items-center space-y-6"
+                    style={{
+                      textAlign: (invitation.textAlignment || "center") as any,
+                      color: invitation.textColor,
+                      backgroundColor: invitation.backgroundColor || "#ffffff"
+                    }}
                   >
 
                     {/* Headers */}
-                    <div className="w-full space-y-3">
-                      <h2
+                    <div className="w-full">
+                      <h1
+                        className="invitation-title text-balance"
                         style={{
                           fontSize: `${invitation.titleSize}px`,
                           fontWeight: invitation.fontWeight,
                           fontFamily: invitation.fontFamily === "Playfair Display" ? "'Playfair Display', Georgia, serif" : invitation.fontFamily,
-                          lineHeight: 1.15
+                          lineHeight: 1.15,
+                          color: invitation.textColor,
+                          textAlign: (invitation.textAlignment || "center") as any
                         }}
-                        className="text-balance"
                       >
                         {invitation.title || "You're Invited"}
-                      </h2>
+                      </h1>
 
                       {invitation.subtitle && (
-                        <p className="text-sm opacity-80 font-medium font-body leading-relaxed max-w-md mx-auto">
+                        <p
+                          className="invitation-subtitle opacity-80 font-medium font-body leading-relaxed"
+                          style={{
+                            textAlign: (invitation.textAlignment || "center") as any
+                          }}
+                        >
                           {invitation.subtitle}
                         </p>
                       )}
@@ -995,7 +1006,12 @@ function InvitationDesignerPageContent() {
 
                     {/* Main Description */}
                     {invitation.mainText && (
-                      <p className="text-xs opacity-70 leading-relaxed font-body max-w-sm mx-auto">
+                      <p
+                        className="invitation-description opacity-70 leading-relaxed font-body"
+                        style={{
+                          textAlign: (invitation.textAlignment || "center") as any
+                        }}
+                      >
                         {invitation.mainText}
                       </p>
                     )}
@@ -1111,120 +1127,140 @@ function InvitationDesignerPageContent() {
                     </button>
                   </div>
 
-                  {/* Cover Image */}
-                  {invitation.imageUrl && !coverImgError ? (
-                    <div className="w-full bg-[#F0EBE8] flex items-center justify-center" style={{ minHeight: "200px", maxHeight: "50vh" }}>
-                      <img
-                        src={invitation.imageUrl}
-                        alt="Invitation cover"
-                        className="w-full h-full object-contain"
-                        style={{ maxHeight: "50vh" }}
-                        onError={() => setCoverImgError(true)}
-                      />
-                    </div>
-                  ) : invitation.imageUrl && coverImgError ? (
-                    <div className="w-full h-48 bg-gradient-to-br from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
-                      <div className="text-center">
-                        <ImageIcon className="w-10 h-10 text-[#2D1B3D]/20 mx-auto mb-2" />
-                        <p className="text-xs text-[#2D1B3D]/30">Cover image failed to load</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-16 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent"></div>
-                  )}
-
-                  {/* Invitation typography contents */}
                   <div
-                    className="flex-1 px-6 sm:px-10 py-8 sm:py-10 flex flex-col justify-between items-center text-center space-y-8"
-                    style={{ textAlign: invitation.textAlignment as any, color: invitation.textColor }}
+                    className="invitation-preview w-full"
+                    style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                   >
-
-                    {/* Headers */}
-                    <div className="space-y-4 w-full max-w-2xl mx-auto">
-                      <h1
-                        style={{
-                          fontSize: `${invitation.titleSize}px`,
-                          fontWeight: invitation.fontWeight,
-                          fontFamily: invitation.fontFamily === "Playfair Display" ? "'Playfair Display', Georgia, serif" : invitation.fontFamily,
-                          lineHeight: 1.1
-                        }}
-                        className="text-balance"
-                      >
-                        {invitation.title || "You're Invited!"}
-                      </h1>
-
-                      {invitation.subtitle && (
-                        <p className="text-base opacity-80 font-medium font-body leading-relaxed max-w-md mx-auto">
-                          {invitation.subtitle}
-                        </p>
+                    {/* Cover Image */}
+                    <div className="invitation-image-wrapper">
+                      {invitation.imageUrl && !coverImgError ? (
+                        <img
+                          src={invitation.imageUrl}
+                          alt="Invitation cover"
+                          className="invitation-image"
+                          onError={() => setCoverImgError(true)}
+                        />
+                      ) : invitation.imageUrl && coverImgError ? (
+                        <div className="w-full h-48 bg-gradient-to-br from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
+                          <div className="text-center">
+                            <ImageIcon className="w-10 h-10 text-[#2D1B3D]/20 mx-auto mb-2" />
+                            <p className="text-xs text-[#2D1B3D]/30">Cover image failed to load</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-16 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent"></div>
                       )}
                     </div>
 
-                    {/* Description info */}
-                    {invitation.mainText && (
-                      <p className="text-sm opacity-70 leading-relaxed font-body max-w-lg mx-auto">
-                        {invitation.mainText}
-                      </p>
-                    )}
+                    {/* Invitation typography contents */}
+                    <div
+                      className="invitation-content flex flex-col justify-between items-center space-y-8"
+                      style={{
+                        textAlign: (invitation.textAlignment || "center") as any,
+                        color: invitation.textColor,
+                        backgroundColor: invitation.backgroundColor || "#ffffff"
+                      }}
+                    >
 
-                    {/* Date location boxes */}
-                    {event ? (
-                      <div
-                        className="w-full max-w-md p-5 rounded-xl space-y-4 text-left border border-opacity-10 backdrop-blur-md"
-                        style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.4)" }}
-                      >
-                        <div className="flex gap-3 items-start">
-                          <Calendar
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
-                            <span className="text-xs font-bold font-body">{formatEventDate(event.eventDate)}</span>
-                          </div>
-                        </div>
+                      {/* Headers */}
+                      <div className="w-full max-w-2xl">
+                        <h1
+                          className="invitation-title text-balance"
+                          style={{
+                            fontSize: `${invitation.titleSize}px`,
+                            fontWeight: invitation.fontWeight,
+                            fontFamily: invitation.fontFamily === "Playfair Display" ? "'Playfair Display', Georgia, serif" : invitation.fontFamily,
+                            lineHeight: 1.1,
+                            color: invitation.textColor,
+                            textAlign: (invitation.textAlignment || "center") as any
+                          }}
+                        >
+                          {invitation.title || "You're Invited!"}
+                        </h1>
 
-                        <div className="flex gap-3 items-start">
-                          <Clock
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
-                            <span className="text-xs font-bold font-body">{event.eventTime}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 items-start">
-                          <MapPin
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
-                            <span className="text-xs font-bold font-body">{event.venue}</span>
-                          </div>
-                        </div>
+                        {invitation.subtitle && (
+                          <p
+                            className="invitation-subtitle opacity-80 font-medium font-body leading-relaxed"
+                            style={{
+                              textAlign: (invitation.textAlignment || "center") as any
+                            }}
+                          >
+                            {invitation.subtitle}
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <div className="w-full max-w-md p-4 border border-dashed rounded-xl text-center text-xs opacity-50">
-                        No active event parameters synced.
-                      </div>
-                    )}
 
-                    {/* Confirm RSVP button */}
-                    <div className="w-full max-w-sm pt-4">
-                      <button
-                        type="button"
-                        className="w-full py-4 px-6 text-sm font-bold text-white shadow-lg active:scale-98 transition-all hover:opacity-95 focus:outline-none"
-                        style={{
-                          backgroundColor: invitation.buttonColor,
-                          borderRadius: `${invitation.buttonRadius}px`,
-                        }}
-                      >
-                        {invitation.buttonText}
-                      </button>
-                      <p className="text-[10px] opacity-45 mt-2.5 font-semibold">Brought to you by InviteHub</p>
+                      {/* Description info */}
+                      {invitation.mainText && (
+                        <p
+                          className="invitation-description opacity-70 leading-relaxed font-body"
+                          style={{
+                            textAlign: (invitation.textAlignment || "center") as any
+                          }}
+                        >
+                          {invitation.mainText}
+                        </p>
+                      )}
+
+                      {/* Date location boxes */}
+                      {event ? (
+                        <div
+                          className="w-full max-w-md p-5 rounded-xl space-y-4 text-left border border-opacity-10 backdrop-blur-md"
+                          style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.4)" }}
+                        >
+                          <div className="flex gap-3 items-start">
+                            <Calendar
+                              className="w-4 h-4 flex-shrink-0 mt-0.5"
+                              style={{ color: invitation.accentColor }}
+                            />
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
+                              <span className="text-xs font-bold font-body">{formatEventDate(event.eventDate)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 items-start">
+                            <Clock
+                              className="w-4 h-4 flex-shrink-0 mt-0.5"
+                              style={{ color: invitation.accentColor }}
+                            />
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
+                              <span className="text-xs font-bold font-body">{event.eventTime}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 items-start">
+                            <MapPin
+                              className="w-4 h-4 flex-shrink-0 mt-0.5"
+                              style={{ color: invitation.accentColor }}
+                            />
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
+                              <span className="text-xs font-bold font-body">{event.venue}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full max-w-md p-4 border border-dashed rounded-xl text-center text-xs opacity-50">
+                          No active event parameters synced.
+                        </div>
+                      )}
+
+                      {/* Confirm RSVP button */}
+                      <div className="w-full max-w-sm pt-4">
+                        <button
+                          type="button"
+                          className="w-full py-4 px-6 text-sm font-bold text-white shadow-lg active:scale-98 transition-all hover:opacity-95 focus:outline-none"
+                          style={{
+                            backgroundColor: invitation.buttonColor,
+                            borderRadius: `${invitation.buttonRadius}px`,
+                          }}
+                        >
+                          {invitation.buttonText}
+                        </button>
+                        <p className="text-[10px] opacity-45 mt-2.5 font-semibold text-center">Brought to you by InviteHub</p>
+                      </div>
                     </div>
                   </div>
                 </div>
