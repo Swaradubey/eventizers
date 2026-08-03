@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../invitehub/context/AuthContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import { BillingAPI, BillingInfoResponse, PaymentMethod, Invoice } from "../../../services/billingService";
@@ -10,6 +10,7 @@ import BillingUsageCard from "../../../invitehub/components/dashboard/billing/Bi
 import PlanCard from "../../../invitehub/components/dashboard/billing/PlanCard";
 import UpdatePaymentMethodModal from "../../../invitehub/components/dashboard/billing/UpdatePaymentMethodModal";
 import useBillingUsage from "../../../invitehub/hooks/useBillingUsage";
+import { PAID_PLAN_IDS, type PlanId } from "../../../lib/plans";
 import {
   RotateCcw,
   AlertCircle,
@@ -24,6 +25,17 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function BillingPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read ?plan= query param — set by Login page after plan selection
+  const urlPlanParam = searchParams.get("plan")?.toLowerCase().trim() || null;
+  const pendingCheckoutPlan: PlanId | null = (
+    urlPlanParam && (PAID_PLAN_IDS as string[]).includes(urlPlanParam)
+      ? (urlPlanParam as PlanId)
+      : urlPlanParam === "free"
+      ? "free"
+      : null
+  ) as PlanId | null;
 
   // Load dynamic billing usage
   const {
@@ -62,6 +74,8 @@ export default function BillingPage() {
   const currentFetchId = useRef(0);
   const fetchedUserId = useRef<number | null>(null);
   const invoiceFetchId = useRef(0);
+  // Track whether we've already triggered the pending plan checkout
+  const pendingPlanHandled = useRef(false);
 
   // Authentication check
   useEffect(() => {
@@ -311,22 +325,21 @@ export default function BillingPage() {
         return;
       }
 
-      // Free plan - use direct subscription update
-      const res = await BillingAPI.subscribeToPlan(planId);
-      if (res && res.requiresPaymentMethod && res.clientSecret) {
-        // Stripe Customer needs a payment method.
-        setPendingPlanId(planId);
-        setShowUpdateModal(true);
-        triggerToast("Please add a card to complete the subscription.", "success");
-      } else if (res && res.success) {
-        triggerToast(`Successfully subscribed to the ${planId.toUpperCase()} plan!`);
+      // Free plan - use the dedicated activate-free endpoint
+      const res = await BillingAPI.activateFreePlan();
+      if (res && res.success) {
+        triggerToast(
+          res.alreadyActive
+            ? "Free plan is already active on your account."
+            : "Free plan activated successfully!"
+        );
         await fetchBillingData();
         refetchUsage();
         if (refreshUser) {
           await refreshUser();
         }
       } else {
-        triggerToast("Failed to update your subscription plan.", "error");
+        triggerToast("Failed to activate the Free plan.", "error");
       }
     } catch (err: any) {
       console.error("Update Plan Error:", err);
@@ -335,6 +348,25 @@ export default function BillingPage() {
       setUpdating(false);
     }
   };
+
+  // After billing data loads, auto-trigger checkout if ?plan= is in URL.
+  // This effect must appear AFTER handleUpdatePlan is declared.
+  useEffect(() => {
+    if (
+      !authLoading &&
+      user &&
+      !loading &&
+      billingInfo &&
+      pendingCheckoutPlan &&
+      !pendingPlanHandled.current
+    ) {
+      pendingPlanHandled.current = true;
+      // Remove ?plan= from the URL to prevent loops on back/refresh
+      window.history.replaceState({}, "", window.location.pathname);
+      handleUpdatePlan(pendingCheckoutPlan);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, loading, billingInfo, pendingCheckoutPlan]);
 
   // Show a spinner only while auth is still initialising (hydration phase).
   // Once authLoading is false, we know whether the user is logged in or not.
@@ -714,7 +746,7 @@ export default function BillingPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                {billingInfo?.plans?.map((plan, index) => (
+                {(Array.isArray(billingInfo?.plans) ? billingInfo.plans : []).map((plan, index) => (
                   <motion.div
                     key={plan.id}
                     initial={{ opacity: 0, y: 15 }}

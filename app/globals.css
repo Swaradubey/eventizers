@@ -24,6 +24,18 @@ html[data-theme="dark"], html.dark {
   --mist: #20152b;
 }
 
+/* Premium Dark Pink KPI Card Styling */
+.kpi-card-pink {
+  background: linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%) !important;
+  box-shadow: 0 12px 32px rgba(139,30,90,0.25) !important;
+  transition: all 0.25s ease !important;
+}
+
+.kpi-card-pink:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 18px 40px rgba(139,30,90,0.35) !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

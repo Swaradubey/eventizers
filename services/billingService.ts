@@ -80,6 +80,15 @@ export interface CheckoutSessionStatusResponse {
   subscriptionStatus: string | null;
 }
 
+export interface ActivateFreePlanResponse {
+  success: boolean;
+  message?: string;
+  plan?: string;
+  subscriptionStatus?: string;
+  alreadyActive?: boolean;
+  error?: string;
+}
+
 export const BillingAPI = {
   getBillingInfo: async (bypassCache = false): Promise<BillingInfoResponse> => {
     const params = bypassCache ? { _t: Date.now() } : undefined;
@@ -137,6 +146,11 @@ export const BillingAPI = {
 
   getCheckoutSessionStatus: async (sessionId: string): Promise<CheckoutSessionStatusResponse> => {
     const response = await API.get<CheckoutSessionStatusResponse>(`/stripe/checkout-session/${sessionId}`);
+    return response.data;
+  },
+
+  activateFreePlan: async (): Promise<ActivateFreePlanResponse> => {
+    const response = await API.post<ActivateFreePlanResponse>("/billing/activate-free");
     return response.data;
   }
 };

@@ -481,17 +481,28 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            style={{
+              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
+              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
+              transition: "all 0.25s ease",
+            }}
+            className="kpi-card-pink rounded-2xl p-5"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#2D1B3D]/5 flex items-center justify-center flex-shrink-0">
-                <Users className="w-6 h-6 text-[#2D1B3D]" />
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
+                <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
                   Total Guests
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-bold text-white mt-0.5">
                   {loading ? "..." : totalGuestsCount}
                 </p>
               </div>
@@ -503,17 +514,28 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            style={{
+              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
+              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
+              transition: "all 0.25s ease",
+            }}
+            className="kpi-card-pink rounded-2xl p-5"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-6 h-6 text-[#C9A84C]" />
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
+                <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
                   Total Events
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-bold text-white mt-0.5">
                   {loading ? "..." : totalEventsCount}
                 </p>
               </div>
@@ -525,17 +547,28 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            style={{
+              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
+              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
+              transition: "all 0.25s ease",
+            }}
+            className="kpi-card-pink rounded-2xl p-5"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-6 h-6 text-emerald-600" />
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
                   Imported This Month
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-bold text-white mt-0.5">
                   {loading ? "..." : importedThisMonthCount}
                 </p>
               </div>
