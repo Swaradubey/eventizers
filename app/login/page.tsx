@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../invitehub/context/AuthContext";
 import { Sparkles, ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
@@ -16,7 +16,7 @@ function readValidPlan(params: URLSearchParams): PlanId | null {
   return null;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const { user, login, error, setError } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -282,3 +282,16 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
+        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  );
+}
+

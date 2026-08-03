@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../invitehub/context/AuthContext";
 import Navbar from "../../../invitehub/components/Navbar";
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function BillingPage() {
+function BillingContent() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -806,3 +806,16 @@ export default function BillingPage() {
     </div>
   );
 }
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      </div>
+    }>
+      <BillingContent />
+    </Suspense>
+  );
+}
+
