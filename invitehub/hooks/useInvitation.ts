@@ -3,7 +3,9 @@ import invitationService from "../services/invitationService";
 import eventService, { Event } from "../services/eventService";
 import { Invitation, InvitationPayload } from "../types/invitationTypes";
 
-const TEMPLATES_CONFIG: Record<string, {
+import { NEW_TEMPLATES_CONFIG } from "../lib/newTemplatesData";
+
+const ORIGINAL_TEMPLATES_CONFIG: Record<string, {
   image: string;
   accentColor: string;
   backgroundColor: string;
@@ -148,55 +150,55 @@ const TEMPLATES_CONFIG: Record<string, {
   },
   "tpl-grad-degree": {
     image: "/assets/templates/graduation_degree.jpg",
-    accentColor: "#1abc9c",
+    accentColor: "#2980b9",
     backgroundColor: "#FAF8F5",
     textColor: "#2D1B3D",
     titleSize: 44,
     fontWeight: "600",
     fontFamily: "Inter",
-    buttonColor: "#203a43",
-    buttonRadius: 6,
+    buttonColor: "#2980b9",
+    buttonRadius: 8,
     textAlignment: "center",
-    description: "You are cordially invited to witness the formal conferring of degrees and academic achievements."
+    description: "Celebrating the hard work, dedication, and degree completion of our newest graduates."
   },
   "tpl-comm-meetup": {
     image: "/assets/templates/community_meetup.jpg",
     accentColor: "#11998e",
     backgroundColor: "#FAF8F5",
     textColor: "#2D1B3D",
+    titleSize: 46,
+    fontWeight: "700",
+    fontFamily: "Playfair Display",
+    buttonColor: "#11998e",
+    buttonRadius: 12,
+    textAlignment: "center",
+    description: "Gather with friends, neighbors, and local community members for a fun afternoon of networking and conversation."
+  },
+  "tpl-comm-celebration": {
+    image: "/assets/templates/community_celebration.jpg",
+    accentColor: "#38ef7d",
+    backgroundColor: "#FAF8F5",
+    textColor: "#2D1B3D",
     titleSize: 48,
     fontWeight: "700",
     fontFamily: "Playfair Display",
     buttonColor: "#11998e",
-    buttonRadius: 20,
+    buttonRadius: 12,
     textAlignment: "center",
-    description: "Connect with your neighbors for a lovely afternoon of conversation, sharing local updates, and outdoor fun."
+    description: "A joyful celebration highlighting the achievements, unity, and future of our local neighborhood."
   },
-  "tpl-comm-celebration": {
-    image: "/assets/templates/community_celebration.jpg",
-    accentColor: "#ff5e62",
+  "tpl-comm-volunteer": {
+    image: "/assets/templates/community_volunteer.jpg",
+    accentColor: "#e07090",
     backgroundColor: "#FAF8F5",
     textColor: "#2D1B3D",
     titleSize: 46,
     fontWeight: "700",
-    fontFamily: "Playfair Display",
-    buttonColor: "#ff5e62",
-    buttonRadius: 14,
-    textAlignment: "center",
-    description: "Join us for our annual block party! Expect live music, potluck tables, and games for all ages."
-  },
-  "tpl-comm-volunteer": {
-    image: "/assets/templates/community_volunteer.jpg",
-    accentColor: "#e91e63",
-    backgroundColor: "#FAF8F5",
-    textColor: "#2D1B3D",
-    titleSize: 48,
-    fontWeight: "700",
-    fontFamily: "Playfair Display",
-    buttonColor: "#e91e63",
+    fontFamily: "Inter",
+    buttonColor: "#e07090",
     buttonRadius: 10,
     textAlignment: "center",
-    description: "To the volunteers who make a difference: this evening is all about celebrating and thanking you."
+    description: "Thanking our dedicated volunteers who give their time, heart, and energy to make our community thrive."
   },
   "tpl-net-professional": {
     image: "/assets/templates/networking_professional.jpg",
@@ -209,18 +211,18 @@ const TEMPLATES_CONFIG: Record<string, {
     buttonColor: "#4e4376",
     buttonRadius: 8,
     textAlignment: "center",
-    description: "Expand your network and share industry insights with leading professionals and executives in a relaxed setting."
+    description: "Connect with industry professionals, share insights, and expand your career network in a relaxed setting."
   },
   "tpl-net-founders": {
     image: "/assets/templates/networking_founders.jpg",
-    accentColor: "#00c6ff",
-    backgroundColor: "#2D1B3D",
-    textColor: "#FAF8F5",
+    accentColor: "#f6d365",
+    backgroundColor: "#FAF8F5",
+    textColor: "#2D1B3D",
     titleSize: 46,
     fontWeight: "700",
-    fontFamily: "Inter",
-    buttonColor: "#00c6ff",
-    buttonRadius: 8,
+    fontFamily: "Playfair Display",
+    buttonColor: "#fda085",
+    buttonRadius: 12,
     textAlignment: "center",
     description: "A gathering of minds for startup founders, product creators, and innovators. Let's discuss ideas, challenges, and collaborations."
   },
@@ -237,6 +239,23 @@ const TEMPLATES_CONFIG: Record<string, {
     textAlignment: "center",
     description: "Join local entrepreneurs and business owners to build meaningful connections, explore opportunities, and grow together."
   }
+};
+
+const TEMPLATES_CONFIG: Record<string, {
+  image: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  titleSize: number;
+  fontWeight: string;
+  fontFamily: string;
+  buttonColor: string;
+  buttonRadius: number;
+  textAlignment: string;
+  description: string;
+}> = {
+  ...ORIGINAL_TEMPLATES_CONFIG,
+  ...NEW_TEMPLATES_CONFIG
 };
 
 export const useInvitation = (eventId: string | null) => {

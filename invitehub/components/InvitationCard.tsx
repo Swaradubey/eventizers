@@ -23,9 +23,12 @@ const getCategoryBadgeStyles = (type: string) => {
   if (normalized.includes("corporate")) return "bg-blue-500/25 border-blue-200/30 text-white";
   if (normalized.includes("dinner")) return "bg-amber-500/25 border-amber-200/30 text-white";
   if (normalized.includes("baby")) return "bg-emerald-500/25 border-emerald-200/30 text-white";
-  if (normalized.includes("charity") || normalized.includes("gala")) return "bg-yellow-500/25 border-yellow-200/30 text-white";
+  if (normalized.includes("charity") || normalized.includes("gala") || normalized.includes("fundraiser")) return "bg-yellow-500/25 border-yellow-200/30 text-white";
   if (normalized.includes("music") || normalized.includes("live")) return "bg-fuchsia-500/25 border-fuchsia-200/30 text-white";
   if (normalized.includes("anniversary")) return "bg-rose-500/25 border-rose-200/30 text-white";
+  if (normalized.includes("community")) return "bg-teal-500/25 border-teal-200/30 text-white";
+  if (normalized.includes("networking")) return "bg-indigo-500/25 border-indigo-200/30 text-white";
+  if (normalized.includes("graduation")) return "bg-sky-500/25 border-sky-200/30 text-white";
   return "bg-white/20 border-white/30 text-white";
 };
 
@@ -36,9 +39,12 @@ const getButtonGradient = (type: string) => {
   if (normalized.includes("corporate")) return "bg-gradient-to-r from-[#4080b0] to-[#286088]";
   if (normalized.includes("dinner")) return "bg-gradient-to-r from-[#907030] to-[#705018]";
   if (normalized.includes("baby")) return "bg-gradient-to-r from-[#4a9a4a] to-[#337a33]";
-  if (normalized.includes("charity") || normalized.includes("gala")) return "bg-gradient-to-r from-[#a07820] to-[#805e10]";
+  if (normalized.includes("charity") || normalized.includes("gala") || normalized.includes("fundraiser")) return "bg-gradient-to-r from-[#a07820] to-[#805e10]";
   if (normalized.includes("music") || normalized.includes("live")) return "bg-gradient-to-r from-[#9970d0] to-[#734aa6]";
   if (normalized.includes("anniversary")) return "bg-gradient-to-r from-[#c06840] to-[#a04b28]";
+  if (normalized.includes("community")) return "bg-gradient-to-r from-[#11998e] to-[#0d7a71]";
+  if (normalized.includes("networking")) return "bg-gradient-to-r from-[#6f86d6] to-[#4e4376]";
+  if (normalized.includes("graduation")) return "bg-gradient-to-r from-[#1e3c72] to-[#2a5298]";
   return "bg-gradient-to-r from-[#2D1B3D] to-[#1A1118]";
 };
 

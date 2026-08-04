@@ -36,7 +36,10 @@ const guestLists = [
   "VIP Guests",
 ];
 
-const fallbackTemplates = [
+import { NEW_FALLBACK_TEMPLATES, NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
+import { matchesCategory } from "../lib/templateData";
+
+const ORIGINAL_FALLBACK_TEMPLATES = [
   { id: "tpl-birthday-maya", name: "Maya's 5th Birthday (Birthday) 🎂", category: "Birthday" },
   { id: "tpl-wedding-liam", name: "Liam & Sofia Wedding (Wedding) 💍", category: "Wedding" },
   { id: "tpl-corporate-launch", name: "Annual Product Launch (Corporate) 🚀", category: "Corporate" },
@@ -55,6 +58,17 @@ const fallbackTemplates = [
   { id: "tpl-net-founders", name: "Founders & Creators Meetup 💡", category: "Networking" },
   { id: "tpl-net-connections", name: "Business Connections Night 📈", category: "Networking" }
 ];
+
+const fallbackTemplates: Template[] = [
+  ...ORIGINAL_FALLBACK_TEMPLATES,
+  ...NEW_FALLBACK_TEMPLATES
+].map(t => ({
+  id: t.id,
+  name: t.name,
+  category: t.category,
+  content: "{}",
+  isPremium: false
+}));
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
@@ -76,6 +90,7 @@ const getTemplateImage = (templateId?: string | null) => {
     "tpl-net-professional": "/assets/templates/networking_professional.jpg",
     "tpl-net-founders": "/assets/templates/networking_founders.jpg",
     "tpl-net-connections": "/assets/templates/networking_connections.jpg",
+    ...NEW_TEMPLATE_IMAGES,
   };
   return mapping[templateId] || null;
 };
@@ -125,15 +140,19 @@ export default function Hero() {
         setErrorMsg(null);
         try {
           const data = await templateService.getTemplates();
-          setTemplates(data || []);
+          const mergedMap = new Map<string, Template>();
+          fallbackTemplates.forEach(t => mergedMap.set(t.id, t));
           if (data && data.length > 0) {
-            setSelectedTemplateId(data[0].id);
-          } else {
-            setSelectedTemplateId(fallbackTemplates[0].id);
+            data.forEach(t => mergedMap.set(t.id, t));
+          }
+          const combined = Array.from(mergedMap.values());
+          setTemplates(combined);
+          if (combined.length > 0) {
+            setSelectedTemplateId(combined[0].id);
           }
         } catch (err: any) {
           console.error("Failed to load templates:", err);
-          setErrorMsg("Could not load templates from server. Falling back to default list.");
+          setTemplates(fallbackTemplates);
           setSelectedTemplateId(fallbackTemplates[0].id);
         } finally {
           setLoadingTemplates(false);
@@ -772,7 +791,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 max-h-[600px] overflow-y-auto pr-2 pb-2">
                       {(templates.length > 0 ? templates : fallbackTemplates)
-                        .filter(t => selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Private Dinner" && t.category === "Dinner Party") || (selectedCategory === "Fundraiser" && t.category === "Charity Gala"))
+                        .filter(t => matchesCategory(t.category, selectedCategory))
                         .map(tpl => (
                         <div 
                           key={tpl.id}

@@ -28,6 +28,8 @@ import {
 import { useSidebar } from "../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { NEW_TEMPLATE_IMAGES } from "../../lib/newTemplatesData";
+
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
   const mapping: Record<string, string> = {
@@ -48,6 +50,7 @@ const getTemplateImage = (templateId?: string | null) => {
     "tpl-net-professional": "/assets/templates/networking_professional.jpg",
     "tpl-net-founders": "/assets/templates/networking_founders.jpg",
     "tpl-net-connections": "/assets/templates/networking_connections.jpg",
+    ...NEW_TEMPLATE_IMAGES,
   };
   return mapping[templateId] || null;
 };
