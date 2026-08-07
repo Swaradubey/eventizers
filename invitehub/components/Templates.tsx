@@ -202,33 +202,35 @@ export default function Templates() {
             </button>
           </div>
         ) : (
-          <motion.div
-            key={`${selectedCategory}-${searchQuery}`}
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10"
-          >
-            {filteredCards.map((card) => (
-              <motion.div
-                key={card.id}
-                variants={cardVariants}
-                onClick={() => setPreviewTemplate(card)}
-                className="w-full flex flex-col cursor-pointer group"
-              >
-                <div className="relative rounded-[24px] overflow-hidden transition-all duration-300 group-hover:-translate-y-1">
-                  <InvitationCard {...card} />
-                  {/* Hover Overlay Button */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 p-4 pointer-events-none rounded-[24px]">
-                    <span className="px-5 py-2 rounded-full bg-white text-[#2D1B3D] font-semibold text-xs shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
-                      Preview Template
-                    </span>
+          <div className="max-h-[550px] sm:max-h-[600px] lg:max-h-[65vh] overflow-y-auto pr-2 pb-4 rounded-2xl custom-scrollbar relative z-10">
+            <motion.div
+              key={`${selectedCategory}-${searchQuery}`}
+              initial="hidden"
+              animate="visible"
+              variants={containerVariants}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10"
+            >
+              {filteredCards.map((card) => (
+                <motion.div
+                  key={card.id}
+                  variants={cardVariants}
+                  onClick={() => setPreviewTemplate(card)}
+                  className="w-full flex flex-col cursor-pointer group"
+                >
+                  <div className="relative rounded-[24px] overflow-hidden transition-all duration-300 group-hover:-translate-y-1">
+                    <InvitationCard {...card} />
+                    {/* Hover Overlay Button */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 p-4 pointer-events-none rounded-[24px]">
+                      <span className="px-5 py-2 rounded-full bg-white text-[#2D1B3D] font-semibold text-xs shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        Preview Template
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         )}
 
       </div>

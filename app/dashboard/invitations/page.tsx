@@ -7,6 +7,7 @@ import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import { useInvitation } from "../../../invitehub/hooks/useInvitation";
 import eventService, { Event } from "../../../services/eventService";
+import guestService from "../../../services/guestService";
 import {
   LogOut,
   Calendar,
@@ -34,6 +35,8 @@ import {
   Trash2,
   RefreshCw,
   ArrowLeft,
+  Mail,
+  Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -78,6 +81,11 @@ function InvitationDesignerPageContent() {
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // Email dispatch guest selection state
+  const [recipientEmails, setRecipientEmails] = useState<string>("");
+  const [eventGuests, setEventGuests] = useState<any[]>([]);
+  const [loadingGuests, setLoadingGuests] = useState<boolean>(false);
+
   // Protected route check
   useEffect(() => {
     if (!authLoading && !user) {
@@ -105,6 +113,25 @@ function InvitationDesignerPageContent() {
       fetchEvents();
     }
   }, [user, queryEventId]);
+
+  // Fetch guests for selected event
+  useEffect(() => {
+    if (user && selectedEventId) {
+      setLoadingGuests(true);
+      guestService.getGuests(undefined, selectedEventId)
+        .then((res) => {
+          if (res.success && Array.isArray(res.guests)) {
+            setEventGuests(res.guests);
+          } else {
+            setEventGuests([]);
+          }
+        })
+        .catch((err) => console.error("Error loading event guests:", err))
+        .finally(() => setLoadingGuests(false));
+    } else {
+      setEventGuests([]);
+    }
+  }, [user, selectedEventId]);
 
   // Handle local toast syncing from hook
   useEffect(() => {
@@ -246,8 +273,10 @@ function InvitationDesignerPageContent() {
     if (!invitation) return;
     // Auto-save any pending changes first
     const saved = await saveInvitation(invitation);
-    if (saved) {
-      await queueInvitation();
+    const targetId = saved?.id || invitation.id;
+    if (targetId) {
+      const targetRecipients = recipientEmails.trim() ? recipientEmails : undefined;
+      await queueInvitation(targetRecipients, targetId);
     }
   };
 
@@ -923,23 +952,60 @@ function InvitationDesignerPageContent() {
             <div className="lg:col-span-7 flex flex-col gap-6 lg:sticky lg:top-24">
 
               {/* Toolbar sending actions */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[#2D1B3D]/60">Share with Guests:</span>
+              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#C9A84C]" />
+                    <span className="text-xs font-bold text-[#2D1B3D]">Share with Guests:</span>
+                  </div>
+                  <button
+                    onClick={handleSend}
+                    disabled={inviteSending || inviteSaving}
+                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50"
+                    title="Distribute HTML Email to Guests"
+                  >
+                    {inviteSending ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
+                        <span>Send Invitations</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={handleSend}
-                  disabled={inviteSending || !invitation.id}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50"
-                  title={!invitation.id ? "Save the invitation draft first to enable sending" : "Distribute to Guest List"}
-                >
-                  {inviteSending ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
-                  )}
-                  Send Invitations
-                </button>
+
+                <div className="pt-2 border-t border-[#E8C4B8]/20 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#2D1B3D]/70 font-medium flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#2D1B3D]/50" />
+                      {loadingGuests ? (
+                        "Loading guest list..."
+                      ) : eventGuests.length > 0 ? (
+                        <span>
+                          Target: <strong className="text-[#2D1B3D]">{eventGuests.length} guest(s)</strong> in Event guest list
+                        </span>
+                      ) : (
+                        <span className="text-[#2D1B3D]/50 italic">No guests found in event list. Enter emails below.</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={recipientEmails}
+                    onChange={(e) => setRecipientEmails(e.target.value)}
+                    placeholder={
+                      eventGuests.length > 0
+                        ? "Optional: Custom email(s) e.g. swaraswn@gmail.com (leave empty to send to event guests)"
+                        : "Enter guest email address(es) e.g. swaraswn@gmail.com..."
+                    }
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[#E8C4B8]/40 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
+                  />
+                </div>
               </div>
 
               {/* Mockup Container */}

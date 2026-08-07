@@ -411,11 +411,11 @@ export const useInvitation = (eventId: string | null) => {
     }
   };
 
-  // Send Invitation (POST /api/invitations/:id/send)
-  const queueInvitation = async () => {
-    if (!invitation || !invitation.id) {
+  const queueInvitation = async (recipients?: string[] | string, targetInvitationId?: string) => {
+    const invId = targetInvitationId || invitation?.id;
+    if (!invId) {
       setError("Please save the invitation before sending.");
-      return;
+      return false;
     }
 
     setSending(true);
@@ -423,16 +423,18 @@ export const useInvitation = (eventId: string | null) => {
     setSuccessMessage(null);
 
     try {
-      const res = await invitationService.sendInvitation(invitation.id);
+      const res = await invitationService.sendInvitation(invId, recipients);
       if (res.success) {
-        setSuccessMessage(res.message || "Invitation successfully queued for sending!");
+        setSuccessMessage(res.message || "Invitation successfully sent!");
         setInvitation(prev => prev ? { ...prev, status: "published" } : null);
+        return true;
       } else {
-        throw new Error(res.message || "Failed to queue invitation.");
+        throw new Error(res.message || "Failed to send invitation.");
       }
     } catch (err: any) {
       console.error("Error sending invitation:", err);
       setError(err.response?.data?.error || err.message || "Failed to send the invitation.");
+      return false;
     } finally {
       setSending(false);
     }

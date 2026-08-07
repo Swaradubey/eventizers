@@ -42,7 +42,7 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      const isAuthEndpoint = error.config.url?.includes("/auth/me") || error.config.url?.includes("/auth/login") || error.config.url?.includes("/admin/login");
+      const isAuthEndpoint = error.config.url?.includes("/auth/me") || error.config.url?.includes("/auth/login") || error.config.url?.includes("/admin/login") || error.config.url?.includes("/invitations/public");
       if (!isAuthEndpoint) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");

@@ -40,8 +40,8 @@ export const deleteInvitation = async (id: string): Promise<{ success: boolean; 
   return response.data;
 };
 
-export const sendInvitation = async (id: string): Promise<SendInvitationResponse> => {
-  const response = await API.post<SendInvitationResponse>(`/invitations/${id}/send`);
+export const sendInvitation = async (id: string, recipients?: string[] | string): Promise<SendInvitationResponse> => {
+  const response = await API.post<SendInvitationResponse>(`/invitations/${id}/send`, { recipients });
   return response.data;
 };
 
@@ -56,6 +56,44 @@ export const sendInvitationToGuests = async (
   return response.data;
 };
 
+export interface PublicInvitationResponse {
+  success: boolean;
+  error?: string;
+  invitation: Invitation;
+  event: {
+    id: string;
+    title: string;
+    description?: string;
+    eventType?: string;
+    venue: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    eventDate: string;
+    eventTime: string;
+    coverImage?: string;
+  };
+}
+
+export interface PublicRSVPayload {
+  eventId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  rsvpStatus: "confirmed" | "declined" | "attending";
+}
+
+export const getPublicInvitation = async (id: string): Promise<PublicInvitationResponse> => {
+  const response = await API.get<PublicInvitationResponse>(`/invitations/public/${id}`);
+  return response.data;
+};
+
+export const submitPublicRSVP = async (payload: PublicRSVPayload): Promise<{ success: boolean; message: string; guest?: any }> => {
+  const response = await API.post<{ success: boolean; message: string; guest?: any }>("/invitations/public/rsvp", payload);
+  return response.data;
+};
+
 const invitationService = {
   getInvitations,
   getInvitationById,
@@ -65,6 +103,8 @@ const invitationService = {
   deleteInvitation,
   sendInvitation,
   sendInvitationToGuests,
+  getPublicInvitation,
+  submitPublicRSVP,
 };
 
 export default invitationService;

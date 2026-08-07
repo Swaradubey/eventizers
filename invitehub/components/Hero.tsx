@@ -37,62 +37,40 @@ const guestLists = [
 ];
 
 import { NEW_FALLBACK_TEMPLATES, NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
-import { matchesCategory } from "../lib/templateData";
+import { templateCards, matchesCategory } from "../lib/templateData";
 
-const ORIGINAL_FALLBACK_TEMPLATES = [
-  { id: "tpl-birthday-maya", name: "Maya's 5th Birthday (Birthday) 🎂", category: "Birthday" },
-  { id: "tpl-wedding-liam", name: "Liam & Sofia Wedding (Wedding) 💍", category: "Wedding" },
-  { id: "tpl-corporate-launch", name: "Annual Product Launch (Corporate) 🚀", category: "Corporate" },
-  { id: "tpl-dinner-party", name: "Supper Club No. 7 (Dinner Party) 🍽️", category: "Dinner Party" },
-  { id: "tpl-baby-shower", name: "A Little One is Coming (Baby Shower) 🍼", category: "Baby Shower" },
-  { id: "tpl-charity-gala", name: "Bright Futures Gala (Charity Gala) ✨", category: "Charity Gala" },
-  { id: "tpl-live-music", name: "Rooftop Sessions (Live Music) 🎵", category: "Live Music" },
-  { id: "tpl-anniversary-james", name: "25 Years Together (Anniversary) 🥂", category: "Anniversary" },
-  { id: "tpl-grad-gala", name: "Graduation Gala 🎓", category: "Graduation" },
-  { id: "tpl-grad-class2026", name: "Class of 2026 Celebration 🥂", category: "Graduation" },
-  { id: "tpl-grad-degree", name: "Degree Award Ceremony 📜", category: "Graduation" },
-  { id: "tpl-comm-meetup", name: "Community Meetup 🏡", category: "Community" },
-  { id: "tpl-comm-celebration", name: "Neighbourhood Celebration 🎈", category: "Community" },
-  { id: "tpl-comm-volunteer", name: "Volunteer Appreciation Event 💖", category: "Community" },
-  { id: "tpl-net-professional", name: "Professional Networking Evening 🤝", category: "Networking" },
-  { id: "tpl-net-founders", name: "Founders & Creators Meetup 💡", category: "Networking" },
-  { id: "tpl-net-connections", name: "Business Connections Night 📈", category: "Networking" }
-];
-
-const fallbackTemplates: Template[] = [
-  ...ORIGINAL_FALLBACK_TEMPLATES,
-  ...NEW_FALLBACK_TEMPLATES
-].map(t => ({
-  id: t.id,
-  name: t.name,
-  category: t.category,
-  content: "{}",
+const fallbackTemplates: Template[] = templateCards.map((tc) => ({
+  id: tc.id,
+  name: tc.title,
+  category: tc.category || tc.type,
+  content: JSON.stringify({
+    gradient: tc.gradient,
+    accentColor: tc.accentColor,
+    emoji: tc.emoji,
+    host: tc.host,
+    venue: tc.venue,
+    description: tc.description,
+    image: tc.image
+  }),
   isPremium: false
 }));
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
-  const mapping: Record<string, string> = {
-    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
-    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
-    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
-    "tpl-dinner-party": "/assets/templates/dinner.jpg",
-    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
-    "tpl-charity-gala": "/assets/templates/gala.jpg",
-    "tpl-live-music": "/assets/templates/music.jpg",
-    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
-    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
-    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
-    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
-    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
-    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
-    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
-    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
-    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
-    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
-    ...NEW_TEMPLATE_IMAGES,
-  };
-  return mapping[templateId] || null;
+  const card = templateCards.find(c => c.id === templateId);
+  if (card?.image) return card.image;
+  return NEW_TEMPLATE_IMAGES[templateId] || null;
+};
+
+const getCardImageUrl = (tpl: any) => {
+  if (tpl.imageUrl) return tpl.imageUrl;
+  if (tpl.content) {
+    try {
+      const parsed = JSON.parse(tpl.content);
+      if (parsed.image) return parsed.image;
+    } catch (e) {}
+  }
+  return getTemplateImage(tpl.id);
 };
 
 const tabs = ["AI Create", "Template", "Upload Existing"];
@@ -789,7 +767,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       <span className="text-xs text-[#2D1B3D]/60 ml-3 font-medium">Loading templates...</span>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 max-h-[600px] overflow-y-auto pr-2 pb-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2 pb-2">
                       {(templates.length > 0 ? templates : fallbackTemplates)
                         .filter(t => matchesCategory(t.category, selectedCategory))
                         .map(tpl => (
@@ -804,9 +782,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         >
                           {/* Preview Area */}
                           <div className="aspect-[4/3] w-full bg-gradient-to-br from-[#F5F2F0] to-[#E8C4B8]/20 relative overflow-hidden">
-                             {((tpl as any).imageUrl || getTemplateImage(tpl.id)) ? (
+                             {getCardImageUrl(tpl) ? (
                                <>
-                                 <img src={(tpl as any).imageUrl || getTemplateImage(tpl.id)!} alt={tpl.name} className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+                                 <img src={getCardImageUrl(tpl)!} alt={tpl.name} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
                                  {/* Subtle dark gradient overlay */}
                                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                                </>
@@ -836,7 +814,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           </div>
                         </div>
                       ))}
-                      {(templates.length > 0 ? templates : fallbackTemplates).filter(t => selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Private Dinner" && t.category === "Dinner Party") || (selectedCategory === "Fundraiser" && t.category === "Charity Gala")).length === 0 && (
+                      {(templates.length > 0 ? templates : fallbackTemplates).filter(t => matchesCategory(t.category, selectedCategory)).length === 0 && (
                         <div className="col-span-full py-8 text-center text-[#2D1B3D]/50 text-xs">
                           No templates found for this category.
                         </div>
