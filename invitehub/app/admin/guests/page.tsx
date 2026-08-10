@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Phone,
   Filter,
+  Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -230,6 +231,64 @@ export default function AdminGuestsPage() {
     return matchesSearch && matchesEvent;
   });
 
+  // Export CSV handler
+  const handleExportCSV = () => {
+    if (filteredGuests.length === 0) {
+      triggerToast("No guests available to export.", "error");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Contact Number", "Event Name", "Status"];
+
+    const escapeCSV = (val: string | null | undefined): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).trim();
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const rows = filteredGuests.map((g) => {
+      const eventName = g.eventTitle || events.find((e) => e.id === g.eventId)?.title || "General";
+      const phoneStr = g.phone ? g.phone.trim() : "";
+      return [
+        escapeCSV(g.name),
+        escapeCSV(g.email),
+        escapeCSV(phoneStr),
+        escapeCSV(eventName),
+        escapeCSV(g.status),
+      ].join(",");
+    });
+
+    const csvContent = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    let eventSlug = "all_events";
+    if (selectedEventId) {
+      const selEvent = events.find((e) => e.id === selectedEventId);
+      if (selEvent && selEvent.title) {
+        eventSlug = selEvent.title
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      }
+    }
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const fileName = `guests_${eventSlug || "all_events"}_${dateStr}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    triggerToast(`Exported ${filteredGuests.length} guest(s) to CSV!`, "success");
+  };
+
   const totalGuestsCount = guests.length;
   const totalEventsCount = events.length;
 
@@ -356,22 +415,35 @@ export default function AdminGuestsPage() {
               />
             </div>
 
-            <div className="relative w-full sm:w-auto flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
-              <select
-                value={selectedEventId}
-                onChange={(e) => setSelectedEventId(e.target.value)}
-                className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+            {/* Event Filter dropdown & Export CSV */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial flex items-center gap-2">
+                <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
+                <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
+                <select
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                >
+                  <option value="">All Events</option>
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+              </div>
+
+              <button
+                onClick={handleExportCSV}
+                disabled={filteredGuests.length === 0}
+                title={filteredGuests.length === 0 ? "No guests available to export" : "Export visible guests to CSV"}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] hover:border-[#2D1B3D]/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none whitespace-nowrap"
               >
-                <option value="">All Events</option>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+                <Download className="w-3.5 h-3.5 text-[#C9A84C]" />
+                <span>Export CSV</span>
+              </button>
             </div>
           </div>
 

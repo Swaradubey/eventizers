@@ -29,6 +29,7 @@ import {
   Filter,
   User,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -46,6 +47,7 @@ export default function GuestsPage() {
   // Filters and search
   const [search, setSearch] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("");
+  const [isImportedMonthOnly, setIsImportedMonthOnly] = useState(false);
 
   // Modals
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -55,11 +57,14 @@ export default function GuestsPage() {
   const [isImportCSVModalOpen, setIsImportCSVModalOpen] = useState(false);
   const [isGoogleImportModalOpen, setIsGoogleImportModalOpen] = useState(false);
   const [isEmailImportModalOpen, setIsEmailImportModalOpen] = useState(false);
+  const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
+  const [isImportedModalOpen, setIsImportedModalOpen] = useState(false);
 
   // CSV Import States
   const [csvTextToImport, setCsvTextToImport] = useState("");
   const [csvTargetEventId, setCsvTargetEventId] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tableSectionRef = useRef<HTMLDivElement>(null);
 
   // Guest Form states
   const [formName, setFormName] = useState("");
@@ -362,6 +367,109 @@ export default function GuestsPage() {
     }
   };
 
+  // Filtered guests calculation
+  const filteredGuests = guests.filter((guest) => {
+    const matchesEvent = selectedEventId ? guest.eventId === selectedEventId : true;
+    const searchLower = search.toLowerCase().trim();
+    const matchesSearch = searchLower
+      ? guest.name.toLowerCase().includes(searchLower) ||
+        guest.email.toLowerCase().includes(searchLower) ||
+        (guest.phone && guest.phone.toLowerCase().includes(searchLower)) ||
+        (guest.eventTitle && guest.eventTitle.toLowerCase().includes(searchLower)) ||
+        guest.status.toLowerCase().includes(searchLower)
+      : true;
+    const matchesMonth = isImportedMonthOnly
+      ? guest.createdAt
+        ? new Date(guest.createdAt).getMonth() === new Date().getMonth() &&
+          new Date(guest.createdAt).getFullYear() === new Date().getFullYear()
+        : false
+      : true;
+    return matchesEvent && matchesSearch && matchesMonth;
+  });
+
+  // KPI Summary Card Actions
+  const handleTotalGuestsClick = () => {
+    setSelectedEventId("");
+    setSearch("");
+    setIsImportedMonthOnly(false);
+    triggerToast("Filters reset - showing all guests", "success");
+    tableSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleTotalEventsClick = () => {
+    setIsEventsModalOpen(true);
+  };
+
+  const handleImportedThisMonthClick = () => {
+    const nextState = !isImportedMonthOnly;
+    setIsImportedMonthOnly(nextState);
+    if (nextState) {
+      triggerToast("Filtered to guests imported this month", "success");
+      setIsImportedModalOpen(true);
+    } else {
+      triggerToast("Showing all guests", "success");
+    }
+    tableSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    if (filteredGuests.length === 0) {
+      triggerToast("No guests available to export.", "error");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Contact Number", "Event Name", "Status"];
+
+    const escapeCSV = (val: string | null | undefined): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).trim();
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const rows = filteredGuests.map((g) => {
+      const eventName = g.eventTitle || events.find((e) => e.id === g.eventId)?.title || "General";
+      const phoneStr = g.phone ? g.phone.trim() : "";
+      return [
+        escapeCSV(g.name),
+        escapeCSV(g.email),
+        escapeCSV(phoneStr),
+        escapeCSV(eventName),
+        escapeCSV(g.status),
+      ].join(",");
+    });
+
+    const csvContent = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    let eventSlug = "all_events";
+    if (selectedEventId) {
+      const selEvent = events.find((e) => e.id === selectedEventId);
+      if (selEvent && selEvent.title) {
+        eventSlug = selEvent.title
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      }
+    }
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const fileName = `guests_${eventSlug || "all_events"}_${dateStr}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    triggerToast(`Exported ${filteredGuests.length} guest(s) to CSV!`, "success");
+  };
+
   // Stats Card values
   const totalGuestsCount = guests.length;
   const totalEventsCount = events.length;
@@ -481,12 +589,16 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0 }}
+            onClick={handleTotalGuestsClick}
+            role="button"
+            tabIndex={0}
+            aria-label="View all guests"
             style={{
               background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
               boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
               transition: "all 0.25s ease",
             }}
-            className="kpi-card-pink rounded-2xl p-5"
+            className="kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
               <div
@@ -497,7 +609,7 @@ export default function GuestsPage() {
               </div>
               <div>
                 <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
                   style={{ color: "rgba(255,255,255,0.85)" }}
                 >
                   Total Guests
@@ -514,12 +626,16 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
+            onClick={handleTotalEventsClick}
+            role="button"
+            tabIndex={0}
+            aria-label="View event breakdown modal"
             style={{
               background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
               boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
               transition: "all 0.25s ease",
             }}
-            className="kpi-card-pink rounded-2xl p-5"
+            className="kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
               <div
@@ -530,7 +646,7 @@ export default function GuestsPage() {
               </div>
               <div>
                 <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
                   style={{ color: "rgba(255,255,255,0.85)" }}
                 >
                   Total Events
@@ -547,12 +663,20 @@ export default function GuestsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
+            onClick={handleImportedThisMonthClick}
+            role="button"
+            tabIndex={0}
+            aria-label="Filter guests imported this month"
             style={{
               background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
+              boxShadow: isImportedMonthOnly
+                ? "0 0 0 3px rgba(255,255,255,0.8), 0 16px 36px rgba(139,30,90,0.4)"
+                : "0 12px 32px rgba(139,30,90,0.25)",
               transition: "all 0.25s ease",
             }}
-            className="kpi-card-pink rounded-2xl p-5"
+            className={`kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden ${
+              isImportedMonthOnly ? "ring-2 ring-white" : ""
+            }`}
           >
             <div className="flex items-center gap-4">
               <div
@@ -563,7 +687,7 @@ export default function GuestsPage() {
               </div>
               <div>
                 <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
                   style={{ color: "rgba(255,255,255,0.85)" }}
                 >
                   Imported This Month
@@ -658,8 +782,64 @@ export default function GuestsPage() {
           </div>
 
           {/* Right panel: Search and Guests Table */}
-          <div className="col-span-12 lg:col-span-8">
+          <div className="col-span-12 lg:col-span-8" ref={tableSectionRef}>
             <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
+              {/* Active Filter Banner */}
+              {(isImportedMonthOnly || selectedEventId || search) && (
+                <div className="mb-5 p-3.5 rounded-xl bg-[#8B1E5A]/5 border border-[#8B1E5A]/20 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#8B1E5A] font-semibold">
+                    <Filter className="w-3.5 h-3.5 text-[#8B1E5A]" />
+                    <span>Active Filters:</span>
+                    {isImportedMonthOnly && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#8B1E5A] text-white text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                        Imported This Month ({importedThisMonthCount})
+                        <button
+                          onClick={() => setIsImportedMonthOnly(false)}
+                          className="hover:opacity-75 focus:outline-none ml-0.5"
+                          title="Clear month filter"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {selectedEventId && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#2D1B3D] text-white text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                        Event: {events.find((e) => e.id === selectedEventId)?.title || "Selected"}
+                        <button
+                          onClick={() => setSelectedEventId("")}
+                          className="hover:opacity-75 focus:outline-none ml-0.5"
+                          title="Clear event filter"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {search && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-[#8B1E5A]/30 text-[#8B1E5A] text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                        Search: "{search}"
+                        <button
+                          onClick={() => setSearch("")}
+                          className="hover:opacity-75 focus:outline-none ml-0.5"
+                          title="Clear search filter"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsImportedMonthOnly(false);
+                      setSelectedEventId("");
+                      setSearch("");
+                      triggerToast("All filters cleared", "success");
+                    }}
+                    className="text-[11px] font-bold text-[#8B1E5A] hover:underline"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
               {/* Search & Filters */}
               <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6 w-full">
                 {/* Search field */}
@@ -674,23 +854,35 @@ export default function GuestsPage() {
                   />
                 </div>
 
-                {/* Event Filter dropdown */}
-                <div className="relative w-full sm:w-auto flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
-                  <select
-                    value={selectedEventId}
-                    onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                {/* Event Filter dropdown & Export CSV */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial flex items-center gap-2">
+                    <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
+                    <select
+                      value={selectedEventId}
+                      onChange={(e) => setSelectedEventId(e.target.value)}
+                      className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                    >
+                      <option value="">All Events</option>
+                      {events.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.title}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+                  </div>
+
+                  <button
+                    onClick={handleExportCSV}
+                    disabled={filteredGuests.length === 0}
+                    title={filteredGuests.length === 0 ? "No guests available to export" : "Export visible guests to CSV"}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] hover:border-[#2D1B3D]/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none whitespace-nowrap"
                   >
-                    <option value="">All Events</option>
-                    {events.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.title}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+                    <Download className="w-3.5 h-3.5 text-[#C9A84C]" />
+                    <span>Export CSV</span>
+                  </button>
                 </div>
               </div>
 
@@ -717,7 +909,7 @@ export default function GuestsPage() {
                     Retry
                   </button>
                 </div>
-              ) : guests.length === 0 ? (
+              ) : filteredGuests.length === 0 ? (
                 // Empty state
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
                   <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
@@ -754,7 +946,7 @@ export default function GuestsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E8C4B8]/20">
-                      {guests.map((g) => (
+                      {filteredGuests.map((g) => (
                         <tr
                           key={g.id}
                           className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
@@ -1400,6 +1592,255 @@ export default function GuestsPage() {
                   className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md focus:outline-none"
                 >
                   Yes, Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ───── TOTAL EVENTS DETAIL MODAL ───── */}
+      <AnimatePresence>
+        {isEventsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEventsModalOpen(false)}
+              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+            >
+              <div className="flex justify-between items-center pb-4 border-b border-[#E8C4B8]/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#8B1E5A]/10 flex items-center justify-center text-[#8B1E5A]">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      Event Details & Guests
+                    </h3>
+                    <p className="text-xs text-[#2D1B3D]/60">Total {events.length} event(s) registered in workspace</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEventsModalOpen(false)}
+                  className="p-1.5 rounded-lg text-[#2D1B3D]/40 hover:text-[#2D1B3D] hover:bg-[#FAF8F5] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                {events.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-[#2D1B3D]/60">
+                    No events found. Create an event in the dashboard first.
+                  </div>
+                ) : (
+                  events.map((event) => {
+                    const guestCountForEvent = guests.filter((g) => g.eventId === event.id).length;
+                    const rawDate = event.eventDate || (event as any).date;
+                    const eventDate = rawDate
+                      ? new Date(rawDate).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "Date TBD";
+                    const isSelected = selectedEventId === event.id;
+
+                    return (
+                      <div
+                        key={event.id}
+                        className={`p-4 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? "bg-[#8B1E5A]/5 border-[#8B1E5A]/40 ring-1 ring-[#8B1E5A]/30"
+                            : "bg-[#FAF8F5]/60 border-[#E8C4B8]/30 hover:bg-[#FAF8F5]"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-[#2D1B3D] truncate">{event.title}</h4>
+                            {isSelected && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#8B1E5A] text-white rounded-full">
+                                Filter Active
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-[#2D1B3D]/60 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-[#C9A84C]" />
+                              {eventDate}
+                            </span>
+                            <span className="flex items-center gap-1 font-semibold text-[#8B1E5A]">
+                              <Users className="w-3 h-3" />
+                              {guestCountForEvent} {guestCountForEvent === 1 ? "Guest" : "Guests"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(event.id || "");
+                            setIsEventsModalOpen(false);
+                            triggerToast(`Filtered table by event: ${event.title}`, "success");
+                            tableSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 whitespace-nowrap ${
+                            isSelected
+                              ? "bg-[#8B1E5A] text-white hover:bg-[#73174a]"
+                              : "bg-white border border-[#E8C4B8]/40 text-[#2D1B3D] hover:bg-[#2D1B3D] hover:text-white"
+                          }`}
+                        >
+                          <Filter className="w-3 h-3" />
+                          <span>{isSelected ? "Filtered" : "Filter List"}</span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-[#E8C4B8]/20 flex justify-between items-center">
+                <button
+                  onClick={() => {
+                    setSelectedEventId("");
+                    setIsEventsModalOpen(false);
+                    triggerToast("Showing guests from all events", "success");
+                  }}
+                  className="text-xs font-semibold text-[#8B1E5A] hover:underline"
+                >
+                  Show All Events Guests
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEventsModalOpen(false);
+                    router.push("/dashboard");
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-sm"
+                >
+                  Manage Events Dashboard
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ───── IMPORTED THIS MONTH DETAIL MODAL ───── */}
+      <AnimatePresence>
+        {isImportedModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsImportedModalOpen(false)}
+              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+            >
+              <div className="flex justify-between items-center pb-4 border-b border-[#E8C4B8]/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      Imported This Month
+                    </h3>
+                    <p className="text-xs text-[#2D1B3D]/60">
+                      {importedThisMonthCount} guest(s) added during {new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsImportedModalOpen(false)}
+                  className="p-1.5 rounded-lg text-[#2D1B3D]/40 hover:text-[#2D1B3D] hover:bg-[#FAF8F5] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                {importedThisMonthCount === 0 ? (
+                  <div className="text-center py-8 text-xs text-[#2D1B3D]/60">
+                    No guests imported or created during this current calendar month.
+                  </div>
+                ) : (
+                  guests
+                    .filter((g) => {
+                      if (!g.createdAt) return false;
+                      const date = new Date(g.createdAt);
+                      const now = new Date();
+                      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                    })
+                    .map((g) => (
+                      <div
+                        key={g.id}
+                        className="p-3.5 rounded-xl border border-[#E8C4B8]/30 bg-[#FAF8F5]/60 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[#2D1B3D] truncate">{g.name}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                g.status === "confirmed"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : g.status === "declined"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-blue-50 text-blue-700 border-blue-200"
+                              }`}
+                            >
+                              {g.status}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#2D1B3D]/60 truncate mt-0.5">{g.email}</p>
+                        </div>
+                        <div className="text-right text-[10px] text-[#2D1B3D]/50 flex-shrink-0">
+                          {g.createdAt
+                            ? new Date(g.createdAt).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : ""}
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-[#E8C4B8]/20 flex justify-between items-center">
+                <button
+                  onClick={() => {
+                    setIsImportedMonthOnly(false);
+                    setIsImportedModalOpen(false);
+                    triggerToast("Cleared monthly filter", "success");
+                  }}
+                  className="text-xs font-semibold text-[#2D1B3D]/60 hover:text-[#2D1B3D]"
+                >
+                  Clear Month Filter
+                </button>
+                <button
+                  onClick={() => {
+                    setIsImportedMonthOnly(true);
+                    setIsImportedModalOpen(false);
+                    triggerToast("Filtered table view to this month's imports", "success");
+                    tableSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#8B1E5A] hover:bg-[#73174a] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Apply Filter to Table
                 </button>
               </div>
             </motion.div>

@@ -1,5 +1,5 @@
 "use client";
 
-import PublicInvitationPage from "@/invitehub/app/invitation/[id]/page";
+import PublicInvitationPage from "@/app/invitation/[id]/page";
 
 export default PublicInvitationPage;
