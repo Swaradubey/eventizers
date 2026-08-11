@@ -78,22 +78,12 @@ export default function GuestsPage() {
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Mock Contacts for Google/Email lists import
-  const mockGoogleContacts = [
-    { name: "Alice Smith", email: "alice.smith@gmail.com", phone: "+1 (555) 019-2831" },
-    { name: "Bob Johnson", email: "bob.johnson@gmail.com", phone: "+1 (555) 014-9988" },
-    { name: "Charlie Davis", email: "charlie.d@gmail.com", phone: "+1 (555) 017-3344" },
-    { name: "Diana Prince", email: "diana@gmail.com", phone: "+1 (555) 012-7766" },
-  ];
+  // Contact lists for Google/Email import (initialized empty)
+  const googleContacts: Array<{ name: string; email: string; phone?: string }> = [];
+  const emailContacts: Array<{ name: string; email: string; phone?: string }> = [];
 
-  const mockEmailContacts = [
-    { name: "Emily Watson", email: "emily.w@yahoo.com", phone: "+1 (555) 011-8899" },
-    { name: "Frank Miller", email: "frank@outlook.com", phone: "+1 (555) 013-1122" },
-    { name: "Grace Hopper", email: "grace.h@gmail.com", phone: "+1 (555) 015-4455" },
-  ];
-
-  const [selectedMockContacts, setSelectedMockContacts] = useState<number[]>([]);
-  const [mockImportEventId, setMockImportEventId] = useState("");
+  const [selectedImportContacts, setSelectedImportContacts] = useState<number[]>([]);
+  const [contactImportEventId, setContactImportEventId] = useState("");
 
   // Route protection
   useEffect(() => {
@@ -330,33 +320,33 @@ export default function GuestsPage() {
     }
   };
 
-  // Mock Import Submit
-  const handleMockImportSubmit = async (contacts: typeof mockGoogleContacts) => {
-    if (!mockImportEventId) {
+  // Contact List Import Submit
+  const handleContactImportSubmit = async (contacts: Array<{ name: string; email: string; phone?: string }>) => {
+    if (!contactImportEventId) {
       triggerToast("Please select an event.", "error");
       return;
     }
-    if (selectedMockContacts.length === 0) {
+    if (selectedImportContacts.length === 0) {
       triggerToast("Please select at least one contact to import.", "error");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Build a CSV representation of selected mock contacts to reuse backend import CSV endpoint
+      // Build a CSV representation of selected contacts to reuse backend import CSV endpoint
       const headers = "name,email,phone,status";
-      const rows = selectedMockContacts.map((idx) => {
+      const rows = selectedImportContacts.map((idx) => {
         const contact = contacts[idx];
         return `"${contact.name}","${contact.email}","${contact.phone || ""}","invited"`;
       });
       const csvContent = [headers, ...rows].join("\n");
 
-      const res = await guestService.importGuests(mockImportEventId, csvContent);
+      const res = await guestService.importGuests(contactImportEventId, csvContent);
       if (res.success) {
-        triggerToast(`Successfully imported ${selectedMockContacts.length} contacts!`);
+        triggerToast(`Successfully imported ${selectedImportContacts.length} contacts!`);
         setIsGoogleImportModalOpen(false);
         setIsEmailImportModalOpen(false);
-        setSelectedMockContacts([]);
+        setSelectedImportContacts([]);
         fetchData();
       }
     } catch (err: any) {
@@ -727,8 +717,8 @@ export default function GuestsPage() {
 
                 <button
                   onClick={() => {
-                    setMockImportEventId(events[0]?.id || "");
-                    setSelectedMockContacts([]);
+                    setContactImportEventId(events[0]?.id || "");
+                    setSelectedImportContacts([]);
                     setIsGoogleImportModalOpen(true);
                   }}
                   disabled={events.length === 0}
@@ -745,8 +735,8 @@ export default function GuestsPage() {
 
                 <button
                   onClick={() => {
-                    setMockImportEventId(events[0]?.id || "");
-                    setSelectedMockContacts([]);
+                    setContactImportEventId(events[0]?.id || "");
+                    setSelectedImportContacts([]);
                     setIsEmailImportModalOpen(true);
                   }}
                   disabled={events.length === 0}
@@ -915,11 +905,13 @@ export default function GuestsPage() {
                   <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
                     <Users className="w-8 h-8 text-[#C9A84C]" />
                   </div>
-                  <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">No Guests Found</h3>
+                  <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">
+                    {search || selectedEventId ? "No guests found" : "No guests added yet"}
+                  </h3>
                   <p className="text-xs text-[#2D1B3D]/50 max-w-sm">
                     {search || selectedEventId
                       ? "Try clearing your search filters or check another event."
-                      : "Create a guest or import a contact list to see your guests here."}
+                      : "No guests added yet. Click 'Add Guest' or import a CSV file to add guests."}
                   </p>
                 </div>
               ) : (
@@ -1380,8 +1372,8 @@ export default function GuestsPage() {
                     Target Event
                   </label>
                   <select
-                    value={mockImportEventId}
-                    onChange={(e) => setMockImportEventId(e.target.value)}
+                    value={contactImportEventId}
+                    onChange={(e) => setContactImportEventId(e.target.value)}
                     className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 outline-none rounded-xl font-semibold cursor-pointer"
                   >
                     {events.map((e) => (
@@ -1396,35 +1388,47 @@ export default function GuestsPage() {
                 {/* Contacts List */}
                 <div>
                   <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-2">
-                    Google Contacts ({selectedMockContacts.length} selected)
+                    Google Contacts ({selectedImportContacts.length} selected)
                   </label>
-                  <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
-                    {mockGoogleContacts.map((contact, idx) => {
-                      const isChecked = selectedMockContacts.includes(idx);
-                      return (
-                        <div
-                          key={idx}
-                          onClick={() => {
-                            setSelectedMockContacts((prev) =>
-                              isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
-                            );
-                          }}
-                          className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            readOnly
-                            className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
-                          />
-                          <div>
-                            <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
-                            <p className="text-[10px] text-[#2D1B3D]/50">{contact.email} • {contact.phone}</p>
+                  {googleContacts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-[#E8C4B8]/40 rounded-xl bg-[#FAF8F5]/30">
+                      <Users className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
+                      <p className="text-xs font-semibold text-[#2D1B3D]">No contacts found</p>
+                      <p className="text-[11px] text-[#2D1B3D]/50 mt-0.5">
+                        No Google contacts are available to import.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
+                      {googleContacts.map((contact, idx) => {
+                        const isChecked = selectedImportContacts.includes(idx);
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setSelectedImportContacts((prev) =>
+                                isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
+                              );
+                            }}
+                            className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
+                            />
+                            <div>
+                              <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
+                              <p className="text-[10px] text-[#2D1B3D]/50">
+                                {contact.email}{contact.phone ? ` • ${contact.phone}` : ""}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Buttons */}
@@ -1436,11 +1440,11 @@ export default function GuestsPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleMockImportSubmit(mockGoogleContacts)}
-                    disabled={submitting || selectedMockContacts.length === 0 || !mockImportEventId}
+                    onClick={() => handleContactImportSubmit(googleContacts)}
+                    disabled={submitting || selectedImportContacts.length === 0 || !contactImportEventId}
                     className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md"
                   >
-                    {submitting ? "Importing..." : `Import Selected (${selectedMockContacts.length})`}
+                    {submitting ? "Importing..." : `Import Selected (${selectedImportContacts.length})`}
                   </button>
                 </div>
               </div>
@@ -1488,8 +1492,8 @@ export default function GuestsPage() {
                     Target Event
                   </label>
                   <select
-                    value={mockImportEventId}
-                    onChange={(e) => setMockImportEventId(e.target.value)}
+                    value={contactImportEventId}
+                    onChange={(e) => setContactImportEventId(e.target.value)}
                     className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 outline-none rounded-xl font-semibold cursor-pointer"
                   >
                     {events.map((e) => (
@@ -1504,35 +1508,47 @@ export default function GuestsPage() {
                 {/* Contacts List */}
                 <div>
                   <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-2">
-                    Contacts ({selectedMockContacts.length} selected)
+                    Contacts ({selectedImportContacts.length} selected)
                   </label>
-                  <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
-                    {mockEmailContacts.map((contact, idx) => {
-                      const isChecked = selectedMockContacts.includes(idx);
-                      return (
-                        <div
-                          key={idx}
-                          onClick={() => {
-                            setSelectedMockContacts((prev) =>
-                              isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
-                            );
-                          }}
-                          className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            readOnly
-                            className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
-                          />
-                          <div>
-                            <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
-                            <p className="text-[10px] text-[#2D1B3D]/50">{contact.email} • {contact.phone}</p>
+                  {emailContacts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-[#E8C4B8]/40 rounded-xl bg-[#FAF8F5]/30">
+                      <Users className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
+                      <p className="text-xs font-semibold text-[#2D1B3D]">No contacts found</p>
+                      <p className="text-[11px] text-[#2D1B3D]/50 mt-0.5">
+                        No email contacts are available to import.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
+                      {emailContacts.map((contact, idx) => {
+                        const isChecked = selectedImportContacts.includes(idx);
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setSelectedImportContacts((prev) =>
+                                isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
+                              );
+                            }}
+                            className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
+                            />
+                            <div>
+                              <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
+                              <p className="text-[10px] text-[#2D1B3D]/50">
+                                {contact.email}{contact.phone ? ` • ${contact.phone}` : ""}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Buttons */}
@@ -1544,11 +1560,11 @@ export default function GuestsPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleMockImportSubmit(mockEmailContacts)}
-                    disabled={submitting || selectedMockContacts.length === 0 || !mockImportEventId}
+                    onClick={() => handleContactImportSubmit(emailContacts)}
+                    disabled={submitting || selectedImportContacts.length === 0 || !contactImportEventId}
                     className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md"
                   >
-                    {submitting ? "Importing..." : `Import Selected (${selectedMockContacts.length})`}
+                    {submitting ? "Importing..." : `Import Selected (${selectedImportContacts.length})`}
                   </button>
                 </div>
               </div>

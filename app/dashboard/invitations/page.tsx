@@ -22,6 +22,7 @@ import {
   Save,
   Send,
   Eye,
+  EyeOff,
   X,
   Menu,
   CheckCircle,
@@ -84,7 +85,9 @@ function InvitationDesignerPageContent() {
   // Email dispatch guest selection state
   const [recipientEmails, setRecipientEmails] = useState<string>("");
   const [eventGuests, setEventGuests] = useState<any[]>([]);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [loadingGuests, setLoadingGuests] = useState<boolean>(false);
+  const [isGuestListVisible, setIsGuestListVisible] = useState<boolean>(true);
 
   // Protected route check
   useEffect(() => {
@@ -122,14 +125,25 @@ function InvitationDesignerPageContent() {
         .then((res) => {
           if (res.success && Array.isArray(res.guests)) {
             setEventGuests(res.guests);
+            // Default all event guests with valid emails as selected
+            const validGuestIds = res.guests
+              .filter((g: any) => g.email && g.email.trim() !== "")
+              .map((g: any) => g.id);
+            setSelectedGuestIds(validGuestIds);
           } else {
             setEventGuests([]);
+            setSelectedGuestIds([]);
           }
         })
-        .catch((err) => console.error("Error loading event guests:", err))
+        .catch((err) => {
+          console.error("Error loading event guests:", err);
+          setEventGuests([]);
+          setSelectedGuestIds([]);
+        })
         .finally(() => setLoadingGuests(false));
     } else {
       setEventGuests([]);
+      setSelectedGuestIds([]);
     }
   }, [user, selectedEventId]);
 
@@ -268,15 +282,57 @@ function InvitationDesignerPageContent() {
     await saveInvitation(payload);
   };
 
+  const isAllGuestsSelected =
+    eventGuests.length > 0 && selectedGuestIds.length === eventGuests.length;
+
+  const handleToggleSelectAllGuests = () => {
+    if (isAllGuestsSelected) {
+      setSelectedGuestIds([]);
+    } else {
+      const validGuestIds = eventGuests
+        .filter((g: any) => g.email && g.email.trim() !== "")
+        .map((g: any) => g.id);
+      setSelectedGuestIds(validGuestIds);
+    }
+  };
+
+  const handleToggleGuest = (guestId: string) => {
+    setSelectedGuestIds((prev) =>
+      prev.includes(guestId) ? prev.filter((id) => id !== guestId) : [...prev, guestId]
+    );
+  };
+
   // Send Flow
   const handleSend = async () => {
     if (!invitation) return;
+
+    // 1. Collect emails from selected guests from checkboxes
+    const selectedGuestEmails = eventGuests
+      .filter((g: any) => selectedGuestIds.includes(g.id) && g.email && g.email.trim())
+      .map((g: any) => g.email.trim().toLowerCase());
+
+    // 2. Collect custom emails from manual text field
+    const manualCustomEmails = recipientEmails
+      .split(/[\s,;\n]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0 && e.includes("@") && e.includes("."));
+
+    // 3. Combine and deduplicate
+    const combinedRecipients = Array.from(new Set([...selectedGuestEmails, ...manualCustomEmails]));
+
+    if (combinedRecipients.length === 0) {
+      setToast({
+        message: "Please select at least one guest checkbox or enter a valid recipient email address.",
+        type: "error",
+      });
+      return;
+    }
+
     // Auto-save any pending changes first
     const saved = await saveInvitation(invitation);
     const targetId = saved?.id || invitation.id;
     if (targetId) {
-      const targetRecipients = recipientEmails.trim() ? recipientEmails : undefined;
-      await queueInvitation(targetRecipients, targetId);
+      await queueInvitation(combinedRecipients, targetId);
     }
   };
 
@@ -951,8 +1007,8 @@ function InvitationDesignerPageContent() {
             {/* RIGHT LIVE PREVIEW PANEL (lg:col-span-7) */}
             <div className="lg:col-span-7 flex flex-col gap-6 lg:sticky lg:top-24">
 
-              {/* Toolbar sending actions */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+              {/* Toolbar sending actions & Guest List selection */}
+              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-[#C9A84C]" />
@@ -972,39 +1028,126 @@ function InvitationDesignerPageContent() {
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
-                        <span>Send Invitations</span>
+                        <span>Send Invitations ({selectedGuestIds.length + (recipientEmails.trim() ? recipientEmails.split(/[\s,;\n]+/).filter(e => e.includes("@")).length : 0)})</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                <div className="pt-2 border-t border-[#E8C4B8]/20 flex flex-col gap-2">
+                {/* Event Guest List Section with Checkboxes */}
+                <div className="pt-3 border-t border-[#E8C4B8]/20 flex flex-col gap-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#2D1B3D]/70 font-medium flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-[#2D1B3D]/50" />
-                      {loadingGuests ? (
-                        "Loading guest list..."
-                      ) : eventGuests.length > 0 ? (
-                        <span>
-                          Target: <strong className="text-[#2D1B3D]">{eventGuests.length} guest(s)</strong> in Event guest list
-                        </span>
-                      ) : (
-                        <span className="text-[#2D1B3D]/50 italic">No guests found in event list. Enter emails below.</span>
-                      )}
+                    <span className="text-[#2D1B3D]/80 font-bold flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#C9A84C]" />
+                      Event Guests ({selectedGuestIds.length}/{eventGuests.length} selected)
                     </span>
+
+                    <div className="flex items-center gap-2.5">
+                      {eventGuests.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleToggleSelectAllGuests}
+                          className="text-[11px] font-semibold text-[#5B5FEF] hover:text-[#3d2a52] transition-colors focus:outline-none flex items-center gap-1 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isAllGuestsSelected}
+                            onChange={handleToggleSelectAllGuests}
+                            className="w-3.5 h-3.5 accent-[#2D1B3D] rounded cursor-pointer"
+                          />
+                          <span>{isAllGuestsSelected ? "Deselect All" : "Select All"}</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setIsGuestListVisible((prev) => !prev)}
+                        className="text-[11px] font-semibold text-[#5B5FEF] hover:text-[#3d2a52] transition-colors focus:outline-none flex items-center gap-1 cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#5B5FEF]/10 transition-all"
+                        title={isGuestListVisible ? "Hide guest list" : "Show guest list"}
+                      >
+                        {isGuestListVisible ? (
+                          <>
+                            <EyeOff className="w-3 h-3 text-[#5B5FEF]" />
+                            <span>Hide</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3 text-[#5B5FEF]" />
+                            <span>Show</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <input
-                    type="text"
-                    value={recipientEmails}
-                    onChange={(e) => setRecipientEmails(e.target.value)}
-                    placeholder={
-                      eventGuests.length > 0
-                        ? "Optional: Custom email(s) e.g. swaraswn@gmail.com (leave empty to send to event guests)"
-                        : "Enter guest email address(es) e.g. swaraswn@gmail.com..."
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-[#E8C4B8]/40 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
-                  />
+                  {isGuestListVisible && (
+                    loadingGuests ? (
+                      <div className="py-4 text-center text-xs text-[#2D1B3D]/50 flex items-center justify-center gap-2">
+                        <div className="w-3.5 h-3.5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                        <span>Loading guest list...</span>
+                      </div>
+                    ) : eventGuests.length > 0 ? (
+                      <div className="max-h-44 overflow-y-auto border border-[#E8C4B8]/30 rounded-xl p-2 bg-[#FAF8F5]/60 divide-y divide-[#E8C4B8]/15 space-y-1">
+                        {eventGuests.map((guest) => {
+                          const isSelected = selectedGuestIds.includes(guest.id);
+                          return (
+                            <label
+                              key={guest.id}
+                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
+                                isSelected ? "bg-white shadow-xs border border-[#E8C4B8]/30" : "hover:bg-white/50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleGuest(guest.id)}
+                                  className="w-4 h-4 accent-[#2D1B3D] rounded cursor-pointer flex-shrink-0"
+                                />
+                                <div className="truncate">
+                                  <p className="font-bold text-[#2D1B3D] truncate">{guest.name || "Guest"}</p>
+                                  <p className="text-[10px] text-[#2D1B3D]/60 truncate">{guest.email || "No email"}</p>
+                                </div>
+                              </div>
+                              {guest.rsvpStatus && (
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize flex-shrink-0 ml-2 ${
+                                  guest.rsvpStatus === "attending" || guest.rsvpStatus === "confirmed"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : guest.rsvpStatus === "declined"
+                                    ? "bg-red-50 text-red-700 border border-red-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}>
+                                  {guest.rsvpStatus}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-[#FAF8F5] border border-[#E8C4B8]/30 rounded-xl text-center">
+                        <p className="text-xs text-[#2D1B3D]/60 italic">No guests registered for this event yet.</p>
+                        <p className="text-[10px] text-[#2D1B3D]/40 mt-0.5">Use the custom email field below to send invitations directly.</p>
+                      </div>
+                    )
+                  )}
+
+                  {/* Intact Manual Custom Email Input */}
+                  <div className="mt-1">
+                    <label className="block text-[11px] font-semibold text-[#2D1B3D]/70 mb-1">
+                      Additional Custom Recipient Email(s):
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientEmails}
+                      onChange={(e) => setRecipientEmails(e.target.value)}
+                      placeholder="Enter custom email address(es) e.g. swaraswn@gmail.com..."
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[#E8C4B8]/40 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
+                    />
+                    <p className="text-[10px] text-[#2D1B3D]/40 mt-1">
+                      Invitations will be sent to all selected event guests checked above plus any custom emails specified here.
+                    </p>
+                  </div>
                 </div>
               </div>
 
