@@ -164,8 +164,31 @@ export const getAdminEventGuests = async (eventId: string): Promise<AdminEventGu
   return response.data;
 };
 
-export const getAdminGuests = async (): Promise<{ success: boolean; guests: AdminGuest[] }> => {
-  const response = await API.get<{ success: boolean; guests: AdminGuest[] }>("/admin/guests");
+export interface AdminGuestsResponse {
+  success: boolean;
+  guests: AdminGuest[];
+  data?: AdminGuest[];
+  pagination?: {
+    page: number;
+    currentPage: number;
+    limit: number;
+    total: number;
+    totalCount: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export const getAdminGuests = async (
+  page?: number,
+  limit?: number,
+  search?: string,
+  eventId?: string
+): Promise<AdminGuestsResponse> => {
+  const response = await API.get<AdminGuestsResponse>("/admin/guests", {
+    params: { page, limit, search, eventId }
+  });
   return response.data;
 };
 
@@ -179,8 +202,13 @@ export const deleteAdminGuest = async (id: string): Promise<{ success: boolean; 
   return response.data;
 };
 
-export const getAdminInvitations = async (): Promise<{ success: boolean; invitations: AdminInvitation[] }> => {
-  const response = await API.get<{ success: boolean; invitations: AdminInvitation[] }>("/admin/invitations");
+export const getAdminInvitations = async (
+  page?: number,
+  limit?: number
+): Promise<{ success: boolean; invitations: AdminInvitation[]; pagination?: any }> => {
+  const response = await API.get<{ success: boolean; invitations: AdminInvitation[]; pagination?: any }>("/admin/invitations", {
+    params: { page, limit }
+  });
   return response.data;
 };
 

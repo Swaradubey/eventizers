@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import adminService, { AdminInvitation } from "../../../services/adminService";
+import Pagination from "../../../components/Pagination";
 import {
   LogOut,
   Edit2,
@@ -55,6 +56,15 @@ export default function AdminInvitationsPage() {
 
   // Filters and search
   const [search, setSearch] = useState("");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 7;
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -206,6 +216,13 @@ export default function AdminInvitationsPage() {
   });
 
   const totalInvitationsCount = invitations.length;
+  const totalFilteredCount = filteredInvitations.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCount / ITEMS_PER_PAGE));
+
+  const paginatedInvitations = filteredInvitations.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -365,7 +382,7 @@ export default function AdminInvitationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {filteredInvitations.map((inv) => (
+                  {paginatedInvitations.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group">
                       <td className="py-4 px-4 text-sm font-semibold text-[#2D1B3D]">
                         <div className="flex items-center gap-3">
@@ -432,6 +449,18 @@ export default function AdminInvitationsPage() {
               </table>
             </div>
           )}
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalFilteredCount}
+            limit={ITEMS_PER_PAGE}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loading}
+            itemName="invitations"
+            hideOnSinglePage={false}
+          />
         </div>
       </main>
 

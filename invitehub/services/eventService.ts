@@ -36,8 +36,9 @@ interface DeleteResponse {
   message: string;
 }
 
-export const getEvents = async (): Promise<EventsResponse> => {
-  const response = await API.get<EventsResponse>("/events");
+export const getEvents = async (page?: number, limit?: number): Promise<EventsResponse> => {
+  const params = page && limit ? { page, limit } : undefined;
+  const response = await API.get<EventsResponse>("/events", { params });
   return response.data;
 };
 

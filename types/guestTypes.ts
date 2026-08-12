@@ -10,9 +10,21 @@ export interface Guest {
   updatedAt?: string;
 }
 
+export interface PaginationMetadata {
+  page: number;
+  currentPage?: number;
+  limit: number;
+  total: number;
+  totalCount?: number;
+  totalPages: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
+}
+
 export interface GuestsResponse {
   success: boolean;
   guests: Guest[];
+  pagination?: PaginationMetadata;
 }
 
 export interface GuestResponse {

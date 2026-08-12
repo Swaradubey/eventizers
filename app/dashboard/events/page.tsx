@@ -6,6 +6,7 @@ import { useAuth } from "../../../invitehub/context/AuthContext";
 import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import EventModal from "../../../invitehub/components/EventModal";
+import Pagination from "../../../invitehub/components/Pagination";
 import eventService, { Event } from "../../../services/eventService";
 import {
   LogOut,
@@ -34,6 +35,10 @@ function EventsPageContent() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination state
+  const ITEMS_PER_PAGE = 7;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -51,12 +56,12 @@ function EventsPageContent() {
   }, [user, authLoading, router]);
 
   // Fetch events
-  const fetchEvents = async () => {
+  const fetchEvents = async (page: number = currentPage) => {
     if (!user) return;
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await eventService.getEvents();
+      const data = await eventService.getEvents(page, ITEMS_PER_PAGE);
       if (data && data.success) {
         setEvents(data.events || []);
       }
@@ -79,9 +84,9 @@ function EventsPageContent() {
 
   useEffect(() => {
     if (user) {
-      fetchEvents();
+      fetchEvents(currentPage);
     }
-  }, [user]);
+  }, [user, currentPage]);
 
   // Auto-open create modal when navigated with ?create=true
   const searchParams = useSearchParams();
@@ -171,6 +176,21 @@ function EventsPageContent() {
       minute: "2-digit",
     });
   };
+
+  // Pagination calculations
+  const totalEvents = events.length;
+  const totalPages = Math.ceil(totalEvents / ITEMS_PER_PAGE) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalEvents, totalPages, currentPage]);
+
+  const paginatedEvents = events.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   if (authLoading || !user) {
     return (
@@ -272,7 +292,7 @@ function EventsPageContent() {
               <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
               {error !== "Session expired. Please sign in again." && (
                 <button
-                  onClick={fetchEvents}
+                  onClick={() => fetchEvents()}
                   className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
                 >
                   Try Again
@@ -330,7 +350,7 @@ function EventsPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {events.map((event) => (
+                  {paginatedEvents.map((event) => (
                     <tr
                       key={event.id}
                       className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
@@ -395,6 +415,20 @@ function EventsPageContent() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* Pagination */}
+          {!loadingEvents && !error && events.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalEvents}
+              limit={ITEMS_PER_PAGE}
+              onPageChange={(page) => setCurrentPage(page)}
+              loading={loadingEvents}
+              itemName="events"
+              hideOnSinglePage={false}
+            />
           )}
         </div>
       </main>

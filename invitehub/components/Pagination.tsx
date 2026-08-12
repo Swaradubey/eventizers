@@ -10,6 +10,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   loading?: boolean;
   itemName?: string;
+  hideOnSinglePage?: boolean;
 }
 
 export default function Pagination({
@@ -19,7 +20,8 @@ export default function Pagination({
   limit,
   onPageChange,
   loading = false,
-  itemName = "items"
+  itemName = "items",
+  hideOnSinglePage = true
 }: PaginationProps) {
   // Ellipsis page number list generator
   const getPageNumbers = () => {
@@ -64,7 +66,7 @@ export default function Pagination({
   const startIndex = totalItems > 0 ? (currentPage - 1) * limit + 1 : 0;
   const endIndex = Math.min(currentPage * limit, totalItems);
 
-  if (totalItems === 0 || totalPages <= 1) {
+  if (totalItems === 0 || (hideOnSinglePage && totalPages <= 1)) {
     return null;
   }
 
@@ -76,7 +78,7 @@ export default function Pagination({
       <div className="flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           disabled={currentPage === 1 || loading}
           className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
           aria-label="Previous page"
@@ -103,8 +105,8 @@ export default function Pagination({
         ))}
         <button
           type="button"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || loading}
+          onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
+          disabled={currentPage >= totalPages || loading || totalItems <= limit}
           className="px-3 py-2 bg-white border border-[#E8C4B8]/30 rounded-xl hover:bg-[#F0EBE8] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed text-[#2D1B3D]"
           aria-label="Next page"
         >

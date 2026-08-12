@@ -6,6 +6,7 @@ import { useAuth } from "../../../invitehub/context/AuthContext";
 import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import adminService, { AdminGuest, AdminEvent } from "../../../services/adminService";
+import Pagination from "../../../invitehub/components/Pagination";
 import {
   LogOut,
   Plus,
@@ -42,6 +43,12 @@ export default function AdminGuestsPage() {
   const [search, setSearch] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("");
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalGuests, setTotalGuests] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const GUESTS_PER_PAGE = 7;
+
   // Modals
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<AdminGuest | null>(null);
@@ -71,22 +78,37 @@ export default function AdminGuestsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch data
-  const fetchData = async () => {
+  // Fetch events
+  const fetchEvents = async () => {
+    if (!user || user.role !== "ADMIN") return;
+    try {
+      const eventsData = await adminService.getAdminEvents();
+      if (eventsData && eventsData.success) {
+        setEvents(eventsData.events || []);
+      }
+    } catch (err: any) {
+      console.error("Admin Guests Page: Failed to fetch events:", err);
+    }
+  };
+
+  // Fetch paginated guests
+  const fetchGuests = async (pageToFetch: number = currentPage) => {
     if (!user || user.role !== "ADMIN") return;
     setLoading(true);
     setError(null);
     try {
-      const [guestsData, eventsData] = await Promise.all([
-        adminService.getAdminGuests(),
-        adminService.getAdminEvents(),
-      ]);
-
+      const guestsData = await adminService.getAdminGuests(pageToFetch, GUESTS_PER_PAGE, search, selectedEventId);
       if (guestsData && guestsData.success) {
         setGuests(guestsData.guests || []);
-      }
-      if (eventsData && eventsData.success) {
-        setEvents(eventsData.events || []);
+        if (guestsData.pagination) {
+          const total = guestsData.pagination.total || guestsData.pagination.totalCount || (guestsData.guests || []).length;
+          setTotalGuests(total);
+          setTotalPages(Math.max(1, Math.ceil(total / GUESTS_PER_PAGE)));
+        } else {
+          const count = (guestsData.guests || []).length;
+          setTotalGuests(count);
+          setTotalPages(Math.max(1, Math.ceil(count / GUESTS_PER_PAGE)));
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -96,11 +118,27 @@ export default function AdminGuestsPage() {
     }
   };
 
+  const fetchData = async () => {
+    await Promise.all([fetchEvents(), fetchGuests(currentPage)]);
+  };
+
   useEffect(() => {
     if (user && user.role === "ADMIN") {
-      fetchData();
+      fetchEvents();
     }
   }, [user]);
+
+  // Reset page when search or selectedEventId changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedEventId]);
+
+  // Fetch guests whenever page, search, or selectedEventId changes
+  useEffect(() => {
+    if (user && user.role === "ADMIN") {
+      fetchGuests(currentPage);
+    }
+  }, [user, currentPage, search, selectedEventId]);
 
   // Toast effect
   useEffect(() => {
@@ -209,7 +247,7 @@ export default function AdminGuestsPage() {
       const res = await adminService.deleteAdminGuest(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Guest deleted successfully by Admin!");
-        setGuests((prev) => prev.filter((g) => g.id !== deleteConfirmId));
+        fetchGuests(currentPage);
       }
     } catch (err: any) {
       console.error(err);
@@ -219,17 +257,10 @@ export default function AdminGuestsPage() {
     }
   };
 
-  // Filtered guests list for search and selected event
-  const filteredGuests = guests.filter((g) => {
-    const matchesSearch =
-      g.name.toLowerCase().includes(search.toLowerCase()) ||
-      g.email.toLowerCase().includes(search.toLowerCase()) ||
-      (g.phone && g.phone.toLowerCase().includes(search.toLowerCase()));
-
-    const matchesEvent = selectedEventId ? g.eventId === selectedEventId : true;
-
-    return matchesSearch && matchesEvent;
-  });
+  const filteredGuests = guests;
+  const paginatedGuests = guests.length > GUESTS_PER_PAGE
+    ? guests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE)
+    : guests;
 
   // Export CSV handler
   const handleExportCSV = () => {
@@ -289,7 +320,7 @@ export default function AdminGuestsPage() {
     triggerToast(`Exported ${filteredGuests.length} guest(s) to CSV!`, "success");
   };
 
-  const totalGuestsCount = guests.length;
+  const totalGuestsCount = totalGuests;
   const totalEventsCount = events.length;
 
   if (authLoading || !user || user.role !== "ADMIN") {
@@ -504,7 +535,7 @@ export default function AdminGuestsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {filteredGuests.map((g) => (
+                  {paginatedGuests.map((g) => (
                     <tr key={g.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
@@ -595,6 +626,18 @@ export default function AdminGuestsPage() {
               </table>
             </div>
           )}
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalGuests}
+            limit={GUESTS_PER_PAGE}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loading}
+            itemName="guests"
+            hideOnSinglePage={false}
+          />
         </div>
       </main>
 

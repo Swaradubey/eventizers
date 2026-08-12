@@ -7,10 +7,27 @@ import {
   ImportGuestsResponse
 } from "../types/guestTypes";
 
-export const getGuests = async (search?: string, eventId?: string): Promise<GuestsResponse> => {
-  const response = await API.get<GuestsResponse>("/guests", {
-    params: { search, eventId }
-  });
+export const getGuests = async (
+  pageOrSearch?: number | string,
+  limitOrEventId?: number | string,
+  search?: string,
+  eventId?: string
+): Promise<GuestsResponse> => {
+  let params: Record<string, any> = {};
+
+  if (typeof pageOrSearch === "number") {
+    params.page = pageOrSearch;
+    if (typeof limitOrEventId === "number") {
+      params.limit = limitOrEventId;
+    }
+    if (search) params.search = search;
+    if (eventId) params.eventId = eventId;
+  } else {
+    if (pageOrSearch) params.search = pageOrSearch;
+    if (typeof limitOrEventId === "string") params.eventId = limitOrEventId;
+  }
+
+  const response = await API.get<GuestsResponse>("/guests", { params });
   return response.data;
 };
 

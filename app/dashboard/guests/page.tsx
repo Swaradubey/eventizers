@@ -8,6 +8,7 @@ import Navbar from "../../../invitehub/components/Navbar";
 import guestService from "../../../services/guestService";
 import eventService, { Event } from "../../../services/eventService";
 import { Guest } from "../../../types/guestTypes";
+import Pagination from "../../../invitehub/components/Pagination";
 import {
   LogOut,
   Plus,
@@ -85,6 +86,12 @@ export default function GuestsPage() {
   const [selectedImportContacts, setSelectedImportContacts] = useState<number[]>([]);
   const [contactImportEventId, setContactImportEventId] = useState("");
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalGuests, setTotalGuests] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const GUESTS_PER_PAGE = 7;
+
   // Route protection
   useEffect(() => {
     if (!authLoading && !user) {
@@ -92,22 +99,37 @@ export default function GuestsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch data
-  const fetchData = async () => {
+  // Fetch events
+  const fetchEvents = async () => {
+    if (!user) return;
+    try {
+      const eventsData = await eventService.getEvents();
+      if (eventsData && eventsData.success) {
+        setEvents(eventsData.events || []);
+      }
+    } catch (err: any) {
+      console.error("Dashboard Guests Page: Failed to fetch events:", err);
+    }
+  };
+
+  // Fetch paginated guests
+  const fetchGuests = async (pageToFetch: number = currentPage) => {
     if (!user) return;
     setLoading(true);
     setError(null);
     try {
-      const [guestsData, eventsData] = await Promise.all([
-        guestService.getGuests(search || undefined, selectedEventId || undefined),
-        eventService.getEvents(),
-      ]);
-
+      const guestsData = await guestService.getGuests(pageToFetch, GUESTS_PER_PAGE, search, selectedEventId);
       if (guestsData && guestsData.success) {
         setGuests(guestsData.guests || []);
-      }
-      if (eventsData && eventsData.success) {
-        setEvents(eventsData.events || []);
+        if (guestsData.pagination) {
+          const total = guestsData.pagination.total || guestsData.pagination.totalCount || (guestsData.guests || []).length;
+          setTotalGuests(total);
+          setTotalPages(Math.max(1, Math.ceil(total / GUESTS_PER_PAGE)));
+        } else {
+          const count = (guestsData.guests || []).length;
+          setTotalGuests(count);
+          setTotalPages(Math.max(1, Math.ceil(count / GUESTS_PER_PAGE)));
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -117,11 +139,27 @@ export default function GuestsPage() {
     }
   };
 
+  const fetchData = async () => {
+    await Promise.all([fetchEvents(), fetchGuests(currentPage)]);
+  };
+
   useEffect(() => {
     if (user) {
-      fetchData();
+      fetchEvents();
     }
-  }, [user, search, selectedEventId]);
+  }, [user]);
+
+  // Reset page when search or selectedEventId changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedEventId]);
+
+  // Fetch guests whenever page, search, or selectedEventId changes
+  useEffect(() => {
+    if (user) {
+      fetchGuests(currentPage);
+    }
+  }, [user, currentPage, search, selectedEventId]);
 
   // Toast effect
   useEffect(() => {
@@ -265,7 +303,7 @@ export default function GuestsPage() {
       const res = await guestService.deleteGuest(deleteConfirmId);
       if (res && res.success) {
         triggerToast("Guest deleted successfully!");
-        setGuests((prev) => prev.filter((g) => g.id !== deleteConfirmId));
+        fetchGuests(currentPage);
       }
     } catch (err: any) {
       console.error(err);
@@ -359,23 +397,20 @@ export default function GuestsPage() {
 
   // Filtered guests calculation
   const filteredGuests = guests.filter((guest) => {
-    const matchesEvent = selectedEventId ? guest.eventId === selectedEventId : true;
-    const searchLower = search.toLowerCase().trim();
-    const matchesSearch = searchLower
-      ? guest.name.toLowerCase().includes(searchLower) ||
-        guest.email.toLowerCase().includes(searchLower) ||
-        (guest.phone && guest.phone.toLowerCase().includes(searchLower)) ||
-        (guest.eventTitle && guest.eventTitle.toLowerCase().includes(searchLower)) ||
-        guest.status.toLowerCase().includes(searchLower)
-      : true;
     const matchesMonth = isImportedMonthOnly
       ? guest.createdAt
         ? new Date(guest.createdAt).getMonth() === new Date().getMonth() &&
           new Date(guest.createdAt).getFullYear() === new Date().getFullYear()
         : false
       : true;
-    return matchesEvent && matchesSearch && matchesMonth;
+    return matchesMonth;
   });
+
+  const effectiveTotalGuests = isImportedMonthOnly ? filteredGuests.length : totalGuests;
+  const calculatedTotalPages = Math.max(1, Math.ceil(effectiveTotalGuests / GUESTS_PER_PAGE));
+  const paginatedGuests = (isImportedMonthOnly || guests.length > GUESTS_PER_PAGE)
+    ? filteredGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE)
+    : filteredGuests;
 
   // KPI Summary Card Actions
   const handleTotalGuestsClick = () => {
@@ -938,7 +973,7 @@ export default function GuestsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E8C4B8]/20">
-                      {filteredGuests.map((g) => (
+                      {paginatedGuests.map((g) => (
                         <tr
                           key={g.id}
                           className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
@@ -1020,6 +1055,18 @@ export default function GuestsPage() {
                   </table>
                 </div>
               )}
+
+              {/* Pagination Controls */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages || calculatedTotalPages}
+                totalItems={effectiveTotalGuests}
+                limit={GUESTS_PER_PAGE}
+                onPageChange={(p) => setCurrentPage(p)}
+                loading={loading}
+                itemName="guests"
+                hideOnSinglePage={false}
+              />
             </div>
           </div>
         </div>

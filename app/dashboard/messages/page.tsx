@@ -8,6 +8,7 @@ import Navbar from "../../../invitehub/components/Navbar";
 import messageService, { Message, UserStats, MessageDetail } from "../../../services/messageService";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
+import Pagination from "../../../invitehub/components/Pagination";
 import { Guest } from "../../../types/guestTypes";
 import {
   LogOut,
@@ -40,6 +41,10 @@ export default function MessagesPage() {
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Statistics state
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -150,6 +155,27 @@ export default function MessagesPage() {
       fetchEvents();
     }
   }, [user, search]);
+
+  // Reset to page 1 whenever search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Calculate pagination slices
+  const totalItems = messages.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  // Ensure currentPage remains valid when list size changes
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedMessages = messages.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Handle toast timers
   useEffect(() => {
@@ -434,16 +460,35 @@ export default function MessagesPage() {
             <h3 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', serif" }}>
               Message History
             </h3>
-            {/* Search field */}
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search messages..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
-              />
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 text-xs text-[#2D1B3D]/70 font-semibold whitespace-nowrap">
+                <span>Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-[#FAF8F5] border border-[#E8C4B8]/40 text-[#2D1B3D] py-1.5 px-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span>per page</span>
+              </div>
+              {/* Search field */}
+              <div className="relative w-full sm:w-56">
+                <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search messages..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                />
+              </div>
             </div>
           </div>
 
@@ -481,104 +526,116 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Subject
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Event
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Recipient Type
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Recipients
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Sent Date
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {messages.map((msg) => (
-                    <tr
-                      key={msg.id}
-                      className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
-                    >
-                      <td className="py-4 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-[#2D1B3D]">
-                            {msg.subject}
-                          </span>
-                          <span className="text-xs text-[#2D1B3D]/50 line-clamp-1 max-w-[200px]">
-                            {msg.body}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-xs font-semibold text-[#2D1B3D]/80">
-                        {msg.eventTitle}
-                      </td>
-                      <td className="py-4 px-4 text-xs font-medium text-[#2D1B3D]/70">
-                        <span className="px-2 py-0.5 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-md text-[10px]">
-                          {msg.recipientType.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/80 font-bold">
-                        {msg.recipientCount} guests
-                      </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
-                            msg.status === "SENT"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : msg.status === "FAILED"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
-                        >
-                          {msg.status.toLowerCase()}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/60">
-                        {formatDate(msg.sentAt || msg.createdAt)}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <button
-                            onClick={() => handleViewDetails(msg.id)}
-                            disabled={loadingDetailId === msg.id}
-                            title="View Recipients"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none disabled:opacity-40"
-                          >
-                            {loadingDetailId === msg.id ? (
-                              <div className="w-4 h-4 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(msg.id)}
-                            title="Delete Message"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#E8C4B8]/30">
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Subject
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Event
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Recipient Type
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Recipients
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        Sent Date
+                      </th>
+                      <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#E8C4B8]/20">
+                    {paginatedMessages.map((msg) => (
+                      <tr
+                        key={msg.id}
+                        className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
+                      >
+                        <td className="py-4 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-[#2D1B3D]">
+                              {msg.subject}
+                            </span>
+                            <span className="text-xs text-[#2D1B3D]/50 line-clamp-1 max-w-[200px]">
+                              {msg.body}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-xs font-semibold text-[#2D1B3D]/80">
+                          {msg.eventTitle}
+                        </td>
+                        <td className="py-4 px-4 text-xs font-medium text-[#2D1B3D]/70">
+                          <span className="px-2 py-0.5 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-md text-[10px]">
+                            {msg.recipientType.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-xs text-[#2D1B3D]/80 font-bold">
+                          {msg.recipientCount} guests
+                        </td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                              msg.status === "SENT"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : msg.status === "FAILED"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {msg.status.toLowerCase()}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-xs text-[#2D1B3D]/60">
+                          {formatDate(msg.sentAt || msg.createdAt)}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              onClick={() => handleViewDetails(msg.id)}
+                              disabled={loadingDetailId === msg.id}
+                              title="View Recipients"
+                              className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none disabled:opacity-40"
+                            >
+                              {loadingDetailId === msg.id ? (
+                                <div className="w-4 h-4 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(msg.id)}
+                              title="Delete Message"
+                              className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                limit={itemsPerPage}
+                onPageChange={(p) => setCurrentPage(p)}
+                loading={loadingMessages}
+                itemName="messages"
+              />
+            </>
           )}
         </div>
       </main>
