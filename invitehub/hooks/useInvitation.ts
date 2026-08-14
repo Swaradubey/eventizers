@@ -294,7 +294,13 @@ export const useInvitation = (eventId: string | null) => {
       try {
         const inviteRes = await invitationService.getInvitationByEvent(eventId);
         if (inviteRes.success && inviteRes.invitation) {
-          setInvitation(inviteRes.invitation);
+          // If the saved invitation has no imageUrl but the event has a coverImage,
+          // fall back to the event's coverImage so it surfaces in the designer preview.
+          const fetchedInvitation = inviteRes.invitation;
+          if (!fetchedInvitation.imageUrl && eventRes.event.coverImage) {
+            fetchedInvitation.imageUrl = eventRes.event.coverImage;
+          }
+          setInvitation(fetchedInvitation);
         } else {
           // Initialize a default draft using selectedTemplateId if present
           const tplKey = eventRes.event.selectedTemplateId;

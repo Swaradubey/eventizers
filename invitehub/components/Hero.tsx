@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import templateService, { Template } from "../services/templateService";
 import eventService from "../services/eventService";
 import API from "../services/api";
+import { getImageUrl } from "../utils/imageUrl";
 
 const eventTypes = [
   "Birthday",
@@ -63,14 +64,16 @@ const getTemplateImage = (templateId?: string | null) => {
 };
 
 const getCardImageUrl = (tpl: any) => {
-  if (tpl.imageUrl) return tpl.imageUrl;
-  if (tpl.content) {
+  let url = null;
+  if (tpl.imageUrl) url = tpl.imageUrl;
+  else if (tpl.content) {
     try {
       const parsed = JSON.parse(tpl.content);
-      if (parsed.image) return parsed.image;
+      if (parsed.image) url = parsed.image;
     } catch (e) {}
   }
-  return getTemplateImage(tpl.id);
+  if (!url) url = getTemplateImage(tpl.id);
+  return getImageUrl(url);
 };
 
 const tabs = ["AI Create", "Template", "Upload Existing"];

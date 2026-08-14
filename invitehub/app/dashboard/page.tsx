@@ -7,6 +7,7 @@ import Navbar from "../../components/Navbar";
 import EventModal from "../../components/EventModal";
 import eventService, { Event } from "../../services/eventService";
 import dashboardService, { DashboardStats } from "../../services/dashboardService";
+import { getImageUrl } from "../../utils/imageUrl";
 import {
   LogOut,
   Plus,
@@ -603,7 +604,7 @@ export default function DashboardPage() {
               {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
                 <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
                   <img
-                    src={viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || ""}
+                    src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
                     alt={viewingEvent.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {

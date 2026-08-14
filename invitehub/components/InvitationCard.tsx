@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Calendar, Clock, MapPin, Users } from "lucide-react";
+import { getImageUrl } from "../utils/imageUrl";
 
 interface InvitationCardProps {
   type: string;
@@ -65,7 +66,8 @@ export default function InvitationCard({
   const [imageError, setImageError] = useState(false);
 
   const showImage = image && !imageError;
-  const imgSrc = typeof image === 'string' ? image : image?.src;
+  const rawImgSrc = typeof image === 'string' ? image : image?.src;
+  const imgSrc = getImageUrl(rawImgSrc);
 
   if (variant === "floating-preview") {
     return (

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import invitationService from "@/services/invitationService";
+import { getImageUrl } from "@/utils/imageUrl";
 
 export default function PublicInvitationPage() {
   const params = useParams();
@@ -40,6 +41,9 @@ export default function PublicInvitationPage() {
 
   // Copy share link state
   const [copied, setCopied] = useState(false);
+
+  // Cover image error state for graceful fallback
+  const [coverImgError, setCoverImgError] = useState(false);
 
   useEffect(() => {
     if (!invitationId) return;
@@ -180,7 +184,7 @@ export default function PublicInvitationPage() {
     .filter(Boolean)
     .join(", ");
 
-  const coverImage = invitation?.imageUrl || eventData.coverImage;
+  const coverImage = getImageUrl(invitation?.imageUrl || eventData.coverImage);
 
   return (
     <div
@@ -194,14 +198,23 @@ export default function PublicInvitationPage() {
         className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-black/5"
       >
         {/* Header Cover Image */}
-        {coverImage && (
+        {coverImage && !coverImgError && (
           <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gray-100">
             <img
               src={coverImage}
               alt="Invitation Cover"
               className="w-full h-full object-cover"
+              onError={() => setCoverImgError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+          </div>
+        )}
+        {coverImage && coverImgError && (
+          <div className="w-full h-48 bg-gradient-to-br from-[#2D1B3D]/8 to-transparent flex flex-col items-center justify-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-[#2D1B3D]/10 flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-[#2D1B3D]/30" />
+            </div>
+            <p className="text-xs text-[#2D1B3D]/30 italic">Cover image could not be loaded</p>
           </div>
         )}
 

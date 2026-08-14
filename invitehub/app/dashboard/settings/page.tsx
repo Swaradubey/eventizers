@@ -7,6 +7,7 @@ import Navbar from "../../../components/Navbar";
 import { useSidebar } from "../../../context/SidebarContext";
 import { useTheme } from "../../../context/ThemeContext";
 import userSettingsService from "../../../services/userSettingsService";
+import { getImageUrl } from "../../../utils/imageUrl";
 import {
   AdminProfileData,
   AdminNotificationSettingsData,
@@ -407,7 +408,7 @@ export default function UserSettingsPage() {
                     <div className="relative w-20 h-20 rounded-full border border-[#E8C4B8]/40 bg-[#FAF8F5] overflow-hidden flex items-center justify-center">
                       {profileData.profileImage ? (
                         <img
-                          src={profileData.profileImage}
+                          src={getImageUrl(profileData.profileImage)}
                           alt="Profile Preview"
                           className="w-full h-full object-cover"
                           onError={(e) => {

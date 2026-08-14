@@ -8,6 +8,7 @@ import Navbar from "../../../components/Navbar";
 import { useInvitation } from "../../../hooks/useInvitation";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
+import { getImageUrl } from "../../../utils/imageUrl";
 import {
   LogOut,
   Calendar,
@@ -38,6 +39,8 @@ import {
   ArrowLeft,
   Mail,
   Users,
+  Share2,
+  MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -82,7 +85,7 @@ function InvitationDesignerPageContent() {
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Email dispatch guest selection state
+  // Email & WhatsApp dispatch guest selection state
   const [recipientEmails, setRecipientEmails] = useState<string>("");
   const [eventGuests, setEventGuests] = useState<any[]>([]);
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
@@ -333,6 +336,67 @@ function InvitationDesignerPageContent() {
     const targetId = saved?.id || invitation.id;
     if (targetId) {
       await queueInvitation(combinedRecipients, targetId);
+    }
+  };
+
+  // WhatsApp Share Flow
+  const handleWhatsAppShare = async () => {
+    if (!invitation) return;
+
+    // 1. Auto-save any pending changes first to ensure invitation is published
+    const payload = {
+      ...invitation,
+      status: "published" as const,
+    };
+    const saved = await saveInvitation(payload);
+    const targetId = saved?.id || invitation.id;
+
+    if (!targetId) {
+      setToast({
+        message: "Failed to generate invitation link. Please try saving again.",
+        type: "error",
+      });
+      return;
+    }
+
+    // 2. Build exact published web page URL consistent with email invitations
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const publishedUrl = `${origin}/invitation/${targetId}`;
+
+    // 3. Format invitation message content
+    const title = invitation.title || event?.title || "Special Event Invitation";
+    const subtitle = invitation.subtitle ? `\n_${invitation.subtitle}_` : "";
+    const dateStr = event?.eventDate ? `\n📅 *Date:* ${formatEventDate(event.eventDate)}` : "";
+    const venueStr = event?.venue ? `\n📍 *Location:* ${event.venue}` : "";
+
+    const messageText = `✨ *You're Cordially Invited!* ✨\n\n*${title}*${subtitle}${dateStr}${venueStr}\n\nPlease view your full invitation & RSVP using the link below:\n${publishedUrl}`;
+
+    // 4. Collect target phone numbers from selected event guests
+    const selectedGuestPhones = Array.from(
+      new Set(
+        eventGuests
+          .filter((g: any) => selectedGuestIds.includes(g.id) && g.phone && g.phone.trim())
+          .map((g: any) => g.phone.trim())
+      )
+    );
+
+    // 5. Generate WhatsApp launch link and trigger opening
+    if (selectedGuestPhones.length === 1) {
+      const cleanPhone = selectedGuestPhones[0].replace(/[^\d+]/g, "").replace(/^\+/, "");
+      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+      window.open(whatsappUrl, "_blank");
+      setToast({
+        message: "WhatsApp share link generated! Opening WhatsApp...",
+        type: "success",
+      });
+    } else {
+      // If multiple phone numbers or none specified, open WhatsApp universal share text composer
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+      window.open(whatsappUrl, "_blank");
+      setToast({
+        message: "WhatsApp share link generated! Opening WhatsApp...",
+        type: "success",
+      });
     }
   };
 
@@ -824,7 +888,7 @@ function InvitationDesignerPageContent() {
                               <p className="font-semibold text-[#2D1B3D]/50 text-[10px] uppercase">Active Preview</p>
                               <div className="relative w-full h-24 rounded-lg overflow-hidden border border-[#E8C4B8]/30">
                                 <img
-                                  src={invitation.imageUrl}
+                                  src={getImageUrl(invitation.imageUrl)}
                                   alt="Cover preview"
                                   className="w-full h-full object-cover"
                                 />
@@ -1009,29 +1073,41 @@ function InvitationDesignerPageContent() {
 
               {/* Toolbar sending actions & Guest List selection */}
               <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-[#C9A84C]" />
                     <span className="text-xs font-bold text-[#2D1B3D]">Share with Guests:</span>
                   </div>
-                  <button
-                    onClick={handleSend}
-                    disabled={inviteSending || inviteSaving}
-                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50"
-                    title="Distribute HTML Email to Guests"
-                  >
-                    {inviteSending ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Sending...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
-                        <span>Send Invitations ({selectedGuestIds.length + (recipientEmails.trim() ? recipientEmails.split(/[\s,;\n]+/).filter(e => e.includes("@")).length : 0)})</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleWhatsAppShare}
+                      disabled={inviteSending || inviteSaving}
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50 cursor-pointer"
+                      title="Share Published Invitation Page via WhatsApp"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share via WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={handleSend}
+                      disabled={inviteSending || inviteSaving}
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50 cursor-pointer"
+                      title="Distribute HTML Email to Guests"
+                    >
+                      {inviteSending ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          <span>Send Invitations ({selectedGuestIds.length + (recipientEmails.trim() ? recipientEmails.split(/[\s,;\n]+/).filter(e => e.includes("@")).length : 0)})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Event Guest List Section with Checkboxes */}
@@ -1106,7 +1182,9 @@ function InvitationDesignerPageContent() {
                                 />
                                 <div className="truncate">
                                   <p className="font-bold text-[#2D1B3D] truncate">{guest.name || "Guest"}</p>
-                                  <p className="text-[10px] text-[#2D1B3D]/60 truncate">{guest.email || "No email"}</p>
+                                  <p className="text-[10px] text-[#2D1B3D]/60 truncate">
+                                    {guest.email || "No email"} {guest.phone ? `• 📞 ${guest.phone}` : ""}
+                                  </p>
                                 </div>
                               </div>
                               {guest.rsvpStatus && (
@@ -1127,7 +1205,7 @@ function InvitationDesignerPageContent() {
                     ) : (
                       <div className="p-3 bg-[#FAF8F5] border border-[#E8C4B8]/30 rounded-xl text-center">
                         <p className="text-xs text-[#2D1B3D]/60 italic">No guests registered for this event yet.</p>
-                        <p className="text-[10px] text-[#2D1B3D]/40 mt-0.5">Use the custom email field below to send invitations directly.</p>
+                        <p className="text-[10px] text-[#2D1B3D]/40 mt-0.5">Use the custom fields below to send or share invitations directly.</p>
                       </div>
                     )
                   )}
@@ -1164,7 +1242,7 @@ function InvitationDesignerPageContent() {
                   <div className="invitation-image-wrapper">
                     {invitation.imageUrl ? (
                       <img
-                        src={invitation.imageUrl}
+                        src={getImageUrl(invitation.imageUrl)}
                         alt="Invitation cover"
                         className="invitation-image"
                       />
@@ -1344,7 +1422,7 @@ function InvitationDesignerPageContent() {
                     <div className="invitation-image-wrapper">
                       {invitation.imageUrl && !coverImgError ? (
                         <img
-                          src={invitation.imageUrl}
+                          src={getImageUrl(invitation.imageUrl)}
                           alt="Invitation cover"
                           className="invitation-image"
                           onError={() => setCoverImgError(true)}

@@ -6,6 +6,7 @@ import { useAuth } from "../../../invitehub/context/AuthContext";
 import { useSidebar } from "../../../invitehub/context/SidebarContext";
 import Navbar from "../../../invitehub/components/Navbar";
 import adminService, { AdminInvitation } from "../../../services/adminService";
+import { getImageUrl } from "../../../utils/imageUrl";
 import Pagination from "../../../invitehub/components/Pagination";
 import {
   LogOut,
@@ -35,7 +36,7 @@ function InvitationThumbnail({ src, alt }: { src?: string; alt: string }) {
   return (
     <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#E8C4B8]/40 shrink-0 bg-neutral-100 shadow-sm">
       <img
-        src={src}
+        src={getImageUrl(src)}
         alt={alt}
         onError={() => setHasError(true)}
         className="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-105"
@@ -503,7 +504,7 @@ export default function AdminInvitationsPage() {
                   {viewingInvitation.imageUrl && (
                     <div className="w-full h-36 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/40 bg-neutral-100 shadow-sm relative">
                       <img
-                        src={viewingInvitation.imageUrl}
+                        src={getImageUrl(viewingInvitation.imageUrl)}
                         alt={viewingInvitation.title}
                         className="w-full h-full object-cover object-center"
                       />

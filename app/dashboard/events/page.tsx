@@ -8,6 +8,7 @@ import Navbar from "../../../invitehub/components/Navbar";
 import EventModal from "../../../invitehub/components/EventModal";
 import Pagination from "../../../invitehub/components/Pagination";
 import eventService, { Event } from "../../../services/eventService";
+import { getImageUrl } from "../../../utils/imageUrl";
 import {
   LogOut,
   Plus,
@@ -481,7 +482,7 @@ function EventsPageContent() {
               {viewingEvent.coverImage && (
                 <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
                   <img
-                    src={viewingEvent.coverImage}
+                    src={getImageUrl(viewingEvent.coverImage)}
                     alt={viewingEvent.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {

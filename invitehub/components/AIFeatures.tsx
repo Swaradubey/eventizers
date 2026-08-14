@@ -44,7 +44,7 @@ const floatingCards = [leftCardData, rightCardData];
 
 export default function AIFeatures() {
   return (
-    <section className="py-16 md:py-24 bg-[#2D1B3D] overflow-hidden">
+    <section id="features" className="py-16 md:py-24 bg-[#2D1B3D] overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left: text */}

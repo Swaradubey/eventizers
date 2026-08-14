@@ -31,6 +31,7 @@ export default function Navbar() {
   const router = useRouter();
   const { isCollapsed, isOpen, setIsOpen, setIsCollapsed } = useSidebar();
   const isDashboard = pathname?.startsWith("/dashboard") || (pathname?.startsWith("/admin") && pathname !== "/admin/login");
+  const isHomePage = pathname === "/";
 
   const handleCreateEventClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -40,6 +41,54 @@ export default function Navbar() {
       router.push("/login");
     }
   };
+
+  const scrollToSection = (targetId: string) => {
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleSectionClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith("#")) return;
+    const targetId = href.replace("#", "");
+
+    if (isHomePage) {
+      e.preventDefault();
+      scrollToSection(targetId);
+      window.history.pushState(null, "", href);
+    } else {
+      e.preventDefault();
+      router.push(`/${href}`);
+    }
+  };
+
+  useEffect(() => {
+    const handleHashScroll = () => {
+      if (pathname === "/" && typeof window !== "undefined" && window.location.hash) {
+        const targetId = window.location.hash.replace("#", "");
+        if (!targetId) return;
+
+        let attempts = 0;
+        const timer = setInterval(() => {
+          const element = document.getElementById(targetId);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+            clearInterval(timer);
+          } else {
+            attempts++;
+            if (attempts >= 15) {
+              clearInterval(timer);
+            }
+          }
+        }, 100);
+      }
+    };
+
+    handleHashScroll();
+    window.addEventListener("hashchange", handleHashScroll);
+    return () => window.removeEventListener("hashchange", handleHashScroll);
+  }, [pathname]);
 
   const handleMouseEnter = () => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -173,7 +222,8 @@ export default function Navbar() {
             return (
               <a
                 key={link.label}
-                href={link.href}
+                href={isHomePage ? link.href : `/${link.href}`}
+                onClick={(e) => handleSectionClick(e, link.href)}
                 className="text-sm font-medium text-[#2D1B3D]/70 hover:text-[#2D1B3D] transition-colors"
               >
                 {link.label}
@@ -296,9 +346,12 @@ export default function Navbar() {
             return (
               <a
                 key={link.label}
-                href={link.href}
+                href={isHomePage ? link.href : `/${link.href}`}
                 className="text-sm font-medium text-[#2D1B3D]/80 hover:text-[#2D1B3D]"
-                onClick={() => setOpen(false)}
+                onClick={(e) => {
+                  setOpen(false);
+                  handleSectionClick(e, link.href);
+                }}
               >
                 {link.label}
               </a>
