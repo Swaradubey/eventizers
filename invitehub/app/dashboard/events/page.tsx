@@ -233,8 +233,8 @@ function EventsPageContent() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      {/* Main container with padding top to clear fixed navbar */}
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      {/* Main container */}
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Top bar with Heading and Sign Out */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ function EventsPageContent() {
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
           >
             <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-            Sign Out
+
           </button>
         </div>
 

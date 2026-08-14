@@ -226,7 +226,7 @@ function AdminEventsPageContent() {
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
           >
             <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-            Sign Out
+
           </button>
         </div>
 
@@ -367,13 +367,12 @@ function AdminEventsPageContent() {
                       </td>
                       <td className="py-4 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                            event.status === "published"
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${event.status === "published"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : event.status === "cancelled"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
                         >
                           {event.status || "Draft"}
                         </span>
@@ -412,7 +411,7 @@ function AdminEventsPageContent() {
               </table>
             </div>
           )}
-          
+
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -524,17 +523,17 @@ function AdminEventsPageContent() {
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                      <p className="text-xs text-[#2D1B3D]/70 mt-0.5">
-                        {[
-                          viewingEvent.address,
-                          viewingEvent.city,
-                          viewingEvent.state,
-                          viewingEvent.country,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </p>
-                    )}
+                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5">
+                          {[
+                            viewingEvent.address,
+                            viewingEvent.city,
+                            viewingEvent.state,
+                            viewingEvent.country,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                      )}
                   </div>
                 </div>
 
@@ -604,13 +603,12 @@ function AdminEventsPageContent() {
                               <td className="py-2 px-2 text-xs text-[#2D1B3D]">{guest.name}</td>
                               <td className="py-2 px-2 text-xs text-[#2D1B3D]/70">{guest.email}</td>
                               <td className="py-2 px-2">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                                  guest.status === "confirmed"
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${guest.status === "confirmed"
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : guest.status === "declined"
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200"
-                                }`}>
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-amber-50 text-amber-700 border-amber-200"
+                                  }`}>
                                   {guest.status}
                                 </span>
                               </td>

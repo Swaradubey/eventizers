@@ -1,69 +1,123 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { Search, X, Sparkles, Calendar, MapPin, Users } from "lucide-react";
-import InvitationCard from "./InvitationCard";
-import { templateCards as cards, TemplateItem, matchesCategory } from "../lib/templateData";
+import { motion, useReducedMotion } from "framer-motion";
+import { Cake, Heart, Briefcase, Wine, Baby, Gift, Music, Sparkles, ArrowRight } from "lucide-react";
 
-const Sparkle = ({ className }: { className: string }) => (
-  <svg 
-    className={className} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path 
-      d="M12 3C12 3 13.5 8.5 16 11C18.5 13.5 24 15 24 15C24 15 18.5 16.5 16 19C13.5 21.5 12 27 12 27C12 27 10.5 21.5 8 19C5.5 16.5 0 15 0 15C0 15 5.5 13.5 8 11C10.5 8.5 12 3 12 3Z" 
-      fill="currentColor"
-    />
-  </svg>
-);
+interface ShowcaseCard {
+  id: string;
+  badge: string;
+  icon: React.ComponentType<{ className?: string }>;
+  gradientClass: string;
+  subtext: string;
+  title: string;
+  eventMeta: string;
+  footerSubtitle: string;
+  templateId: string;
+  bgDecoration?: "rings" | "lines";
+}
 
-const CATEGORIES = [
-  "All",
-  "Wedding",
-  "Baby Shower",
-  "Corporate",
-  "Birthday",
-  "Community",
-  "Networking",
-  "Private Dinner",
-  "Fundraiser",
-  "Graduation",
+const showcaseCards: ShowcaseCard[] = [
+  // Primary Row Cards
+  {
+    id: "birthday",
+    badge: "BIRTHDAY",
+    icon: Cake,
+    gradientClass: "bg-gradient-to-br from-[#ff2a85] via-[#ff5470] to-[#ff8c42]",
+    subtext: "You're invited to",
+    title: "Maya's 5th Birthday",
+    eventMeta: "Sat, June 14 · 2:00 PM",
+    footerSubtitle: "Hosted by The Patels",
+    templateId: "tpl-birthday",
+  },
+  {
+    id: "wedding",
+    badge: "WEDDING",
+    icon: Heart,
+    gradientClass: "bg-gradient-to-br from-[#6d28d9] via-[#8b5cf6] to-[#38bdf8]",
+    subtext: "You're invited to",
+    title: "Liam & Sofia",
+    eventMeta: "Sept 21 · 5:00 PM · Vineyard Estate",
+    footerSubtitle: "Together with their families",
+    templateId: "tpl-wedding",
+    bgDecoration: "rings",
+  },
+  {
+    id: "corporate",
+    badge: "CORPORATE",
+    icon: Briefcase,
+    gradientClass: "bg-gradient-to-br from-[#1e40af] via-[#3b82f6] to-[#6366f1]",
+    subtext: "You're invited to",
+    title: "Annual Product Launch",
+    eventMeta: "Oct 3 · 6:30 PM · The Innovation Hub",
+    footerSubtitle: "Northwind Technologies",
+    templateId: "tpl-corporate",
+    bgDecoration: "lines",
+  },
+  {
+    id: "dinner-party",
+    badge: "DINNER PARTY",
+    icon: Wine,
+    gradientClass: "bg-gradient-to-br from-[#f59e0b] via-[#f97316] to-[#ec4899]",
+    subtext: "You're invited to",
+    title: "Supper Club No. 7",
+    eventMeta: "Fri, May 30 · 7:30 PM",
+    footerSubtitle: "Hosted by Chef Amara",
+    templateId: "tpl-dinner-party",
+  },
+  // Secondary Row Cards
+  {
+    id: "baby-shower",
+    badge: "BABY SHOWER",
+    icon: Baby,
+    gradientClass: "bg-gradient-to-br from-[#00c6ff] to-[#0072ff]",
+    subtext: "You're invited to",
+    title: "A Little One is Coming",
+    eventMeta: "Aug 9 · 12:00 PM · Garden Terrace",
+    footerSubtitle: "Celebrating Baby Reyes",
+    templateId: "tpl-baby-shower",
+  },
+  {
+    id: "charity-gala",
+    badge: "CHARITY GALA",
+    icon: Gift,
+    gradientClass: "bg-gradient-to-br from-[#7b2cbf] to-[#c77dff]",
+    subtext: "You're invited to",
+    title: "Bright Futures Gala",
+    eventMeta: "Nov 15 · 8:00 PM · Grand Ballroom",
+    footerSubtitle: "Bright Futures Foundation",
+    templateId: "tpl-charity-gala",
+  },
+  {
+    id: "live-music",
+    badge: "LIVE MUSIC",
+    icon: Music,
+    gradientClass: "bg-gradient-to-br from-[#e60067] via-[#f72585] to-[#f77f00]",
+    subtext: "You're invited to",
+    title: "Rooftop Sessions",
+    eventMeta: "July 12 · 9:00 PM · Skyline Loft",
+    footerSubtitle: "Presented by Echo Collective",
+    templateId: "tpl-live-music",
+  },
+  {
+    id: "anniversary",
+    badge: "ANNIVERSARY",
+    icon: Sparkles,
+    gradientClass: "bg-gradient-to-br from-[#ff7b00] to-[#ff006e]",
+    subtext: "You're invited to",
+    title: "25 Years Together",
+    eventMeta: "Dec 6 · 6:00 PM · Lakeside Manor",
+    footerSubtitle: "Celebrating James & Elena",
+    templateId: "tpl-anniversary",
+  },
 ];
 
 export default function Templates() {
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
 
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [previewTemplate, setPreviewTemplate] = useState<TemplateItem | null>(null);
-
-  // Filter templates dynamically across all cards
-  const filteredCards = useMemo(() => {
-    return cards.filter((card) => {
-      // Category match
-      const categoryMatch = matchesCategory(card.category || card.type, selectedCategory);
-      if (!categoryMatch) return false;
-
-      // Search match
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase().trim();
-      return (
-        card.title.toLowerCase().includes(q) ||
-        (card.category && card.category.toLowerCase().includes(q)) ||
-        (card.type && card.type.toLowerCase().includes(q)) ||
-        (card.host && card.host.toLowerCase().includes(q)) ||
-        (card.venue && card.venue.toLowerCase().includes(q)) ||
-        (card.description && card.description.toLowerCase().includes(q))
-      );
-    });
-  }, [selectedCategory, searchQuery]);
-
-  const handleOpenEditor = (templateId: string) => {
+  const handleCardClick = (templateId: string) => {
     router.push(`/dashboard/invitations?templateId=${encodeURIComponent(templateId)}`);
   };
 
@@ -71,25 +125,13 @@ export default function Templates() {
     hidden: {},
     visible: {
       transition: {
-        staggerChildren: 0.03,
+        staggerChildren: 0.1,
       },
     },
   };
 
   const cardVariants = {
-    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        ease: [0.16, 1, 0.3, 1],
-      },
-    },
-  };
-
-  const headerVariants = {
-    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 },
+    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 },
     visible: {
       opacity: 1,
       y: 0,
@@ -101,224 +143,137 @@ export default function Templates() {
   };
 
   return (
-    <section id="templates" className="templates-section py-[70px] md:py-[110px] relative overflow-hidden bg-[#FAF8F5]">
-      {/* Background Sparkles */}
-      <Sparkle className="floating-sparkle top-12 left-10 w-4 h-4 select-none text-[#C9A84C]" />
-      <Sparkle className="floating-sparkle-2 top-[20%] right-12 w-6 h-6 select-none text-[#9070c0]" />
-      <Sparkle className="floating-sparkle-3 bottom-24 left-16 w-5 h-5 select-none text-[#e07090]" />
-      <Sparkle className="floating-sparkle bottom-[35%] right-[20%] w-4 h-4 select-none text-[#4080b0]" />
+    <section
+      id="templates"
+      className="relative py-20 md:py-28 bg-gradient-to-b from-[#FAF8F5] via-[#EEF4FF]/50 to-[#FAF8F5] overflow-hidden"
+    >
+      {/* Subtle geometric plus/cross grid pattern */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.35]">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern
+              id="templates-showcase-cross-grid"
+              width="44"
+              height="44"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M22 17v10M17 22h10"
+                stroke="#94A3B8"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#templates-showcase-cross-grid)" />
+        </svg>
+      </div>
+
+      {/* Soft pastel ambient radial glows */}
+      <div className="absolute top-1/3 left-1/4 -translate-x-1/2 w-[480px] h-[480px] bg-indigo-200/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 w-[480px] h-[480px] bg-sky-200/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-purple-100/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        
-        {/* Animated Section Header */}
+        {/* Header & Typography */}
         <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={headerVariants}
-          className="text-center mb-10 flex flex-col items-center relative z-10"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center max-w-3xl mx-auto"
         >
-          {/* Glass Badge */}
-          <div className="premium-glass-badge mb-4 select-none px-4 py-1.5 rounded-full border border-[#9070c0]/30 bg-white/70 backdrop-blur-md text-xs font-semibold text-[#2D1B3D] shadow-sm flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
-            <span>Over {cards.length} Premium Designs</span>
-          </div>
-          
-          <h2
-            className="font-display text-3xl sm:text-4xl lg:text-[52px] font-bold text-[#2D1B3D] tracking-tight leading-[1.1] max-w-3xl"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#0f172a] font-sans">
             Invitations your guests will love
           </h2>
-          
-          <p className="text-[#2D1B3D]/70 text-base md:text-lg max-w-[680px] mx-auto leading-relaxed mt-4 font-body">
-            Pick any design below to customize fonts, colors, and content — or open directly in the interactive editor.
+          <p className="mt-4 text-base sm:text-lg text-[#64748b] leading-relaxed font-sans">
+            Pick a stunning design for any occasion, then customize every detail — or let AI design one for you.
           </p>
         </motion.div>
 
-        {/* Filter Controls Bar: Search & Categories */}
-        <div className="mb-10 space-y-5 relative z-10">
-          {/* Search Input */}
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, host, venue, or keyword..."
-              className="w-full pl-11 pr-10 py-3 rounded-full border border-[#E8C4B8]/60 bg-white text-sm text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#9070c0]/40 focus:border-[#9070c0] shadow-sm transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2D1B3D]/40 hover:text-[#2D1B3D]"
+        {/* 4-Column Showcase Grid with responsive horizontal scroll / grid */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          className="flex overflow-x-auto sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto mt-12 pb-4 sm:pb-0 snap-x snap-mandatory sm:snap-none no-scrollbar"
+        >
+          {showcaseCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <motion.div
+                key={card.id}
+                variants={cardVariants}
+                onClick={() => handleCardClick(card.templateId)}
+                className={`group relative rounded-[28px] ${card.gradientClass} p-6 min-h-[380px] min-w-[280px] sm:min-w-0 flex-1 flex flex-col justify-between text-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer overflow-hidden select-none snap-center`}
               >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+                {/* Decorative ambient glass highlights */}
+                <div className="absolute top-0 right-0 w-44 h-44 bg-white/15 rounded-full blur-2xl pointer-events-none transform translate-x-10 -translate-y-10 group-hover:scale-125 transition-transform duration-500" />
+                <div className="absolute bottom-0 left-0 w-36 h-36 bg-black/10 rounded-full blur-2xl pointer-events-none transform -translate-x-8 translate-y-8" />
 
-          {/* Category Filter Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto px-2">
-            {CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-full transition-all duration-200 border ${
-                    isSelected
-                      ? "bg-[#2D1B3D] text-white border-[#2D1B3D] shadow-md scale-[1.02]"
-                      : "bg-white text-[#2D1B3D]/70 border-[#E8C4B8]/50 hover:border-[#2D1B3D]/40 hover:text-[#2D1B3D] hover:bg-[#FAF8F5]"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
+                {/* Subtle curved ring accents for wedding */}
+                {card.bgDecoration === "rings" && (
+                  <svg
+                    className="absolute -right-6 -top-6 w-48 h-48 pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity duration-300"
+                    viewBox="0 0 200 200"
+                    fill="none"
+                  >
+                    <circle cx="100" cy="100" r="75" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <circle cx="120" cy="85" r="55" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <circle cx="75" cy="115" r="40" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" className="text-white" />
+                  </svg>
+                )}
 
-          {/* Result Count Indicator */}
-          <div className="text-center text-xs text-[#2D1B3D]/50 font-medium pt-1">
-            Showing {filteredCards.length} {filteredCards.length === 1 ? "template" : "templates"}
-            {selectedCategory !== "All" && ` in ${selectedCategory}`}
-            {searchQuery && ` matching "${searchQuery}"`}
-          </div>
-        </div>
+                {/* Faint horizontal decorative line motifs for corporate */}
+                {card.bgDecoration === "lines" && (
+                  <svg
+                    className="absolute right-0 top-14 w-44 h-36 pointer-events-none opacity-15 group-hover:opacity-25 transition-opacity duration-300"
+                    viewBox="0 0 200 150"
+                    fill="none"
+                  >
+                    <line x1="20" y1="20" x2="200" y2="20" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <line x1="55" y1="45" x2="200" y2="45" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <line x1="10" y1="70" x2="200" y2="70" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <line x1="70" y1="95" x2="200" y2="95" stroke="currentColor" strokeWidth="1.5" className="text-white" />
+                    <line x1="35" y1="120" x2="200" y2="120" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" className="text-white" />
+                  </svg>
+                )}
 
-        {/* Templates Layout Grid */}
-        {filteredCards.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-[#E8C4B8]/40 shadow-sm max-w-md mx-auto">
-            <p className="text-lg font-bold text-[#2D1B3D] mb-1">No matching templates found</p>
-            <p className="text-xs text-[#2D1B3D]/60 mb-6">Try adjusting your search query or selecting a different category.</p>
-            <button
-              onClick={() => {
-                setSelectedCategory("All");
-                setSearchQuery("");
-              }}
-              className="px-5 py-2.5 rounded-full text-xs font-semibold bg-[#2D1B3D] text-white hover:bg-[#3D2555] transition-colors"
-            >
-              Reset Filters
-            </button>
-          </div>
-        ) : (
-          <div className="max-h-[550px] sm:max-h-[600px] lg:max-h-[65vh] overflow-y-auto pr-2 pb-4 rounded-2xl custom-scrollbar relative z-10">
-            <motion.div
-              key={`${selectedCategory}-${searchQuery}`}
-              initial="hidden"
-              animate="visible"
-              variants={containerVariants}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10"
-            >
-              {filteredCards.map((card) => (
-                <motion.div
-                  key={card.id}
-                  variants={cardVariants}
-                  onClick={() => setPreviewTemplate(card)}
-                  className="w-full flex flex-col cursor-pointer group"
-                >
-                  <div className="relative rounded-[24px] overflow-hidden transition-all duration-300 group-hover:-translate-y-1">
-                    <InvitationCard {...card} />
-                    {/* Hover Overlay Button */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 p-4 pointer-events-none rounded-[24px]">
-                      <span className="px-5 py-2 rounded-full bg-white text-[#2D1B3D] font-semibold text-xs shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
-                        Preview Template
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        )}
-
-      </div>
-
-      {/* Template Preview Modal */}
-      <AnimatePresence>
-        {previewTemplate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-[#E8C4B8]/40 flex flex-col max-h-[90vh]"
-            >
-              {/* Modal Header */}
-              <div className="p-5 border-b border-neutral-100 flex items-center justify-between bg-[#FAF8F5]">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-[#2D1B3D] text-white">
-                    {previewTemplate.category || previewTemplate.type}
+                {/* Top Row: Pill Badge & Circular Icon Container */}
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase border border-white/20 text-white shadow-sm">
+                    {card.badge}
                   </span>
-                  <span className="text-xs text-[#2D1B3D]/50 font-mono">ID: {previewTemplate.id}</span>
-                </div>
-                <button
-                  onClick={() => setPreviewTemplate(null)}
-                  className="p-1.5 rounded-full hover:bg-neutral-200/60 text-[#2D1B3D]/60 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              {/* Modal Body Preview */}
-              <div className="p-6 overflow-y-auto space-y-5 flex-1">
-                <div className="w-full max-w-sm mx-auto shadow-xl rounded-[24px] overflow-hidden">
-                  <InvitationCard {...previewTemplate} />
+                  <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-sm group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300">
+                    <Icon className="w-4 h-4" />
+                  </div>
                 </div>
 
-                <div className="space-y-2 text-center pt-2">
-                  <h3 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    {previewTemplate.title}
-                  </h3>
-                  <p className="text-xs text-[#2D1B3D]/70 max-w-md mx-auto leading-relaxed">
-                    {previewTemplate.description || "Fully editable invitation template ready to customize with your event details."}
+                {/* Bottom Content */}
+                <div className="mt-auto pt-8 relative z-10">
+                  <p className="text-xs font-medium text-white/80">
+                    {card.subtext}
                   </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E8C4B8]/30">
-                  <div className="flex items-center gap-2 text-[#2D1B3D]/70">
-                    <Calendar className="w-4 h-4 text-[#9070c0]" />
-                    <span className="truncate">{previewTemplate.date} {previewTemplate.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#2D1B3D]/70">
-                    <Users className="w-4 h-4 text-[#9070c0]" />
-                    <span className="truncate">{previewTemplate.host}</span>
-                  </div>
-                  {previewTemplate.venue && (
-                    <div className="flex items-center gap-2 text-[#2D1B3D]/70 col-span-2">
-                      <MapPin className="w-4 h-4 text-[#9070c0]" />
-                      <span className="truncate">{previewTemplate.venue}</span>
+                  <h3 className="text-xl font-bold tracking-tight mt-1 text-white">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs text-white/90 mt-1">
+                    {card.eventMeta}
+                  </p>
+                  <div className="text-xs text-white/70 mt-4 border-t border-white/10 pt-3 flex items-center justify-between">
+                    <span>{card.footerSubtitle}</span>
+                    <div className="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-x-1 group-hover:translate-x-0 transition-all duration-300">
+                      <ArrowRight className="w-3 h-3 text-white" />
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-
-              {/* Modal Footer Actions */}
-              <div className="p-5 border-t border-neutral-100 bg-[#FAF8F5] flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setPreviewTemplate(null)}
-                  className="px-5 py-3 rounded-xl border border-[#E8C4B8]/60 text-xs font-semibold text-[#2D1B3D] hover:bg-white transition-colors flex-1"
-                >
-                  Close Preview
-                </button>
-                <button
-                  onClick={() => {
-                    const tid = previewTemplate.id;
-                    setPreviewTemplate(null);
-                    handleOpenEditor(tid);
-                  }}
-                  className="px-6 py-3 rounded-xl bg-[#2D1B3D] text-white text-xs font-bold hover:bg-[#3D2555] transition-all shadow-md flex items-center justify-center gap-2 flex-[2]"
-                >
-                  <Sparkles className="w-4 h-4 text-[#C9A84C]" />
-                  Customize in Editor
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
     </section>
   );
 }

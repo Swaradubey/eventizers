@@ -618,28 +618,17 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="View all guests"
-            style={{
-              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-              transition: "all 0.25s ease",
-            }}
-            className="kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden"
+            className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.15)" }}
-              >
-                <Users className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                <Users className="w-6 h-6" />
               </div>
               <div>
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
-                  style={{ color: "rgba(255,255,255,0.85)" }}
-                >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Total Guests
                 </p>
-                <p className="text-3xl font-bold text-white mt-0.5">
+                <p className="text-3xl font-bold text-slate-900 mt-0.5">
                   {loading ? "..." : totalGuestsCount}
                 </p>
               </div>
@@ -655,28 +644,17 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="View event breakdown modal"
-            style={{
-              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-              boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-              transition: "all 0.25s ease",
-            }}
-            className="kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden"
+            className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.15)" }}
-              >
-                <Calendar className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                <Calendar className="w-6 h-6" />
               </div>
               <div>
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
-                  style={{ color: "rgba(255,255,255,0.85)" }}
-                >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Total Events
                 </p>
-                <p className="text-3xl font-bold text-white mt-0.5">
+                <p className="text-3xl font-bold text-slate-900 mt-0.5">
                   {loading ? "..." : totalEventsCount}
                 </p>
               </div>
@@ -692,32 +670,21 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="Filter guests imported this month"
-            style={{
-              background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-              boxShadow: isImportedMonthOnly
-                ? "0 0 0 3px rgba(255,255,255,0.8), 0 16px 36px rgba(139,30,90,0.4)"
-                : "0 12px 32px rgba(139,30,90,0.25)",
-              transition: "all 0.25s ease",
-            }}
-            className={`kpi-card-pink rounded-2xl p-5 cursor-pointer hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 relative overflow-hidden ${
-              isImportedMonthOnly ? "ring-2 ring-white" : ""
-            }`}
+            className={`bg-white border ${
+              isImportedMonthOnly
+                ? "border-blue-500 ring-2 ring-blue-500/20 shadow-md"
+                : "border-slate-100 shadow-sm"
+            } rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden`}
           >
             <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.15)" }}
-              >
-                <Sparkles className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
-                  style={{ color: "rgba(255,255,255,0.85)" }}
-                >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Imported This Month
                 </p>
-                <p className="text-3xl font-bold text-white mt-0.5">
+                <p className="text-3xl font-bold text-slate-900 mt-0.5">
                   {loading ? "..." : importedThisMonthCount}
                 </p>
               </div>

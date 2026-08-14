@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { Sparkles, ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { PartyPopper, ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -61,14 +61,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {/* Branding Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 group mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B3D] flex items-center justify-center transition-transform group-hover:scale-105">
-            <Sparkles className="w-5 h-5 text-[#C9A84C]" />
+        <Link href="/" className="inline-flex items-center gap-2.5 group mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#6366f1] via-[#3b82f6] to-[#06b6d4] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
+            <PartyPopper className="w-5 h-5 text-white" />
           </div>
-          <span
-            className="font-display text-2xl font-bold text-[#2D1B3D]"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
+          <span className="font-bold text-2xl tracking-tight bg-gradient-to-r from-[#4f46e5] via-[#2563eb] to-[#06b6d4] bg-clip-text text-transparent font-sans">
             Eventizers
           </span>
         </Link>

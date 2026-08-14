@@ -224,8 +224,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      {/* Main container with padding top to clear fixed navbar */}
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      {/* Main container */}
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Top bar with Heading and Sign Out */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -252,7 +252,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
           >
             <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-            Sign Out
+
           </button>
         </div>
 
@@ -289,14 +289,13 @@ export default function DashboardPage() {
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="border border-[#F8C9DD] rounded-2xl p-5 shadow-sm backdrop-blur-sm animate-pulse"
-                  style={{ background: 'linear-gradient(135deg, rgba(255, 246, 250, 0.85) 0%, rgba(255, 234, 243, 0.85) 100%)' }}
+                  className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm animate-pulse"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-[#EC4899]/10" />
+                    <div className="w-11 h-11 rounded-full bg-blue-50" />
                     <div className="flex-1">
-                      <div className="h-3 w-20 bg-[#EC4899]/15 rounded mb-2" />
-                      <div className="h-7 w-14 bg-[#EC4899]/20 rounded" />
+                      <div className="h-3 w-20 bg-slate-100 rounded mb-2" />
+                      <div className="h-7 w-14 bg-slate-200 rounded" />
                     </div>
                   </div>
                 </div>
@@ -310,18 +309,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                className="border border-[#F8C9DD] rounded-2xl p-5 backdrop-blur-sm shadow-[0_8px_30px_rgba(244,114,182,0.12)] hover:shadow-[0_12px_30px_rgba(244,114,182,0.18)] hover:-translate-y-1 transition-all duration-[220ms] ease cursor-default"
-                style={{ background: 'linear-gradient(135deg, rgba(255, 246, 250, 0.85) 0%, rgba(255, 234, 243, 0.85) 100%)' }}
+                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-[#FCE7F3] flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-[#EC4899]" />
+                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#9D6B88]">
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
                       Total Events
                     </p>
-                    <p className="text-[36px] font-bold text-[#831843] leading-none mt-1">
+                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
                       {dashboardStats?.totalEvents ?? 0}
                     </p>
                   </div>
@@ -333,18 +331,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className="border border-[#F8C9DD] rounded-2xl p-5 backdrop-blur-sm shadow-[0_8px_30px_rgba(244,114,182,0.12)] hover:shadow-[0_12px_30px_rgba(244,114,182,0.18)] hover:-translate-y-1 transition-all duration-[220ms] ease cursor-default"
-                style={{ background: 'linear-gradient(135deg, rgba(255, 246, 250, 0.85) 0%, rgba(255, 234, 243, 0.85) 100%)' }}
+                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-[#FCE7F3] flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-[#EC4899]" />
+                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#9D6B88]">
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
                       Total Guests
                     </p>
-                    <p className="text-[36px] font-bold text-[#831843] leading-none mt-1">
+                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
                       {dashboardStats?.totalGuests ?? 0}
                     </p>
                   </div>
@@ -356,18 +353,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="border border-[#F8C9DD] rounded-2xl p-5 backdrop-blur-sm shadow-[0_8px_30px_rgba(244,114,182,0.12)] hover:shadow-[0_12px_30px_rgba(244,114,182,0.18)] hover:-translate-y-1 transition-all duration-[220ms] ease cursor-default"
-                style={{ background: 'linear-gradient(135deg, rgba(255, 246, 250, 0.85) 0%, rgba(255, 234, 243, 0.85) 100%)' }}
+                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-[#FCE7F3] flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 text-[#EC4899]" />
+                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#9D6B88]">
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
                       Avg. RSVP Rate
                     </p>
-                    <p className="text-[36px] font-bold text-[#831843] leading-none mt-1">
+                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
                       {dashboardStats?.avgRsvpRate ?? 0}%
                     </p>
                   </div>
@@ -379,18 +375,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="border border-[#F8C9DD] rounded-2xl p-5 backdrop-blur-sm shadow-[0_8px_30px_rgba(244,114,182,0.12)] hover:shadow-[0_12px_30px_rgba(244,114,182,0.18)] hover:-translate-y-1 transition-all duration-[220ms] ease cursor-default"
-                style={{ background: 'linear-gradient(135deg, rgba(255, 246, 250, 0.85) 0%, rgba(255, 234, 243, 0.85) 100%)' }}
+                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-[#FCE7F3] flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-5 h-5 text-[#EC4899]" />
+                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#9D6B88]">
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
                       Messages Sent
                     </p>
-                    <p className="text-[36px] font-bold text-[#831843] leading-none mt-1">
+                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
                       {dashboardStats?.messagesSent ?? 0}
                     </p>
                   </div>
@@ -410,7 +405,7 @@ export default function DashboardPage() {
               </span>
               <button
                 onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
               >
                 <Plus className="w-4 h-4" />
                 Create Event
@@ -448,7 +443,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
               >
                 <Plus className="w-4 h-4" />
                 Create Event
@@ -510,10 +505,10 @@ export default function DashboardPage() {
                       <td className="py-4 px-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${event.status === "published"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : event.status === "cancelled"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : event.status === "cancelled"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
                             }`}
                         >
                           {event.status || "Draft"}

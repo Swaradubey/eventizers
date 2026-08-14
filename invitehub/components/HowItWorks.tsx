@@ -1,111 +1,106 @@
-import { Layers } from "lucide-react";
-import AiIllustration from "./illustrations/AiIllustration";
-import ChannelsIllustration from "./illustrations/ChannelsIllustration";
-import AnalyticsIllustration from "./illustrations/AnalyticsIllustration";
+"use client";
+
+import { Wand2, Mail, BarChart3 } from "lucide-react";
 
 const steps = [
   {
-    illustration: AiIllustration,
-    accentColor: "#C9A84C",
-    illustrationContainerClass: "hiw-illustration-container-gold",
-    badgeClass: "hiw-step-badge-gold",
-    cardClass: "hiw-card-gold",
-    dotColor: "#C9A84C",
-    label: "Create",
-    title: "Describe once, AI builds everything",
-    body: "Describe your event and let AI build the page, invitation, RSVP questions, and reminder schedule in seconds.",
+    id: "create",
+    title: "Create",
+    description:
+      "Describe your event and let AI build the page, invitation, RSVP questions, and reminder schedule in seconds.",
+    icon: Wand2,
+    gradient: "from-blue-600 to-indigo-600",
+    shadow: "shadow-indigo-500/20",
   },
   {
-    illustration: ChannelsIllustration,
-    accentColor: "#7A9E7E",
-    illustrationContainerClass: "hiw-illustration-container-emerald",
-    badgeClass: "hiw-step-badge-emerald",
-    cardClass: "hiw-card-emerald",
-    dotColor: "#7A9E7E",
-    label: "Invite",
-    title: "Reach guests on every channel",
-    body: "Send beautiful invitations over email, SMS, and WhatsApp with personalized greetings and one-click RSVP.",
+    id: "invite",
+    title: "Invite",
+    description:
+      "Send beautiful invitations over email, SMS, and WhatsApp with personalized greetings and one-click RSVP.",
+    icon: Mail,
+    gradient: "from-sky-400 to-blue-500",
+    shadow: "shadow-sky-500/20",
   },
   {
-    illustration: AnalyticsIllustration,
-    accentColor: "#9070c0",
-    illustrationContainerClass: "hiw-illustration-container-purple",
-    badgeClass: "hiw-step-badge-purple",
-    cardClass: "hiw-card-purple",
-    dotColor: "#9070c0",
-    label: "Manage",
-    title: "Everything from one view",
-    body: "Track RSVPs, check guests in with QR codes, manage registries, and monitor everything from one dashboard.",
+    id: "manage",
+    title: "Manage",
+    description:
+      "Track RSVPs, check guests in with QR codes, manage registries, and monitor everything from one dashboard.",
+    icon: BarChart3,
+    gradient: "from-emerald-400 to-teal-600",
+    shadow: "shadow-emerald-500/20",
   },
 ];
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="hiw-section" style={{ overflow: "hidden", width: "100%", maxWidth: "100%" }}>
-      <div className="hiw-container" style={{ width: "100%", maxWidth: "80rem", overflow: "hidden" }}>
-        {/* Section Header */}
-        <div className="text-center" style={{ marginBottom: "clamp(2rem, 4vw, 4rem)", width: "100%", maxWidth: "100%" }}>
-          {/* Badge */}
-          <div className="hiw-badge">
-            <Layers className="hiw-badge-icon" />
-            <span>How Eventizers Works</span>
-          </div>
+    <section
+      id="how-it-works"
+      className="relative py-20 md:py-28 bg-gradient-to-b from-[#FAF8F5] via-[#F4F7FC]/70 to-[#FAF8F5] overflow-hidden"
+    >
+      {/* Faint geometric plus/cross grid pattern matching the application */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.35]">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern
+              id="how-it-works-cross-grid"
+              width="44"
+              height="44"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M22 17v10M17 22h10"
+                stroke="#94A3B8"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#how-it-works-cross-grid)" />
+        </svg>
+      </div>
 
-          {/* Heading */}
-          <h2 className="hiw-heading">Create, Invite, Manage</h2>
+      {/* Subtle soft pastel ambient glows */}
+      <div className="absolute top-12 left-1/4 -translate-x-1/2 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-8 right-1/4 translate-x-1/2 w-96 h-96 bg-purple-200/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[280px] bg-indigo-100/25 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Subtitle */}
-          <p className="hiw-subtitle">
-            Three effortless steps to a perfect event.
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Header & Typography */}
+        <div className="text-center max-w-3xl mx-auto mb-14 md:mb-16">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0f172a] tracking-tight font-sans mb-4">
+            How Eventizers Works
+          </h2>
+          <p className="text-[#475569] text-base sm:text-lg leading-relaxed">
+            Create, Invite, Manage — three effortless steps to a perfect event.
           </p>
         </div>
 
-        {/* Timeline grid */}
-        <div className="hiw-timeline" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-          {/* Desktop timeline connector line */}
-          <div className="hiw-timeline-line" />
-
-          {/* Desktop timeline dots */}
-          <div className="hiw-timeline-dot hiw-timeline-dot-1" />
-          <div className="hiw-timeline-dot hiw-timeline-dot-2" />
-          <div className="hiw-timeline-dot hiw-timeline-dot-3" />
-
-          {/* Mobile vertical line */}
-          <div className="hiw-vertical-line" />
-
-          {/* Step Cards */}
-          {steps.map((step, idx) => {
-            const Illustration = step.illustration;
-            const stepNum = String(idx + 1).padStart(2, "0");
-
+        {/* 3-Column Feature Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {steps.map((step) => {
+            const Icon = step.icon;
             return (
-              <div key={step.label} className="hiw-card-wrapper">
-                {/* Mobile dot */}
+              <div
+                key={step.id}
+                className="bg-white rounded-3xl border border-slate-100 p-8 text-center shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col items-center group"
+              >
+                {/* Rounded Square Badge */}
                 <div
-                  className="hiw-mobile-dot"
-                  style={{ backgroundColor: step.dotColor }}
-                />
-
-                {/* Card */}
-                <div className={`hiw-card ${step.cardClass}`}>
-                  {/* Premium SaaS Illustration Container */}
-                  <div
-                    className={`hiw-illustration-container ${step.illustrationContainerClass}`}
-                  >
-                    <Illustration />
-                  </div>
-
-                  {/* Step badge */}
-                  <div className={`hiw-step-badge ${step.badgeClass}`}>
-                    Step {stepNum}
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="hiw-card-title">{step.title}</h3>
-
-                  {/* Body */}
-                  <p className="hiw-card-body">{step.body}</p>
+                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.gradient} flex items-center justify-center mb-6 shadow-md ${step.shadow} group-hover:scale-105 transition-transform duration-300`}
+                >
+                  <Icon className="w-7 h-7 text-white" strokeWidth={2.2} />
                 </div>
+
+                {/* Title */}
+                <h3 className="text-xl font-bold text-[#0f172a] mb-3 font-sans">
+                  {step.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-[#475569] text-sm sm:text-base leading-relaxed font-sans">
+                  {step.description}
+                </p>
               </div>
             );
           })}

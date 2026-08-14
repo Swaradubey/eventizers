@@ -24,16 +24,17 @@ html[data-theme="dark"], html.dark {
   --mist: #20152b;
 }
 
-/* Premium Dark Pink KPI Card Styling */
+/* Clean White KPI Card with subtle hover */
 .kpi-card-pink {
-  background: linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%) !important;
-  box-shadow: 0 12px 32px rgba(139,30,90,0.25) !important;
+  background: #ffffff !important;
+  border: 1px solid #f1f5f9 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
   transition: all 0.25s ease !important;
 }
 
 .kpi-card-pink:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 18px 40px rgba(139,30,90,0.35) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08) !important;
 }
 
 * {
@@ -173,8 +174,8 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #FFF9EC;
-  border-right: 1px solid #EAD8AF;
+  background: #f0f7ff;
+  border-right: 1px solid #dbeafe;
   font-family: 'Inter', system-ui, sans-serif;
   user-select: none;
   overflow: hidden;
@@ -189,7 +190,7 @@ body {
   left: 0;
   right: 0;
   height: 120px;
-  background: linear-gradient(180deg, rgba(234, 216, 175, 0.15) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.4) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -221,7 +222,7 @@ body {
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: #8C7A5B;
+  color: #64748b;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
@@ -229,9 +230,9 @@ body {
 }
 
 .sidebar-toggle:hover {
-  background: #FAF0D6;
-  color: #5C4318;
-  border-color: #EAD8AF;
+  background: rgba(219, 234, 254, 0.6);
+  color: #2563eb;
+  border-color: #dbeafe;
 }
 
 .sidebar-toggle:active {
@@ -239,7 +240,7 @@ body {
 }
 
 .sidebar-toggle:focus-visible {
-  outline: 2px solid var(--soft-gold);
+  outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
@@ -282,32 +283,32 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: #5C4318;
+  background: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(92, 67, 24, 0.2), 0 1px 2px rgba(92, 67, 24, 0.1);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2), 0 1px 2px rgba(37, 99, 235, 0.1);
   transition: box-shadow 200ms ease, transform 200ms ease;
 }
 
 .sidebar-brand:hover .sidebar-brand-icon,
 .sidebar-brand-icon-only:hover .sidebar-brand-icon {
-  box-shadow: 0 2px 8px rgba(92, 67, 24, 0.25);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
   transform: scale(1.04);
 }
 
 .sidebar-brand-sparkle {
   width: 16px;
   height: 16px;
-  color: var(--soft-gold);
+  color: #ffffff;
 }
 
 .sidebar-brand-text {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 17px;
   font-weight: 600;
-  color: #5C4318;
+  color: #0f172a;
   white-space: nowrap;
   letter-spacing: -0.01em;
 }
@@ -319,8 +320,8 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #8C7A5B;
-  opacity: 0.7;
+  color: #64748b;
+  opacity: 0.8;
   position: relative;
   z-index: 1;
 }
@@ -350,10 +351,10 @@ body {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 13.5px;
   font-weight: 500;
-  color: #8C7A5B;
+  color: #64748b;
   text-decoration: none;
   position: relative;
   cursor: pointer;
@@ -362,8 +363,8 @@ body {
 }
 
 .sidebar-menu-item:hover {
-  color: #5C4318;
-  background: #FAF0D6;
+  color: #2563eb;
+  background: rgba(219, 234, 254, 0.5);
 }
 
 /* Collapsed item centering */
@@ -375,23 +376,23 @@ body {
 
 /* Active state */
 .sidebar-menu-item--active {
-  color: #5C4318;
+  color: #2563eb;
   font-weight: 600;
 }
 
 .sidebar-menu-item--active:hover {
   background: transparent;
-  color: #5C4318;
+  color: #2563eb;
 }
 
 /* Active background pill (animated by framer-motion) */
 .sidebar-menu-item-bg {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
-  background: #F4E7C5;
-  border: 1px solid #EAD8AF;
-  box-shadow: 0 1px 3px rgba(92, 67, 24, 0.08);
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(191, 219, 254, 0.8);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
   z-index: -1;
 }
 
@@ -401,16 +402,16 @@ body {
   height: 20px;
   flex-shrink: 0;
   transition: transform 200ms ease, color 200ms ease;
-  color: #8C7A5B;
+  color: #64748b;
 }
 
 .sidebar-menu-item:hover .sidebar-menu-icon {
-  color: #5C4318;
+  color: #2563eb;
   transform: scale(1.06);
 }
 
 .sidebar-menu-icon--active {
-  color: #5C4318 !important;
+  color: #2563eb !important;
 }
 
 /* ─── Menu label ─── */
@@ -428,15 +429,15 @@ body {
   transform: translateY(-50%);
   padding: 6px 12px;
   border-radius: 8px;
-  background: #5C4318;
-  color: #FFF9EC;
+  background: #0f172a;
+  color: #f8fafc;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(92, 67, 24, 0.15);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
   transition: opacity 150ms ease, transform 150ms ease;
   transform: translateY(-50%) translateX(-4px);
   letter-spacing: 0.01em;
@@ -451,7 +452,7 @@ body {
   transform: translateY(-50%) rotate(45deg);
   width: 8px;
   height: 8px;
-  background: #5C4318;
+  background: #0f172a;
   border-radius: 1px;
 }
 
@@ -478,13 +479,13 @@ body {
   left: 16px;
   right: 16px;
   height: 1px;
-  background: rgba(234, 216, 175, 0.4);
+  background: rgba(219, 234, 254, 0.8);
 }
 
 .sidebar-version {
   font-size: 10px;
   font-weight: 500;
-  color: #8C7A5B;
+  color: #64748b;
   letter-spacing: 0.02em;
   opacity: 0.7;
 }
@@ -2297,81 +2298,66 @@ html[data-theme="dark"] .divide-y > :not([hidden]) ~ :not([hidden]) {
 
 /* Sidebar Custom overrides */
 html[data-theme="dark"] .sidebar-shell {
-  background: #150C20 !important;
-  border-right-color: #2C1A38 !important;
+  background: #0b1329 !important;
+  border-right-color: #1e293b !important;
 }
 
 html[data-theme="dark"] .sidebar-toggle {
-  color: #c5b49e !important;
+  color: #94a3b8 !important;
 }
 
 html[data-theme="dark"] .sidebar-toggle:hover {
-  background: #251833 !important;
-  color: #ebd39c !important;
-  border-color: #3d2555 !important;
+  background: #1e293b !important;
+  color: #60a5fa !important;
+  border-color: #334155 !important;
 }
 
 html[data-theme="dark"] .sidebar-brand-text {
-  color: #ebd39c !important;
+  color: #f8fafc !important;
 }
 
 html[data-theme="dark"] .sidebar-brand-icon {
-  background: #3d2555 !important;
+  background: #2563eb !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-item {
-  color: #c5b49e !important;
+  color: #94a3b8 !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-item:hover {
-  color: #ebdff5 !important;
-  background: #251833 !important;
+  color: #60a5fa !important;
+  background: #1e293b !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-item-bg {
-  background: #251833 !important;
-  border-color: #3d2555 !important;
+  background: rgba(37, 99, 235, 0.25) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-icon {
-  color: #c5b49e !important;
+  color: #94a3b8 !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-item--active .sidebar-menu-icon {
-  color: #ebdff5 !important;
+  color: #60a5fa !important;
 }
 
 html[data-theme="dark"] .sidebar-menu-item--active {
-  color: #ebdff5 !important;
+  color: #60a5fa !important;
 }
 
 html[data-theme="dark"] .sidebar-version {
-  color: #c5b49e !important;
+  color: #94a3b8 !important;
 }
 
 html[data-theme="dark"] .sidebar-footer::before {
-  background: rgba(44, 26, 56, 0.4) !important;
+  background: rgba(30, 41, 59, 0.8) !important;
 }
 
-/* Dark mode overrides for KPI Pink Cards */
-html[data-theme="dark"] .border-\[\#F8C9DD\] {
-  border-color: #4a2838 !important;
-}
-
-html[data-theme="dark"] div[style*="linear-gradient(135deg, rgba(255, 246, 250, 0.85)"] {
-  background: linear-gradient(135deg, rgba(42, 22, 34, 0.85) 0%, rgba(28, 14, 22, 0.85) 100%) !important;
-}
-
-html[data-theme="dark"] .text-\[\#9D6B88\] {
-  color: #d6b8ca !important;
-}
-
-html[data-theme="dark"] .text-\[\#831843\] {
-  color: #f7b2cf !important;
-}
-
-html[data-theme="dark"] .bg-\[\#FCE7F3\] {
-  background-color: rgba(131, 24, 67, 0.3) !important;
+/* Dark mode overrides for KPI Cards */
+html[data-theme="dark"] .kpi-card-pink {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
 }
 
 /* General clean up for components using hardcoded white bg */

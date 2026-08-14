@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, Sparkles, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, PartyPopper } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 import { AnimatePresence, motion } from "framer-motion";
@@ -33,8 +33,17 @@ export default function Navbar() {
   const isDashboard = pathname?.startsWith("/dashboard") || (pathname?.startsWith("/admin") && pathname !== "/admin/login");
   const isHomePage = pathname === "/";
 
-  const handleCreateEventClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const handleCreateEvent = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (user) {
       router.push("/dashboard/events?create=true");
     } else {
@@ -136,45 +145,38 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className={`fixed top-0 right-0 z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#E8C4B8]/30 transition-all duration-300 ${
+    <header className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100/90 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] transition-all duration-300 ${
       isDashboard
         ? isCollapsed
           ? "left-0 md:left-[72px]"
           : "left-0 md:left-64"
-        : "left-0"
+        : "left-0 w-full"
     }`}>
-      <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Left Container with Toggle & Logo */}
+      <nav className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-16 flex items-center justify-between relative">
+        {/* Left Section (Brand Logo) */}
         <div className="flex items-center gap-3">
           {isDashboard && (
-            <>
-              {/* Mobile/Tablet toggle button */}
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex md:hidden items-center justify-center p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] text-[#2D1B3D] transition-all duration-300 shadow-sm focus:outline-none hover:scale-105 active:scale-95"
-                aria-label="Toggle navigation drawer"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            </>
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex md:hidden items-center justify-center p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 transition-all duration-200 shadow-sm focus:outline-none hover:scale-105 active:scale-95"
+              aria-label="Toggle navigation drawer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
           )}
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-[#2D1B3D] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-[#C9A84C]" />
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6366f1] via-[#3b82f6] to-[#06b6d4] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
+              <PartyPopper className="w-5 h-5 text-white" />
             </div>
-            <span
-              className="font-display text-lg font-semibold text-[#2D1B3D]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
+            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-[#4f46e5] via-[#2563eb] to-[#06b6d4] bg-clip-text text-transparent font-sans">
               Eventizers
             </span>
           </Link>
         </div>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-8 h-full">
+        {/* Center Section (Nav Links) */}
+        <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-sans">
           {navLinks.map((link) => {
             if (link.label === "Features") {
               return (
@@ -189,12 +191,12 @@ export default function Navbar() {
                     ref={triggerRef}
                     onClick={handleToggleClick}
                     onKeyDown={handleKeyDown}
-                    className="text-sm font-medium text-[#2D1B3D]/70 hover:text-[#2D1B3D] transition-colors flex items-center gap-1 h-full focus:outline-none cursor-pointer"
+                    className="text-sm font-medium text-gray-800 hover:text-black transition-colors flex items-center gap-1 h-full focus:outline-none cursor-pointer"
                     aria-haspopup="true"
                     aria-expanded={desktopMenuOpen}
                   >
-                    Features
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${desktopMenuOpen ? "rotate-180" : ""}`} />
+                    <span>Features</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-600 transition-transform duration-200 ${desktopMenuOpen ? "rotate-180 text-black" : ""}`} />
                   </button>
 
                   <AnimatePresence>
@@ -210,9 +212,9 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/login"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
                   className={`text-sm font-medium transition-colors ${
-                    active ? "text-[#2D1B3D]" : "text-[#2D1B3D]/70 hover:text-[#2D1B3D]"
+                    active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
                   }`}
                 >
                   {link.label}
@@ -224,64 +226,78 @@ export default function Navbar() {
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
                 onClick={(e) => handleSectionClick(e, link.href)}
-                className="text-sm font-medium text-[#2D1B3D]/70 hover:text-[#2D1B3D] transition-colors"
+                className="text-sm font-medium text-gray-800 hover:text-black transition-colors"
               >
                 {link.label}
               </a>
             );
           })}
+          <span className="text-[#E2B93B] text-xs opacity-70 ml-1">✦</span>
         </div>
 
-        {/* CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Right Section (User Actions) */}
+        <div className="hidden md:flex items-center font-sans">
           {user ? (
-            <>
-              <span className="text-sm font-medium text-[#2D1B3D]">
-                Hi, {user.name}
+            <div className="flex items-center gap-4">
+              {/* User Greeting */}
+              <span className="text-sm font-medium text-gray-700">
+                Hi, {(user as any)?.name || (user as any)?.firstName || 'sashia'}
               </span>
+
+              {/* Logout Button */}
               <button
-                onClick={logout}
-                className="text-sm font-medium text-[#2D1B3D]/70 hover:text-[#2D1B3D] transition-colors"
+                onClick={handleLogout}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
               >
                 Logout
               </button>
-            </>
+
+              {/* Create Event CTA */}
+              <button
+                onClick={handleCreateEvent}
+                className="rounded-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
+              >
+                Create Event
+              </button>
+            </div>
           ) : (
-            <a
-              href="/login"
-              className="text-sm font-medium text-[#2D1B3D]/70 hover:text-[#2D1B3D] transition-colors"
-            >
-              Sign in
-            </a>
+            <div className="flex items-center gap-4 lg:gap-5">
+              <Link
+                href="/login"
+                className="text-slate-600 hover:text-slate-900 font-medium text-sm transition-colors cursor-pointer"
+              >
+                Sign In
+              </Link>
+              <button
+                onClick={handleCreateEvent}
+                className="rounded-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
+              >
+                Create Event
+              </button>
+            </div>
           )}
-          <button
-            onClick={handleCreateEventClick}
-            className="text-sm font-medium px-4 py-2 rounded-full bg-[#2D1B3D] text-[#FAF8F5] hover:bg-[#3d2a52] transition-colors cursor-pointer"
-          >
-            Create Event
-          </button>
         </div>
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-[#F0EBE8] transition-colors"
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
-          {open ? <X className="w-5 h-5 text-[#2D1B3D]" /> : <Menu className="w-5 h-5 text-[#2D1B3D]" />}
+          {open ? <X className="w-5 h-5 text-gray-900" /> : <Menu className="w-5 h-5 text-gray-900" />}
         </button>
       </nav>
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-[#FAF8F5] border-t border-[#E8C4B8]/30 px-6 py-4 flex flex-col gap-4">
+        <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-sans shadow-lg">
           {navLinks.map((link) => {
             if (link.label === "Features") {
               return (
                 <div key={link.label} className="flex flex-col">
                   <button
                     onClick={() => setMobileFeaturesOpen(!mobileFeaturesOpen)}
-                    className="text-sm font-medium text-left text-[#2D1B3D]/80 hover:text-[#2D1B3D] flex items-center justify-between py-1 focus:outline-none"
+                    className="text-sm font-medium text-left text-[#4B5563] hover:text-gray-900 flex items-center justify-between py-1 focus:outline-none"
                   >
                     <span>Features</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileFeaturesOpen ? "rotate-180" : ""}`} />
@@ -294,7 +310,7 @@ export default function Navbar() {
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.25, ease: "easeInOut" }}
-                        className="overflow-hidden pl-4 pr-2 mt-2 flex flex-col gap-3 border-l-2 border-[#E8C4B8]/30"
+                        className="overflow-hidden pl-4 pr-2 mt-2 flex flex-col gap-3 border-l-2 border-gray-100"
                       >
                         {featureItems.map((item) => {
                           const IconComponent = item.icon;
@@ -306,16 +322,16 @@ export default function Navbar() {
                                 setOpen(false);
                                 setMobileFeaturesOpen(false);
                               }}
-                              className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#F8FAFF] active:bg-[#F8FAFF]"
+                              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                             >
-                              <div className="w-8 h-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center flex-shrink-0">
-                                <IconComponent className="w-4 h-4 text-[#6366F1]" />
+                              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <IconComponent className="w-4 h-4 text-gray-700" />
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs font-semibold text-[#111827]">
+                                <span className="text-xs font-semibold text-gray-900">
                                   {item.title}
                                 </span>
-                                <span className="text-[10px] text-[#6B7280]">
+                                <span className="text-[10px] text-gray-500">
                                   {item.description}
                                 </span>
                               </div>
@@ -333,9 +349,9 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/login"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
                   className={`text-sm font-medium transition-colors ${
-                    active ? "text-[#2D1B3D]" : "text-[#2D1B3D]/80 hover:text-[#2D1B3D]"
+                    active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
                   }`}
                   onClick={() => setOpen(false)}
                 >
@@ -347,7 +363,7 @@ export default function Navbar() {
               <a
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
-                className="text-sm font-medium text-[#2D1B3D]/80 hover:text-[#2D1B3D]"
+                className="text-sm font-medium text-[#4B5563] hover:text-gray-900"
                 onClick={(e) => {
                   setOpen(false);
                   handleSectionClick(e, link.href);
@@ -357,39 +373,55 @@ export default function Navbar() {
               </a>
             );
           })}
-          {user ? (
-            <>
-              <div className="text-sm font-medium text-[#2D1B3D] border-t border-[#E8C4B8]/20 pt-2">
-                Hi, <span className="font-semibold">{user.name}</span>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setOpen(false);
-                }}
-                className="text-sm font-medium text-left text-[#2D1B3D]/70 hover:text-[#2D1B3D]"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <a
-              href="/login"
-              className="text-sm font-medium text-[#2D1B3D]/80 hover:text-[#2D1B3D]"
-              onClick={() => setOpen(false)}
-            >
-              Sign in
-            </a>
-          )}
-          <button
-            onClick={(e) => {
-              setOpen(false);
-              handleCreateEventClick(e);
-            }}
-            className="text-sm font-medium px-4 py-2 rounded-full bg-[#2D1B3D] text-[#FAF8F5] text-center hover:bg-[#3d2a52] transition-colors cursor-pointer"
-          >
-            Create Event
-          </button>
+
+          <div className="pt-3 border-t border-gray-100 flex flex-col gap-3">
+            {user ? (
+              <>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-sm font-medium text-gray-700">
+                    Hi, {(user as any)?.name || (user as any)?.firstName || 'sashia'}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      setOpen(false);
+                      await handleLogout();
+                    }}
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                </div>
+                <button
+                  onClick={(e) => {
+                    setOpen(false);
+                    handleCreateEvent(e);
+                  }}
+                  className="w-full rounded-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 text-center transition-all shadow-sm cursor-pointer"
+                >
+                  Create Event
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="text-slate-600 hover:text-slate-900 font-medium text-sm transition-colors"
+                >
+                  Sign In
+                </Link>
+                <button
+                  onClick={(e) => {
+                    setOpen(false);
+                    handleCreateEvent(e);
+                  }}
+                  className="w-full rounded-full px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 text-center transition-all shadow-sm cursor-pointer"
+                >
+                  Create Event
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </header>

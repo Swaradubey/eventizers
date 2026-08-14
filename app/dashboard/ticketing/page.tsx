@@ -660,35 +660,24 @@ function TicketingPageContent() {
 
         {events.length > 0 && (
           <>
-            {/* Top Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            {/* Top Overview KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Card 1: Total Revenue */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                style={{
-                  background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-                  boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-                  transition: "all 0.25s ease",
-                }}
-                className="kpi-card-pink rounded-2xl p-5"
+                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    <TrendingUp className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                    <TrendingUp className="w-6 h-6" />
                   </div>
                   <div>
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-wider"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Total Revenue
                     </p>
-                    <p className="text-2xl font-bold text-white mt-0.5">
+                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {loading || !summary
                         ? "..."
                         : `${summary.totalRevenue.toLocaleString()} INR`}
@@ -702,28 +691,17 @@ function TicketingPageContent() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                style={{
-                  background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-                  boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-                  transition: "all 0.25s ease",
-                }}
-                className="kpi-card-pink rounded-2xl p-5"
+                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    <Ticket className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                    <Ticket className="w-6 h-6" />
                   </div>
                   <div>
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-wider"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Tickets Sold
                     </p>
-                    <p className="text-2xl font-bold text-white mt-0.5">
+                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {loading || !summary ? "..." : summary.ticketsSold}
                     </p>
                   </div>
@@ -735,28 +713,17 @@ function TicketingPageContent() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                style={{
-                  background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-                  boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-                  transition: "all 0.25s ease",
-                }}
-                className="kpi-card-pink rounded-2xl p-5"
+                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    <Users className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                    <Users className="w-6 h-6" />
                   </div>
                   <div>
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-wider"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Capacity
                     </p>
-                    <p className="text-2xl font-bold text-white mt-0.5">
+                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {loading || !summary ? "..." : summary.capacity}
                     </p>
                   </div>
@@ -768,28 +735,17 @@ function TicketingPageContent() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                style={{
-                  background: "linear-gradient(135deg, #8B1E5A 0%, #A83279 50%, #C4458F 100%)",
-                  boxShadow: "0 12px 32px rgba(139,30,90,0.25)",
-                  transition: "all 0.25s ease",
-                }}
-                className="kpi-card-pink rounded-2xl p-5"
+                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    <Percent className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+                    <Percent className="w-6 h-6" />
                   </div>
                   <div>
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-wider"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Sell-Through
                     </p>
-                    <p className="text-2xl font-bold text-white mt-0.5">
+                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {loading || !summary ? "..." : `${summary.sellThrough}%`}
                     </p>
                   </div>

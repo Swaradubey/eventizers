@@ -323,7 +323,7 @@ export default function AdminCheckInPage() {
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
             >
               <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
+
             </button>
           </div>
         </div>
@@ -651,11 +651,10 @@ export default function AdminCheckInPage() {
 
               {scanResult && (
                 <div
-                  className={`mb-4 p-4 rounded-xl border flex gap-3 text-xs font-semibold ${
-                    scanResult.success
+                  className={`mb-4 p-4 rounded-xl border flex gap-3 text-xs font-semibold ${scanResult.success
                       ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                       : "bg-red-50 border-red-200 text-red-800"
-                  }`}
+                    }`}
                 >
                   {scanResult.success ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />

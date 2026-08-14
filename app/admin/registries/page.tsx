@@ -253,7 +253,7 @@ export default function AdminRegistriesPage() {
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
             >
               <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
+
             </button>
           </div>
         </div>
@@ -457,11 +457,10 @@ export default function AdminRegistriesPage() {
 
                       <td className="py-4 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
-                            reg.isActive
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${reg.isActive
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-gray-50 text-gray-500 border-gray-200"
-                          }`}
+                            }`}
                         >
                           {reg.isActive ? "Active" : "Inactive"}
                         </span>

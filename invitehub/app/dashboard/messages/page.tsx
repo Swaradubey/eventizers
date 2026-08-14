@@ -62,7 +62,7 @@ export default function MessagesPage() {
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
   const [composeSelectedGuestIds, setComposeSelectedGuestIds] = useState<string[]>([]);
-  
+
   // Guests list for selected event (for SELECTED type)
   const [eventGuests, setEventGuests] = useState<Guest[]>([]);
   const [loadingGuests, setLoadingGuests] = useState(false);
@@ -307,7 +307,7 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -343,7 +343,7 @@ export default function MessagesPage() {
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
             >
               <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
+
             </button>
           </div>
         </div>
@@ -583,13 +583,12 @@ export default function MessagesPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
-                              msg.status === "SENT"
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${msg.status === "SENT"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : msg.status === "FAILED"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}
                           >
                             {msg.status.toLowerCase()}
                           </span>
@@ -903,13 +902,12 @@ export default function MessagesPage() {
                             <span className="text-[10px] text-[#2D1B3D]/50">{rec.email}</span>
                           </div>
                           <span
-                            className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                              rec.status === "confirmed"
+                            className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${rec.status === "confirmed"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                                 : rec.status === "declined"
-                                ? "bg-red-50 text-red-700 border-red-100"
-                                : "bg-amber-50 text-amber-700 border-amber-100"
-                            }`}
+                                  ? "bg-red-50 text-red-700 border-red-100"
+                                  : "bg-amber-50 text-amber-700 border-amber-100"
+                              }`}
                           >
                             {rec.status}
                           </span>

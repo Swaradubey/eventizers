@@ -430,7 +430,7 @@ function InvitationDesignerPageContent() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
 
         {/* Top Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

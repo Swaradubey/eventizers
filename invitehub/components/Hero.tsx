@@ -1,13 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sparkles, ChevronDown, Wand2, Play } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { 
+  Sparkles, 
+  ChevronDown, 
+  Wand2, 
+  Send, 
+  LayoutTemplate, 
+  Upload, 
+  Cake, 
+  Heart, 
+  SlidersHorizontal,
+  FileUp,
+  Check,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import templateService, { Template } from "../services/templateService";
 import eventService from "../services/eventService";
 import API from "../services/api";
 import { getImageUrl } from "../utils/imageUrl";
+import { templateCards, matchesCategory } from "../lib/templateData";
+import { NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
 
 const eventTypes = [
   "Birthday",
@@ -36,9 +50,6 @@ const guestLists = [
   "Neighbors",
   "VIP Guests",
 ];
-
-import { NEW_FALLBACK_TEMPLATES, NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
-import { templateCards, matchesCategory } from "../lib/templateData";
 
 const fallbackTemplates: Template[] = templateCards.map((tc) => ({
   id: tc.id,
@@ -76,14 +87,20 @@ const getCardImageUrl = (tpl: any) => {
   return getImageUrl(url);
 };
 
-const tabs = ["AI Create", "Template", "Upload Existing"];
+const tabs = [
+  { id: 0, label: "AI Create", icon: Sparkles },
+  { id: 1, label: "Template", icon: LayoutTemplate },
+  { id: 2, label: "Upload Existing", icon: Upload },
+];
 
 export default function Hero() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState(1);
+  // Tab 0: AI Create (Active by default)
+  const [activeTab, setActiveTab] = useState(0);
   const [prompt, setPrompt] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const [eventType, setEventType] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [guestList, setGuestList] = useState("");
@@ -93,7 +110,7 @@ export default function Hero() {
   const [aiEventData, setAiEventData] = useState<any | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
 
-  // Template tab states
+  // Tab 1: Template states
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -103,17 +120,41 @@ export default function Hero() {
   const [templateDate, setTemplateDate] = useState("");
   const [templateTime, setTemplateTime] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(18);
+
+  const filteredTemplates = useMemo(() => {
+    const list = templates.length > 0 ? templates : fallbackTemplates;
+    return list.filter((t) => matchesCategory(t.category, selectedCategory));
+  }, [templates, selectedCategory]);
+
+  const displayedTemplates = useMemo(() => {
+    return filteredTemplates.slice(0, visibleCount);
+  }, [filteredTemplates, visibleCount]);
+
+  const handleTemplateScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollTop + clientHeight >= scrollHeight - 60) {
+      if (visibleCount < filteredTemplates.length) {
+        setVisibleCount((prev) => Math.min(prev + 18, filteredTemplates.length));
+      }
+    }
+  };
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const examples = [
-    "A whimsical garden birthday party for my daughter turning 5",
-    "An elegant black-tie wedding reception for 150 guests",
-    "A casual corporate networking night downtown",
+  const quickPrompts = [
+    {
+      label: "A whimsical garden birthday party for my daughter turning 5",
+      promptText: "Plan a whimsical garden birthday party for my daughter turning 5 with pastel floral decor, face painting, acoustic fairy music, and kid-friendly treats under string lights.",
+    },
+    {
+      label: "An elegant black-tie wedding reception for 150 guests",
+      promptText: "An elegant black-tie wedding reception for 150 guests featuring candlelight dinner, live jazz quartet, champagne tower, and modern luxury floral arrangements.",
+    },
   ];
 
-  // Fetch templates when tab is activated
+  // Fetch templates when Template tab is activated
   useEffect(() => {
     if (activeTab === 1 && templates.length === 0) {
       const fetchTemplates = async () => {
@@ -167,12 +208,12 @@ export default function Hero() {
         guestCount: guestCount || undefined,
         date: date || undefined,
         time: time || undefined,
-        guestListName: guestList || undefined
+        guestListName: guestList || undefined,
       });
 
       if (res.data) {
         setAiEventData(res.data);
-        setSuccessMsg("🎉 AI Event plan generated! Please review it below.");
+        setSuccessMsg("🎉 AI Event plan generated! Review your plan below.");
       }
     } catch (err: any) {
       console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
@@ -187,9 +228,7 @@ export default function Hero() {
           serverError.toLowerCase().includes("rate limit")
         ))
       ) {
-        setErrorMsg(
-          "Gemini service is temporarily unavailable. Please try again in a few moments."
-        );
+        setErrorMsg("Gemini service is temporarily busy. Please try again in a moment.");
       } else if (
         status === 401 ||
         status === 403 ||
@@ -199,10 +238,6 @@ export default function Hero() {
         ))
       ) {
         setErrorMsg("Invalid Gemini API key.");
-      } else if (
-        serverError && serverError.toLowerCase().includes("gemini api key is not configured")
-      ) {
-        setErrorMsg("Gemini API key is not configured.");
       } else {
         setErrorMsg(serverError || "Failed to generate event with AI. Please try again.");
       }
@@ -315,334 +350,283 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
   return (
     <section className="hero-section">
-      {/* Ambient glow orbs */}
-      <div className="hero-glow-purple" />
-      <div className="hero-glow-gold" />
+      {/* Subtle cross grid background pattern */}
+      <div className="hero-cross-grid" />
 
-      {/* Side Ambient Orbs & Rings (responsive styling handles visibility/sizing) */}
-      <div className="hero-orb hero-orb-purple-left" />
-      <div className="hero-orb hero-orb-gold-right" />
-      <div className="hero-ring hero-ring-left" />
-      <div className="hero-ring hero-ring-right" />
+      {/* Atmospheric pastel glows */}
+      <div className="hero-glow-left-pastel" />
+      <div className="hero-glow-right-pastel" />
+      <div className="hero-glow-top-warm" />
 
-      {/* Twinkling Sparkles, Stars, and Particles on Left Edge */}
-      <div className="hero-decorations-container left-edge">
-        <div className="hero-particle particle-1" />
-        <div className="hero-star star-1">✦</div>
-        <Sparkles className="hero-deco-sparkle sparkle-1" />
-        <div className="hero-dot dot-1" />
-        <Sparkles className="hero-deco-sparkle sparkle-2 hero-deco-sparkle-purple" />
-        <div className="hero-star star-2">✦</div>
-      </div>
+      {/* Subtle scattered gold/beige stars in atmosphere */}
+      <span className="hero-gold-star top-[14%] left-[10%]">✦</span>
+      <span className="hero-gold-star top-[25%] left-[5%] text-xs opacity-60">✦</span>
+      <span className="hero-gold-star top-[15%] right-[10%]">✦</span>
+      <span className="hero-gold-star top-[28%] right-[6%] text-xs opacity-60">✦</span>
+      <span className="hero-gold-star top-[8%] left-[48%] text-[10px] opacity-40">✦</span>
 
-      {/* Twinkling Sparkles, Stars, and Particles on Right Edge */}
-      <div className="hero-decorations-container right-edge">
-        <div className="hero-particle particle-2" />
-        <Sparkles className="hero-deco-sparkle sparkle-3" />
-        <div className="hero-star star-3">✦</div>
-        <div className="hero-dot dot-2" />
-        <Sparkles className="hero-deco-sparkle sparkle-4 hero-deco-sparkle-purple" />
-        <div className="hero-particle particle-3" />
-      </div>
+      {/* Main Content */}
+      <div className="hero-content">
+        {/* Pill Badge */}
+        <div className="hero-pill-badge">
+          <Sparkles className="w-3.5 h-3.5 text-[#7C3AED]" />
+          <span>AI-Powered Event Operating System</span>
+        </div>
 
-      {/* Mobile-friendly sparkles (visible on mobile only, hidden on larger screens via CSS) */}
-      <div className="hero-mobile-sparkles">
-        <Sparkles className="hero-deco-sparkle sparkle-m1" />
-        <Sparkles className="hero-deco-sparkle sparkle-m2" />
-      </div>
+        {/* Main Headline */}
+        <h1 className="hero-headline-blue">
+          Create Any Event in Under 60 Seconds
+        </h1>
 
-      {/* Main two-column layout */}
-      <div className="hero-content !max-w-[1400px] !w-full !px-4 sm:!px-6 lg:!px-8 mx-auto">
-        {/* ─── Left Column: Text + Form ─── */}
-        <div className="hero-left !max-w-full">
-          {/* AI Badge */}
-          <div className="hero-ai-badge">
-            <Sparkles className="sparkle-icon" />
-            <span>AI-Powered Event Operating System</span>
-          </div>
+        {/* Subheadline (2 neat lines) */}
+        <p className="hero-subheadline">
+          Invitations, RSVPs, Ticketing, Check-In, Guest<br />
+          Management and AI Planning — all in one platform.
+        </p>
 
-          {/* Soft ambient glow behind heading */}
-          <div className="hero-heading-glow" />
-
-          {/* Heading container with decorative cards */}
-          <div className="hero-heading-container">
-            {/* Left Decorative Invitation Card - Birthday */}
-            <div className="hero-deco-card left-card" aria-hidden="true">
-              <div className="hero-deco-card-inner">
-                <div className="hero-deco-card-badge">BIRTHDAY</div>
-                <div className="hero-deco-card-invite">You’re invited to</div>
-                <div className="hero-deco-card-title">Maya’s 5th Birthday</div>
+        {/* Central Hero Card Container with Side Floating Cards */}
+        <div className="hero-card-container">
+          {/* Left Side Floating Card (Tilted 3D effect) - Birthday */}
+          <div className="hero-deco-card left-card" aria-hidden="true">
+            <div className="hero-deco-card-inner">
+              <div className="hero-deco-card-header">
+                <div className="hero-deco-card-tag">
+                  BIRTHDAY
+                </div>
+                <div className="hero-deco-card-icon-bubble">
+                  <Cake className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+              
+              <div>
+                <div className="hero-deco-card-invite">You&apos;re invited to</div>
+                <div className="hero-deco-card-title">Maya&apos;s 5th Birthday</div>
                 <div className="hero-deco-card-details">Sat, June 14 · 2:00 PM</div>
-                <div className="hero-deco-card-footer">Hosted by The Patels</div>
               </div>
+
+              <div className="hero-deco-card-footer">Hosted by The Patels</div>
             </div>
+          </div>
 
-            {/* Heading */}
-            <h1 className="hero-heading">
-              <span className="hero-heading-line">Create Any Event</span>
-              <span className="hero-heading-line">
-                <span className="gold-accent">in Under</span>
-              </span>
-              <span className="hero-heading-line">
-                <span className="gold-accent">60 Seconds</span>
-              </span>
-            </h1>
+          {/* Right Side Floating Card (Tilted 3D effect) - Wedding */}
+          <div className="hero-deco-card right-card" aria-hidden="true">
+            <div className="hero-deco-card-inner">
+              <div className="hero-deco-card-header">
+                <div className="hero-deco-card-tag">
+                  WEDDING
+                </div>
+                <div className="hero-deco-card-icon-bubble">
+                  <Heart className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
 
-            {/* Right Decorative Invitation Card - Wedding */}
-            <div className="hero-deco-card right-card" aria-hidden="true">
-              <div className="hero-deco-card-inner">
-                <div className="hero-deco-card-badge">WEDDING</div>
-                <div className="hero-deco-card-invite">You’re invited to</div>
-                <div className="hero-deco-card-title">Liam & Sofia</div>
+              <div>
+                <div className="hero-deco-card-invite">You&apos;re invited to</div>
+                <div className="hero-deco-card-title">Liam &amp; Sofia</div>
                 <div className="hero-deco-card-details">
-                  Sept 21 · 5:00 PM
-                  <br />
-                  Vineyard Estate
+                  Sept 21 · 5:00 PM · Vineyard Estate
                 </div>
-                <div className="hero-deco-card-footer">Together with their families</div>
               </div>
+
+              <div className="hero-deco-card-footer">Together with their families</div>
             </div>
           </div>
 
-          {/* Subtitle */}
-          <p className="hero-subtitle">
-            Invitations, RSVPs, Ticketing, Check-In, Guest Management and AI
-            Planning — all in one place.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="hero-buttons">
-            <a href="#hero-form" className="hero-btn hero-btn-primary">
-              <Wand2 className="btn-icon" style={{ width: 16, height: 16 }} />
-              Start Creating Free
-            </a>
-            <button className="hero-btn hero-btn-secondary">
-              <Play style={{ width: 14, height: 14 }} />
-              Watch Demo
-            </button>
-          </div>
-
-          {/* Social Proof */}
-          <div className="hero-social-proof">
-            <div className="hero-avatar-stack">
-              {[
-                { bg: "#9070c0", init: "AK" },
-                { bg: "#C9A84C", init: "MR" },
-                { bg: "#7A9E7E", init: "SJ" },
-                { bg: "#E8C4B8", init: "PL" },
-              ].map((a, i) => (
-                <div
-                  key={i}
-                  className="hero-avatar"
-                  style={{ backgroundColor: a.bg, zIndex: 4 - i }}
-                >
-                  {a.init}
-                </div>
-              ))}
-            </div>
-            <div className="hero-social-text">
-              <span className="hero-stars">★★★★★ 4.9/5</span>
-              <span className="hero-social-label">
-                Trusted by 10,000+ Event Creators
-              </span>
-            </div>
-          </div>
-
-          {/* Form card */}
-          <div id="hero-form" className="hero-form-card !max-w-[1400px] !w-full mx-auto">
-            {/* Tabs */}
-            <div className="flex p-1 bg-[#F5F2F0] rounded-[14px] mb-6 shadow-inner border border-[#E8C4B8]/30">
-              {tabs.map((tab, i) => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setActiveTab(i);
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                  }}
-                  className={`flex-1 text-[13px] font-semibold py-2 px-3 rounded-[10px] transition-all duration-200 ${
-                    activeTab === i
-                      ? "bg-white text-[#2D1B3D] shadow-[0_2px_8px_rgba(45,27,61,0.08)]"
-                      : "text-[#2D1B3D]/50 hover:text-[#2D1B3D]/80 hover:bg-white/40"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+          {/* Central Interactive Hero Card */}
+          <div className="hero-interactive-card">
+            {/* Tabs (Top of Card) */}
+            <div className="grid grid-cols-3 gap-2.5 mb-5">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setErrorMsg(null);
+                      setSuccessMsg(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "bg-[#F0EEFF] text-[#6C5CE7] border border-[#DDD6FE] font-semibold shadow-sm"
+                        : "bg-white text-gray-700 border border-gray-200/90 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? "text-[#6C5CE7]" : "text-gray-500"}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Error/Success Feedbacks */}
+            {/* Error and Success Alerts */}
             {errorMsg && (
-              <div className="p-3 mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl transition-all">
+              <div className="p-3 mb-4 text-xs font-medium bg-red-50/90 border border-red-200/80 text-red-700 rounded-xl transition-all">
                 {errorMsg}
               </div>
             )}
             {successMsg && (
-              <div className="p-3 mb-4 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl transition-all">
+              <div className="p-3 mb-4 text-xs font-medium bg-emerald-50/90 border border-emerald-200/80 text-emerald-700 rounded-xl transition-all">
                 {successMsg}
               </div>
             )}
 
+            {/* ─── TAB 0: AI CREATE ─── */}
             {activeTab === 0 && (
-              <div className="space-y-4">
-                {/* Prompt textarea */}
-                <div>
-                  <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
+              <div className="space-y-3.5">
+                {/* Heading with Wand icon */}
+                <div className="flex items-center gap-2 text-gray-800">
+                  <Wand2 className="w-4 h-4 text-[#7C3AED]" />
+                  <span className="font-semibold text-xs sm:text-sm">
                     Describe your event and let AI build it
-                  </label>
+                  </span>
+                </div>
+                
+                {/* Input Area (Middle of Card) */}
+                <div className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                   <textarea
                     rows={2}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={examples[0]}
-                    className="w-full px-4 py-3 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/30 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C]/50 resize-none transition-all"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleGenerate();
+                      }
+                    }}
+                    placeholder="e.g. Plan a rustic outdoor wedding for 120 guests with a warm autumn palette, live acoustic music, and a relaxed dinner under string lights..."
+                    className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed"
                   />
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {examples.map((ex) => (
-                      <button
-                        key={ex}
-                        onClick={() => setPrompt(ex)}
-                        className="text-[10px] px-2 py-1 rounded-full bg-[#F0EBE8] text-[#2D1B3D]/60 hover:bg-[#E8C4B8]/40 hover:text-[#2D1B3D] transition-colors"
-                      >
-                        {ex.length > 38 ? ex.slice(0, 38) + "…" : ex}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Event type */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                      Event Type
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={eventType}
-                        onChange={(e) => setEventType(e.target.value)}
-                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 pr-9 cursor-pointer"
-                      >
-                        <option value="">Select event type</option>
-                        {eventTypes.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Guest count */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                      Guest Group
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={guestCount}
-                        onChange={(e) => setGuestCount(e.target.value)}
-                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 pr-9 cursor-pointer"
-                      >
-                        <option value="">Estimated guest count</option>
-                        {guestCounts.map((g) => (
-                          <option key={g}>{g}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Date */}
-                  <div>
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Date</label>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                    />
-                  </div>
-
-                  {/* Time */}
-                  <div>
-                    <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">Time</label>
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30"
-                    />
-                  </div>
-                </div>
-
-                {/* Guest list */}
-                <div className="relative">
-                  <label className="block text-xs font-medium text-[#2D1B3D]/60 mb-1.5">
-                    Guest List
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={guestList}
-                      onChange={(e) => setGuestList(e.target.value)}
-                      className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 pr-9 cursor-pointer"
+                  {/* Circular Send Button on the right */}
+                  <div className="absolute right-3 bottom-3">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-white flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+                      title="Generate Event"
+                      aria-label="Generate Event"
                     >
-                      <option value="">Select a saved list</option>
-                      {guestLists.map((g) => (
-                        <option key={g}>{g}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
+                      {generating ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 -translate-x-0.5 translate-y-0.5" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70"
-                  style={{ backgroundColor: "#2D1B3D" }}
-                >
-                  {generating ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Generating…
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="w-4 h-4 text-[#C9A84C]" />
-                      Generate Event with AI
-                    </>
-                  )}
-                </button>
+                {/* Quick Prompt Pills (Bottom of Card) */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
+                  {quickPrompts.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setPrompt(item.promptText)}
+                      className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-3.5 py-1.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
+                      title={item.promptText}
+                    >
+                      <span className="text-[#7C3AED] text-xs">✨</span>
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
 
-                {aiEventData && (
-                  <div className="mt-6 p-5 bg-white border border-[#E8C4B8]/40 rounded-2xl shadow-inner text-left text-[#2D1B3D]/95 space-y-4 max-h-[500px] overflow-y-auto">
-                    <div className="flex justify-between items-start border-b border-[#E8C4B8]/20 pb-3">
+                {/* Optional Fine-Tuning Dropdowns Toggle */}
+                <div className="pt-1">
+                  <button
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                  >
+                    <SlidersHorizontal className="w-3 h-3 text-gray-400" />
+                    <span>{showDetails ? "Hide extra details" : "+ Customize date, guests, or type"}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showDetails ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {showDetails && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2.5 pt-2.5 border-t border-gray-100">
                       <div>
-                        <h3 className="text-sm font-bold text-[#2D1B3D] leading-tight">
+                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Event Type</label>
+                        <select
+                          value={eventType}
+                          onChange={(e) => setEventType(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="">Select type (Optional)</option>
+                          {eventTypes.map((t) => (
+                            <option key={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Guest Group</label>
+                        <select
+                          value={guestCount}
+                          onChange={(e) => setGuestCount(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="">Estimated guest count</option>
+                          {guestCounts.map((g) => (
+                            <option key={g}>{g}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={time}
+                          onChange={(e) => setTime(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Generated AI Event Plan Display */}
+                {aiEventData && (
+                  <div className="mt-4 p-4 bg-[#F9FAFB] border border-gray-200 rounded-2xl text-left space-y-3 max-h-[450px] overflow-y-auto">
+                    <div className="flex justify-between items-start border-b border-gray-200 pb-2.5">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 leading-tight">
                           {aiEventData.title}
                         </h3>
-                        <p className="text-[10px] text-[#2D1B3D]/60 mt-1">
-                          ✨ Theme: <span className="font-semibold text-[#C9A84C]">{aiEventData.theme}</span>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          ✨ Theme: <span className="font-semibold text-blue-600">{aiEventData.theme}</span>
                         </p>
                       </div>
-                      <div className="bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#E8C4B8]/20 text-[9px] font-bold text-[#C9A84C] whitespace-nowrap">
+                      <div className="bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 text-[10px] font-bold text-blue-700">
                         Budget: {aiEventData.estimatedBudget}
                       </div>
                     </div>
 
-                    <div className="text-[11px] leading-relaxed text-[#2D1B3D]/80">
-                      <p>{aiEventData.description}</p>
-                    </div>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {aiEventData.description}
+                    </p>
 
                     {/* Timeline Schedule */}
                     {aiEventData.schedule && aiEventData.schedule.length > 0 && (
-                      <div className="space-y-1 pt-2 border-t border-[#E8C4B8]/10">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                      <div className="space-y-1 pt-2 border-t border-gray-200/60">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
                           📅 Proposed Timeline
                         </h4>
                         <ul className="space-y-0.5">
                           {aiEventData.schedule.map((item: string, idx: number) => (
-                            <li key={idx} className="text-[11px] flex items-start gap-1">
-                              <span className="text-[#C9A84C] shrink-0 font-semibold">•</span>
+                            <li key={idx} className="text-xs text-gray-700 flex items-start gap-1">
+                              <span className="text-blue-500 font-bold">•</span>
                               <span>{item}</span>
                             </li>
                           ))}
@@ -650,15 +634,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       </div>
                     )}
 
-                    {/* Emojis/Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E8C4B8]/10 text-[11px]">
-                      {/* Decor */}
+                    {/* Grid Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-gray-200/60 text-xs">
                       {aiEventData.decor && aiEventData.decor.length > 0 && (
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                        <div>
+                          <h4 className="font-bold text-gray-500 uppercase tracking-wider text-[10px] mb-0.5">
                             🎈 Decor Ideas
                           </h4>
-                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                          <ul className="space-y-0.5 text-gray-700">
                             {aiEventData.decor.map((item: string, idx: number) => (
                               <li key={idx}>• {item}</li>
                             ))}
@@ -666,42 +649,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         </div>
                       )}
 
-                      {/* Food */}
                       {aiEventData.food && aiEventData.food.length > 0 && (
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
+                        <div>
+                          <h4 className="font-bold text-gray-500 uppercase tracking-wider text-[10px] mb-0.5">
                             🍴 Food & Drink
                           </h4>
-                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
+                          <ul className="space-y-0.5 text-gray-700">
                             {aiEventData.food.map((item: string, idx: number) => (
-                              <li key={idx}>• {item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Activities */}
-                      {aiEventData.activities && aiEventData.activities.length > 0 && (
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
-                            🎮 Games & Activities
-                          </h4>
-                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
-                            {aiEventData.activities.map((item: string, idx: number) => (
-                              <li key={idx}>• {item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Checklist */}
-                      {aiEventData.checklist && aiEventData.checklist.length > 0 && (
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-[10px]">
-                            ✅ Plan Checklist
-                          </h4>
-                          <ul className="space-y-0.5 text-[#2D1B3D]/80">
-                            {aiEventData.checklist.map((item: string, idx: number) => (
                               <li key={idx}>• {item}</li>
                             ))}
                           </ul>
@@ -709,29 +663,26 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       )}
                     </div>
 
-                    <div className="flex gap-2 pt-2 border-t border-[#E8C4B8]/20">
+                    <div className="flex gap-2 pt-2.5 border-t border-gray-200">
                       <button
                         onClick={() => setAiEventData(null)}
                         disabled={savingEvent}
-                        className="flex-1 py-2 rounded-xl border border-[#E8C4B8]/60 text-xs font-semibold text-[#2D1B3D] bg-white hover:bg-[#FAF8F5] active:scale-95 transition-all disabled:opacity-50"
+                        className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                       >
                         Reset
                       </button>
                       <button
                         onClick={handleSaveAiEvent}
                         disabled={savingEvent}
-                        className="flex-[2] py-2 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
-                        style={{ backgroundColor: "#2D1B3D" }}
+                        className="flex-[2] py-2 rounded-xl text-xs font-semibold text-white bg-[#181126] hover:bg-[#251A3A] flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 shadow-sm"
                       >
                         {savingEvent ? (
                           <>
-                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             Saving Event...
                           </>
                         ) : (
-                          <>
-                            Confirm & Create Event
-                          </>
+                          <>Confirm & Create Event</>
                         )}
                       </button>
                     </div>
@@ -740,86 +691,132 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               </div>
             )}
 
+            {/* ─── TAB 1: TEMPLATE ─── */}
             {activeTab === 1 && (
-              <div className="space-y-6 text-left animate-in fade-in slide-in-from-bottom-2 duration-300">
-                {/* Template Selection Section */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-[#2D1B3D]">Choose from editable templates</h3>
+              <div className="space-y-3.5 text-left">
+                <div>
+                  {/* Heading & Counter Badge + View All CTA */}
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900">
+                        Choose from editable templates
+                      </h3>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
+                        200+ available
+                      </span>
+                    </div>
+
+                    <a
+                      href="#templates"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById("templates");
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth" });
+                        } else {
+                          router.push("/dashboard/invitations");
+                        }
+                      }}
+                      className="text-[11px] font-semibold text-[#6C5CE7] hover:text-[#5E35B1] hover:underline whitespace-nowrap flex items-center gap-1 transition-colors cursor-pointer group"
+                    >
+                      <span>View All 200+ Templates</span>
+                      <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                    </a>
+                  </div>
                   
                   {/* Category Pills */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Community", "Networking", "Private Dinner", "Fundraiser", "Graduation"].map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-3 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                          selectedCategory === cat 
-                            ? "bg-[#9070c0] text-white border-[#9070c0] shadow-sm" 
-                            : "bg-white text-[#2D1B3D]/60 border-[#E8C4B8]/50 hover:border-[#9070c0]/40 hover:text-[#2D1B3D]"
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Templates Grid */}
-                  {loadingTemplates ? (
-                    <div className="flex items-center justify-center py-10">
-                      <div className="w-5 h-5 border-2 border-[#9070c0]/30 border-t-[#9070c0] rounded-full animate-spin" />
-                      <span className="text-xs text-[#2D1B3D]/60 ml-3 font-medium">Loading templates...</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2 pb-2">
-                      {(templates.length > 0 ? templates : fallbackTemplates)
-                        .filter(t => matchesCategory(t.category, selectedCategory))
-                        .map(tpl => (
-                        <div 
-                          key={tpl.id}
-                          onClick={() => setSelectedTemplateId(tpl.id)}
-                          className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white ${
-                            selectedTemplateId === tpl.id 
-                              ? "border-[#9070c0] shadow-[0_4px_12px_rgba(144,112,192,0.2)] ring-1 ring-[#9070c0]" 
-                              : "border-[#E8C4B8]/50 hover:border-[#9070c0]/50 hover:shadow-md hover:-translate-y-1"
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
+                      const isSelected = selectedCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(cat);
+                            setVisibleCount(18);
+                          }}
+                          className={`px-3 py-1 text-xs font-medium rounded-full transition-all border cursor-pointer ${
+                            isSelected
+                              ? "bg-[#6C5CE7] text-white border-[#6C5CE7] shadow-sm ring-2 ring-[#6C5CE7]/20"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                           }`}
                         >
-                          {/* Preview Area */}
-                          <div className="aspect-[4/3] w-full bg-gradient-to-br from-[#F5F2F0] to-[#E8C4B8]/20 relative overflow-hidden">
-                             {getCardImageUrl(tpl) ? (
-                               <>
-                                 <img src={getCardImageUrl(tpl)!} alt={tpl.name} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
-                                 {/* Subtle dark gradient overlay */}
-                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                               </>
-                             ) : (
-                               <>
-                                 <div className="absolute inset-0 bg-gradient-to-br from-[#9070c0]/5 to-[#C9A84C]/10 mix-blend-multiply transition-opacity duration-300 group-hover:opacity-80" />
-                                 <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-300">
-                                    <Sparkles className="w-8 h-8" />
-                                 </div>
-                               </>
-                             )}
-                             {/* Selection indicator */}
-                             <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition-all duration-300 ${
-                               selectedTemplateId === tpl.id ? "bg-[#9070c0] scale-100 opacity-100" : "bg-white/80 scale-75 opacity-0 group-hover:opacity-100"
-                             }`}>
-                               {selectedTemplateId === tpl.id && (
-                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                   <path d="M10 3L4.5 8.5L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                 </svg>
-                               )}
-                             </div>
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Templates Scrollable Grid Container */}
+                  {loadingTemplates ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="w-5 h-5 border-2 border-[#6C5CE7]/30 border-t-[#6C5CE7] rounded-full animate-spin" />
+                      <span className="text-xs text-gray-500 ml-3 font-medium">Loading templates...</span>
+                    </div>
+                  ) : (
+                    <div 
+                      onScroll={handleTemplateScroll}
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1.5 pb-2 custom-scrollbar scrollbar-thin scrollbar-thumb-gray-300"
+                    >
+                      {displayedTemplates.map((tpl) => {
+                        const isSelected = selectedTemplateId === tpl.id;
+                        const imgUrl = getCardImageUrl(tpl);
+                        return (
+                          <div
+                            key={tpl.id}
+                            onClick={() => {
+                              setSelectedTemplateId(tpl.id);
+                              if (!templateTitle) {
+                                setTemplateTitle(tpl.name);
+                              }
+                            }}
+                            className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-200 border bg-white ${
+                              isSelected
+                                ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 shadow-md transform -translate-y-0.5"
+                                : "border-gray-200 hover:border-[#6C5CE7]/50 hover:shadow-sm"
+                            }`}
+                          >
+                            {isSelected && (
+                              <div className="absolute top-1.5 right-1.5 z-10 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
+                                <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3" strokeWidth={3} />
+                              </div>
+                            )}
+                            <div className="aspect-[4/3] w-full bg-gray-100 relative overflow-hidden">
+                              {imgUrl ? (
+                                <img
+                                  src={imgUrl}
+                                  alt={tpl.name}
+                                  loading="lazy"
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+                                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2 sm:p-2.5">
+                              <span className="text-[9px] font-bold text-[#6C5CE7] uppercase tracking-wider block mb-0.5 truncate">
+                                {tpl.category}
+                              </span>
+                              <h4 className="text-[11px] font-semibold text-gray-900 truncate" title={tpl.name}>
+                                {tpl.name}
+                              </h4>
+                            </div>
                           </div>
-                          {/* Card Content */}
-                          <div className="p-3 flex flex-col gap-1 bg-white flex-1">
-                             <span className="text-[9px] font-bold tracking-wider uppercase text-[#9070c0] truncate">{tpl.category}</span>
-                             <h4 className="text-[11px] font-semibold text-[#2D1B3D] leading-snug line-clamp-2">{tpl.name}</h4>
-                          </div>
-                        </div>
-                      ))}
-                      {(templates.length > 0 ? templates : fallbackTemplates).filter(t => matchesCategory(t.category, selectedCategory)).length === 0 && (
-                        <div className="col-span-full py-8 text-center text-[#2D1B3D]/50 text-xs">
-                          No templates found for this category.
+                        );
+                      })}
+
+                      {/* Infinite Scroll / Lazy Load & CTA Trigger */}
+                      {visibleCount < filteredTemplates.length && (
+                        <div
+                          onClick={() => setVisibleCount((prev) => Math.min(prev + 18, filteredTemplates.length))}
+                          className="col-span-2 sm:col-span-3 py-2.5 px-4 rounded-xl border border-dashed border-[#6C5CE7]/40 bg-[#F0EEFF]/30 hover:bg-[#F0EEFF]/70 text-[#6C5CE7] text-xs font-semibold text-center cursor-pointer transition-all flex items-center justify-center gap-2 hover:border-[#6C5CE7]"
+                        >
+                          <span>Load More Templates ({filteredTemplates.length - visibleCount} remaining)</span>
+                          <span>↓</span>
                         </div>
                       )}
                     </div>
@@ -827,83 +824,49 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 </div>
 
                 {/* Event Details Form */}
-                <div className="space-y-4 pt-5 border-t border-[#E8C4B8]/30">
-                  <h4 className="text-xs font-semibold text-[#2D1B3D]/80 mb-2">Event Details</h4>
-                  
-                  {/* Select Template Dropdown */}
-                  <div className="relative">
-                    <div className="relative">
-                      <select
-                        value={selectedTemplateId}
-                        onChange={(e) => setSelectedTemplateId(e.target.value)}
-                        className="w-full appearance-none px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 pr-9 cursor-pointer font-medium transition-all hover:bg-white"
-                      >
-                        {(templates.length > 0 ? templates : fallbackTemplates).map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2D1B3D]/40 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <input
-                        type="text"
-                        value={templateTitle}
-                        onChange={(e) => setTemplateTitle(e.target.value)}
-                        placeholder="Event Title (e.g. Maya's 5th Birthday)"
-                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        value={templateVenue}
-                        onChange={(e) => setTemplateVenue(e.target.value)}
-                        placeholder="Venue (e.g. Sweet Retreat Bakery)"
-                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <input
-                          type="date"
-                          value={templateDate}
-                          onChange={(e) => setTemplateDate(e.target.value)}
-                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
-                        />
-                      </div>
-
-                      <div>
-                        <input
-                          type="time"
-                          value={templateTime}
-                          onChange={(e) => setTemplateTime(e.target.value)}
-                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8C4B8]/50 bg-[#FAF8F5] text-[#2D1B3D] focus:outline-none focus:ring-2 focus:ring-[#9070c0]/30 transition-all hover:bg-white"
-                        />
-                      </div>
-                    </div>
+                <div className="space-y-2.5 pt-3 border-t border-gray-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={templateTitle}
+                      onChange={(e) => setTemplateTitle(e.target.value)}
+                      placeholder="Event Title (e.g. Maya's 5th Birthday)"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                    />
+                    <input
+                      type="text"
+                      value={templateVenue}
+                      onChange={(e) => setTemplateVenue(e.target.value)}
+                      placeholder="Venue (e.g. Sweet Retreat Bakery)"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                    />
+                    <input
+                      type="date"
+                      value={templateDate}
+                      onChange={(e) => setTemplateDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                    />
+                    <input
+                      type="time"
+                      value={templateTime}
+                      onChange={(e) => setTemplateTime(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                    />
                   </div>
 
                   <button
                     onClick={handleCreateFromTemplate}
                     disabled={creatingEvent}
-                    className="w-full py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:hover:translate-y-0 mt-4"
-                    style={{ backgroundColor: "#9070c0" }}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-[#6C5CE7] hover:bg-[#5E35B1] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-60 cursor-pointer"
                   >
                     {creatingEvent ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Creating event…
                       </>
                     ) : (
                       <>
-                        <Wand2 className="w-4 h-4" />
+                        <Wand2 className="w-3.5 h-3.5" />
                         Create Event from Template
                       </>
                     )}
@@ -912,12 +875,19 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               </div>
             )}
 
+            {/* ─── TAB 2: UPLOAD EXISTING ─── */}
             {activeTab === 2 && (
-              <div className="border-2 border-dashed border-[#E8C4B8]/60 rounded-xl p-10 text-center text-xs">
-                <p className="text-[#2D1B3D]/40 text-sm">
-                  Drag & drop an existing invitation image or PDF
+              <div className="border-2 border-dashed border-gray-200 hover:border-[#6C5CE7]/50 rounded-2xl p-8 text-center transition-all bg-[#F9FAFB]/50">
+                <div className="w-10 h-10 rounded-full bg-[#F0EEFF] text-[#6C5CE7] mx-auto flex items-center justify-center mb-2.5">
+                  <FileUp className="w-5 h-5" />
+                </div>
+                <p className="text-xs sm:text-sm font-semibold text-gray-800">
+                  Drag &amp; drop an existing invitation image or PDF
                 </p>
-                <button className="mt-3 text-xs font-medium text-[#C9A84C] hover:underline">
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Supports PNG, JPG, or PDF up to 10MB
+                </p>
+                <button className="mt-3 px-3.5 py-1.5 text-xs font-semibold text-[#6C5CE7] bg-white border border-gray-200 rounded-xl hover:bg-[#F0EEFF]/50 transition-all shadow-sm cursor-pointer">
                   or click to upload
                 </button>
               </div>
