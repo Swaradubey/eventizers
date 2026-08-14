@@ -349,91 +349,101 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   return (
-    <section className="hero-section">
-      {/* Subtle cross grid background pattern */}
-      <div className="hero-cross-grid" />
+    <section className="relative min-h-[90vh] pt-14 pb-20 overflow-hidden bg-slate-50/40 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] flex flex-col items-center justify-center">
+      {/* Subtle cross grid background pattern overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 36 36' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 14v8M14 18h8' stroke='%23CBD5E1' stroke-width='1.2' stroke-linecap='round' stroke-opacity='0.55' fill='none'/%3E%3C/svg%3E")`,
+          backgroundSize: '36px 36px'
+        }}
+      />
 
       {/* Atmospheric pastel glows */}
-      <div className="hero-glow-left-pastel" />
-      <div className="hero-glow-right-pastel" />
-      <div className="hero-glow-top-warm" />
+      <div className="absolute w-[600px] h-[600px] rounded-full bg-radial from-purple-200/40 via-pink-100/20 to-transparent top-1/4 -left-20 -translate-y-1/2 blur-3xl pointer-events-none" />
+      <div className="absolute w-[600px] h-[600px] rounded-full bg-radial from-sky-200/40 via-blue-100/20 to-transparent top-1/4 -right-20 -translate-y-1/2 blur-3xl pointer-events-none" />
+      <div className="absolute w-[500px] h-[250px] rounded-full bg-radial from-amber-100/30 to-transparent top-0 left-1/2 -translate-x-1/2 blur-2xl pointer-events-none" />
 
       {/* Subtle scattered gold/beige stars in atmosphere */}
-      <span className="hero-gold-star top-[14%] left-[10%]">✦</span>
-      <span className="hero-gold-star top-[25%] left-[5%] text-xs opacity-60">✦</span>
-      <span className="hero-gold-star top-[15%] right-[10%]">✦</span>
-      <span className="hero-gold-star top-[28%] right-[6%] text-xs opacity-60">✦</span>
-      <span className="hero-gold-star top-[8%] left-[48%] text-[10px] opacity-40">✦</span>
+      <span className="absolute top-[14%] left-[10%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
+      <span className="absolute top-[25%] left-[5%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
+      <span className="absolute top-[15%] right-[10%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
+      <span className="absolute top-[28%] right-[6%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
+      <span className="absolute top-[8%] left-[48%] text-amber-400/40 text-[10px] select-none pointer-events-none">✦</span>
 
       {/* Main Content */}
-      <div className="hero-content">
-        {/* Pill Badge */}
-        <div className="hero-pill-badge">
-          <Sparkles className="w-3.5 h-3.5 text-[#7C3AED]" />
+      <div className="relative z-10 max-w-5xl w-full mx-auto px-4 sm:px-6 flex flex-col items-center">
+        {/* Top Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-200/60 bg-purple-50/50 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur-sm mb-4">
+          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
           <span>AI-Powered Event Operating System</span>
         </div>
 
-        {/* Main Headline */}
-        <h1 className="hero-headline-blue">
+        {/* Main Heading */}
+        <h1 className="text-4xl md:text-6xl font-extrabold text-[#2563EB] tracking-tight leading-tight text-center">
           Create Any Event in Under 60 Seconds
         </h1>
 
-        {/* Subheadline (2 neat lines) */}
-        <p className="hero-subheadline">
-          Invitations, RSVPs, Ticketing, Check-In, Guest<br />
+        {/* Subtitle */}
+        <p className="text-slate-600 text-sm md:text-base max-w-xl mx-auto text-center mt-3 mb-8">
+          Invitations, RSVPs, Ticketing, Check-In, Guest<br className="hidden sm:inline" />{" "}
           Management and AI Planning — all in one platform.
         </p>
 
         {/* Central Hero Card Container with Side Floating Cards */}
-        <div className="hero-card-container">
-          {/* Left Side Floating Card (Tilted 3D effect) - Birthday */}
-          <div className="hero-deco-card left-card" aria-hidden="true">
-            <div className="hero-deco-card-inner">
-              <div className="hero-deco-card-header">
-                <div className="hero-deco-card-tag">
-                  BIRTHDAY
-                </div>
-                <div className="hero-deco-card-icon-bubble">
-                  <Cake className="w-3.5 h-3.5 text-white" />
-                </div>
+        <div className="relative w-full max-w-[720px] mx-auto z-20">
+          {/* Left Side Floating Card (Birthday) */}
+          <div
+            className="hidden lg:flex flex-col justify-between absolute -left-60 xl:-left-68 top-1/2 -translate-y-1/2 w-[220px] h-[270px] bg-gradient-to-br from-[#FF2E7E] via-[#FF3366] to-[#FF6B4A] -rotate-6 hover:rotate-0 transition-transform duration-300 shadow-xl rounded-2xl p-5 text-white z-10 select-none cursor-default text-left"
+            aria-hidden="true"
+          >
+            <div className="flex justify-between items-center w-full">
+              <span className="inline-flex items-center text-[10px] font-bold tracking-wider uppercase text-white bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-white/30">
+                BIRTHDAY
+              </span>
+              <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
+                <Cake className="w-3.5 h-3.5 text-white" />
               </div>
-              
-              <div>
-                <div className="hero-deco-card-invite">You&apos;re invited to</div>
-                <div className="hero-deco-card-title">Maya&apos;s 5th Birthday</div>
-                <div className="hero-deco-card-details">Sat, June 14 · 2:00 PM</div>
-              </div>
+            </div>
 
-              <div className="hero-deco-card-footer">Hosted by The Patels</div>
+            <div className="my-auto">
+              <div className="text-xs text-white/85 font-normal">You&apos;re invited to</div>
+              <div className="text-lg font-bold text-white tracking-tight mt-0.5 leading-snug">Maya&apos;s 5th Birthday</div>
+              <div className="text-xs font-medium text-white/90 mt-1">Sat, June 14 · 2:00 PM</div>
+            </div>
+
+            <div className="text-[11px] text-white/75 font-normal pt-2 border-t border-white/15">
+              Hosted by The Patels
             </div>
           </div>
 
-          {/* Right Side Floating Card (Tilted 3D effect) - Wedding */}
-          <div className="hero-deco-card right-card" aria-hidden="true">
-            <div className="hero-deco-card-inner">
-              <div className="hero-deco-card-header">
-                <div className="hero-deco-card-tag">
-                  WEDDING
-                </div>
-                <div className="hero-deco-card-icon-bubble">
-                  <Heart className="w-3.5 h-3.5 text-white" />
-                </div>
+          {/* Right Side Floating Card (Wedding) */}
+          <div
+            className="hidden lg:flex flex-col justify-between absolute -right-60 xl:-right-68 top-1/2 -translate-y-1/2 w-[220px] h-[270px] bg-gradient-to-br from-[#6366F1] via-[#7C3AED] to-[#4F46E5] rotate-6 hover:rotate-0 transition-transform duration-300 shadow-xl rounded-2xl p-5 text-white z-10 select-none cursor-default text-left"
+            aria-hidden="true"
+          >
+            <div className="flex justify-between items-center w-full">
+              <span className="inline-flex items-center text-[10px] font-bold tracking-wider uppercase text-white bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-white/30">
+                WEDDING
+              </span>
+              <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
+                <Heart className="w-3.5 h-3.5 text-white" />
               </div>
+            </div>
 
-              <div>
-                <div className="hero-deco-card-invite">You&apos;re invited to</div>
-                <div className="hero-deco-card-title">Liam &amp; Sofia</div>
-                <div className="hero-deco-card-details">
-                  Sept 21 · 5:00 PM · Vineyard Estate
-                </div>
-              </div>
+            <div className="my-auto">
+              <div className="text-xs text-white/85 font-normal">You&apos;re invited to</div>
+              <div className="text-lg font-bold text-white tracking-tight mt-0.5 leading-snug">Liam &amp; Sofia</div>
+              <div className="text-xs font-medium text-white/90 mt-1">Sept 21 · 5:00 PM · Vineyard Estate</div>
+            </div>
 
-              <div className="hero-deco-card-footer">Together with their families</div>
+            <div className="text-[11px] text-white/75 font-normal pt-2 border-t border-white/15">
+              Together with their families
             </div>
           </div>
 
           {/* Central Interactive Hero Card */}
-          <div className="hero-interactive-card">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-7 relative z-20 text-left">
             {/* Tabs (Top of Card) */}
             <div className="grid grid-cols-3 gap-2.5 mb-5">
               {tabs.map((tab) => {
