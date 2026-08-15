@@ -8,7 +8,6 @@ import Navbar from "../../../invitehub/components/Navbar";
 import ticketingService from "../../../services/ticketingService";
 import { TicketTier, TicketTierStatus, TicketingSummary } from "../../../types/ticketingTypes";
 import {
-  LogOut,
   Plus,
   Edit2,
   Trash2,
@@ -33,7 +32,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 function TicketingPageContent() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen: setSidebarOpen } = useSidebar();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -338,10 +337,6 @@ function TicketingPageContent() {
     window.history.pushState({}, "", url.toString());
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   // Date formatter helpers
   const formatDateTime = (dateStr?: string | null) => {
@@ -557,7 +552,7 @@ function TicketingPageContent() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
 
         {/* Top Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">

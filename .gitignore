@@ -1,30 +1,38 @@
+# ── Dependencies ──────────────────────────────────────────────
 node_modules/
 **/node_modules/
+
+# ── Build output ──────────────────────────────────────────────
 .next/
 out/
 dist/
 build/
 coverage/
 
+# ── Environment variables (secrets) ───────────────────────────
+# Block all .env* files EXCEPT .env.example (which is safe to commit)
 .env
 .env.*
-.env.local
-.env.production
-.env.development
+!.env.example
 
+# ── Vercel ────────────────────────────────────────────────────
 .vercel/
+.vercel
+
+# ── Logs ──────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ── OS / Editor ───────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 .vscode/
+
+# ── TypeScript ────────────────────────────────────────────────
 tsconfig.tsbuildinfo
 
-# Ignore backend and session SQL files
+# ── Backend & DB sessions ─────────────────────────────────────
 backend/
 *NeonDB.session.sql
-
-.vercel
-.env*

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
-import { Sparkles, ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function AdminLoginPage() {
   const { user, adminLogin, error, setError } = useAuth();
@@ -48,17 +49,7 @@ export default function AdminLoginPage() {
       {/* Branding Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex flex-col items-center">
         <div className="flex items-center justify-center gap-4 flex-wrap mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-[#2D1B3D] flex items-center justify-center transition-transform group-hover:scale-105">
-              <Sparkles className="w-5 h-5 text-[#C9A84C]" />
-            </div>
-            <span
-              className="font-display text-2xl font-bold text-[#2D1B3D]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Eventizers
-            </span>
-          </Link>
+          <Logo size="lg" />
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/20 whitespace-nowrap">
             Admin Portal
           </span>

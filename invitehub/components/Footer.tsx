@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
   Send,
   ArrowRight,
   Twitter,
@@ -14,6 +13,7 @@ import {
   Github,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Logo from "./Logo";
 
 const productLinks = [
   { label: "Invitations", href: "/features/invitations-rsvp" },
@@ -106,14 +106,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12 border-b border-slate-200/80 items-start">
           {/* Top-Left (Brand) */}
           <div className="lg:col-span-6 space-y-3">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 transition-transform group-hover:scale-105">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-2xl text-blue-600 tracking-tight">
-                Eventizers
-              </span>
-            </Link>
+            <Logo size="lg" />
             <p className="text-sm leading-relaxed text-[#64748b] max-w-md">
               The AI-powered event operating system. Create, invite, manage and grow any event — all in one beautiful place.
             </p>

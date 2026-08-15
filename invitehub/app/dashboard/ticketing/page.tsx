@@ -8,7 +8,6 @@ import Navbar from "../../../components/Navbar";
 import ticketingService from "../../../services/ticketingService";
 import { TicketTier, TicketTierStatus, TicketingSummary } from "../../../types/ticketingTypes";
 import {
-  LogOut,
   Plus,
   Edit2,
   Trash2,
@@ -33,7 +32,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 function TicketingPageContent() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen: setSidebarOpen } = useSidebar();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -338,10 +337,6 @@ function TicketingPageContent() {
     window.history.pushState({}, "", url.toString());
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   // Date formatter helpers
   const formatDateTime = (dateStr?: string | null) => {

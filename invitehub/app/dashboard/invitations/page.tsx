@@ -10,7 +10,6 @@ import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {
-  LogOut,
   Calendar,
   Clock,
   MapPin,
@@ -45,7 +44,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 function InvitationDesignerPageContent() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen: setSidebarOpen } = useSidebar();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -219,10 +218,6 @@ function InvitationDesignerPageContent() {
     }
   }, [isPreviewOpen]);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   const handleInputChange = (field: string, value: any) => {
     if (!invitation) return;
@@ -484,13 +479,6 @@ function InvitationDesignerPageContent() {
               </div>
             )}
 
-            <button
-              onClick={handleLogout}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
-            >
-              <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
-            </button>
           </div>
         </div>
 

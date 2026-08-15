@@ -13,6 +13,13 @@ import {
   SlidersHorizontal,
   FileUp,
   Check,
+  PartyPopper,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  ListChecks,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -49,6 +56,13 @@ const guestLists = [
   "Work Colleagues",
   "Neighbors",
   "VIP Guests",
+];
+
+const timeOptions = [
+  "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
+  "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
+  "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
 ];
 
 const fallbackTemplates: Template[] = templateCards.map((tc) => ({
@@ -100,12 +114,14 @@ export default function Hero() {
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
   const [prompt, setPrompt] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
   const [eventType, setEventType] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [guestList, setGuestList] = useState("");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("22:00");
+  const [isFullDay, setIsFullDay] = useState(false);
+  const [venue, setVenue] = useState("");
   const [generating, setGenerating] = useState(false);
   const [aiEventData, setAiEventData] = useState<any | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
@@ -202,12 +218,14 @@ export default function Hero() {
     setAiEventData(null);
 
     try {
+      const timeStr = isFullDay ? "Full Day" : (startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || undefined);
       const res = await API.post("/ai/generate-event", {
         prompt: prompt.trim(),
         eventType: eventType || undefined,
         guestCount: guestCount || undefined,
         date: date || undefined,
-        time: time || undefined,
+        time: timeStr,
+        venue: venue || undefined,
         guestListName: guestList || undefined,
       });
 
@@ -274,12 +292,13 @@ ${aiEventData.activities?.map((item: string) => `• ${item}`).join('\n') || 'No
 ✅ **Checklist**:
 ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'None'}`;
 
+      const selectedTime = isFullDay ? "Full Day" : (startTime && endTime ? `${startTime} - ${endTime}` : startTime || "18:00");
       const res = await eventService.createEvent({
         title: aiEventData.title || "AI Generated Event",
         description: formattedDescription,
-        venue: "TBD Venue",
+        venue: venue || "TBD Venue",
         eventDate: date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        eventTime: time || "18:00",
+        eventTime: selectedTime,
         eventType: eventType || "Other",
         status: "draft",
       });
@@ -291,7 +310,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         setEventType("");
         setGuestCount("");
         setDate("");
-        setTime("");
+        setStartTime("18:00");
+        setEndTime("22:00");
+        setIsFullDay(false);
+        setVenue("");
         setGuestList("");
         setTimeout(() => {
           router.push("/dashboard/events");
@@ -542,69 +564,221 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   ))}
                 </div>
 
-                {/* Optional Fine-Tuning Dropdowns Toggle */}
-                <div className="pt-1">
-                  <button
-                    onClick={() => setShowDetails(!showDetails)}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
-                  >
-                    <SlidersHorizontal className="w-3 h-3 text-gray-400" />
-                    <span>{showDetails ? "Hide extra details" : "+ Customize date, guests, or type"}</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showDetails ? "rotate-180" : ""}`} />
-                  </button>
+                {/* Form Fields (Below the prompt box/suggestions) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-left">
+                  {/* 1. EVENT TYPE */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
+                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
+                      EVENT TYPE
+                    </label>
+                    <div className="relative flex items-center gap-2">
+                      <PartyPopper className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
+                      <select
+                        value={eventType}
+                        onChange={(e) => setEventType(e.target.value)}
+                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
+                          eventType ? "text-gray-800" : "text-gray-400"
+                        }`}
+                      >
+                        <option value="" disabled className="text-gray-400">
+                          Select event type
+                        </option>
+                        {eventTypes.map((t) => (
+                          <option key={t} value={t} className="text-gray-800">
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
+                    </div>
+                  </div>
 
-                  {showDetails && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2.5 pt-2.5 border-t border-gray-100">
-                      <div>
-                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Event Type</label>
-                        <select
-                          value={eventType}
-                          onChange={(e) => setEventType(e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  {/* 2. DATE */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
+                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
+                      DATE
+                    </label>
+                    <div className="relative flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full bg-transparent text-xs sm:text-sm text-gray-800 focus:outline-none cursor-pointer font-medium pr-6"
+                      />
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* 3. TIME */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase select-none">
+                        TIME
+                      </label>
+                      <div
+                        className="flex items-center gap-1.5 cursor-pointer select-none"
+                        onClick={() => setIsFullDay(!isFullDay)}
+                      >
+                        <span className="text-xs font-medium text-gray-500">Full Day</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isFullDay}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsFullDay(!isFullDay);
+                          }}
+                          className={`relative inline-flex h-4 w-7 sm:h-5 sm:w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            isFullDay ? "bg-[#4C6FFF]" : "bg-gray-200"
+                          }`}
                         >
-                          <option value="">Select type (Optional)</option>
-                          {eventTypes.map((t) => (
-                            <option key={t}>{t}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Guest Group</label>
-                        <select
-                          value={guestCount}
-                          onChange={(e) => setGuestCount(e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                        >
-                          <option value="">Estimated guest count</option>
-                          {guestCounts.map((g) => (
-                            <option key={g}>{g}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Date</label>
-                        <input
-                          type="date"
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-medium text-gray-500 mb-1">Time</label>
-                        <input
-                          type="time"
-                          value={time}
-                          onChange={(e) => setTime(e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
+                          <span
+                            className={`pointer-events-none inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                              isFullDay ? "translate-x-3 sm:translate-x-4" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
                       </div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      {/* Start time pill */}
+                      <div
+                        className={`relative flex-1 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50/90 border border-gray-200/80 rounded-xl transition-all ${
+                          isFullDay ? "opacity-40 pointer-events-none" : ""
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <select
+                          disabled={isFullDay}
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full bg-transparent text-xs text-gray-800 focus:outline-none appearance-none cursor-pointer pr-4 font-medium"
+                        >
+                          {timeOptions.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2 pointer-events-none" />
+                      </div>
+
+                      <span className="text-gray-400 font-semibold text-xs">-</span>
+
+                      {/* End time pill */}
+                      <div
+                        className={`relative flex-1 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50/90 border border-gray-200/80 rounded-xl transition-all ${
+                          isFullDay ? "opacity-40 pointer-events-none" : ""
+                        }`}
+                      >
+                        <select
+                          disabled={isFullDay}
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full bg-transparent text-xs text-gray-800 focus:outline-none appearance-none cursor-pointer pr-4 font-medium pl-1"
+                        >
+                          {timeOptions.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. VENUE */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
+                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
+                      VENUE
+                    </label>
+                    <div className="relative flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={venue}
+                        onChange={(e) => setVenue(e.target.value)}
+                        placeholder="Add location"
+                        className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 5. GUEST GROUP */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
+                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
+                      GUEST GROUP
+                    </label>
+                    <div className="relative flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
+                      <select
+                        value={guestCount}
+                        onChange={(e) => setGuestCount(e.target.value)}
+                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
+                          guestCount ? "text-gray-800" : "text-gray-400"
+                        }`}
+                      >
+                        <option value="" disabled className="text-gray-400">
+                          Estimated guest count
+                        </option>
+                        {guestCounts.map((g) => (
+                          <option key={g} value={g} className="text-gray-800">
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* 6. GUEST LIST */}
+                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
+                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
+                      GUEST LIST
+                    </label>
+                    <div className="relative flex items-center gap-2">
+                      <ListChecks className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
+                      <select
+                        value={guestList}
+                        onChange={(e) => setGuestList(e.target.value)}
+                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
+                          guestList ? "text-gray-800" : "text-gray-400"
+                        }`}
+                      >
+                        <option value="" disabled className="text-gray-400">
+                          Select a saved list
+                        </option>
+                        {guestLists.map((l) => (
+                          <option key={l} value={l} className="text-gray-800">
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
+                    </div>
+                  </div>
                 </div>
+
+                {/* Bottom Action Button */}
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="w-full mt-2.5 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#4C6FFF] to-[#00C0F9] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60 group"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Generating Event with AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Generate Event with AI</span>
+                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
+                </button>
 
                 {/* Generated AI Event Plan Display */}
                 {aiEventData && (

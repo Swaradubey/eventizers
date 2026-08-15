@@ -7,7 +7,6 @@ import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import adminService, { AdminTicketTier } from "../../../services/adminService";
 import {
-  LogOut,
   Edit2,
   Trash2,
   Ticket,
@@ -21,7 +20,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminTicketingPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
 
@@ -95,11 +94,6 @@ export default function AdminTicketingPage() {
 
   const triggerToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/admin/login");
   };
 
   // Open edit modal
@@ -190,7 +184,7 @@ export default function AdminTicketingPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -210,16 +204,6 @@ export default function AdminTicketingPage() {
               </h1>
               <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage ticket sales across the platform</p>
             </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
-            >
-              <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
-            </button>
           </div>
         </div>
 

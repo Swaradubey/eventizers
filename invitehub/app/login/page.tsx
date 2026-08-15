@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { PartyPopper, ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function LoginPage() {
   const { user, login, error, setError } = useAuth();
@@ -61,14 +62,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {/* Branding Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2.5 group mb-6">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#6366f1] via-[#3b82f6] to-[#06b6d4] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
-            <PartyPopper className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-2xl tracking-tight bg-gradient-to-r from-[#4f46e5] via-[#2563eb] to-[#06b6d4] bg-clip-text text-transparent font-sans">
-            Eventizers
-          </span>
-        </Link>
+        <Logo size="lg" className="mb-6" />
         <h2 className="text-3xl font-display font-semibold text-[#2D1B3D] tracking-tight">
           Welcome back
         </h2>

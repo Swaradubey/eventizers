@@ -9,7 +9,6 @@ import eventService, { Event } from "../../services/eventService";
 import dashboardService, { DashboardStats } from "../../services/dashboardService";
 import { getImageUrl } from "../../utils/imageUrl";
 import {
-  LogOut,
   Plus,
   Edit2,
   Trash2,
@@ -29,8 +28,35 @@ import {
 import { useSidebar } from "../../invitehub/context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { NEW_TEMPLATE_IMAGES } from "../../invitehub/lib/newTemplatesData";
+
+const getTemplateImage = (templateId?: string | null) => {
+  if (!templateId) return null;
+  const mapping: Record<string, string> = {
+    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
+    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
+    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
+    "tpl-dinner-party": "/assets/templates/dinner.jpg",
+    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
+    "tpl-charity-gala": "/assets/templates/gala.jpg",
+    "tpl-live-music": "/assets/templates/music.jpg",
+    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
+    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
+    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
+    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
+    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
+    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
+    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
+    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
+    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
+    ...NEW_TEMPLATE_IMAGES,
+  };
+  return mapping[templateId] || null;
+};
+
 export default function DashboardPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
 
@@ -118,10 +144,6 @@ export default function DashboardPage() {
     setToast({ message, type });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   // Open modal for creation
   const handleCreateClick = () => {
@@ -197,9 +219,9 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
       <Navbar />
 
-      {/* Main container with padding top to clear fixed navbar */}
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10">
-        {/* Top bar with Heading and Sign Out */}
+      {/* Main container */}
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+        {/* Top bar with Heading */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             {/* Hamburger Button for Mobile Sidebar */}
@@ -220,13 +242,6 @@ export default function DashboardPage() {
               <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage your events</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
-          >
-            <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-
-          </button>
         </div>
 
         {/* Success/Error Toast */}
@@ -378,7 +393,7 @@ export default function DashboardPage() {
               </span>
               <button
                 onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
               >
                 <Plus className="w-4 h-4" />
                 Create Event
@@ -416,7 +431,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
               >
                 <Plus className="w-4 h-4" />
                 Create Event
@@ -547,7 +562,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl border border-[#E8C4B8]/30 z-10 p-6 sm:px-8 text-[#2D1B3D] font-body"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -569,10 +584,10 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {viewingEvent.coverImage && (
+              {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
                 <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
                   <img
-                    src={getImageUrl(viewingEvent.coverImage)}
+                    src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
                     alt={viewingEvent.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -584,11 +599,11 @@ export default function DashboardPage() {
 
               <div className="space-y-3 mt-4 text-sm text-[#2D1B3D]/90">
                 {viewingEvent.description && (
-                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full overflow-hidden">
                     <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1">
                       Description
                     </p>
-                    <p className="text-sm whitespace-pre-line">{viewingEvent.description}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{viewingEvent.description}</p>
                   </div>
                 )}
 

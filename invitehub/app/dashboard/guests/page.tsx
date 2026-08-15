@@ -10,7 +10,6 @@ import eventService, { Event } from "../../../services/eventService";
 import { Guest } from "../../../types/guestTypes";
 import Pagination from "../../../components/Pagination";
 import {
-  LogOut,
   Plus,
   Edit2,
   Trash2,
@@ -35,7 +34,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function GuestsPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
 
@@ -173,10 +172,6 @@ export default function GuestsPage() {
     setToast({ message, type });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   // Open creation modal
   const handleAddClick = () => {
@@ -557,13 +552,6 @@ export default function GuestsPage() {
             >
               <Plus className="w-4 h-4" />
               Add Guest
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
-            >
-              <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-              Sign Out
             </button>
           </div>
         </div>

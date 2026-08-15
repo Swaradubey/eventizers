@@ -9,7 +9,6 @@ import eventService, { Event } from "../../services/eventService";
 import dashboardService, { DashboardStats } from "../../services/dashboardService";
 import { getImageUrl } from "../../utils/imageUrl";
 import {
-  LogOut,
   Plus,
   Edit2,
   Trash2,
@@ -57,7 +56,7 @@ const getTemplateImage = (templateId?: string | null) => {
 };
 
 export default function DashboardPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
 
@@ -145,10 +144,6 @@ export default function DashboardPage() {
     setToast({ message, type });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   // Open modal for creation
   const handleCreateClick = () => {
@@ -226,7 +221,7 @@ export default function DashboardPage() {
 
       {/* Main container */}
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
-        {/* Top bar with Heading and Sign Out */}
+        {/* Top bar with Heading */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             {/* Hamburger Button for Mobile Sidebar */}
@@ -247,13 +242,6 @@ export default function DashboardPage() {
               <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage your events</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none"
-          >
-            <LogOut className="w-3.5 h-3.5 text-[#C9A84C]" />
-
-          </button>
         </div>
 
         {/* Success/Error Toast */}
