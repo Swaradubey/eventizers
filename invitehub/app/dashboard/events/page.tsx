@@ -468,7 +468,7 @@ function EventsPageContent() {
       {/* EVENT DETAILS VIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -481,9 +481,10 @@ function EventsPageContent() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
+              style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: '32rem', position: 'relative', zIndex: 10, margin: 'auto' }}
             >
               {/* Fixed Header */}
-              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10">
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10" style={{ flexShrink: 0, borderBottom: '1px solid rgba(232,196,184,0.2)' }}>
                 <div className="pr-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
                     {viewingEvent.eventType || "General"} Event
@@ -505,7 +506,7 @@ function EventsPageContent() {
               </div>
 
               {/* Scrollable Content Body */}
-              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain" style={{ overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
                 {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
                   <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
                     <img
@@ -583,7 +584,7 @@ function EventsPageContent() {
               </div>
 
               {/* Fixed Footer */}
-              <div className="flex items-center justify-end gap-3 p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0">
+              <div className="flex items-center justify-end gap-3 p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0" style={{ flexShrink: 0, borderTop: '1px solid rgba(232,196,184,0.2)' }}>
                 <button
                   onClick={() => router.push(`/dashboard/invitations?eventId=${viewingEvent.id}`)}
                   className="px-5 py-2 text-xs font-semibold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center gap-1.5"
