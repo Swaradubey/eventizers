@@ -1,6 +1,6 @@
 import API from "./api";
 import { Event } from "./eventService";
-import { User } from "../invitehub/context/AuthContext";
+import { User } from "../context/AuthContext";
 import { Guest } from "../types/guestTypes";
 import { Invitation } from "../types/invitationTypes";
 import { TicketTier } from "../types/ticketingTypes";

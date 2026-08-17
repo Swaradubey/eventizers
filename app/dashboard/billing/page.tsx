@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import Navbar from "../../../invitehub/components/Navbar";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../../context/AuthContext";
+import Navbar from "../../../components/Navbar";
 import { BillingAPI, BillingInfoResponse, PaymentMethod, Invoice } from "../../../services/billingService";
 import API from "../../../services/api";
-import BillingUsageCard from "../../../invitehub/components/dashboard/billing/BillingUsageCard";
-import PlanCard from "../../../invitehub/components/dashboard/billing/PlanCard";
-import UpdatePaymentMethodModal from "../../../invitehub/components/dashboard/billing/UpdatePaymentMethodModal";
-import useBillingUsage from "../../../invitehub/hooks/useBillingUsage";
-import { PAID_PLAN_IDS, type PlanId } from "../../../lib/plans";
+import BillingUsageCard from "../../../components/dashboard/billing/BillingUsageCard";
+import PlanCard from "../../../components/dashboard/billing/PlanCard";
+import UpdatePaymentMethodModal from "../../../components/dashboard/billing/UpdatePaymentMethodModal";
+import useBillingUsage from "../../../hooks/useBillingUsage";
 import {
   RotateCcw,
   AlertCircle,
@@ -22,20 +21,19 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-function BillingContent() {
+const normalizePlan = (plan: string | undefined | null): string => {
+  if (!plan) return "FREE";
+  const p = plan.toUpperCase().trim();
+  if (p === "FREE") return "FREE";
+  if (p === "PRO") return "PRO";
+  if (p === "BUSINESS") return "BUSINESS";
+  if (p === "ENTERPRISE") return "ENTERPRISE";
+  return p;
+};
+
+export default function BillingPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Read ?plan= query param — set by Login page after plan selection
-  const urlPlanParam = searchParams.get("plan")?.toLowerCase().trim() || null;
-  const pendingCheckoutPlan: PlanId | null = (
-    urlPlanParam && (PAID_PLAN_IDS as string[]).includes(urlPlanParam)
-      ? (urlPlanParam as PlanId)
-      : urlPlanParam === "free"
-      ? "free"
-      : null
-  ) as PlanId | null;
 
   // Load dynamic billing usage
   const {
@@ -53,11 +51,6 @@ function BillingContent() {
   // Payment method & Invoices states
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [invoicePage, setInvoicePage] = useState(1);
-  const [invoiceTotalPages, setInvoiceTotalPages] = useState(1);
-  const [invoiceTotalCount, setInvoiceTotalCount] = useState(0);
-  const [invoiceLoading, setInvoiceLoading] = useState(false);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   // True only during the very first fetch; never reset to true on background refreshes.
   const [initialBillingLoading, setInitialBillingLoading] = useState(true);
   const [billingError, setBillingError] = useState<string | null>(null);
@@ -70,19 +63,16 @@ function BillingContent() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
-  const hasLoadedData = useRef(false);
-  const currentFetchId = useRef(0);
-  const fetchedUserId = useRef<number | null>(null);
-  const invoiceFetchId = useRef(0);
-  // Track whether we've already triggered the pending plan checkout
-  const pendingPlanHandled = useRef(false);
-
   // Authentication check
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [user, authLoading, router]);
+
+  const hasLoadedData = useRef(false);
+  const currentFetchId = useRef(0);
+  const fetchedUserId = useRef<number | null>(null);
 
   // Load billing data from backend
   const fetchBillingData = useCallback(async (isRefresh = false) => {
@@ -97,8 +87,7 @@ function BillingContent() {
     setBillingError(null);
 
     try {
-      // Add cache-busting timestamp to prevent stale cached responses
-      const res = await BillingAPI.getBillingInfo(true);
+      const res = await BillingAPI.getBillingInfo();
 
       if (id !== currentFetchId.current) return;
 
@@ -111,13 +100,13 @@ function BillingContent() {
         }
       }
 
-      // Load payment method in parallel with first page of invoices
+      // Load payment method and invoices in parallel, catching errors individually
       const [pmRes, invRes] = await Promise.all([
         BillingAPI.getPaymentMethod().catch(err => {
           console.error("Error fetching payment method", err);
           return null;
         }),
-        BillingAPI.getInvoices(1, 5).catch(err => {
+        BillingAPI.getInvoices().catch(err => {
           console.error("Error fetching invoices", err);
           return null;
         })
@@ -128,23 +117,16 @@ function BillingContent() {
       if (pmRes && pmRes.success) {
         setPaymentMethod(pmRes.data);
       } else if (pmRes && pmRes.success === false) {
+        // Server responded but user has no payment method on file
         setPaymentMethod(null);
       }
 
-      if (invRes && invRes.success && invRes.pagination) {
+      if (invRes && invRes.success) {
         setInvoices(invRes.invoices ?? []);
-        const p = invRes.pagination;
-        setInvoicePage(p.currentPage);
-        setInvoiceTotalPages(p.totalPages);
-        setInvoiceTotalCount(p.totalInvoices);
-        setInvoiceError(null);
-        if (process.env.NODE_ENV === "development") {
-          console.log("[InvoiceDev] initial page=1 | invoices=", (invRes.invoices ?? []).length, "total=", p.totalInvoices);
-        }
       } else if (invRes === null) {
-        setInvoiceError("Unable to load invoices. Please try again.");
+        setBillingError("Unable to load invoices. Please try again.");
       } else if (invRes && invRes.success === false) {
-        setInvoiceError(invRes.error || "Unable to load invoices.");
+        setBillingError(invRes.error || "Unable to load invoices.");
       }
     } catch (err: any) {
       if (id !== currentFetchId.current) return;
@@ -211,65 +193,6 @@ function BillingContent() {
     }
   };
 
-  // Paginated invoice fetch
-  const handleInvoicePageChange = async (newPage: number) => {
-    if (newPage < 1 || newPage > invoiceTotalPages || newPage === invoicePage) return;
-
-    const id = ++invoiceFetchId.current;
-    setInvoiceLoading(true);
-    setInvoiceError(null);
-
-    try {
-      const invRes = await BillingAPI.getInvoices(newPage, 5);
-      if (id !== invoiceFetchId.current) return;
-
-      if (invRes && invRes.success && invRes.pagination) {
-        const p = invRes.pagination;
-        // Page correction: if currentPage exceeds totalPages, move to last valid page
-        let targetPage = newPage;
-        if (p.currentPage > p.totalPages && p.totalPages > 0) {
-          targetPage = p.totalPages;
-          if (id !== invoiceFetchId.current) return;
-          const correctedRes = await BillingAPI.getInvoices(targetPage, 5);
-          if (id !== invoiceFetchId.current) return;
-          if (correctedRes && correctedRes.success && correctedRes.pagination) {
-            const cp = correctedRes.pagination;
-            setInvoices(correctedRes.invoices ?? []);
-            setInvoicePage(cp.currentPage);
-            setInvoiceTotalPages(cp.totalPages);
-            setInvoiceTotalCount(cp.totalInvoices);
-            setInvoiceError(null);
-          }
-          return;
-        }
-        setInvoices(invRes.invoices ?? []);
-        setInvoicePage(p.currentPage);
-        setInvoiceTotalPages(p.totalPages);
-        setInvoiceTotalCount(p.totalInvoices);
-        setInvoiceError(null);
-        if (process.env.NODE_ENV === "development") {
-          console.log("[InvoiceDev] page change to", targetPage, "| invoices=", (invRes.invoices ?? []).length, "total=", p.totalInvoices);
-        }
-      } else if (invRes === null) {
-        setInvoiceError("Unable to load invoices. Please try again.");
-      } else if (invRes && invRes.success === false) {
-        setInvoiceError(invRes.error || "Unable to load invoices.");
-      }
-    } catch {
-      setInvoiceError("An unexpected error occurred while loading invoices.");
-    } finally {
-      if (id === invoiceFetchId.current) {
-        setInvoiceLoading(false);
-      }
-    }
-
-    // Scroll to invoice section
-    const el = document.getElementById("invoice-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
   useEffect(() => {
     // Wait for auth initialisation to complete before fetching billing data.
     // This prevents a spurious fetch (and skeleton flash) during SSR hydration
@@ -279,18 +202,6 @@ function BillingContent() {
       fetchBillingData();
     }
   }, [authLoading, user, fetchBillingData]);
-
-  // Refetch when the page regains focus (e.g. user returns from Stripe checkout or another tab)
-  useEffect(() => {
-    if (!authLoading && user) {
-      const handleFocus = () => {
-        fetchBillingData(true);
-        refetchUsage();
-      };
-      window.addEventListener("focus", handleFocus);
-      return () => window.removeEventListener("focus", handleFocus);
-    }
-  }, [authLoading, user, fetchBillingData, refetchUsage]);
 
   // Toast auto-dismiss effect
   useEffect(() => {
@@ -325,21 +236,19 @@ function BillingContent() {
         return;
       }
 
-      // Free plan - use the dedicated activate-free endpoint
-      const res = await BillingAPI.activateFreePlan();
-      if (res && res.success) {
-        triggerToast(
-          res.alreadyActive
-            ? "Free plan is already active on your account."
-            : "Free plan activated successfully!"
-        );
+      // Free plan - use direct subscription update
+      const res = await BillingAPI.subscribeToPlan(planId);
+      if (res && res.requiresPaymentMethod && res.clientSecret) {
+        // Stripe Customer needs a payment method.
+        setPendingPlanId(planId);
+        setShowUpdateModal(true);
+        triggerToast("Please add a card to complete the subscription.", "success");
+      } else if (res && res.success) {
+        triggerToast(`Successfully subscribed to the ${planId.toUpperCase()} plan!`);
         await fetchBillingData();
         refetchUsage();
-        if (refreshUser) {
-          await refreshUser();
-        }
       } else {
-        triggerToast("Failed to activate the Free plan.", "error");
+        triggerToast("Failed to update your subscription plan.", "error");
       }
     } catch (err: any) {
       console.error("Update Plan Error:", err);
@@ -348,25 +257,6 @@ function BillingContent() {
       setUpdating(false);
     }
   };
-
-  // After billing data loads, auto-trigger checkout if ?plan= is in URL.
-  // This effect must appear AFTER handleUpdatePlan is declared.
-  useEffect(() => {
-    if (
-      !authLoading &&
-      user &&
-      !loading &&
-      billingInfo &&
-      pendingCheckoutPlan &&
-      !pendingPlanHandled.current
-    ) {
-      pendingPlanHandled.current = true;
-      // Remove ?plan= from the URL to prevent loops on back/refresh
-      window.history.replaceState({}, "", window.location.pathname);
-      handleUpdatePlan(pendingCheckoutPlan);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, loading, billingInfo, pendingCheckoutPlan]);
 
   // Show a spinner only while auth is still initialising (hydration phase).
   // Once authLoading is false, we know whether the user is logged in or not.
@@ -520,7 +410,7 @@ function BillingContent() {
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <p className="text-[9px] text-[#2D1B3D]/40 uppercase tracking-wider">Expiration Date</p>
-                        <p className="font-semibold text-[#2D1B3D]">Expires {paymentMethod.expiryMonth || ""}/{(paymentMethod.expiryYear || "").slice(-2)}</p>
+                        <p className="font-semibold text-[#2D1B3D]">Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear.slice(-2)}</p>
                       </div>
 
                       <button
@@ -561,7 +451,7 @@ function BillingContent() {
               </div>
 
               {/* Invoice History Section (Takes 2 columns) */}
-              <div className="lg:col-span-2 space-y-6" id="invoice-section">
+              <div className="lg:col-span-2 space-y-6">
                 <div>
                   <h2 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Invoice History
@@ -573,41 +463,36 @@ function BillingContent() {
 
                 {initialBillingLoading ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
-                ) : invoiceError ? (
+                ) : billingError ? (
                   <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
                     <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                    <p className="text-xs font-semibold text-[#2D1B3D]">{invoiceError}</p>
-                    <button
-                      onClick={() => fetchBillingData(true)}
-                      className="mt-4 px-4 py-2 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : invoices.length === 0 ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
-                    <Receipt className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50">No invoices available.</p>
+                    <p className="text-xs font-semibold text-[#2D1B3D]">Failed to load invoices</p>
                   </div>
                 ) : (
-                  <>
-                    <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
-                              <th className="py-3 px-5">Invoice Number</th>
-                              <th className="py-3 px-5">Plan</th>
-                              <th className="py-3 px-5">Billing Period</th>
-                              <th className="py-3 px-5">Customer</th>
-                              <th className="py-3 px-5">Amount</th>
-                              <th className="py-3 px-5">Transaction ID</th>
-                              <th className="py-3 px-5">Status</th>
-                              <th className="py-3 px-5 text-right">Download</th>
+                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
+                            <th className="py-3 px-5">Invoice Number</th>
+                            <th className="py-3 px-5">Plan</th>
+                            <th className="py-3 px-5">Billing Period</th>
+                            <th className="py-3 px-5">Customer</th>
+                            <th className="py-3 px-5">Amount</th>
+                            <th className="py-3 px-5">Transaction ID</th>
+                            <th className="py-3 px-5">Status</th>
+                            <th className="py-3 px-5 text-right">Download</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#E8C4B8]/10">
+                          {invoices.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
+                                No invoices available.
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#E8C4B8]/10">
-                            {invoices.map((invoice) => (
+                          ) : (
+                            invoices.map((invoice) => (
                               <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
                                 <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
                                   {invoice.invoiceNumber || invoice.id}
@@ -623,8 +508,8 @@ function BillingContent() {
                                   <div className="text-[10px] text-[#2D1B3D]/50">{invoice.customerEmail}</div>
                                 </td>
                                 <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
-                                  {invoice.currency === "USD" ? "$" : (invoice.currency || "")}
-                                  {(invoice.amount ?? 0).toFixed(2)}
+                                  {invoice.currency === "USD" ? "$" : invoice.currency}
+                                  {invoice.amount.toFixed(2)}
                                 </td>
                                 <td className="py-3 px-5 font-mono text-[10px] text-[#2D1B3D]/60">
                                   {invoice.transactionId || "-"}
@@ -648,88 +533,12 @@ function BillingContent() {
                                   </button>
                                 </td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                    {invoiceLoading && (
-                      <div className="flex items-center justify-center py-2">
-                        <div className="w-5 h-5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin" />
-                      </div>
-                    )}
-                    {invoiceTotalPages > 1 && (
-                      <div className="flex items-center justify-center gap-1 sm:gap-2 pt-2">
-                        <button
-                          onClick={() => handleInvoicePageChange(invoicePage - 1)}
-                          disabled={invoicePage <= 1 || invoiceLoading}
-                          aria-label="Previous invoice page"
-                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#E8C4B8]/30 bg-white text-[#2D1B3D] hover:bg-[#FAF8F5] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-                        >
-                          Previous
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const p = invoicePage;
-                            const t = invoiceTotalPages;
-                            if (t <= 7) {
-                              return Array.from({ length: t }, (_, i) => i + 1).map((n) => (
-                                <button
-                                  key={n}
-                                  onClick={() => handleInvoicePageChange(n)}
-                                  disabled={invoiceLoading || n === p}
-                                  aria-current={n === p ? "page" : undefined}
-                                  className={`min-w-[32px] px-2 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                    n === p
-                                      ? "bg-[#2D1B3D] text-white shadow-sm"
-                                      : "bg-white text-[#2D1B3D] border border-[#E8C4B8]/30 hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed"
-                                  }`}
-                                >
-                                  {n}
-                                </button>
-                              ));
-                            }
-                            const pages: (number | string)[] = [1];
-                            if (p > 3) pages.push("...");
-                            const start = Math.max(2, p - 1);
-                            const end = Math.min(t - 1, p + 1);
-                            for (let i = start; i <= end; i++) pages.push(i);
-                            if (p < t - 2) pages.push("...");
-                            if (t > 1) pages.push(t);
-                            return pages.map((n, idx) =>
-                              n === "..." ? (
-                                <span key={`e-${idx}`} className="px-1 text-xs text-[#2D1B3D]/50 select-none">
-                                  ...
-                                </span>
-                              ) : (
-                                <button
-                                  key={n}
-                                  onClick={() => handleInvoicePageChange(n as number)}
-                                  disabled={invoiceLoading || n === p}
-                                  aria-current={n === p ? "page" : undefined}
-                                  className={`min-w-[32px] px-2 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                    n === p
-                                      ? "bg-[#2D1B3D] text-white shadow-sm"
-                                      : "bg-white text-[#2D1B3D] border border-[#E8C4B8]/30 hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed"
-                                  }`}
-                                >
-                                  {n}
-                                </button>
-                              )
-                            );
-                          })()}
-                        </div>
-                        <button
-                          onClick={() => handleInvoicePageChange(invoicePage + 1)}
-                          disabled={invoicePage >= invoiceTotalPages || invoiceLoading}
-                          aria-label="Next invoice page"
-                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#E8C4B8]/30 bg-white text-[#2D1B3D] hover:bg-[#FAF8F5] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -746,7 +555,7 @@ function BillingContent() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                {(Array.isArray(billingInfo?.plans) ? billingInfo.plans : []).map((plan, index) => (
+                {billingInfo.plans.map((plan, index) => (
                   <motion.div
                     key={plan.id}
                     initial={{ opacity: 0, y: 15 }}
@@ -756,7 +565,7 @@ function BillingContent() {
                   >
                     <PlanCard
                       plan={plan}
-                      isCurrent={billingInfo?.currentPlan === plan.id}
+                      isCurrent={normalizePlan(billingInfo.currentPlan) === normalizePlan(plan.id)}
                       onSelect={handleUpdatePlan}
                       updating={updating}
                     />
@@ -806,16 +615,3 @@ function BillingContent() {
     </div>
   );
 }
-
-export default function BillingPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-      </div>
-    }>
-      <BillingContent />
-    </Suspense>
-  );
-}
-

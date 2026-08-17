@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
-import Navbar from "../../../invitehub/components/Navbar";
+import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
+import Navbar from "../../../components/Navbar";
 import adminService from "../../../services/adminService";
 import { CheckInGuest, CheckInSummary } from "../../../types/checkInTypes";
 import {
@@ -635,10 +635,11 @@ export default function AdminCheckInPage() {
 
               {scanResult && (
                 <div
-                  className={`mb-4 p-4 rounded-xl border flex gap-3 text-xs font-semibold ${scanResult.success
+                  className={`mb-4 p-4 rounded-xl border flex gap-3 text-xs font-semibold ${
+                    scanResult.success
                       ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                       : "bg-red-50 border-red-200 text-red-800"
-                    }`}
+                  }`}
                 >
                   {scanResult.success ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />

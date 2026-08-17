@@ -2,9 +2,9 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { SidebarProvider, useSidebar } from "../../invitehub/context/SidebarContext";
-import Sidebar from "../../invitehub/components/Sidebar";
-import SparkleEffect from "../../invitehub/components/SparkleEffect";
+import { SidebarProvider, useSidebar } from "../../context/SidebarContext";
+import Sidebar from "../../components/Sidebar";
+import SparkleEffect from "../../components/SparkleEffect";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

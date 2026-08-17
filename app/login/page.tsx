@@ -1,54 +1,31 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../invitehub/context/AuthContext";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
 import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { VALID_PLAN_IDS, type PlanId } from "../../lib/plans";
 
-// Helper: read plan from query string and validate it is a known plan ID
-function readValidPlan(params: URLSearchParams): PlanId | null {
-  const raw = params.get("plan")?.toLowerCase().trim();
-  if (!raw) return null;
-  if (raw === "host") return "business"; // backward-compat
-  if ((VALID_PLAN_IDS as string[]).includes(raw)) return raw as PlanId;
-  return null;
-}
-
-function LoginForm() {
+export default function LoginPage() {
   const { user, login, error, setError } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Read plan and redirect destination from query params set by the Pricing component
-  const pendingPlan = readValidPlan(searchParams);
-  const redirectTo = searchParams.get("redirect") || null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, handle pending plan or redirect to dashboard
+  // If user is already logged in, redirect to appropriate dashboard
   useEffect(() => {
-    if (!user) return;
-
-    if (pendingPlan && pendingPlan !== "free") {
-      // Paid plan: send to billing page which auto-triggers checkout
-      router.replace(`/dashboard/billing?plan=${pendingPlan}`);
-    } else if (pendingPlan === "free") {
-      // Free plan: send to billing page which auto-activates free
-      router.replace(`/dashboard/billing?plan=free`);
-    } else if (redirectTo && redirectTo.startsWith("/") && !redirectTo.includes("login")) {
-      router.replace(redirectTo);
-    } else if (user.role === "ADMIN") {
-      router.replace("/admin/dashboard");
-    } else {
-      router.replace("/dashboard");
+    if (user) {
+      if (user.role === "ADMIN") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     }
-  }, [user, router, pendingPlan, redirectTo]);
+  }, [user, router]);
 
   // Check for errors passed from OAuth callbacks
   useEffect(() => {
@@ -73,7 +50,7 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      // After login the useEffect above will fire and redirect appropriately
+
     } catch (err: any) {
       // Error is set in AuthContext
     } finally {
@@ -273,16 +250,3 @@ function LoginForm() {
     </div>
   );
 }
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-      </div>
-    }>
-      <LoginForm />
-    </Suspense>
-  );
-}
-

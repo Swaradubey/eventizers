@@ -6,10 +6,10 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BillingAPI from "@/services/billingService";
-import { useAuth } from "@/context/AuthContext";
 import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
 
-type PageState = "loading" | "verifying" | "success" | "pending" | "error" | "invalid";
+type PageState = "loading" | "success" | "pending" | "error" | "invalid";
 
 function BillingSuccessContent() {
   const searchParams = useSearchParams();
@@ -30,7 +30,8 @@ function BillingSuccessContent() {
 
     let cancelled = false;
     let attempts = 0;
-    const MAX_ATTEMPTS = 30;
+    const MAX_ATTEMPTS = 5;
+    let timeoutId: NodeJS.Timeout;
 
     const checkSession = async () => {
       if (cancelled) return;
@@ -40,65 +41,59 @@ function BillingSuccessContent() {
 
         if (cancelled) return;
 
-        const isActive = res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete";
-        const paymentDone = res.status === "complete" || res.paymentStatus === "paid";
-
-        if (isActive) {
-          // Subscription is active — now verify the backend database is in sync
-          setPageState("verifying");
+        if (res.subscriptionStatus === "active" || res.subscriptionStatus === "trialing" || res.subscriptionStatus === "complete") {
           setPlan(res.plan);
+          setPageState("success");
+          
           try {
-            // Await the DB sync check: call getCurrentPlan to confirm the backend stored the plan
-            const planRes = await BillingAPI.getCurrentPlan();
-            const dbPlan = planRes.currentPlan?.toLowerCase();
-            const expectedPlan = res.plan?.toLowerCase();
-            if (!cancelled && dbPlan === expectedPlan) {
-              // DB is synced — await refreshUser so AuthContext is fresh too
-              await refreshUser();
-              if (!cancelled) {
-                setPageState("success");
-              }
-              return;
-            }
-          } catch {
-            // If verification fails, still show success — the proactive sync in getCheckoutSessionStatus
-            // already updated the DB, or the webhook will shortly.
+            await Promise.all([
+              refreshUser(),
+              BillingAPI.getBillingInfo(),
+            ]);
+          } catch (refreshErr) {
+            console.error("Error refreshing subscription state:", refreshErr);
           }
-          if (!cancelled) {
-            await refreshUser();
-            setPageState("success");
-          }
+          
+          // Redirect automatically once successful
+          setTimeout(() => {
+            if (!cancelled) router.push("/dashboard/billing");
+          }, 2000);
           return;
         }
 
-        if (paymentDone) {
+        if (res.status === "complete" || res.paymentStatus === "paid") {
           if (attempts >= MAX_ATTEMPTS) {
             setPlan(res.plan);
-            await refreshUser();
             setPageState("success");
+            setTimeout(() => {
+              if (!cancelled) router.push("/dashboard/billing");
+            }, 2000);
             return;
           }
           setPageState("pending");
+          timeoutId = setTimeout(checkSession, 2000);
         } else {
           setPageState("pending");
+          timeoutId = setTimeout(checkSession, 2000);
         }
       } catch (err: any) {
         if (cancelled) return;
         if (attempts >= MAX_ATTEMPTS) {
           setErrorMessage(err.response?.data?.error || "Unable to confirm your subscription.");
           setPageState("error");
+        } else {
+          timeoutId = setTimeout(checkSession, 2000);
         }
       }
     };
 
     checkSession();
-    const interval = setInterval(checkSession, 2000);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timeoutId);
     };
-  }, [sessionId]);
+  }, [sessionId, refreshUser, router]);
 
   const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "Subscription";
 
@@ -106,8 +101,6 @@ function BillingSuccessContent() {
     switch (pageState) {
       case "success":
         return "Payment successful";
-      case "verifying":
-        return "Finalizing your subscription";
       case "pending":
         return "Payment confirmed";
       case "error":
@@ -122,9 +115,7 @@ function BillingSuccessContent() {
   const getDescription = () => {
     switch (pageState) {
       case "success":
-        return `Your ${planLabel} subscription has been activated. You can now access all ${planLabel} features.`;
-      case "verifying":
-        return "Syncing your subscription with your account…";
+        return `Your ${planLabel} subscription has been activated. It may take a few seconds for your account to update.`;
       case "pending":
         return "Your payment completed, but account activation is still pending. Please wait...";
       case "error":
@@ -139,7 +130,7 @@ function BillingSuccessContent() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white border border-[#E8C4B8]/30 rounded-3xl shadow-xl overflow-hidden p-8 flex flex-col items-center text-center">
-        {(pageState === "loading" || pageState === "verifying") && (
+        {pageState === "loading" && (
           <div className="w-20 h-20 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mb-6 shadow-sm">
             <Loader2 className="w-10 h-10 text-[#C9A84C] animate-spin" />
           </div>
@@ -172,7 +163,7 @@ function BillingSuccessContent() {
 
         {pageState === "pending" && (
           <p className="text-xs text-[#C9A84C] font-semibold mb-4">
-            Please wait while we activate your subscription…
+            Please return to Billing and refresh in a few seconds.
           </p>
         )}
 

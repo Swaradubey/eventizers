@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../invitehub/context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { ArrowRight, User, Lock, Mail, Eye, EyeOff, Phone } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -74,9 +74,6 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      // The register function from useAuth expects (name, email, phoneNumber, password)
-      // We pass the phone number state as requested:
-      // await register(name, email, password, phoneNumber);
       await register(name, email, formattedPhone, password);
       // Navigation is handled by the useEffect watching `user` state above.
       // This ensures the router.push fires only AFTER React commits the

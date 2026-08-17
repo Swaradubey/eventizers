@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../invitehub/context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, AlertCircle, Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import Navbar from "../../invitehub/components/Navbar";
-import Footer from "../../invitehub/components/Footer";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 interface SessionVerification {
   status: string;
@@ -121,9 +121,9 @@ function PaymentSuccessContent() {
   if (authLoading || status === "loading") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center py-20 px-4">
-        <div className="text-center space-[#2D1B3D]">
+        <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-[#2D1B3D]/20 border-t-[#2D1B3D] rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-[#2D1B3D]/60 font-medium mt-4">Verifying your payment…</p>
+          <p className="text-sm text-[#2D1B3D]/60 font-medium">Verifying your payment…</p>
         </div>
       </div>
     );

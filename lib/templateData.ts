@@ -230,3 +230,5 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
 
   return cat.includes(target) || target.includes(cat);
 };
+
+

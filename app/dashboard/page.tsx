@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../invitehub/context/AuthContext";
-import Navbar from "../../invitehub/components/Navbar";
-import EventModal from "../../invitehub/components/EventModal";
+import { useAuth } from "../../context/AuthContext";
+import Navbar from "../../components/Navbar";
+import EventModal from "../../components/EventModal";
 import eventService, { Event } from "../../services/eventService";
 import dashboardService, { DashboardStats } from "../../services/dashboardService";
 import { getImageUrl } from "../../utils/imageUrl";
@@ -25,10 +25,10 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useSidebar } from "../../invitehub/context/SidebarContext";
+import { useSidebar } from "../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { NEW_TEMPLATE_IMAGES } from "../../invitehub/lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES } from "../../lib/newTemplatesData";
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
@@ -270,22 +270,18 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* KPI Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {loadingStats ? (
             // Skeleton loaders
             <>
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm animate-pulse"
+                  className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm animate-pulse"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-blue-50" />
-                    <div className="flex-1">
-                      <div className="h-3 w-20 bg-slate-100 rounded mb-2" />
-                      <div className="h-7 w-14 bg-slate-200 rounded" />
-                    </div>
-                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 mb-5" />
+                  <div className="h-4 w-24 bg-slate-100 rounded mb-2" />
+                  <div className="h-8 w-16 bg-slate-200 rounded" />
                 </div>
               ))}
             </>
@@ -297,21 +293,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Events
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalEvents ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Events
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalEvents ?? 0}
+                </p>
               </motion.div>
 
               {/* Total Guests */}
@@ -319,21 +311,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Guests
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalGuests ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#0EA5E9] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Guests
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalGuests ?? 0}
+                </p>
               </motion.div>
 
               {/* Avg. RSVP Rate */}
@@ -341,21 +329,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Avg. RSVP Rate
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.avgRsvpRate ?? 0}%
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#00C853] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Avg. RSVP Rate
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.avgRsvpRate ?? 0}%
+                </p>
               </motion.div>
 
               {/* Messages Sent */}
@@ -363,21 +347,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Messages Sent
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.messagesSent ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#FF5722] to-[#FF3D00] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Messages Sent
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.messagesSent ?? 0}
+                </p>
               </motion.div>
             </>
           )}
@@ -550,7 +530,7 @@ export default function DashboardPage() {
       {/* EVENT DETAILS VIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -562,15 +542,16 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl border border-[#E8C4B8]/30 z-10 p-6 sm:px-8 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div>
+              {/* Fixed Header */}
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10">
+                <div className="pr-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
                     {viewingEvent.eventType || "General"} Event
                   </span>
                   <h3
-                    className="text-2xl font-semibold font-display mt-0.5"
+                    className="text-xl sm:text-2xl font-semibold font-display mt-0.5 leading-snug break-words"
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     {viewingEvent.title}
@@ -578,36 +559,40 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors flex-shrink-0 -mr-1"
+                  aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
-                  <img
-                    src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
-                    alt={viewingEvent.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-3 mt-4 text-sm text-[#2D1B3D]/90">
-                {viewingEvent.description && (
-                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full overflow-hidden">
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1">
-                      Description
-                    </p>
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{viewingEvent.description}</p>
+              {/* Scrollable Content Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
+                {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
+                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
+                    <img
+                      src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
+                      alt={viewingEvent.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                {viewingEvent.description && (
+                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full">
+                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1.5">
+                      Description
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-[#2D1B3D]/90">
+                      {viewingEvent.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5]/60 p-3.5 rounded-xl border border-[#E8C4B8]/20">
                   <div className="flex items-start gap-2.5">
                     <Calendar className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
                     <div>
@@ -628,18 +613,18 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 pt-2 border-t border-[#E8C4B8]/20">
+                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5]/60 rounded-xl border border-[#E8C4B8]/20">
                   <MapPin className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
                       Location
                     </p>
-                    <p className="font-semibold text-xs">{viewingEvent.venue}</p>
+                    <p className="font-semibold text-xs text-[#2D1B3D] break-words">{viewingEvent.venue}</p>
                     {(viewingEvent.address ||
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5">
+                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5 break-words">
                           {[
                             viewingEvent.address,
                             viewingEvent.city,
@@ -653,13 +638,14 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-4 mt-2 border-t border-[#E8C4B8]/25 text-xs text-[#2D1B3D]/50">
+                <div className="flex justify-between items-center pt-2 px-1 text-xs text-[#2D1B3D]/50">
                   <span>Status: <strong className="text-[#2D1B3D] uppercase font-bold">{viewingEvent.status}</strong></span>
                   <span>Created: {formatDateTime(viewingEvent.createdAt || "")}</span>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              {/* Fixed Footer */}
+              <div className="flex items-center justify-end p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0">
                 <button
                   onClick={() => setViewingEvent(null)}
                   className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"

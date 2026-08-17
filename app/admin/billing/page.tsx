@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import Navbar from "../../../invitehub/components/Navbar";
+import { useAuth } from "../../../context/AuthContext";
+import Navbar from "../../../components/Navbar";
 import adminService, {
   AdminBillingUser,
   AdminBillingStats
 } from "../../../services/adminService";
-import BillingDetailsModal from "../../../invitehub/components/admin/billing/BillingDetailsModal";
-import ChangePlanModal from "../../../invitehub/components/admin/billing/ChangePlanModal";
-import Pagination from "../../../invitehub/components/Pagination";
+import BillingDetailsModal from "../../../components/admin/billing/BillingDetailsModal";
+import ChangePlanModal from "../../../components/admin/billing/ChangePlanModal";
+import Pagination from "../../../components/Pagination";
 
 export const dynamic = "force-dynamic";
 import {
@@ -33,7 +33,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
+import { useSidebar } from "../../../context/SidebarContext";
 import axios from "axios";
 
 export default function AdminBillingPage() {
@@ -138,10 +138,12 @@ export default function AdminBillingPage() {
           setHasNextPage(usersData.pagination.hasNextPage);
           setHasPreviousPage(usersData.pagination.hasPreviousPage);
         } else {
-          setTotalUsers((usersData.users || []).length);
-          setTotalPages(1);
-          setHasNextPage(false);
-          setHasPreviousPage(false);
+          const fetchedCount = (usersData.users || []).length;
+          setTotalUsers(fetchedCount);
+          const calculatedTotalPages = Math.ceil(fetchedCount / limit) || 1;
+          setTotalPages(calculatedTotalPages);
+          setHasNextPage(currentPage < calculatedTotalPages);
+          setHasPreviousPage(currentPage > 1);
         }
       }
       if (statsData && statsData.success) {
@@ -400,7 +402,7 @@ export default function AdminBillingPage() {
 
   // Server-side paginated and filtered users list
   const filteredUsers = users;
-
+  
   const isServerPaginated = totalUsers > users.length;
   const startIndex = isServerPaginated ? 0 : (page - 1) * limit;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
-import Navbar from "../../../invitehub/components/Navbar";
+import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
+import Navbar from "../../../components/Navbar";
 import adminService, { AdminInvitation } from "../../../services/adminService";
 import { getImageUrl } from "../../../utils/imageUrl";
-import Pagination from "../../../invitehub/components/Pagination";
+import Pagination from "../../../components/Pagination";
 import {
   Edit2,
   Trash2,
@@ -72,7 +72,7 @@ export default function AdminInvitationsPage() {
   const [viewingInvitation, setViewingInvitation] = useState<AdminInvitation | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Lock background scroll when details modal is open
+  // Lock background scroll when any modal is open
   useEffect(() => {
     if (viewingInvitation || isEditModalOpen || deleteConfirmId) {
       document.body.style.overflow = "hidden";

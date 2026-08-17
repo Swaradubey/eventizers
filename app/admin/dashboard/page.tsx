@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import Navbar from "../../../invitehub/components/Navbar";
-import EventModal from "../../../invitehub/components/EventModal";
+import { useAuth } from "../../../context/AuthContext";
+import Navbar from "../../../components/Navbar";
+import EventModal from "../../../components/EventModal";
 import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
-import Pagination from "../../../invitehub/components/Pagination";
+import Pagination from "../../../components/Pagination";
 import { getImageUrl } from "../../../utils/imageUrl";
 
 import { Guest } from "../../../types/guestTypes";
@@ -27,7 +27,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
+import { useSidebar } from "../../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +131,13 @@ export default function AdminDashboardPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Handle empty page after deletion
   useEffect(() => {
     const maxPage = Math.ceil(totalEvents / EVENTS_PER_PAGE);
@@ -138,14 +145,6 @@ export default function AdminDashboardPage() {
       setCurrentPage(maxPage);
     }
   }, [totalEvents, currentPage]);
-
-  // Handle toast timers
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   const triggerToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -214,6 +213,9 @@ export default function AdminDashboardPage() {
       minute: "2-digit",
     });
   };
+
+  // Pagination Calculations
+  const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
@@ -285,22 +287,18 @@ export default function AdminDashboardPage() {
         </AnimatePresence>
 
         {/* KPI Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {loadingStats ? (
             // Skeleton loaders
             <>
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm animate-pulse"
+                  className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm animate-pulse"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-blue-50" />
-                    <div className="flex-1">
-                      <div className="h-3 w-20 bg-slate-100 rounded mb-2" />
-                      <div className="h-7 w-14 bg-slate-200 rounded" />
-                    </div>
-                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 mb-5" />
+                  <div className="h-4 w-24 bg-slate-100 rounded mb-2" />
+                  <div className="h-8 w-16 bg-slate-200 rounded" />
                 </div>
               ))}
             </>
@@ -312,21 +310,17 @@ export default function AdminDashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Events
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalEvents ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Events
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalEvents ?? 0}
+                </p>
               </motion.div>
 
               {/* Total Guests */}
@@ -334,21 +328,17 @@ export default function AdminDashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Guests
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalGuests ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#0EA5E9] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Guests
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalGuests ?? 0}
+                </p>
               </motion.div>
 
               {/* Avg. RSVP Rate */}
@@ -356,21 +346,17 @@ export default function AdminDashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Avg. RSVP Rate
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.averageRsvpRate ?? 0}%
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#00C853] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Avg. RSVP Rate
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.averageRsvpRate ?? 0}%
+                </p>
               </motion.div>
 
               {/* Messages Sent */}
@@ -378,21 +364,17 @@ export default function AdminDashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Messages Sent
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.messagesSent ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#FF5722] to-[#FF3D00] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Messages Sent
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.messagesSent ?? 0}
+                </p>
               </motion.div>
             </>
           )}
@@ -453,7 +435,8 @@ export default function AdminDashboardPage() {
               </button>
             </div>
           ) : (
-            /* Events Table */
+            <>
+            {/* Events Table */}
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -560,17 +543,19 @@ export default function AdminDashboardPage() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalEvents}
+              limit={EVENTS_PER_PAGE}
+              onPageChange={(p) => setCurrentPage(p)}
+              loading={loadingEvents}
+              itemName="events"
+            />
+            </>
           )}
-          
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalEvents}
-            limit={EVENTS_PER_PAGE}
-            onPageChange={(p) => setCurrentPage(p)}
-            loading={loadingEvents}
-            itemName="events"
-          />
         </div>
       </main>
 
@@ -586,64 +571,77 @@ export default function AdminDashboardPage() {
       {/* EVENT DETAILS VIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setViewingEvent(null)}
+              onClick={() => {
+                setViewingEvent(null);
+                setShowGuestList(false);
+                setEventGuests([]);
+              }}
               className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div>
+              {/* Fixed Header */}
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10">
+                <div className="pr-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
                     {viewingEvent.eventType || "General"} Event &bull; Creator: {viewingEvent.user?.name || "Admin"}
                   </span>
                   <h3
-                    className="text-2xl font-semibold font-display mt-0.5"
+                    className="text-xl sm:text-2xl font-semibold font-display mt-0.5 leading-snug break-words"
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     {viewingEvent.title}
                   </h3>
                 </div>
                 <button
-                  onClick={() => setViewingEvent(null)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  onClick={() => {
+                    setViewingEvent(null);
+                    setShowGuestList(false);
+                    setEventGuests([]);
+                  }}
+                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors flex-shrink-0 -mr-1"
+                  aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {viewingEvent.coverImage && (
-                <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
-                  <img
-                    src={getImageUrl(viewingEvent.coverImage)}
-                    alt={viewingEvent.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-3 mt-4 text-sm text-[#2D1B3D]/90">
-                {viewingEvent.description && (
-                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1">
-                      Description
-                    </p>
-                    <p className="text-sm whitespace-pre-line">{viewingEvent.description}</p>
+              {/* Scrollable Content Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
+                {viewingEvent.coverImage && (
+                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
+                    <img
+                      src={getImageUrl(viewingEvent.coverImage)}
+                      alt={viewingEvent.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                {viewingEvent.description && (
+                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full">
+                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1.5">
+                      Description
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-[#2D1B3D]/90">
+                      {viewingEvent.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5]/60 p-3.5 rounded-xl border border-[#E8C4B8]/20">
                   <div className="flex items-start gap-2.5">
                     <Calendar className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
                     <div>
@@ -664,18 +662,18 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 pt-2 border-t border-[#E8C4B8]/20">
+                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5]/60 rounded-xl border border-[#E8C4B8]/20">
                   <MapPin className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
                       Location
                     </p>
-                    <p className="font-semibold text-xs">{viewingEvent.venue}</p>
+                    <p className="font-semibold text-xs text-[#2D1B3D] break-words">{viewingEvent.venue}</p>
                     {(viewingEvent.address ||
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                      <p className="text-xs text-[#2D1B3D]/70 mt-0.5">
+                      <p className="text-xs text-[#2D1B3D]/70 mt-0.5 break-words">
                         {[
                           viewingEvent.address,
                           viewingEvent.city,
@@ -689,13 +687,60 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-4 mt-2 border-t border-[#E8C4B8]/25 text-xs text-[#2D1B3D]/50">
+                <div className="flex justify-between items-center pt-2 px-1 text-xs text-[#2D1B3D]/50">
                   <span>Status: <strong className="text-[#2D1B3D] uppercase font-bold">{viewingEvent.status}</strong></span>
                   <span>Created: {formatDateTime(viewingEvent.createdAt || "")}</span>
                 </div>
+
+                {showGuestList && (
+                  <div className="mt-4 pt-4 border-t border-[#E8C4B8]/25">
+                    <h4 className="text-sm font-bold text-[#2D1B3D] mb-3">
+                      Guest List ({loadingGuests ? "..." : eventGuests.length})
+                    </h4>
+                    {loadingGuests ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="w-5 h-5 border-2 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                      </div>
+                    ) : eventGuests.length === 0 ? (
+                      <p className="text-xs text-[#2D1B3D]/50 text-center py-4">No guests found for this event.</p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-[#E8C4B8]/20">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-[#FAF8F5]">
+                            <tr className="border-b border-[#E8C4B8]/20">
+                              <th className="py-2.5 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Name</th>
+                              <th className="py-2.5 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Email</th>
+                              <th className="py-2.5 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E8C4B8]/10 bg-white">
+                            {eventGuests.map((guest) => (
+                              <tr key={guest.id} className="hover:bg-[#FAF8F5]/50">
+                                <td className="py-2 px-3 text-xs text-[#2D1B3D] font-medium">{guest.name}</td>
+                                <td className="py-2 px-3 text-xs text-[#2D1B3D]/70">{guest.email}</td>
+                                <td className="py-2 px-3">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                    guest.status === "confirmed"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : guest.status === "declined"
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-amber-50 text-amber-700 border-amber-200"
+                                  }`}>
+                                    {guest.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-end gap-2 mt-6">
+              {/* Fixed Footer */}
+              <div className="flex items-center justify-end gap-2.5 p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0">
                 <button
                   onClick={async () => {
                     if (!viewingEvent?.id) return;
@@ -714,7 +759,7 @@ export default function AdminDashboardPage() {
                   }}
                   className="px-5 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
                 >
-                  View Guests
+                  {showGuestList ? "Refresh Guests" : "View Guests"}
                 </button>
                 <button
                   onClick={() => {
@@ -727,52 +772,6 @@ export default function AdminDashboardPage() {
                   Close
                 </button>
               </div>
-
-              {showGuestList && (
-                <div className="mt-4 pt-4 border-t border-[#E8C4B8]/25">
-                  <h4 className="text-sm font-bold text-[#2D1B3D] mb-3">
-                    Guest List ({loadingGuests ? "..." : eventGuests.length})
-                  </h4>
-                  {loadingGuests ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="w-5 h-5 border-2 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-                    </div>
-                  ) : eventGuests.length === 0 ? (
-                    <p className="text-xs text-[#2D1B3D]/50 text-center py-4">No guests found for this event.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-[#E8C4B8]/20">
-                            <th className="py-2 px-2 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Name</th>
-                            <th className="py-2 px-2 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Email</th>
-                            <th className="py-2 px-2 text-[10px] font-bold text-[#2D1B3D]/50 uppercase">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E8C4B8]/10">
-                          {eventGuests.map((guest) => (
-                            <tr key={guest.id} className="hover:bg-[#FAF8F5]/40">
-                              <td className="py-2 px-2 text-xs text-[#2D1B3D]">{guest.name}</td>
-                              <td className="py-2 px-2 text-xs text-[#2D1B3D]/70">{guest.email}</td>
-                              <td className="py-2 px-2">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                                  guest.status === "confirmed"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : guest.status === "declined"
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200"
-                                }`}>
-                                  {guest.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
             </motion.div>
           </div>
         )}

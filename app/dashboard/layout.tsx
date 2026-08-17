@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { SidebarProvider, useSidebar } from "../../invitehub/context/SidebarContext";
-import Sidebar from "../../invitehub/components/Sidebar";
-import SparkleEffect from "../../invitehub/components/SparkleEffect";
+import { SidebarProvider, useSidebar } from "../../context/SidebarContext";
+import Sidebar from "../../components/Sidebar";
+import SparkleEffect from "../../components/SparkleEffect";
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();

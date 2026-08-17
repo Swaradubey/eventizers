@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
-import Navbar from "../../../invitehub/components/Navbar";
+import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
+import Navbar from "../../../components/Navbar";
 import guestService from "../../../services/guestService";
 import eventService, { Event } from "../../../services/eventService";
 import { Guest } from "../../../types/guestTypes";
-import Pagination from "../../../invitehub/components/Pagination";
+import Pagination from "../../../components/Pagination";
 import {
   Plus,
   Edit2,

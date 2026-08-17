@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
-import Navbar from "../../../invitehub/components/Navbar";
-import { useInvitation } from "../../../invitehub/hooks/useInvitation";
+import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
+import Navbar from "../../../components/Navbar";
+import { useInvitation } from "../../../hooks/useInvitation";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
 import { getImageUrl } from "../../../utils/imageUrl";
@@ -79,8 +79,6 @@ function InvitationDesignerPageContent() {
   // Preview Modal
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [coverImgError, setCoverImgError] = useState(false);
-  // Live preview panel image error state
-  const [livePreviewImgError, setLivePreviewImgError] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Toast state
@@ -223,11 +221,6 @@ function InvitationDesignerPageContent() {
 
   const handleInputChange = (field: string, value: any) => {
     if (!invitation) return;
-    // Reset image error state whenever the URL changes so the new URL is retried
-    if (field === "imageUrl") {
-      setLivePreviewImgError(false);
-      setCoverImgError(false);
-    }
     setInvitation({
       ...invitation,
       [field]: value,
@@ -882,29 +875,11 @@ function InvitationDesignerPageContent() {
                             <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 space-y-2">
                               <p className="font-semibold text-[#2D1B3D]/50 text-[10px] uppercase">Active Preview</p>
                               <div className="relative w-full h-24 rounded-lg overflow-hidden border border-[#E8C4B8]/30">
-                                {getImageUrl(invitation.imageUrl) ? (
-                                  <img
-                                    src={getImageUrl(invitation.imageUrl)}
-                                    alt="Cover preview"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      // Hide the broken image and show placeholder
-                                      const target = e.currentTarget;
-                                      target.style.display = "none";
-                                      const parent = target.parentElement;
-                                      if (parent) {
-                                        const placeholder = document.createElement("div");
-                                        placeholder.className = "w-full h-full bg-gradient-to-br from-[#2D1B3D]/10 to-transparent flex items-center justify-center";
-                                        placeholder.innerHTML = `<span class="text-[10px] text-[#2D1B3D]/40 italic">Image failed to load</span>`;
-                                        parent.appendChild(placeholder);
-                                      }
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
-                                    <span className="text-[10px] text-[#2D1B3D]/30 italic">No image</span>
-                                  </div>
-                                )}
+                                <img
+                                  src={getImageUrl(invitation.imageUrl)}
+                                  alt="Cover preview"
+                                  className="w-full h-full object-cover"
+                                />
                                 <button
                                   type="button"
                                   onClick={() => handleInputChange("imageUrl", "")}
@@ -1253,19 +1228,12 @@ function InvitationDesignerPageContent() {
                 >
                   {/* Image cover preview */}
                   <div className="invitation-image-wrapper">
-                    {invitation.imageUrl && !livePreviewImgError ? (
+                    {invitation.imageUrl ? (
                       <img
                         src={getImageUrl(invitation.imageUrl)}
                         alt="Invitation cover"
                         className="invitation-image"
-                        onError={() => setLivePreviewImgError(true)}
                       />
-                    ) : invitation.imageUrl && livePreviewImgError ? (
-                      // Graceful fallback when URL fails to load
-                      <div className="w-full h-32 bg-gradient-to-br from-[#2D1B3D]/8 to-transparent flex flex-col items-center justify-center gap-1.5">
-                        <ImageIcon className="w-7 h-7 text-[#2D1B3D]/20" />
-                        <span className="text-[10px] text-[#2D1B3D]/30 italic">Cover image unavailable</span>
-                      </div>
                     ) : (
                       <div className="w-full h-32 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
                         <span className="text-xs text-[#2D1B3D]/20 italic">No cover image uploaded</span>

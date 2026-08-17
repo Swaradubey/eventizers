@@ -2,11 +2,11 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../invitehub/context/AuthContext";
-import { useSidebar } from "../../../invitehub/context/SidebarContext";
-import Navbar from "../../../invitehub/components/Navbar";
-import EventModal from "../../../invitehub/components/EventModal";
-import Pagination from "../../../invitehub/components/Pagination";
+import { useAuth } from "../../../context/AuthContext";
+import { useSidebar } from "../../../context/SidebarContext";
+import Navbar from "../../../components/Navbar";
+import EventModal from "../../../components/EventModal";
+import Pagination from "../../../components/Pagination";
 import eventService, { Event } from "../../../services/eventService";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {
@@ -22,8 +22,36 @@ import {
   CheckCircle,
   Menu,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { NEW_TEMPLATE_IMAGES } from "../../../lib/newTemplatesData";
+
+const getTemplateImage = (templateId?: string | null) => {
+  if (!templateId) return null;
+  const mapping: Record<string, string> = {
+    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
+    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
+    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
+    "tpl-dinner-party": "/assets/templates/dinner.jpg",
+    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
+    "tpl-charity-gala": "/assets/templates/gala.jpg",
+    "tpl-live-music": "/assets/templates/music.jpg",
+    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
+    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
+    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
+    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
+    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
+    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
+    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
+    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
+    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
+    ...NEW_TEMPLATE_IMAGES,
+  };
+  return mapping[templateId] || null;
+};
 
 function EventsPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -384,6 +412,13 @@ function EventsPageContent() {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                            title="Design Invitation"
+                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleEditClick(event)}
                             title="Edit event"
                             className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
@@ -433,7 +468,7 @@ function EventsPageContent() {
       {/* EVENT DETAILS VIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -445,15 +480,17 @@ function EventsPageContent() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
+              style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: '32rem', position: 'relative', zIndex: 10, margin: 'auto' }}
             >
-              <div className="flex justify-between items-start mb-4">
-                <div>
+              {/* Fixed Header */}
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10" style={{ flexShrink: 0, borderBottom: '1px solid rgba(232,196,184,0.2)' }}>
+                <div className="pr-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
                     {viewingEvent.eventType || "General"} Event
                   </span>
                   <h3
-                    className="text-2xl font-semibold font-display mt-0.5"
+                    className="text-xl sm:text-2xl font-semibold font-display mt-0.5 leading-snug break-words"
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     {viewingEvent.title}
@@ -461,36 +498,40 @@ function EventsPageContent() {
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors flex-shrink-0 -mr-1"
+                  aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {viewingEvent.coverImage && (
-                <div className="w-full h-44 rounded-xl overflow-hidden mb-4 border border-[#E8C4B8]/20">
-                  <img
-                    src={getImageUrl(viewingEvent.coverImage)}
-                    alt={viewingEvent.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-3 mt-4 text-sm text-[#2D1B3D]/90">
-                {viewingEvent.description && (
-                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1">
-                      Description
-                    </p>
-                    <p className="text-sm whitespace-pre-line">{viewingEvent.description}</p>
+              {/* Scrollable Content Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain" style={{ overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
+                {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
+                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
+                    <img
+                      src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
+                      alt={viewingEvent.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                {viewingEvent.description && (
+                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full">
+                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1.5">
+                      Description
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-[#2D1B3D]/90">
+                      {viewingEvent.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5]/60 p-3.5 rounded-xl border border-[#E8C4B8]/20">
                   <div className="flex items-start gap-2.5">
                     <Calendar className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
                     <div>
@@ -511,18 +552,18 @@ function EventsPageContent() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 pt-2 border-t border-[#E8C4B8]/20">
+                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5]/60 rounded-xl border border-[#E8C4B8]/20">
                   <MapPin className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
                       Location
                     </p>
-                    <p className="font-semibold text-xs">{viewingEvent.venue}</p>
+                    <p className="font-semibold text-xs text-[#2D1B3D] break-words">{viewingEvent.venue}</p>
                     {(viewingEvent.address ||
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5">
+                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5 break-words">
                           {[
                             viewingEvent.address,
                             viewingEvent.city,
@@ -536,16 +577,24 @@ function EventsPageContent() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-4 mt-2 border-t border-[#E8C4B8]/25 text-xs text-[#2D1B3D]/50">
+                <div className="flex justify-between items-center pt-2 px-1 text-xs text-[#2D1B3D]/50">
                   <span>Status: <strong className="text-[#2D1B3D] uppercase font-bold">{viewingEvent.status}</strong></span>
                   <span>Created: {formatDateTime(viewingEvent.createdAt || "")}</span>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              {/* Fixed Footer */}
+              <div className="flex items-center justify-end gap-3 p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0" style={{ flexShrink: 0, borderTop: '1px solid rgba(232,196,184,0.2)' }}>
+                <button
+                  onClick={() => router.push(`/dashboard/invitations?eventId=${viewingEvent.id}`)}
+                  className="px-5 py-2 text-xs font-semibold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Design Invitation
+                </button>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+                  className="px-5 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl active:scale-95 transition-all focus:outline-none"
                 >
                   Close
                 </button>
