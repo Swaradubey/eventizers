@@ -185,12 +185,12 @@ export default function Navbar() {
                     ref={triggerRef}
                     onClick={handleToggleClick}
                     onKeyDown={handleKeyDown}
-                    className="text-sm font-medium text-gray-800 hover:text-black transition-colors flex items-center gap-1 h-full focus:outline-none cursor-pointer"
+                    className="text-base font-medium text-gray-800 hover:text-black transition-colors flex items-center gap-1.5 h-full focus:outline-none cursor-pointer"
                     aria-haspopup="true"
                     aria-expanded={desktopMenuOpen}
                   >
                     <span>Features</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-gray-600 transition-transform duration-200 ${desktopMenuOpen ? "rotate-180 text-black" : ""}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${desktopMenuOpen ? "rotate-180 text-black" : ""}`} />
                   </button>
 
                   <AnimatePresence>
@@ -207,7 +207,7 @@ export default function Navbar() {
                 <Link
                   key={link.label}
                   href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`text-base font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
                   }`}
                 >
@@ -220,7 +220,7 @@ export default function Navbar() {
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
                 onClick={(e) => handleSectionClick(e, link.href)}
-                className="text-sm font-medium text-gray-800 hover:text-black transition-colors"
+                className="text-base font-medium text-gray-800 hover:text-black transition-colors"
               >
                 {link.label}
               </a>
@@ -291,7 +291,7 @@ export default function Navbar() {
                 <div key={link.label} className="flex flex-col">
                   <button
                     onClick={() => setMobileFeaturesOpen(!mobileFeaturesOpen)}
-                    className="text-sm font-medium text-left text-[#4B5563] hover:text-gray-900 flex items-center justify-between py-1 focus:outline-none"
+                    className="text-base font-medium text-left text-[#4B5563] hover:text-gray-900 flex items-center justify-between py-1 focus:outline-none"
                   >
                     <span>Features</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileFeaturesOpen ? "rotate-180" : ""}`} />
@@ -344,7 +344,7 @@ export default function Navbar() {
                 <Link
                   key={link.label}
                   href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`text-base font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
                   }`}
                   onClick={() => setOpen(false)}
@@ -357,7 +357,7 @@ export default function Navbar() {
               <a
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
-                className="text-sm font-medium text-[#4B5563] hover:text-gray-900"
+                className="text-base font-medium text-[#4B5563] hover:text-gray-900"
                 onClick={(e) => {
                   setOpen(false);
                   handleSectionClick(e, link.href);

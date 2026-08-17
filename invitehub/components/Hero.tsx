@@ -380,20 +380,23 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   return (
-    <section className="relative overflow-hidden overflow-x-clip min-h-[90vh] py-12 px-4 flex flex-col justify-center items-center bg-slate-50/40 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-      {/* Subtle cross grid background pattern overlay */}
+    <section className="relative overflow-hidden overflow-x-clip min-h-[90vh] py-12 px-4 flex flex-col justify-center items-center bg-slate-50/40 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
+      {/* Subtle background grid/plus pattern overlay */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-25 -z-10"
+        className="absolute inset-0 pointer-events-none opacity-40 -z-10"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 12.5v7M12.5 16h7' stroke='%23CBD5E1' stroke-width='0.85' stroke-linecap='round' stroke-opacity='0.45' fill='none'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 12v8M12 16h8' stroke='%23CBD5E1' stroke-width='0.9' stroke-linecap='round' stroke-opacity='0.6' fill='none'/%3E%3C/svg%3E")`,
           backgroundSize: '32px 32px'
         }}
       />
 
-      {/* Atmospheric pastel glows */}
-      <div className="absolute w-[600px] h-[600px] rounded-full bg-radial from-purple-200/40 via-pink-100/20 to-transparent top-1/4 -left-20 -translate-y-1/2 blur-3xl pointer-events-none" />
-      <div className="absolute w-[600px] h-[600px] rounded-full bg-radial from-sky-200/40 via-blue-100/20 to-transparent top-1/4 -right-20 -translate-y-1/2 blur-3xl pointer-events-none" />
-      <div className="absolute w-[500px] h-[250px] rounded-full bg-radial from-amber-100/30 to-transparent top-0 left-1/2 -translate-x-1/2 blur-2xl pointer-events-none" />
+      {/* Atmospheric multi-color radial gradient aura */}
+      {/* Left side: Soft subtle purple/lavender glow */}
+      <div className="absolute w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(224,231,255,0.6)_0%,rgba(238,242,255,0.3)_45%,transparent_70%)] top-1/4 -left-32 -translate-y-1/2 blur-3xl pointer-events-none" />
+      {/* Right/base: Crisp light blue/mesh tint */}
+      <div className="absolute w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(224,242,254,0.6)_0%,rgba(240,249,255,0.3)_45%,transparent_70%)] top-1/4 -right-32 -translate-y-1/2 blur-3xl pointer-events-none" />
+      {/* Bottom center: Very soft peach/warm tint */}
+      <div className="absolute w-[800px] h-[350px] rounded-full bg-[radial-gradient(ellipse,rgba(255,241,242,0.45)_0%,rgba(255,237,213,0.3)_40%,transparent_70%)] bottom-0 left-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
 
       {/* Subtle scattered gold/beige stars in atmosphere */}
       <span className="absolute top-[14%] left-[10%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
@@ -404,22 +407,24 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col justify-center items-center overflow-x-clip">
-        {/* Top Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-200/60 bg-purple-50/50 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur-sm mb-4">
-          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-          <span>AI-Powered Event Operating System</span>
+        {/* Top Pill Badge */}
+        <div className="rounded-full bg-white/90 backdrop-blur-sm border border-slate-200/80 px-4 py-1.5 shadow-sm inline-flex items-center gap-2 mb-4">
+          <Sparkles className="w-3.5 h-3.5 text-[#7C3AED]" />
+          <span className="text-xs sm:text-sm font-medium text-slate-600">
+            AI-Powered Event Operating System
+          </span>
         </div>
 
         {/* Main Heading */}
         <h1
-          className="font-extrabold text-[#2563EB] tracking-tight leading-tight text-center md:whitespace-nowrap"
-          style={{ fontSize: "clamp(1.75rem, 4vw, 3.75rem)" }}
+          className="font-bold tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
+          style={{ fontSize: "clamp(1.9rem, 4vw, 3.75rem)" }}
         >
           Create Any Event in Under 60 Seconds
         </h1>
 
         {/* Subtitle */}
-        <p className="text-slate-600 text-sm md:text-base max-w-xl mx-auto text-center mt-3 mb-8">
+        <p className="text-sm sm:text-base text-slate-500 font-normal leading-relaxed text-center max-w-2xl mx-auto mt-3 mb-8">
           Invitations, RSVPs, Ticketing, Check-In, Guest<br className="hidden sm:inline" />{" "}
           Management and AI Planning — all in one platform.
         </p>

@@ -270,22 +270,18 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* KPI Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {loadingStats ? (
             // Skeleton loaders
             <>
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm animate-pulse"
+                  className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm animate-pulse"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-blue-50" />
-                    <div className="flex-1">
-                      <div className="h-3 w-20 bg-slate-100 rounded mb-2" />
-                      <div className="h-7 w-14 bg-slate-200 rounded" />
-                    </div>
-                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 mb-5" />
+                  <div className="h-4 w-24 bg-slate-100 rounded mb-2" />
+                  <div className="h-8 w-16 bg-slate-200 rounded" />
                 </div>
               ))}
             </>
@@ -297,21 +293,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Events
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalEvents ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Events
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalEvents ?? 0}
+                </p>
               </motion.div>
 
               {/* Total Guests */}
@@ -319,21 +311,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Total Guests
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.totalGuests ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#0EA5E9] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Total Guests
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.totalGuests ?? 0}
+                </p>
               </motion.div>
 
               {/* Avg. RSVP Rate */}
@@ -341,21 +329,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Avg. RSVP Rate
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.avgRsvpRate ?? 0}%
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#00C853] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Avg. RSVP Rate
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.avgRsvpRate ?? 0}%
+                </p>
               </motion.div>
 
               {/* Messages Sent */}
@@ -363,21 +347,17 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                      Messages Sent
-                    </p>
-                    <p className="text-[36px] font-bold text-slate-900 leading-none mt-1">
-                      {dashboardStats?.messagesSent ?? 0}
-                    </p>
-                  </div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#FF5722] to-[#FF3D00] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
+                <p className="text-sm font-medium text-slate-500 mt-5 mb-2">
+                  Messages Sent
+                </p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {dashboardStats?.messagesSent ?? 0}
+                </p>
               </motion.div>
             </>
           )}
