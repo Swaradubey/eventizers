@@ -207,10 +207,10 @@ export default function EventModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative bg-[#FAF8F5] w-full max-w-2xl rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 font-body text-[#2D1B3D]"
+            className="relative bg-[#FAF8F5] w-full max-w-2xl max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 font-body text-[#2D1B3D]"
           >
             {/* Header */}
-            <div className="bg-[#2D1B3D] text-white px-6 py-4 flex items-center justify-between border-b border-[#E8C4B8]/20">
+            <div className="bg-[#2D1B3D] text-white px-6 py-4 flex items-center justify-between border-b border-[#E8C4B8]/20 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded bg-white/10 flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-[#C9A84C]" />
@@ -232,14 +232,14 @@ export default function EventModal({
 
             {/* Error Message */}
             {error && (
-              <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-start gap-2 animate-shake">
+              <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-start gap-2 animate-shake flex-shrink-0">
                 <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
               {/* Event Name */}
               <div>
                 <label className="block text-xs font-semibold text-[#2D1B3D]/70 uppercase tracking-wider mb-1">

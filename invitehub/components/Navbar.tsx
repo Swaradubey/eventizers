@@ -169,7 +169,8 @@ export default function Navbar() {
           <Logo size="md" />
         </div>
 
-        {/* Center Section (Nav Links) */}
+        {/* Center Section (Nav Links) — hidden on dashboard/admin routes */}
+        {!isDashboard && (
         <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-sans">
           {navLinks.map((link) => {
             if (link.label === "Features") {
@@ -228,6 +229,7 @@ export default function Navbar() {
           })}
           <span className="text-[#E2B93B] text-xs opacity-70 ml-1">✦</span>
         </div>
+        )}
 
         {/* Right Section (User Actions) */}
         <div className="hidden md:flex items-center font-sans">
@@ -272,7 +274,8 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
+        {/* Mobile toggle — hidden on dashboard routes (sidebar handles mobile nav there) */}
+        {!isDashboard && (
         <button
           className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
           onClick={() => setOpen(!open)}
@@ -280,10 +283,11 @@ export default function Navbar() {
         >
           {open ? <X className="w-5 h-5 text-gray-900" /> : <Menu className="w-5 h-5 text-gray-900" />}
         </button>
+        )}
       </nav>
 
-      {/* Mobile menu */}
-      {open && (
+      {/* Mobile menu — only shown on public/landing routes */}
+      {open && !isDashboard && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-sans shadow-lg">
           {navLinks.map((link) => {
             if (link.label === "Features") {
