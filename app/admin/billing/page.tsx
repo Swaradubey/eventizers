@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import { useAuth } from "@/context/AuthContext";
+import Navbar from "@/components/Navbar";
 import adminService, {
   AdminBillingUser,
   AdminBillingStats
-} from "../../../services/adminService";
-import BillingDetailsModal from "../../../components/admin/billing/BillingDetailsModal";
-import ChangePlanModal from "../../../components/admin/billing/ChangePlanModal";
-import Pagination from "../../../components/Pagination";
+} from "@/services/adminService";
+import BillingDetailsModal from "@/components/admin/billing/BillingDetailsModal";
+import ChangePlanModal from "@/components/admin/billing/ChangePlanModal";
+import Pagination from "@/components/Pagination";
 
 export const dynamic = "force-dynamic";
 import {
