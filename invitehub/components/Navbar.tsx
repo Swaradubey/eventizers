@@ -240,14 +240,6 @@ export default function Navbar() {
                 Hi, {(user as any)?.name || (user as any)?.firstName || 'sashia'}
               </span>
 
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-              >
-                Logout
-              </button>
-
               {/* Create Event CTA */}
               <button
                 onClick={handleCreateEvent}

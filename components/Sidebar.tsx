@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
   Calendar,
@@ -19,11 +20,14 @@ import {
   CreditCard,
   Settings,
   BarChart3,
+  LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
   const { isOpen, setIsOpen, isCollapsed, setIsCollapsed } = useSidebar();
 
   const isAdminPath = pathname?.startsWith("/admin");
@@ -162,6 +166,20 @@ export default function Sidebar() {
     setIsOpen(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      setIsOpen(false);
+      await logout();
+      if (isAdminPath) {
+        router.push("/admin/login");
+      } else {
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   // ── Sidebar inner content (shared by desktop & mobile drawer) ──
   const renderSidebarContent = (forceExpanded = false) => {
     const collapsed = isCollapsed && !forceExpanded;
@@ -273,6 +291,44 @@ export default function Sidebar() {
                 </li>
               );
             })}
+
+            {/* ─── Logout button ─── */}
+            <li role="listitem">
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label={collapsed ? "Logout" : undefined}
+                className={`sidebar-menu-item w-full text-left bg-transparent border-0 outline-none ${
+                  collapsed ? "sidebar-menu-item--collapsed" : ""
+                }`}
+              >
+                <LogOut className="sidebar-menu-icon" />
+
+                <AnimatePresence mode="wait">
+                  {!collapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="sidebar-menu-label"
+                    >
+                      Logout
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                {/* Tooltip (collapsed state only) */}
+                {collapsed && (
+                  <div
+                    role="tooltip"
+                    className="sidebar-tooltip"
+                  >
+                    Logout
+                  </div>
+                )}
+              </button>
+            </li>
           </ul>
         </nav>
 
