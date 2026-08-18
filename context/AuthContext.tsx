@@ -177,10 +177,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  loading: false,
+  error: null,
+  login: async () => { throw new Error("AuthProvider not found"); },
+  adminLogin: async () => { throw new Error("AuthProvider not found"); },
+  register: async () => { throw new Error("AuthProvider not found"); },
+  logout: async () => {},
+  setError: () => {},
+  refreshUser: async () => {},
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return defaultAuthContext;
   }
   return context;
 };
+
