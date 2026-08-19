@@ -24,6 +24,7 @@ import {
   Play,
   Square,
   AlertTriangle,
+  Wifi,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -378,52 +379,59 @@ function CheckInPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-body text-slate-800 relative overflow-hidden">
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Top Header Row */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 w-full">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-800" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A] font-sans tracking-tight">
                 Check-In
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Scan tickets and manage guest arrivals</p>
+              <p className="text-sm text-slate-500 mt-1 font-sans">
+                Scan QR codes and verify guest arrival
+              </p>
             </div>
           </div>
 
-          {events.length > 0 && (
-            <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs w-full sm:w-auto">
-              <span className="text-[#2D1B3D]/50 font-semibold">Event:</span>
-              <select
-                value={selectedEventId || ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedEventId(val || null);
-                  updateUrl(val || null);
-                  setPage(1);
-                }}
-                className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer max-w-[180px] truncate"
-              >
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                ))}
-              </select>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {events.length > 0 && (
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-xs">
+                <span className="text-slate-500 font-semibold">Event:</span>
+                <select
+                  value={selectedEventId || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedEventId(val || null);
+                    updateUrl(val || null);
+                    setPage(1);
+                  }}
+                  className="bg-transparent font-bold focus:outline-none text-slate-800 cursor-pointer max-w-[180px] truncate"
+                >
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Status Badge */}
+            <div className="inline-flex items-center gap-2 bg-[#ECFDF5] border border-emerald-100/80 text-[#059669] rounded-full py-1.5 px-4 shadow-sm">
+              <Wifi className="w-4 h-4 text-[#059669]" />
+              <span className="text-sm font-medium text-[#059669]">Online</span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Toast Alerts */}
@@ -433,17 +441,17 @@ function CheckInPageContent() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-600 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -453,17 +461,17 @@ function CheckInPageContent() {
 
         {/* Empty State: No events created */}
         {events.length === 0 && !loading && (
-          <div className="flex-1 bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-              <QrCode className="w-8 h-8 text-[#C9A84C]" />
+          <div className="flex-1 bg-white border border-slate-200 rounded-3xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-6 shadow-sm">
+              <QrCode className="w-8 h-8 text-indigo-600" />
             </div>
-            <h3 className="text-2xl font-bold font-display text-[#2D1B3D] mb-2">Create an event before using check-in.</h3>
-            <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">
+            <h3 className="text-2xl font-bold font-sans text-slate-900 mb-2">Create an event before using check-in.</h3>
+            <p className="text-sm text-slate-500 max-w-md mb-8">
               You must have at least one active event to enable QR scanning, ticket resolution, and guest arrivals management.
             </p>
             <button
               onClick={() => router.push("/dashboard")}
-              className="px-6 py-3 text-xs font-bold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors shadow-md focus:outline-none"
+              className="px-6 py-3 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors shadow-md focus:outline-none"
             >
               Go to Events
             </button>
@@ -475,71 +483,143 @@ function CheckInPageContent() {
             
             {/* LEFT COLUMN: QR Scanner Section */}
             <div className="col-span-12 lg:col-span-5 space-y-6">
-              <div className="bg-[#2D1B3D] text-[#FAF8F5] rounded-2xl p-6 shadow-lg border border-[#E8C4B8]/15 relative overflow-hidden flex flex-col items-center min-h-[460px] justify-between">
+              <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100/90 flex flex-col items-center justify-between w-full">
                 
-                {/* Accent scanning line animation */}
-                {isScanning && (
-                  <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C9A84C] to-transparent animate-pulse shadow-md" style={{ top: "45%" }}></div>
+                {/* Viewfinder Card */}
+                <div className="w-full aspect-square max-w-[340px] rounded-3xl bg-[#E6F4FE] relative flex items-center justify-center p-6 sm:p-7 overflow-hidden shadow-inner">
+                  {/* Dashed Rounded Border Container */}
+                  <div className="w-full h-full rounded-2xl border-[1.5px] border-dashed border-[#818CF8]/60 relative flex items-center justify-center">
+                    
+                    {/* Glowing Purple/Blue Corner Brackets */}
+                    {/* Top-Left */}
+                    <div className="absolute -top-[3px] -left-[3px] w-6 h-6 border-t-[3.5px] border-l-[3.5px] border-[#6366F1] rounded-tl-xl shadow-[0_0_8px_rgba(99,102,241,0.6)] z-10" />
+                    {/* Top-Right */}
+                    <div className="absolute -top-[3px] -right-[3px] w-6 h-6 border-t-[3.5px] border-r-[3.5px] border-[#6366F1] rounded-tr-xl shadow-[0_0_8px_rgba(99,102,241,0.6)] z-10" />
+                    {/* Bottom-Left */}
+                    <div className="absolute -bottom-[3px] -left-[3px] w-6 h-6 border-b-[3.5px] border-l-[3.5px] border-[#6366F1] rounded-bl-xl shadow-[0_0_8px_rgba(99,102,241,0.6)] z-10" />
+                    {/* Bottom-Right */}
+                    <div className="absolute -bottom-[3px] -right-[3px] w-6 h-6 border-b-[3.5px] border-r-[3.5px] border-[#6366F1] rounded-br-xl shadow-[0_0_8px_rgba(99,102,241,0.6)] z-10" />
+
+                    {/* Viewfinder Content */}
+                    {isScanning ? (
+                      <div className="w-full h-full rounded-xl overflow-hidden relative bg-black/10">
+                        <div id="reader" className="w-full h-full"></div>
+                        {/* Accent Scanning Line Animation */}
+                        <div
+                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#6366F1] to-transparent animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)] z-10"
+                          style={{ top: "50%" }}
+                        ></div>
+                      </div>
+                    ) : isScanSubmitting ? (
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-12 h-12 border-4 border-indigo-200 border-t-[#4F46E5] rounded-full animate-spin"></div>
+                        <span className="text-xs font-semibold text-indigo-600">Verifying Ticket...</span>
+                      </div>
+                    ) : (
+                      <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="flex items-center justify-center"
+                      >
+                        {/* Stylized QR placeholder icon */}
+                        <svg
+                          className="w-28 h-28 text-[#818CF8]/85"
+                          viewBox="0 0 100 100"
+                          fill="currentColor"
+                        >
+                          {/* Top-Left Finder */}
+                          <rect x="10" y="10" width="30" height="30" rx="9" fill="none" stroke="currentColor" strokeWidth="6" />
+                          <rect x="20" y="20" width="10" height="10" rx="3.5" fill="currentColor" />
+
+                          {/* Top-Right Finder */}
+                          <rect x="60" y="10" width="30" height="30" rx="9" fill="none" stroke="currentColor" strokeWidth="6" />
+                          <rect x="70" y="20" width="10" height="10" rx="3.5" fill="currentColor" />
+
+                          {/* Bottom-Left Finder */}
+                          <rect x="10" y="60" width="30" height="30" rx="9" fill="none" stroke="currentColor" strokeWidth="6" />
+                          <rect x="20" y="70" width="10" height="10" rx="3.5" fill="currentColor" />
+
+                          {/* Stylized QR dots and bars matching reference */}
+                          <rect x="47" y="14" width="7" height="18" rx="3.5" fill="currentColor" />
+                          <rect x="47" y="38" width="7" height="14" rx="3.5" fill="currentColor" />
+                          <rect x="10" y="47" width="7" height="7" rx="3" fill="currentColor" />
+                          <rect x="23" y="47" width="17" height="7" rx="3.5" fill="currentColor" />
+                          <rect x="60" y="47" width="14" height="7" rx="3.5" fill="currentColor" />
+                          <rect x="80" y="47" width="10" height="7" rx="3.5" fill="currentColor" />
+                          <rect x="47" y="60" width="7" height="18" rx="3.5" fill="currentColor" />
+                          <rect x="60" y="60" width="18" height="7" rx="3.5" fill="currentColor" />
+                          <rect x="83" y="60" width="7" height="14" rx="3.5" fill="currentColor" />
+                          <rect x="60" y="73" width="7" height="17" rx="3.5" fill="currentColor" />
+                          <rect x="73" y="80" width="17" height="7" rx="3.5" fill="currentColor" />
+                          <circle cx="50.5" cy="85.5" r="3.5" fill="currentColor" />
+                        </svg>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Error Banner */}
+                {scannerError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex gap-2.5 items-center text-red-600 text-xs text-left w-full max-w-[340px]">
+                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <span>{scannerError}</span>
+                  </div>
                 )}
 
-                <div className="w-full text-center">
-                  <h3 className="text-lg font-bold font-display text-white mb-1">Ticket QR Scanner</h3>
-                  <p className="text-xs text-[#FAF8F5]/60">Scan visitor passes to verify entry status</p>
-                </div>
-
-                <div className="w-full flex-1 flex flex-col items-center justify-center my-6">
-                  {isScanning ? (
-                    <div className="w-full max-w-[280px] aspect-square rounded-2xl border-2 border-dashed border-[#C9A84C]/40 bg-black/40 overflow-hidden relative shadow-inner">
-                      <div id="reader" className="w-full h-full"></div>
-                    </div>
-                  ) : (
-                    <motion.div
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="w-full max-w-[280px] aspect-square rounded-2xl border border-[#E8C4B8]/10 bg-white/5 flex flex-col items-center justify-center text-center p-6"
-                    >
-                      {isScanSubmitting ? (
-                        <div className="w-12 h-12 border-4 border-[#C9A84C]/35 border-t-[#C9A84C] rounded-full animate-spin"></div>
-                      ) : (
-                        <>
-                          <div className="w-14 h-14 rounded-2xl bg-[#C9A84C]/10 flex items-center justify-center mb-4 text-[#C9A84C]">
-                            <Camera className="w-7 h-7" />
-                          </div>
-                          <p className="text-xs font-semibold text-[#FAF8F5]/80">Camera Inactive</p>
-                          <p className="text-[10px] text-[#FAF8F5]/45 mt-1 max-w-[180px]">Click below to launch scanner and request permission</p>
-                        </>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {scannerError && (
-                    <div className="mt-4 p-3 bg-red-950/40 border border-red-800/40 rounded-xl flex gap-2.5 items-center text-red-300 text-[10px] text-left max-w-xs">
-                      <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      <span>{scannerError}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="w-full">
+                {/* Action Button & GPS Status Indicator */}
+                <div className="w-full max-w-[340px] mt-6 flex flex-col items-center">
                   {isScanning ? (
                     <button
                       onClick={stopScanner}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                      className="w-full flex items-center justify-center gap-2.5 py-4 px-6 text-sm font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-red-500/25 focus:outline-none"
                     >
-                      <Square className="w-4 h-4" />
-                      Stop Scanner
+                      <Square className="w-5 h-5 fill-current" />
+                      <span>Stop Scanner</span>
                     </button>
                   ) : (
                     <button
                       onClick={startScanner}
                       disabled={isScanSubmitting}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-[#2D1B3D] bg-[#C9A84C] hover:bg-[#b0913e] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+                      className="w-full flex items-center justify-center gap-2.5 py-4 px-6 text-sm font-bold text-white bg-gradient-to-r from-[#4F46E5] via-[#3B82F6] to-[#06B6D4] hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-blue-500/25 focus:outline-none cursor-pointer"
                     >
-                      <Play className="w-4 h-4" />
-                      Scan Next Guest
+                      <svg
+                        className="w-5 h-5 text-white flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="3" width="6" height="6" rx="1.5" />
+                        <rect x="15" y="3" width="6" height="6" rx="1.5" />
+                        <rect x="3" y="15" width="6" height="6" rx="1.5" />
+                        <path d="M15 15h2v2h-2z" />
+                        <path d="M21 15v2h-2" />
+                        <path d="M15 21v-2h2v2h4" />
+                      </svg>
+                      <span>Scan Next Guest</span>
                     </button>
                   )}
+
+                  {/* GPS Verification Status */}
+                  <div className="flex items-center justify-center gap-2 mt-4 text-xs font-medium text-slate-500">
+                    <svg
+                      className="w-4 h-4 text-emerald-500 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="8" />
+                      <circle cx="12" cy="12" r="3" fill="currentColor" />
+                    </svg>
+                    <span>GPS verification enabled</span>
+                  </div>
                 </div>
+
               </div>
             </div>
 

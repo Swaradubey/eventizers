@@ -575,11 +575,11 @@ function TicketingPageContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between w-full sm:w-auto">
             {/* Event Switcher Dropdown */}
             {events.length > 0 && (
-              <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs">
-                <span className="text-[#2D1B3D]/50 font-semibold">Event:</span>
+              <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs w-full sm:w-auto flex-1">
+                <span className="text-[#2D1B3D]/50 font-semibold shrink-0">Event:</span>
                 <select
                   value={selectedEventId || ""}
                   onChange={(e) => {
@@ -587,7 +587,7 @@ function TicketingPageContent() {
                     setSelectedEventId(val || null);
                     updateUrl(val || null);
                   }}
-                  className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer max-w-[180px] truncate"
+                  className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer flex-1 w-full truncate"
                 >
                   {events.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -601,7 +601,7 @@ function TicketingPageContent() {
             <button
               onClick={handleCreateClick}
               disabled={events.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-base font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none whitespace-nowrap  flex-shrink-0"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-base font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none whitespace-nowrap shrink-0 w-full sm:w-auto"
             >
               <Plus className="w-3 h-3" />
               New Ticket Tier
