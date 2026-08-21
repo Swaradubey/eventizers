@@ -57,6 +57,16 @@ export interface InvoicesResponse {
   error?: string;
 }
 
+export interface DeleteInvoiceResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  data?: {
+    id: string;
+    invoiceNumber?: string;
+  };
+}
+
 export interface SetupIntentResponse {
   clientSecret: string;
 }
@@ -127,6 +137,11 @@ export const BillingAPI = {
     const response = await API.get<InvoicesResponse>("/user/billing/invoices", {
       params: { page, limit }
     });
+    return response.data;
+  },
+
+  deleteInvoice: async (invoiceId: string): Promise<DeleteInvoiceResponse> => {
+    const response = await API.delete<DeleteInvoiceResponse>(`/user/billing/invoices/${encodeURIComponent(invoiceId)}`);
     return response.data;
   },
 

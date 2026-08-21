@@ -9,6 +9,7 @@ import API from "../../../services/api";
 import BillingUsageCard from "../../../components/dashboard/billing/BillingUsageCard";
 import PlanCard from "../../../components/dashboard/billing/PlanCard";
 import UpdatePaymentMethodModal from "../../../components/dashboard/billing/UpdatePaymentMethodModal";
+import InvoiceHistoryTable from "../../../components/dashboard/billing/InvoiceHistoryTable";
 import useBillingUsage from "../../../hooks/useBillingUsage";
 import {
   RotateCcw,
@@ -17,7 +18,8 @@ import {
   X,
   CreditCard,
   Download,
-  Receipt
+  Receipt,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -63,6 +65,11 @@ export default function BillingPage() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
+  // Per-row downloading state for invoices
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+  // Per-row deleting state for invoices
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
+
   // Authentication check
   useEffect(() => {
     if (!authLoading && !user) {
@@ -106,7 +113,7 @@ export default function BillingPage() {
           console.error("Error fetching payment method", err);
           return null;
         }),
-        BillingAPI.getInvoices().catch(err => {
+        BillingAPI.getInvoices(1, 50).catch(err => {
           console.error("Error fetching invoices", err);
           return null;
         })
@@ -174,10 +181,30 @@ export default function BillingPage() {
 
   // Secure download via auth token and blob conversion
   const handleDownloadInvoice = async (invoiceId: string) => {
+    if (!invoiceId) {
+      triggerToast("Invoice identifier is missing.", "error");
+      return;
+    }
+
+    setDownloadingInvoiceId(invoiceId);
     try {
-      const response = await API.get(`/user/billing/invoices/${invoiceId}/download`, {
+      const response = await API.get(`/user/billing/invoices/${encodeURIComponent(invoiceId)}/download`, {
         responseType: "blob"
       });
+
+      // Handle cases where server returned a JSON error inside a blob
+      if (response.data && response.data.type === "application/json") {
+        const errorText = await (response.data as Blob).text();
+        let parsedMessage = "Failed to download invoice PDF.";
+        try {
+          const json = JSON.parse(errorText);
+          parsedMessage = json.error || json.message || parsedMessage;
+        } catch (_) {
+          parsedMessage = errorText || parsedMessage;
+        }
+        throw new Error(parsedMessage);
+      }
+
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -185,11 +212,66 @@ export default function BillingPage() {
       link.setAttribute("download", `invoice-${invoiceId}.pdf`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode?.removeChild(link);
-      triggerToast("Invoice downloaded successfully!");
-    } catch (err) {
-      console.error("Failed to download invoice", err);
-      triggerToast("Failed to download invoice PDF.", "error");
+      window.URL.revokeObjectURL(url);
+      link.remove();
+      triggerToast("Invoice downloaded successfully!", "success");
+    } catch (err: any) {
+      console.error("Failed to download invoice:", err);
+      let errorMessage = "Failed to download invoice PDF.";
+
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.error) errorMessage = parsed.error;
+          else if (parsed.message) errorMessage = parsed.message;
+        } catch (_) {}
+      } else if (err?.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      triggerToast(errorMessage, "error");
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  };
+
+  // Safe delete invoice record
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    const targetId = invoice.invoiceNumber || invoice.id || invoice.transactionId;
+    if (!targetId) {
+      triggerToast("Invoice identifier is missing.", "error");
+      return;
+    }
+
+    setDeletingInvoiceId(targetId);
+    try {
+      const res = await BillingAPI.deleteInvoice(targetId);
+      if (res && res.success) {
+        // Immediately update state without requiring full page refresh
+        setInvoices((prev) =>
+          prev.filter(
+            (inv) =>
+              inv.id !== invoice.id &&
+              inv.invoiceNumber !== invoice.invoiceNumber &&
+              (invoice.transactionId ? inv.transactionId !== invoice.transactionId : true)
+          )
+        );
+        triggerToast("Invoice record removed successfully", "success");
+      } else {
+        throw new Error(res?.error || "Failed to remove invoice record.");
+      }
+    } catch (err: any) {
+      console.error("Failed to delete invoice:", err);
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to remove invoice record. Please try again.";
+      triggerToast(errorMessage, "error");
+    } finally {
+      setDeletingInvoiceId(null);
     }
   };
 
@@ -451,95 +533,17 @@ export default function BillingPage() {
               </div>
 
               {/* Invoice History Section (Takes 2 columns) */}
-              <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    Invoice History
-                  </h2>
-                  <p className="text-xs text-[#2D1B3D]/50 mt-1">
-                    View and download your past billing transactions.
-                  </p>
-                </div>
-
-                {initialBillingLoading ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
-                ) : billingError ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
-                    <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                    <p className="text-xs font-semibold text-[#2D1B3D]">Failed to load invoices</p>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="py-3 px-5">Invoice Number</th>
-                            <th className="py-3 px-5">Plan</th>
-                            <th className="py-3 px-5">Billing Period</th>
-                            <th className="py-3 px-5">Customer</th>
-                            <th className="py-3 px-5">Amount</th>
-                            <th className="py-3 px-5">Transaction ID</th>
-                            <th className="py-3 px-5">Status</th>
-                            <th className="py-3 px-5 text-right">Download</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E8C4B8]/10">
-                          {invoices.length === 0 ? (
-                            <tr>
-                              <td colSpan={8} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
-                                No invoices available.
-                              </td>
-                            </tr>
-                          ) : (
-                            invoices.map((invoice) => (
-                              <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
-                                <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
-                                  {invoice.invoiceNumber || invoice.id}
-                                </td>
-                                <td className="py-3 px-5 text-[#2D1B3D]/80">
-                                  {invoice.planName || "Pro"}
-                                </td>
-                                <td className="py-3 px-5 text-[#2D1B3D]/65 text-[11px]">
-                                  {invoice.billingPeriod || "Monthly"}
-                                </td>
-                                <td className="py-3 px-5 text-[#2D1B3D]/80">
-                                  <div className="font-medium">{invoice.customerName || "Customer"}</div>
-                                  <div className="text-[10px] text-[#2D1B3D]/50">{invoice.customerEmail}</div>
-                                </td>
-                                <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
-                                  {invoice.currency === "USD" ? "$" : invoice.currency}
-                                  {invoice.amount.toFixed(2)}
-                                </td>
-                                <td className="py-3 px-5 font-mono text-[10px] text-[#2D1B3D]/60">
-                                  {invoice.transactionId || "-"}
-                                </td>
-                                <td className="py-3 px-5">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                    invoice.status === "Paid"
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-250"
-                                      : "bg-amber-50 text-amber-700 border-amber-250"
-                                  }`}>
-                                    {invoice.status}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-5 text-right">
-                                  <button
-                                    onClick={() => handleDownloadInvoice(invoice.invoiceNumber || invoice.id)}
-                                    className="p-1.5 text-[#C9A84C] hover:text-[#2D1B3D] hover:bg-[#FAF8F5] rounded-lg border border-[#E8C4B8]/10 transition-colors inline-flex items-center justify-center"
-                                    title="Download Invoice"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+              <div className="lg:col-span-2">
+                <InvoiceHistoryTable
+                  invoices={invoices}
+                  loading={initialBillingLoading}
+                  error={billingError}
+                  onDownload={handleDownloadInvoice}
+                  downloadingInvoiceId={downloadingInvoiceId}
+                  onDelete={handleDeleteInvoice}
+                  deletingInvoiceId={deletingInvoiceId}
+                  itemsPerPage={5}
+                />
               </div>
             </div>
 
