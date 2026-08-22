@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { Plan } from "../../../services/billingService";
 
@@ -13,122 +13,158 @@ interface PlanCardProps {
 }
 
 export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCardProps) {
-  const isPro = plan.id.toLowerCase().trim() === "pro";
-  const isEnterprise = plan.id.toLowerCase().trim() === "enterprise";
+  const planId = plan.id.toLowerCase().trim();
+  const isPro = planId === "pro";
+  const isEnterprise = planId === "enterprise";
+  const isFree = planId === "free";
 
-  // Determine pricing text
-  let priceText = `$${plan.price}/mo`;
-  if (isEnterprise) {
-    priceText = "Custom";
-  } else if (plan.price === 0) {
-    priceText = "$0/mo";
-  }
+  // Price display
+  const priceDisplay = isEnterprise ? "Custom" : plan.price === 0 ? "$0" : `$${plan.price}`;
+  const showPerMonth = !isEnterprise;
 
-  // Action button configuration
+  // Button text
   let buttonText = "Upgrade";
-  if (isCurrent) {
-    buttonText = "Current Plan";
-  } else if (plan.id.toLowerCase().trim() === "free") {
-    buttonText = "Downgrade";
-  } else if (isEnterprise) {
-    buttonText = "Contact Sales";
-  } else {
-    buttonText = `Upgrade to ${plan.name}`;
-  }
+  if (isCurrent) buttonText = "✓ Current Plan";
+  else if (isFree) buttonText = "Downgrade";
+  else if (isEnterprise) buttonText = "Contact Sales";
+  else buttonText = "Upgrade";
 
   const handleAction = () => {
     if (isCurrent || updating) return;
     onSelect(plan.id);
   };
 
+  if (isPro) {
+    return (
+      <motion.div
+        whileHover={{ y: -4 }}
+        transition={{ type: "spring", stiffness: 300 }}
+        className="bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white rounded-2xl p-6 shadow-lg flex flex-col justify-between h-full relative overflow-hidden"
+      >
+        {/* Subtle glow overlay */}
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_white,_transparent)]" />
+
+        <div className="relative z-10">
+          <h3 className="font-semibold text-white text-base mb-1">{plan.name}</h3>
+          <div className="flex items-baseline gap-1 mb-4">
+            <span className="text-3xl font-bold text-white">{priceDisplay}</span>
+            {showPerMonth && (
+              <span className="text-white/70 text-sm font-normal">/mo</span>
+            )}
+          </div>
+
+          <ul className="space-y-2.5 my-5">
+            {plan.features.map((feature, i) => (
+              <li key={i} className="flex items-center gap-2 text-xs text-white/90">
+                <Check className="w-4 h-4 text-white/90 flex-shrink-0" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="relative z-10">
+          <button
+            onClick={handleAction}
+            disabled={isCurrent || updating}
+            className="w-full bg-white/20 hover:bg-white/30 text-white font-medium py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 transition-all duration-200"
+          >
+            {isCurrent ? (
+              <span>✓ Current Plan</span>
+            ) : updating ? (
+              <span>Processing...</span>
+            ) : (
+              <>
+                <Zap className="w-3.5 h-3.5" />
+                <span>Upgrade</span>
+              </>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (isEnterprise) {
+    return (
+      <motion.div
+        whileHover={{ y: -4 }}
+        transition={{ type: "spring", stiffness: 300 }}
+        className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col justify-between h-full"
+      >
+        <div>
+          <h3 className="font-semibold text-slate-900 text-base mb-1">{plan.name}</h3>
+          <div className="flex items-baseline gap-1 mb-4">
+            <span className="text-3xl font-bold text-slate-900">{priceDisplay}</span>
+          </div>
+
+          <ul className="space-y-2.5 my-5">
+            {plan.features.map((feature, i) => (
+              <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={handleAction}
+          disabled={isCurrent || updating}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium py-2.5 rounded-xl shadow-sm text-sm transition-all duration-200 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {updating && !isCurrent ? "Processing..." : "Contact Sales"}
+        </button>
+      </motion.div>
+    );
+  }
+
+  // Free & Business
   return (
     <motion.div
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 300 }}
-      className={`rounded-2xl p-6 border flex flex-col justify-between h-full relative overflow-hidden transition-all duration-300 ${
-        isPro
-          ? "bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 text-white border-none shadow-xl scale-[1.02] md:scale-[1.03]"
-          : "bg-white border-[#E8C4B8]/30 text-[#2D1B3D] shadow-sm hover:shadow-md"
-      }`}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col justify-between h-full"
     >
-      {/* Current Plan Badge */}
-      {isCurrent && (
-        <div className="absolute top-4 right-4 z-10">
-          <span
-            className={`inline-flex px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-full ${
-              isPro
-                ? "bg-white text-indigo-700"
-                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-            }`}
-          >
-            Current Plan
-          </span>
-        </div>
-      )}
-
-      {/* Plan Header */}
       <div>
-        <h3
-          className={`font-display text-2xl font-bold mb-2 ${isPro ? "text-white" : "text-[#2D1B3D]"}`}
-          style={{ fontFamily: "'Playfair Display', serif" }}
-        >
-          {plan.name}
-        </h3>
-        <p className={`text-xs mb-6 ${isPro ? "text-white/70" : "text-[#2D1B3D]/50"}`}>
-          {isPro
-            ? "Ideal for growing hosts needing messaging & analytics"
-            : plan.id === "free"
-            ? "Basic package for casual event management"
-            : plan.id === "business"
-            ? "Perfect for organizations & commercial events"
-            : "Tailored options for large enterprises"}
-        </p>
-
-        {/* Plan Price */}
-        <div className="mb-6 flex items-baseline gap-1">
-          <span className="text-3xl font-extrabold tracking-tight">{priceText}</span>
-          {!isEnterprise && (
-            <span className={`text-xs ${isPro ? "text-white/60" : "text-[#2D1B3D]/40"}`}>
-              /month
-            </span>
+        <h3 className="font-semibold text-slate-900 text-base mb-1">{plan.name}</h3>
+        <div className="flex items-baseline gap-1 mb-4">
+          <span className="text-3xl font-bold text-slate-900">{priceDisplay}</span>
+          {showPerMonth && (
+            <span className="text-slate-400 text-sm font-normal">/mo</span>
           )}
         </div>
 
-        {/* Features list */}
-        <ul className="space-y-3 mb-8">
+        <ul className="space-y-2.5 my-5">
           {plan.features.map((feature, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-xs">
-              <span
-                className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${
-                  isPro ? "bg-white/20 text-white" : "bg-[#2D1B3D]/5 text-[#2D1B3D]/70"
-                }`}
-              >
-                <Check className="w-3 h-3" />
-              </span>
-              <span className={isPro ? "text-white/90" : "text-[#2D1B3D]/70"}>{feature}</span>
+            <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+              <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <span>{feature}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* Plan CTA Button */}
-      <div>
-        <button
-          onClick={handleAction}
-          disabled={isCurrent || updating}
-          className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.98] focus:outline-none ${
-            isCurrent
-              ? isPro
-                ? "bg-white/10 text-white cursor-not-allowed border border-white/20"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-              : isPro
-              ? "bg-[#C9A84C] text-[#2D1B3D] hover:bg-[#b59541] hover:shadow-lg shadow-md"
-              : "bg-[#2D1B3D] text-white hover:bg-[#3d2a52] hover:shadow-md shadow-sm"
-          }`}
-        >
-          {updating && !isCurrent ? "Processing..." : buttonText}
-        </button>
-      </div>
+      <button
+        onClick={handleAction}
+        disabled={isCurrent || updating}
+        className={`w-full font-medium py-2.5 rounded-xl shadow-sm text-sm flex items-center justify-center gap-1.5 transition-all duration-200 ${
+          isCurrent
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+            : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:opacity-90"
+        }`}
+      >
+        {isCurrent ? (
+          <span>✓ Current Plan</span>
+        ) : updating ? (
+          <span>Processing...</span>
+        ) : (
+          <>
+            <Zap className="w-3.5 h-3.5" />
+            <span>Upgrade</span>
+          </>
+        )}
+      </button>
     </motion.div>
   );
 }

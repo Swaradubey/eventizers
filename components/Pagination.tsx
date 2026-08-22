@@ -72,7 +72,7 @@ export default function Pagination({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 pb-2 border-t border-slate-200/80 text-sm select-none">
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 pb-2 border-t border-blue-100/80 text-sm select-none">
       <div className="text-slate-500 font-medium text-xs sm:text-sm">
         Showing <span className="font-semibold text-slate-900">{startIndex}</span> to{" "}
         <span className="font-semibold text-slate-900">{endIndex}</span> of{" "}
@@ -84,7 +84,7 @@ export default function Pagination({
           type="button"
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           disabled={currentPage <= 1 || loading}
-          className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all shadow-xs disabled:opacity-40 disabled:pointer-events-none focus:outline-none"
+          className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-blue-100 rounded-xl text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-xs disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           aria-label="Previous page"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -98,12 +98,12 @@ export default function Pagination({
             type="button"
             onClick={() => typeof p === "number" && onPageChange(p)}
             disabled={p === "..." || loading}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold transition-all focus:outline-none ${
+            className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
               p === currentPage
-                ? "bg-[#625BF6] text-white shadow-sm border border-transparent font-bold"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 border border-transparent font-bold"
                 : p === "..."
                 ? "cursor-default text-slate-400 bg-transparent border-transparent"
-                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-xs"
+                : "bg-white border border-blue-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 shadow-xs"
             }`}
             aria-label={typeof p === "number" ? `Page ${p}` : "More pages"}
             aria-current={p === currentPage ? "page" : undefined}
@@ -117,7 +117,7 @@ export default function Pagination({
           type="button"
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           disabled={currentPage >= totalPages || loading}
-          className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all shadow-xs disabled:opacity-40 disabled:pointer-events-none focus:outline-none"
+          className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-blue-100 rounded-xl text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-xs disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           aria-label="Next page"
         >
           <span className="hidden sm:inline">Next</span>

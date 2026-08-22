@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar";
 import { useSidebar } from "../../../context/SidebarContext";
+import { useTheme } from "../../../context/ThemeContext";
 import settingsService, {
   AdminProfileData,
   AdminNotificationSettingsData,
@@ -12,16 +13,15 @@ import settingsService, {
   AdminTeamMemberData,
   AdminPreferencesData
 } from "../../../services/settingsService";
+import { getImageUrl } from "../../../utils/imageUrl";
 import {
   User,
   Bell,
-  Shield,
+  Lock,
   Users,
-  Sliders,
   CheckCircle,
   AlertCircle,
   X,
-  Lock,
   Plus,
   Trash2,
   Key,
@@ -29,7 +29,7 @@ import {
   Settings,
   Mail,
   Loader2,
-  Camera
+  Menu
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,9 +37,11 @@ export default function AdminSettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
+  const { setTheme } = useTheme();
 
   // Navigation state
   const [activeTab, setActiveTab] = useState("profile");
+  const [showPhotoInput, setShowPhotoInput] = useState(false);
 
   // Loading & Error states
   const [pageLoading, setPageLoading] = useState(true);
@@ -164,6 +166,8 @@ export default function AdminSettingsPage() {
       const res = await settingsService.updateProfile(profileData);
       if (res.success) {
         showToast(res.message || "Profile updated successfully!");
+        const profileRes = await settingsService.getProfile();
+        if (profileRes.success) setProfileData(profileRes.data);
       }
     } catch (err: any) {
       showToast(err.response?.data?.error || "Failed to update profile.", "error");
@@ -180,10 +184,11 @@ export default function AdminSettingsPage() {
       const res = await settingsService.updateNotifications(updated);
       if (res.success) {
         showToast("Notification settings auto-saved.");
+        const notifRes = await settingsService.getNotifications();
+        if (notifRes.success) setNotificationData(notifRes.data);
       }
     } catch (err: any) {
       showToast("Failed to save notification settings.", "error");
-      // revert state
       setNotificationData(notificationData);
     }
   };
@@ -196,10 +201,11 @@ export default function AdminSettingsPage() {
       const res = await settingsService.updateSecurity(updated);
       if (res.success) {
         showToast("Security settings auto-saved.");
+        const secRes = await settingsService.getSecurity();
+        if (secRes.success) setSecurityData(secRes.data);
       }
     } catch (err: any) {
       showToast("Failed to save security settings.", "error");
-      // revert state
       setSecurityData(securityData);
     }
   };
@@ -285,6 +291,9 @@ export default function AdminSettingsPage() {
       const res = await settingsService.updatePreferences(preferencesData);
       if (res.success) {
         showToast("Preferences saved successfully!");
+        setTheme(preferencesData.theme as any);
+        const prefRes = await settingsService.getPreferences();
+        if (prefRes.success) setPreferencesData(prefRes.data);
       }
     } catch (err: any) {
       showToast("Failed to save preferences.", "error");
@@ -295,8 +304,8 @@ export default function AdminSettingsPage() {
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#2D1B3D] animate-spin" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
       </div>
     );
   }
@@ -304,45 +313,62 @@ export default function AdminSettingsPage() {
   const TABS = [
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "security", label: "Privacy & Security", icon: Shield },
+    { id: "security", label: "Privacy & Security", icon: Lock },
     { id: "team", label: "Team", icon: Users },
-    { id: "preferences", label: "Preferences", icon: Sliders }
+    { id: "preferences", label: "Preferences", icon: Globe }
   ];
 
+  // Helper initial letter for Avatar
+  const initialLetter = (profileData.fullName || user?.name || "A")[0]?.toUpperCase() || "A";
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 flex flex-col relative overflow-x-hidden">
+      {/* Subtle cross grid background pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(#CBD5E1_1px,transparent_1px)] [background-size:28px_28px] opacity-40 pointer-events-none" />
+
+      {/* Atmospheric Soft Blur Highlights */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-200/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-48 right-1/4 w-[500px] h-[500px] bg-cyan-200/20 rounded-full blur-[100px] pointer-events-none" />
+
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 z-10">
         {/* Page Header */}
-        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display">
-                Settings
-              </h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/25">
-                Admin
-              </span>
-            </div>
-            <p className="text-sm text-[#2D1B3D]/60 mt-1">
-              Configure system preferences, security, profiles and manage team accounts.
-            </p>
+        <div className="mb-8 flex flex-col justify-start items-start gap-1">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Button for Mobile Sidebar */}
+            <button
+              onClick={() => setIsOpen(true)}
+              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 shadow-sm transition-colors focus:outline-none"
+              aria-label="Open navigation"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Purple / Blue Settings Gear Icon */}
+            <Settings className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-600 stroke-[1.8] flex-shrink-0" />
+
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
+              Settings
+            </h1>
           </div>
+          <p className="text-sm text-slate-500 font-normal">
+            Manage your account and platform preferences
+          </p>
         </div>
 
         {pageLoading ? (
           <div className="flex-1 flex items-center justify-center py-24">
-            <Loader2 className="w-12 h-12 text-[#2D1B3D]/40 animate-spin" />
+            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center max-w-md mx-auto my-12">
+          <div className="bg-red-50/70 border border-red-200 rounded-3xl p-8 text-center max-w-md mx-auto my-12 shadow-sm">
             <AlertCircle className="w-10 h-10 text-red-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-red-800">Database Connection Issue</h3>
-            <p className="text-sm text-red-700 mt-2">{error}</p>
+            <h3 className="text-lg font-bold text-red-900">Database Connection Issue</h3>
+            <p className="text-sm text-red-700 mt-2 leading-relaxed">{error}</p>
             <button
               onClick={loadSettings}
-              className="mt-5 px-5 py-2.5 text-xs font-bold text-white bg-red-700 rounded-xl hover:bg-red-800 transition-all"
+              className="mt-5 px-5 py-2.5 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all shadow-sm"
             >
               Retry Loading Settings
             </button>
@@ -350,7 +376,7 @@ export default function AdminSettingsPage() {
         ) : (
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             {/* Left Vertical Navigation Menu */}
-            <aside className="w-full lg:w-64 bg-white border border-[#E8C4B8]/30 rounded-2xl p-3 shadow-sm flex flex-col gap-1.5">
+            <aside className="w-full lg:w-64 bg-white border border-slate-100/90 rounded-3xl p-3 shadow-sm flex flex-col gap-1.5 shrink-0">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -358,110 +384,127 @@ export default function AdminSettingsPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl transition-all relative ${
+                    className={`flex items-center gap-3.5 px-4 py-3 text-sm font-semibold rounded-2xl transition-all relative text-left ${
                       isActive
-                        ? "text-[#5C4318] bg-[#FAF0D6] border border-[#EAD8AF]/50 shadow-sm"
-                        : "text-[#8C7A5B] hover:bg-[#FAF8F5] hover:text-[#5C4318]"
+                        ? "text-indigo-600 bg-gradient-to-r from-blue-50 to-cyan-50/80 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/80"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? "text-[#C9A84C]" : "text-[#8C7A5B]"}`} />
-                    {tab.label}
+                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-indigo-600 stroke-[2.2]" : "text-slate-400 stroke-[1.8]"}`} />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
             </aside>
 
             {/* Right Tab Content Panel */}
-            <section className="flex-1 w-full bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 md:p-8 shadow-sm min-h-[500px]">
+            <section className="flex-1 w-full bg-white border border-slate-100/90 rounded-3xl p-7 sm:p-10 md:p-12 shadow-sm min-h-[520px]">
               {/* Profile Tab */}
               {activeTab === "profile" && (
-                <form onSubmit={handleProfileSave} className="flex flex-col gap-6">
+                <form onSubmit={handleProfileSave} className="flex flex-col gap-8">
                   <div>
-                    <h3 className="text-lg font-bold font-display">Profile Details</h3>
-                    <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Manage your user identity and organization info.</p>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                      Profile information
+                    </h2>
                   </div>
 
-                  {/* Profile Image & Preview */}
-                  <div className="flex items-center gap-5">
-                    <div className="relative w-20 h-20 rounded-full border border-[#E8C4B8]/40 bg-[#FAF8F5] overflow-hidden flex items-center justify-center">
+                  {/* Avatar Section */}
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-gradient-to-b from-blue-600 to-cyan-400 flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-md shadow-cyan-500/20 overflow-hidden shrink-0">
                       {profileData.profileImage ? (
                         <img
-                          src={profileData.profileImage}
+                          src={getImageUrl(profileData.profileImage)}
                           alt="Profile Preview"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full rounded-full object-cover"
                           onError={(e) => {
                             (e.target as any).src = "";
-                            showToast("Unable to load profile image URL", "error");
                           }}
                         />
                       ) : (
-                        <User className="w-8 h-8 text-[#8C7A5B]/50" />
+                        <span>{initialLetter}</span>
                       )}
                     </div>
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                        Profile Image URL
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://example.com/avatar.jpg"
-                        value={profileData.profileImage}
-                        onChange={(e) => setProfileData({ ...profileData, profileImage: e.target.value })}
-                        className="w-full max-w-md px-3.5 py-2 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none transition-all"
-                      />
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoInput(!showPhotoInput)}
+                        className="text-sm font-bold text-slate-800 hover:text-slate-900 transition-colors text-left"
+                      >
+                        Change Photo
+                      </button>
+                      {showPhotoInput && (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                          <input
+                            id="profileImageInput"
+                            type="url"
+                            placeholder="Enter image URL..."
+                            value={profileData.profileImage}
+                            onChange={(e) => setProfileData({ ...profileData, profileImage: e.target.value })}
+                            className="w-64 px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-500 text-slate-800"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPhotoInput(false)}
+                            className="text-xs text-slate-400 hover:text-slate-600"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                  {/* Form Fields Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
                         Full Name
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="Enter full name"
+                        placeholder="Alex Morgan"
                         value={profileData.fullName}
                         onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                        className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none transition-all"
+                        className="w-full px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                       />
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                        Email Address
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
+                        Email
                       </label>
                       <input
                         type="email"
                         required
-                        placeholder="Enter email address"
+                        placeholder="alex@eventizers.com"
                         value={profileData.email}
                         onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                        className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none transition-all"
+                        className="w-full px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                       />
                     </div>
 
-                    <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                        Organization / Company
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
+                        Organization
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter organization name"
+                        placeholder="Eventizers"
                         value={profileData.organization}
                         onChange={(e) => setProfileData({ ...profileData, organization: e.target.value })}
-                        className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none transition-all"
+                        className="w-full px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                       />
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-[#E8C4B8]/20 flex justify-end">
+                  <div className="pt-2">
                     <button
                       type="submit"
                       disabled={saveLoading}
-                      className="px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                      className="px-7 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 rounded-xl shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
                     >
-                      {saveLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {saveLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                       Save Changes
                     </button>
                   </div>
@@ -470,37 +513,38 @@ export default function AdminSettingsPage() {
 
               {/* Notifications Tab */}
               {activeTab === "notifications" && (
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-8">
                   <div>
-                    <h3 className="text-lg font-bold font-display">Notification Settings</h3>
-                    <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Toggle alert channels and digest frequencies.</p>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Notification Settings</h2>
+                    <p className="text-sm text-slate-500 mt-1">Manage alert preferences and system update frequencies.</p>
                   </div>
 
-                  <div className="divide-y divide-[#E8C4B8]/20 flex flex-col">
+                  <div className="divide-y divide-slate-100 flex flex-col">
                     {[
-                      { key: "rsvpResponses", title: "RSVP Responses", desc: "Get notified as soon as any guest sends their RSVP status." },
-                      { key: "eventReminders", title: "Event Reminders", desc: "Receive automated system notification updates before events start." },
-                      { key: "securityAlerts", title: "Security Alerts", desc: "Get alerted immediately on new login activities or authorization changes." },
-                      { key: "weeklySummary", title: "Weekly Summary Report", desc: "Weekly newsletter digest summarizing metrics, ticks, and check-ins." },
-                      { key: "productUpdates", title: "Product Updates", desc: "Stay informed about features, product roadmap updates and alerts." }
+                      { key: "rsvpResponses", title: "RSVP Responses", desc: "Get notified immediately as guests confirm their attendance." },
+                      { key: "eventReminders", title: "Event Reminders", desc: "Receive automated system notification updates before events begin." },
+                      { key: "securityAlerts", title: "Security Alerts", desc: "Get alerted immediately on new login activities or account security changes." },
+                      { key: "weeklySummary", title: "Weekly Summary Report", desc: "Weekly digest summarizing invitation metrics, RSVPs, and check-ins." },
+                      { key: "productUpdates", title: "Product Updates", desc: "Stay informed about feature releases, roadmap updates, and news." }
                     ].map((item) => {
                       const value = notificationData[item.key as keyof AdminNotificationSettingsData];
                       return (
                         <div key={item.key} className="py-4.5 flex justify-between items-center gap-4">
                           <div className="flex-1 flex flex-col gap-0.5">
-                            <h4 className="text-xs font-bold text-[#2D1B3D]">{item.title}</h4>
-                            <p className="text-[11px] text-[#2D1B3D]/55 leading-relaxed">{item.desc}</p>
+                            <h4 className="text-sm font-semibold text-slate-900">{item.title}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
                           </div>
-                          {/* Toggle Switch */}
+                          {/* Modern Gradient Toggle Switch */}
                           <button
+                            type="button"
                             onClick={() => handleNotificationToggle(item.key as keyof AdminNotificationSettingsData)}
-                            className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-all outline-none ${
-                              value ? "bg-[#C9A84C]" : "bg-[#E8C4B8]/30"
+                            className={`w-11 h-6 flex items-center rounded-full p-1 transition-all outline-none ${
+                              value ? "bg-gradient-to-r from-blue-600 to-cyan-400 shadow-sm shadow-blue-500/20" : "bg-slate-200"
                             }`}
                           >
                             <div
-                              className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-all duration-200 ${
-                                value ? "translate-x-4" : "translate-x-0"
+                              className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-200 ${
+                                value ? "translate-x-5" : "translate-x-0"
                               }`}
                             />
                           </button>
@@ -517,32 +561,33 @@ export default function AdminSettingsPage() {
                   {/* Security Toggles */}
                   <div className="flex flex-col gap-6">
                     <div>
-                      <h3 className="text-lg font-bold font-display">Privacy Settings</h3>
-                      <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Control data visibility and auth preferences.</p>
+                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Privacy Settings</h2>
+                      <p className="text-sm text-slate-500 mt-1">Control public visibility and account data sharing.</p>
                     </div>
 
-                    <div className="divide-y divide-[#E8C4B8]/20 flex flex-col">
+                    <div className="divide-y divide-slate-100 flex flex-col">
                       {[
-                        { key: "twoFactorAuth", title: "Two-factor Authentication (2FA)", desc: "Enforce verification verification code check on admin logins." },
-                        { key: "publicProfile", title: "Public Directory Profile", desc: "Let external visitors discover your admin page profile." },
-                        { key: "dataSharing", title: "Anonymous Data Sharing", desc: "Participate in usage metrics reporting for better server updates." }
+                        { key: "twoFactorAuth", title: "Two-factor Authentication (2FA)", desc: "Enforce verification code check on every login." },
+                        { key: "publicProfile", title: "Public Directory Profile", desc: "Allow external visitors to discover your event profile." },
+                        { key: "dataSharing", title: "Anonymous Data Sharing", desc: "Share anonymous usage analytics to improve service reliability." }
                       ].map((item) => {
                         const value = securityData[item.key as keyof AdminSecuritySettingsData];
                         return (
                           <div key={item.key} className="py-4.5 flex justify-between items-center gap-4">
                             <div className="flex-1 flex flex-col gap-0.5">
-                              <h4 className="text-xs font-bold text-[#2D1B3D]">{item.title}</h4>
-                              <p className="text-[11px] text-[#2D1B3D]/55 leading-relaxed">{item.desc}</p>
+                              <h4 className="text-sm font-semibold text-slate-900">{item.title}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleSecurityToggle(item.key as keyof AdminSecuritySettingsData)}
-                              className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-all outline-none ${
-                                value ? "bg-[#C9A84C]" : "bg-[#E8C4B8]/30"
+                              className={`w-11 h-6 flex items-center rounded-full p-1 transition-all outline-none ${
+                                value ? "bg-gradient-to-r from-blue-600 to-cyan-400 shadow-sm shadow-blue-500/20" : "bg-slate-200"
                               }`}
                             >
                               <div
-                                className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-all duration-200 ${
-                                  value ? "translate-x-4" : "translate-x-0"
+                                className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-200 ${
+                                  value ? "translate-x-5" : "translate-x-0"
                                 }`}
                               />
                             </button>
@@ -553,18 +598,18 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* Password Change Form */}
-                  <form onSubmit={handlePasswordSave} className="flex flex-col gap-5 border-t border-[#E8C4B8]/20 pt-8">
+                  <form onSubmit={handlePasswordSave} className="flex flex-col gap-6 border-t border-slate-100 pt-8">
                     <div>
-                      <h3 className="text-lg font-bold font-display flex items-center gap-2">
-                        <Key className="w-5 h-5 text-[#C9A84C]" />
+                      <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        <Key className="w-5 h-5 text-indigo-600" />
                         Change Password
                       </h3>
-                      <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Change password settings regularly to keep account safe.</p>
+                      <p className="text-sm text-slate-500 mt-1">Keep your account secure with a strong password.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4.5 max-w-md">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                    <div className="grid grid-cols-1 gap-5 max-w-md">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-slate-700">
                           Current Password
                         </label>
                         <input
@@ -572,12 +617,12 @@ export default function AdminSettingsPage() {
                           required
                           value={passwordForm.currentPassword}
                           onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                          className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none"
+                          className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                         />
                       </div>
 
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-slate-700">
                           New Password
                         </label>
                         <input
@@ -585,12 +630,12 @@ export default function AdminSettingsPage() {
                           required
                           value={passwordForm.newPassword}
                           onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                          className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none"
+                          className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                         />
                       </div>
 
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-slate-700">
                           Confirm New Password
                         </label>
                         <input
@@ -598,7 +643,7 @@ export default function AdminSettingsPage() {
                           required
                           value={passwordForm.confirmPassword}
                           onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                          className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none"
+                          className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -607,9 +652,9 @@ export default function AdminSettingsPage() {
                       <button
                         type="submit"
                         disabled={saveLoading}
-                        className="px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="px-7 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 rounded-xl shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
                       >
-                        {saveLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {saveLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                         Update Password
                       </button>
                     </div>
@@ -622,12 +667,12 @@ export default function AdminSettingsPage() {
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                      <h3 className="text-lg font-bold font-display">Team Management</h3>
-                      <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Control roles and authorizations of team members.</p>
+                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Team Management</h2>
+                      <p className="text-sm text-slate-500 mt-1">Manage team members, roles, and collaboration permissions.</p>
                     </div>
                     <button
                       onClick={() => setInviteModalOpen(true)}
-                      className="px-4 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl flex items-center gap-2 transition-all shadow-sm focus:outline-none"
+                      className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 rounded-xl flex items-center gap-2 shadow-md shadow-cyan-500/20 hover:shadow-lg transition-all focus:outline-none"
                     >
                       <Plus className="w-4 h-4" />
                       Invite Member
@@ -635,57 +680,57 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* Team Members List */}
-                  <div className="border border-[#E8C4B8]/30 rounded-2xl overflow-hidden mt-2">
+                  <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs mt-2">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
-                          <tr className="border-b border-[#E8C4B8]/30 bg-[#FAF8F5]/50">
-                            <th className="py-3.5 px-4.5 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Name</th>
-                            <th className="py-3.5 px-4.5 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Email</th>
-                            <th className="py-3.5 px-4.5 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Role</th>
-                            <th className="py-3.5 px-4.5 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Status</th>
-                            <th className="py-3.5 px-4.5 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">Actions</th>
+                          <tr className="border-b border-slate-200/80 bg-slate-50/80">
+                            <th className="py-3.5 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+                            <th className="py-3.5 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+                            <th className="py-3.5 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                            <th className="py-3.5 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="py-3.5 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#E8C4B8]/20 bg-white">
+                        <tbody className="divide-y divide-slate-100 bg-white">
                           {teamMembers.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="py-12 text-center text-xs text-[#2D1B3D]/45">
+                              <td colSpan={5} className="py-12 text-center text-sm text-slate-400">
                                 No team members found. Start by inviting a teammate.
                               </td>
                             </tr>
                           ) : (
                             teamMembers.map((member) => (
-                              <tr key={member.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
-                                <td className="py-3.5 px-4.5 text-xs font-semibold text-[#2D1B3D]">{member.name}</td>
-                                <td className="py-3.5 px-4.5 text-xs text-[#2D1B3D]/75">{member.email}</td>
-                                <td className="py-3.5 px-4.5">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              <tr key={member.id} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3.5 px-5 text-sm font-medium text-slate-900">{member.name}</td>
+                                <td className="py-3.5 px-5 text-sm text-slate-600">{member.email}</td>
+                                <td className="py-3.5 px-5">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                     member.role === "Owner"
-                                      ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                      ? "bg-purple-50 text-purple-700 border border-purple-200/60"
                                       : member.role === "Admin"
-                                      ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                      : "bg-blue-50 text-blue-700 border border-blue-200"
+                                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200/60"
+                                      : "bg-slate-100 text-slate-700 border border-slate-200/60"
                                   }`}>
                                     {member.role}
                                   </span>
                                 </td>
-                                <td className="py-3.5 px-4.5">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                <td className="py-3.5 px-5">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                     member.status === "active"
-                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                                      : "bg-amber-50 text-amber-700 border border-amber-200/60"
                                   }`}>
                                     {member.status}
                                   </span>
                                 </td>
-                                <td className="py-3.5 px-4.5 text-right">
+                                <td className="py-3.5 px-5 text-right">
                                   <button
                                     onClick={() => handleRemoveMember(member.id)}
-                                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center"
                                     title="Remove team member"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </td>
                               </tr>
@@ -700,21 +745,21 @@ export default function AdminSettingsPage() {
 
               {/* Preferences Tab */}
               {activeTab === "preferences" && (
-                <form onSubmit={handlePreferencesSave} className="flex flex-col gap-6">
+                <form onSubmit={handlePreferencesSave} className="flex flex-col gap-8">
                   <div>
-                    <h3 className="text-lg font-bold font-display">System Preferences</h3>
-                    <p className="text-xs text-[#2D1B3D]/50 mt-0.5">Customize UI display formatting options.</p>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">System Preferences</h2>
+                    <p className="text-sm text-slate-500 mt-1">Customize UI display formatting and regional options.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                        UI theme
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
+                        UI Theme
                       </label>
                       <select
                         value={preferencesData.theme}
                         onChange={(e) => setPreferencesData({ ...preferencesData, theme: e.target.value })}
-                        className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                        className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800 font-normal"
                       >
                         <option value="light">Light Theme</option>
                         <option value="dark">Dark Theme</option>
@@ -722,14 +767,14 @@ export default function AdminSettingsPage() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
                         Language
                       </label>
                       <select
                         value={preferencesData.language}
                         onChange={(e) => setPreferencesData({ ...preferencesData, language: e.target.value })}
-                        className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                        className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800 font-normal"
                       >
                         <option value="en">English (US)</option>
                         <option value="es">Español</option>
@@ -739,14 +784,14 @@ export default function AdminSettingsPage() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
                         Timezone
                       </label>
                       <select
                         value={preferencesData.timezone}
                         onChange={(e) => setPreferencesData({ ...preferencesData, timezone: e.target.value })}
-                        className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                        className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800 font-normal"
                       >
                         <option value="UTC">Coordinated Universal Time (UTC)</option>
                         <option value="America/New_York">Eastern Time (EST/EDT)</option>
@@ -756,14 +801,14 @@ export default function AdminSettingsPage() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
                         Date Format
                       </label>
                       <select
                         value={preferencesData.dateFormat}
                         onChange={(e) => setPreferencesData({ ...preferencesData, dateFormat: e.target.value })}
-                        className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                        className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800 font-normal"
                       >
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                         <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -771,14 +816,14 @@ export default function AdminSettingsPage() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-slate-900">
                         Time Format
                       </label>
                       <select
                         value={preferencesData.timeFormat}
                         onChange={(e) => setPreferencesData({ ...preferencesData, timeFormat: e.target.value })}
-                        className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                        className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800 font-normal"
                       >
                         <option value="24h">24 Hour (00:00 - 23:59)</option>
                         <option value="12h">12 Hour (00:00 AM/PM - 12:00 AM/PM)</option>
@@ -786,13 +831,13 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-[#E8C4B8]/20 flex justify-end">
+                  <div className="pt-2">
                     <button
                       type="submit"
                       disabled={saveLoading}
-                      className="px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                      className="px-7 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 rounded-xl shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
                     >
-                      {saveLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {saveLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                       Save Preferences
                     </button>
                   </div>
@@ -813,7 +858,7 @@ export default function AdminSettingsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setInviteModalOpen(false)}
-              className="absolute inset-0 bg-[#2D1B3D]/30 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
 
             {/* Modal Body */}
@@ -821,16 +866,18 @@ export default function AdminSettingsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white border border-[#E8C4B8]/40 shadow-2xl rounded-2xl w-full max-w-md p-6 z-10 relative overflow-hidden font-body text-[#2D1B3D]"
+              className="bg-white border border-slate-100 shadow-2xl rounded-3xl w-full max-w-md p-7 sm:p-8 z-10 relative overflow-hidden font-sans text-slate-900"
             >
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-base font-bold font-display flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-[#C9A84C]" />
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-indigo-600 flex items-center justify-center">
+                    <Mail className="w-4 h-4" />
+                  </div>
                   Invite Team Member
                 </h3>
                 <button
                   onClick={() => setInviteModalOpen(false)}
-                  className="p-1.5 hover:bg-[#FAF8F5] rounded-xl text-[#2D1B3D]/50 transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -838,7 +885,7 @@ export default function AdminSettingsPage() {
 
               <form onSubmit={handleInviteSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                  <label className="text-xs font-semibold text-slate-700">
                     Full Name
                   </label>
                   <input
@@ -847,12 +894,12 @@ export default function AdminSettingsPage() {
                     placeholder="Enter teammate full name"
                     value={inviteForm.name}
                     onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-                    className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none"
+                    className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                  <label className="text-xs font-semibold text-slate-700">
                     Email Address
                   </label>
                   <input
@@ -861,18 +908,18 @@ export default function AdminSettingsPage() {
                     placeholder="Enter email address"
                     value={inviteForm.email}
                     onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                    className="px-3.5 py-2.5 text-xs border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none"
+                    className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                  <label className="text-xs font-semibold text-slate-700">
                     Member Role
                   </label>
                   <select
                     value={inviteForm.role}
                     onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                    className="px-3 py-2.5 text-xs bg-white border border-[#E8C4B8]/30 rounded-xl focus:border-[#2D1B3D] outline-none cursor-pointer"
+                    className="px-4 py-3 text-sm bg-slate-50/60 border border-slate-200/80 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none cursor-pointer transition-all text-slate-800"
                   >
                     <option value="Member">Member</option>
                     <option value="Admin">Admin</option>
@@ -880,20 +927,20 @@ export default function AdminSettingsPage() {
                   </select>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-[#E8C4B8]/20 flex justify-end gap-2.5">
+                <div className="mt-4 pt-5 border-t border-slate-100 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setInviteModalOpen(false)}
-                    className="px-4 py-2.5 text-xs font-bold border border-[#E8C4B8]/30 rounded-xl hover:bg-[#FAF8F5] transition-all"
+                    className="px-5 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className="px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                    className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500 rounded-xl shadow-md shadow-cyan-500/25 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
-                    {saveLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {saveLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                     Send Invitation
                   </button>
                 </div>
@@ -910,19 +957,19 @@ export default function AdminSettingsPage() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border bg-white border-slate-200/80"
           >
             {toast.type === "success" ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
             )}
-            <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+            <span className="text-sm font-medium text-slate-800">{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+              className="text-slate-400 hover:text-slate-600 transition-colors ml-2"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </motion.div>
         )}

@@ -174,35 +174,35 @@ export default function AdminTicketingPage() {
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex flex-col font-body text-slate-800 relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-100 bg-white/90 hover:bg-blue-50 transition-colors shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
               <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
+                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 Ticketing
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage ticket sales across the platform</p>
+              <p className="text-sm text-slate-500 mt-1">Manage ticket sales across the platform</p>
             </div>
           </div>
         </div>
@@ -214,13 +214,13 @@ export default function AdminTicketingPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100/80"
             >
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -233,17 +233,17 @@ export default function AdminTicketingPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-emerald-500/20">
+                <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Total Platform Revenue
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   ${loading ? "..." : totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
@@ -253,17 +253,17 @@ export default function AdminTicketingPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#2D1B3D]/5 flex items-center justify-center flex-shrink-0">
-                <Users className="w-6 h-6 text-[#2D1B3D]" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-blue-500/20">
+                <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Total Tickets Sold
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   {loading ? "..." : totalTicketsSold}
                 </p>
               </div>
@@ -273,17 +273,17 @@ export default function AdminTicketingPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                <Ticket className="w-6 h-6 text-[#C9A84C]" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-indigo-500/20">
+                <Ticket className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Active Ticket Tiers
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   {loading ? "..." : tiers.length}
                 </p>
               </div>
@@ -292,7 +292,7 @@ export default function AdminTicketingPage() {
         </div>
 
         {/* Search and Table Area */}
-        <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
+        <div className="bg-white/90 border border-blue-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px] backdrop-blur-md">
           <div className="mb-6 w-full max-w-xs">
             <div className="relative">
               <input
@@ -300,7 +300,7 @@ export default function AdminTicketingPage() {
                 placeholder="Search ticket tiers..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-4 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 placeholder:text-slate-400 transition-all"
               />
             </div>
           </div>
@@ -308,28 +308,28 @@ export default function AdminTicketingPage() {
           {loading ? (
             <div className="space-y-4 py-6">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-14 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-xl animate-pulse" />
+                <div key={i} className="h-14 bg-blue-50/50 border border-blue-100/60 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
               <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-              <h4 className="text-lg font-semibold text-[#2D1B3D]">Error loading ticketing tiers</h4>
-              <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{error}</p>
+              <h4 className="text-lg font-semibold text-slate-900">Error loading ticketing tiers</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
               <button
                 onClick={fetchData}
-                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               >
                 Retry
               </button>
             </div>
           ) : filteredTiers.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                <Ticket className="w-8 h-8 text-[#C9A84C]" />
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+                <Ticket className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">No Ticket Tiers Found</h3>
-              <p className="text-xs text-[#2D1B3D]/50 max-w-sm">
+              <h3 className="text-xl font-bold font-display text-slate-900 mb-1">No Ticket Tiers Found</h3>
+              <p className="text-xs text-slate-500 max-w-sm">
                 No active ticket tiers found under the search criteria.
               </p>
             </div>
@@ -337,56 +337,56 @@ export default function AdminTicketingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                  <tr className="border-b border-blue-100 bg-blue-50/50">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider rounded-l-xl">
                       Tier Name
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Event Title
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Event Creator
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Price
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Sold / Capacity
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Revenue Earned
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider text-right rounded-r-xl">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
+                <tbody className="divide-y divide-blue-50">
                   {filteredTiers.map((tier) => (
-                    <tr key={tier.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group">
-                      <td className="py-4 px-4 text-sm font-semibold text-[#2D1B3D]">
+                    <tr key={tier.id} className="hover:bg-blue-50/40 transition-colors duration-150 group">
+                      <td className="py-4 px-4 text-sm font-semibold text-slate-900">
                         {tier.name}
                       </td>
 
-                      <td className="py-4 px-4 text-xs font-medium text-[#2D1B3D]/70 max-w-[130px] truncate">
+                      <td className="py-4 px-4 text-xs font-medium text-slate-600 max-w-[130px] truncate">
                         {tier.eventTitle || "General"}
                       </td>
 
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/80">
+                      <td className="py-4 px-4 text-xs text-slate-700">
                         <div className="flex flex-col">
                           <span className="font-semibold">{tier.eventCreator?.name || "-"}</span>
-                          <span className="text-[10px] text-[#2D1B3D]/50">{tier.eventCreator?.email || "-"}</span>
+                          <span className="text-[10px] text-slate-400">{tier.eventCreator?.email || "-"}</span>
                         </div>
                       </td>
 
-                      <td className="py-4 px-4 text-sm font-semibold text-[#2D1B3D]">
+                      <td className="py-4 px-4 text-sm font-semibold text-slate-900">
                         ${tier.price.toFixed(2)}
                       </td>
 
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/70 font-semibold">
+                      <td className="py-4 px-4 text-xs text-slate-600 font-semibold">
                         {tier.quantitySold ?? 0} / {tier.capacity}
                       </td>
 
@@ -401,7 +401,7 @@ export default function AdminTicketingPage() {
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : tier.status === "SOLD_OUT"
                               ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-gray-50 text-gray-500 border-gray-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
                           }`}
                         >
                           {tier.status}
@@ -413,14 +413,14 @@ export default function AdminTicketingPage() {
                           <button
                             onClick={() => handleEditClick(tier)}
                             title="Edit Tier"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(tier.id || null)}
                             title="Delete Tier"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500/20"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -444,21 +444,21 @@ export default function AdminTicketingPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsEditModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
+                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Edit Ticket Tier (Admin)
                 </h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -473,7 +473,7 @@ export default function AdminTicketingPage() {
 
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     Tier Name *
                   </label>
                   <input
@@ -481,25 +481,25 @@ export default function AdminTicketingPage() {
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     Description
                   </label>
                   <textarea
                     rows={2}
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors resize-none"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                       Price ($) *
                     </label>
                     <input
@@ -509,12 +509,12 @@ export default function AdminTicketingPage() {
                       step={0.01}
                       value={formPrice}
                       onChange={(e) => setFormPrice(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                       Capacity *
                     </label>
                     <input
@@ -523,7 +523,7 @@ export default function AdminTicketingPage() {
                       min={0}
                       value={formCapacity}
                       onChange={(e) => setFormCapacity(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                     />
                   </div>
                 </div>
@@ -534,25 +534,25 @@ export default function AdminTicketingPage() {
                     id="isActive"
                     checked={formIsActive}
                     onChange={(e) => setFormIsActive(e.target.checked)}
-                    className="w-4 h-4 text-[#2D1B3D] border-[#E8C4B8]/60 focus:ring-[#2D1B3D] rounded cursor-pointer"
+                    className="w-4 h-4 text-blue-600 border-blue-200 focus:ring-blue-500 rounded cursor-pointer"
                   />
-                  <label htmlFor="isActive" className="text-xs font-semibold text-[#2D1B3D]/80 cursor-pointer">
+                  <label htmlFor="isActive" className="text-xs font-semibold text-slate-700 cursor-pointer">
                     Tier Sales Active
                   </label>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6 pt-3 border-t border-blue-100">
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-md disabled:opacity-50"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {submitting ? "Saving..." : "Save Changes"}
                   </button>
@@ -572,24 +572,24 @@ export default function AdminTicketingPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold font-display mb-2 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Delete / Archive Ticket Tier
               </h3>
-              <p className="text-sm text-[#2D1B3D]/70 mb-6">
+              <p className="text-sm text-slate-500 mb-6">
                 Are you sure you want to delete this ticket tier? If there are any sales, this tier will be archived instead of permanently deleted.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                 >
                   Cancel
                 </button>

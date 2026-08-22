@@ -279,35 +279,35 @@ export default function AdminCheckInPage() {
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex flex-col font-body text-slate-800 relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-100 bg-white/90 hover:bg-blue-50 transition-colors shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
               <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
+                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 Check-In Portal
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage guest arrivals across all events</p>
+              <p className="text-sm text-slate-500 mt-1">Manage guest arrivals across all events</p>
             </div>
           </div>
         </div>
@@ -319,13 +319,13 @@ export default function AdminCheckInPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100/80"
             >
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -334,9 +334,9 @@ export default function AdminCheckInPage() {
         </AnimatePresence>
 
         {/* Selection Bar */}
-        <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="bg-white/90 border border-blue-100 rounded-2xl p-5 shadow-sm mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between backdrop-blur-md">
           <div className="relative w-full sm:max-w-md">
-            <span className="text-[10px] font-bold text-[#2D1B3D]/50 uppercase block mb-1">Select Event to Manage</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Select Event to Manage</span>
             <div className="relative">
               <select
                 value={selectedEventId}
@@ -345,7 +345,7 @@ export default function AdminCheckInPage() {
                   setGuests([]);
                   setSummary(null);
                 }}
-                className="appearance-none w-full bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-10 rounded-xl text-sm font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                className="appearance-none w-full bg-slate-50 border border-blue-100 px-4 py-2.5 pr-10 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               >
                 {events.length === 0 ? (
                   <option value="">No Events Found</option>
@@ -357,7 +357,7 @@ export default function AdminCheckInPage() {
                   ))
                 )}
               </select>
-              <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
@@ -365,17 +365,17 @@ export default function AdminCheckInPage() {
             <button
               onClick={() => setIsScanOpen(true)}
               disabled={!selectedEventId}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             >
               <QrCode className="w-4 h-4" />
               Scan Ticket / Code
             </button>
             <button
               onClick={() => selectedEventId && loadCheckInData(selectedEventId)}
-              className="p-2.5 rounded-xl border border-[#E8C4B8]/45 bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+              className="p-2.5 rounded-xl border border-blue-100 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               title="Refresh Stats"
             >
-              <RefreshCw className="w-4 h-4 text-[#2D1B3D]/65" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -386,15 +386,15 @@ export default function AdminCheckInPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm"
+              className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-emerald-500/20">
                   <UserCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">Checked In</p>
-                  <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">{summary.checkedIn}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Checked In</p>
+                  <p className="text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight">{summary.checkedIn}</p>
                 </div>
               </div>
             </motion.div>
@@ -402,15 +402,15 @@ export default function AdminCheckInPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm"
+              className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-amber-500/20">
                   <UserX className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">Pending Arrivals</p>
-                  <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">{summary.pending}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Arrivals</p>
+                  <p className="text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight">{summary.pending}</p>
                 </div>
               </div>
             </motion.div>
@@ -418,15 +418,15 @@ export default function AdminCheckInPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm"
+              className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                  <Users className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-blue-500/20">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">Total Guest List</p>
-                  <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">{summary.total}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Guest List</p>
+                  <p className="text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight">{summary.total}</p>
                 </div>
               </div>
             </motion.div>
@@ -435,22 +435,22 @@ export default function AdminCheckInPage() {
 
         {/* Main Attendees list */}
         {selectedEventId && (
-          <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col min-h-[400px]">
+          <div className="bg-white/90 border border-blue-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-[400px] backdrop-blur-md">
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
               <div className="relative w-full sm:max-w-xs">
-                <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search guest name / email / ticket..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 placeholder:text-slate-400 transition-all"
                 />
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/50" />
-                <span className="text-xs font-semibold text-[#2D1B3D]/60">Status:</span>
+                <Filter className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">Status:</span>
                 <div className="relative">
                   <select
                     value={statusFilter}
@@ -458,37 +458,37 @@ export default function AdminCheckInPage() {
                       setStatusFilter(e.target.value);
                       setPage(1);
                     }}
-                    className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2 pr-8 rounded-xl text-xs font-bold text-[#2D1B3D] cursor-pointer focus:outline-none"
+                    className="appearance-none bg-slate-50 border border-blue-100 px-4 py-2 pr-8 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="all">All Attendees</option>
                     <option value="checked_in">Checked In</option>
                     <option value="pending">Pending</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
             </div>
 
             {loading && guests.length === 0 ? (
               <div className="flex-1 flex items-center justify-center py-20">
-                <div className="w-8 h-8 border-3 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
               </div>
             ) : error ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
                 <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-                <h3 className="text-lg font-semibold text-[#2D1B3D]">Error loading attendees</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Error loading attendees</h3>
                 <button
                   onClick={() => loadCheckInData(selectedEventId)}
-                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl"
+                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
                   Try Again
                 </button>
               </div>
             ) : guests.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-                <Users className="w-10 h-10 text-[#C9A84C] mb-3" />
-                <h4 className="text-sm font-semibold text-[#2D1B3D]">No attendees found</h4>
-                <p className="text-xs text-[#2D1B3D]/50 max-w-xs mt-1">
+                <Users className="w-10 h-10 text-blue-600 mb-3" />
+                <h4 className="text-sm font-semibold text-slate-900">No attendees found</h4>
+                <p className="text-xs text-slate-500 max-w-xs mt-1">
                   Ensure the search or filters matches registered RSVPs or ticketing orders.
                 </p>
               </div>
@@ -497,27 +497,27 @@ export default function AdminCheckInPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-[#E8C4B8]/30">
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Name</th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Email</th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Ticket Tier</th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">GPS Checked</th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Check-in Time</th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">Actions</th>
+                      <tr className="border-b border-blue-100 bg-blue-50/50">
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider rounded-l-xl">Name</th>
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">Email</th>
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">Ticket Tier</th>
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">GPS Checked</th>
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">Check-in Time</th>
+                        <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider text-right rounded-r-xl">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E8C4B8]/20">
+                    <tbody className="divide-y divide-blue-50">
                       {guests.map((g) => {
                         const isCheckedIn = g.status === "CHECKED_IN";
                         return (
-                          <tr key={g.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150">
+                          <tr key={g.id} className="hover:bg-blue-50/40 transition-colors duration-150">
                             <td className="py-4 px-4">
-                              <span className="text-sm font-semibold text-[#2D1B3D]">{g.name}</span>
+                              <span className="text-sm font-semibold text-slate-900">{g.name}</span>
                             </td>
 
-                            <td className="py-4 px-4 text-xs text-[#2D1B3D]/80">{g.email}</td>
+                            <td className="py-4 px-4 text-xs text-slate-600">{g.email}</td>
 
-                            <td className="py-4 px-4 text-xs font-bold text-[#C9A84C]">{g.ticketTier}</td>
+                            <td className="py-4 px-4 text-xs font-bold text-blue-600">{g.ticketTier}</td>
 
                             <td className="py-4 px-4">
                               {isCheckedIn && g.gpsVerified ? (
@@ -531,13 +531,13 @@ export default function AdminCheckInPage() {
                               )}
                             </td>
 
-                            <td className="py-4 px-4 text-xs text-[#2D1B3D]/60">
+                            <td className="py-4 px-4 text-xs text-slate-500">
                               {g.checkedInAt ? new Date(g.checkedInAt).toLocaleTimeString(undefined, {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               }) : "-"}
                               {g.method && (
-                                <span className="text-[9px] uppercase tracking-wider text-[#2D1B3D]/40 ml-1.5 border border-[#E8C4B8]/40 px-1 py-0.5 rounded bg-white">
+                                <span className="text-[9px] uppercase tracking-wider text-blue-700 ml-1.5 border border-blue-100 px-1 py-0.5 rounded bg-blue-50">
                                   {g.method}
                                 </span>
                               )}
@@ -555,7 +555,7 @@ export default function AdminCheckInPage() {
                               ) : (
                                 <button
                                   onClick={() => handleManualCheckIn(g.id)}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-lg active:scale-95 transition-all shadow"
+                                  className="inline-flex items-center gap-1 px-3.5 py-1.5 text-[10px] font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg active:scale-95 transition-all shadow-sm shadow-blue-500/20"
                                 >
                                   CHECK IN
                                 </button>
@@ -570,20 +570,20 @@ export default function AdminCheckInPage() {
 
                 {/* Pagination footer */}
                 {totalPages > 1 && (
-                  <div className="flex justify-between items-center pt-4 border-t border-[#E8C4B8]/20 mt-4 text-xs">
-                    <span className="text-[#2D1B3D]/50 font-semibold">Page {page} of {totalPages}</span>
+                  <div className="flex justify-between items-center pt-4 border-t border-blue-100 mt-4 text-xs">
+                    <span className="text-slate-500 font-semibold">Page {page} of {totalPages}</span>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="px-3 py-1 border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] rounded-lg disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white border border-blue-100 hover:bg-blue-50 text-slate-700 rounded-lg disabled:opacity-40 transition-all font-semibold"
                       >
                         Prev
                       </button>
                       <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="px-3 py-1 border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] rounded-lg disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white border border-blue-100 hover:bg-blue-50 text-slate-700 rounded-lg disabled:opacity-40 transition-all font-semibold"
                       >
                         Next
                       </button>
@@ -609,16 +609,16 @@ export default function AdminCheckInPage() {
                 setScanResult(null);
                 setQrInput("");
               }}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
+                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Scan / Validate Ticket Code
                 </h3>
                 <button
@@ -627,7 +627,7 @@ export default function AdminCheckInPage() {
                     setScanResult(null);
                     setQrInput("");
                   }}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -655,7 +655,7 @@ export default function AdminCheckInPage() {
 
               <form onSubmit={handleScanSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
                     Enter Ticket UUID or Guest QR ID code
                   </label>
                   <input
@@ -664,7 +664,7 @@ export default function AdminCheckInPage() {
                     value={qrInput}
                     onChange={(e) => setQrInput(e.target.value)}
                     placeholder="e.g. 5ca3269e-6baf-4b89-a2cc-ba1f34327808"
-                    className="w-full px-4 py-3 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors font-mono"
+                    className="w-full px-4 py-3 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors font-mono"
                   />
                 </div>
 
@@ -676,14 +676,14 @@ export default function AdminCheckInPage() {
                       setScanResult(null);
                       setQrInput("");
                     }}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={scanning}
-                    className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-md disabled:opacity-50"
+                    className="px-5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {scanning ? "Verifying..." : "Check In Code"}
                   </button>

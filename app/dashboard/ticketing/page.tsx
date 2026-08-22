@@ -22,12 +22,10 @@ import {
   Info,
   DollarSign,
   Users,
-  Percent,
   TrendingUp,
-  Activity,
-  PlusCircle,
   Clock,
   ShoppingCart,
+  Tag,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -76,7 +74,7 @@ function TicketingPageContent() {
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formPrice, setFormPrice] = useState("0");
-  const [formCurrency, setFormCurrency] = useState("INR");
+  const [formCurrency, setFormCurrency] = useState("USD");
   const [formCapacity, setFormCapacity] = useState("100");
   const [formMinPerOrder, setFormMinPerOrder] = useState("1");
   const [formMaxPerOrder, setFormMaxPerOrder] = useState("");
@@ -93,7 +91,7 @@ function TicketingPageContent() {
     setFormName("");
     setFormDescription("");
     setFormPrice("0");
-    setFormCurrency("INR");
+    setFormCurrency("USD");
     setFormCapacity("100");
     setFormMinPerOrder("1");
     setFormMaxPerOrder("");
@@ -121,6 +119,13 @@ function TicketingPageContent() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Currency Formatter Helper
+  const formatPrice = (amount: number, currency: string = "USD") => {
+    const symbol =
+      currency === "USD" ? "$" : currency === "EUR" ? "€" : currency === "INR" ? "₹" : currency === "GBP" ? "£" : "$";
+    return `${symbol}${amount.toLocaleString()}`;
+  };
 
   // Perform single verification check
   const verifyPaymentSession = async (sid: string, eventId: string) => {
@@ -163,8 +168,8 @@ function TicketingPageContent() {
       setVerificationError(null);
 
       let attempts = 0;
-      const maxAttempts = 12; // 12 attempts * 2s = 24 seconds limit
-      const intervalTime = 2000; // 2 seconds
+      const maxAttempts = 12;
+      const intervalTime = 2000;
 
       verifyPaymentSession(sessionId, selectedEventId).then((confirmed) => {
         if (!confirmed) {
@@ -337,7 +342,6 @@ function TicketingPageContent() {
     window.history.pushState({}, "", url.toString());
   };
 
-
   // Date formatter helpers
   const formatDateTime = (dateStr?: string | null) => {
     if (!dateStr) return "N/A";
@@ -366,7 +370,7 @@ function TicketingPageContent() {
     setFormName("");
     setFormDescription("");
     setFormPrice("0");
-    setFormCurrency("INR");
+    setFormCurrency("USD");
     setFormCapacity("100");
     setFormMinPerOrder("1");
     setFormMaxPerOrder("");
@@ -384,7 +388,7 @@ function TicketingPageContent() {
     setFormName(tier.name);
     setFormDescription(tier.description || "");
     setFormPrice(tier.price.toString());
-    setFormCurrency(tier.currency);
+    setFormCurrency(tier.currency || "USD");
     setFormCapacity(tier.capacity.toString());
     setFormMinPerOrder(tier.minPerOrder.toString());
     setFormMaxPerOrder(tier.maxPerOrder ? tier.maxPerOrder.toString() : "");
@@ -542,69 +546,53 @@ function TicketingPageContent() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div
+      className="min-h-screen bg-slate-50/50 flex flex-col font-sans text-slate-800 relative overflow-hidden"
+      style={{
+        backgroundImage: `radial-gradient(circle at 10% 15%, rgba(59, 130, 246, 0.05) 0%, transparent 45%),
+                          radial-gradient(circle at 90% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 45%),
+                          radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 60%),
+                          url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.5 6.5h1v5h-1zm-2 2h5v1h-5z' fill='%2394A3B8' fill-opacity='0.09'/%3E%3C/svg%3E")`,
+      }}
+    >
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
-
-        {/* Top Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-6 pb-12 z-10">
+        {/* Main Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                 Ticketing
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Sell tickets and manage pricing tiers</p>
+              <p className="text-slate-500 text-sm mt-1">
+                Sell tickets and manage pricing tiers
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between w-full sm:w-auto">
-            {/* Event Switcher Dropdown */}
-            {events.length > 0 && (
-              <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs w-full sm:w-auto flex-1">
-                <span className="text-[#2D1B3D]/50 font-semibold shrink-0">Event:</span>
-                <select
-                  value={selectedEventId || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSelectedEventId(val || null);
-                    updateUrl(val || null);
-                  }}
-                  className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer flex-1 w-full truncate"
-                >
-                  {events.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
+          <div>
             <button
               onClick={handleCreateClick}
               disabled={events.length === 0}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-base font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none whitespace-nowrap shrink-0 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-medium px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
             >
-              <Plus className="w-3 h-3" />
-              New Ticket Tier
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>New Ticket Tier</span>
             </button>
           </div>
         </div>
@@ -616,17 +604,17 @@ function TicketingPageContent() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200/80"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -636,17 +624,17 @@ function TicketingPageContent() {
 
         {/* If user has no events created */}
         {events.length === 0 && !loading && (
-          <div className="flex-1 bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-              <Calendar className="w-8 h-8 text-[#C9A84C]" />
+          <div className="flex-1 bg-white border border-slate-100/80 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+              <Calendar className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-bold font-display text-[#2D1B3D] mb-2">No Events Found</h3>
-            <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">No Events Found</h3>
+            <p className="text-sm text-slate-500 max-w-md mb-8">
               You must create at least one event in the dashboard before you can manage ticket sales or create pricing tiers.
             </p>
             <button
               onClick={() => router.push("/dashboard")}
-              className="px-6 py-3 text-xs font-bold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors shadow-md focus:outline-none"
+              className="px-6 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md focus:outline-none"
             >
               Go to Events
             </button>
@@ -655,29 +643,50 @@ function TicketingPageContent() {
 
         {events.length > 0 && (
           <>
-            {/* Top Overview KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Event Selector Dropdown */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Select Event
+              </label>
+              <div className="relative w-full sm:w-72">
+                <select
+                  value={selectedEventId || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedEventId(val || null);
+                    updateUrl(val || null);
+                  }}
+                  className="w-full bg-white border border-slate-100 shadow-sm rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 cursor-pointer appearance-none pr-10"
+                >
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Top Metric / Stat Cards (4-column Grid) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
               {/* Card 1: Total Revenue */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
+                transition={{ duration: 0.3, delay: 0 }}
+                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
-                    <TrendingUp className="w-6 h-6" />
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-emerald-400 to-green-500 shadow-sm">
+                    <DollarSign className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Total Revenue
-                    </p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {loading || !summary
-                        ? "..."
-                        : `${summary.totalRevenue.toLocaleString()} INR`}
-                    </p>
-                  </div>
+                  <p className="text-xs font-medium text-slate-500">Total Revenue</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {loading || !summary
+                      ? "..."
+                      : formatPrice(summary.totalRevenue, tiers[0]?.currency || "USD")}
+                  </p>
                 </div>
               </motion.div>
 
@@ -685,21 +694,17 @@ function TicketingPageContent() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
+                transition={{ duration: 0.3, delay: 0.05 }}
+                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
-                    <Ticket className="w-6 h-6" />
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-indigo-500 to-blue-500 shadow-sm">
+                    <Ticket className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Tickets Sold
-                    </p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {loading || !summary ? "..." : summary.ticketsSold}
-                    </p>
-                  </div>
+                  <p className="text-xs font-medium text-slate-500">Tickets Sold</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {loading || !summary ? "..." : summary.ticketsSold}
+                  </p>
                 </div>
               </motion.div>
 
@@ -707,400 +712,348 @@ function TicketingPageContent() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
-                    <Users className="w-6 h-6" />
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-sky-400 to-blue-600 shadow-sm">
+                    <Users className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Capacity
-                    </p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {loading || !summary ? "..." : summary.capacity}
-                    </p>
-                  </div>
+                  <p className="text-xs font-medium text-slate-500">Capacity</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {loading || !summary ? "..." : summary.capacity}
+                  </p>
                 </div>
               </motion.div>
 
-              {/* Card 4: Sell-through percentage */}
+              {/* Card 4: Sell-through */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all duration-200"
+                transition={{ duration: 0.3, delay: 0.15 }}
+                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
-                    <Percent className="w-6 h-6" />
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-amber-500 to-red-500 shadow-sm">
+                    <TrendingUp className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Sell-Through
-                    </p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {loading || !summary ? "..." : `${summary.sellThrough}%`}
-                    </p>
-                  </div>
+                  <p className="text-xs font-medium text-slate-500">Sell-through</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {loading || !summary ? "..." : `${summary.sellThrough}%`}
+                  </p>
                 </div>
               </motion.div>
             </div>
 
-            {/* List and Filtering Workspace */}
-            <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col">
-
-              {/* Search filter bar */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6 w-full">
-                <div className="relative w-full sm:max-w-xs">
-                  <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search ticket tiers..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
-                  />
+            {/* Ticket Tier Section */}
+            <div className="space-y-4">
+              {/* Optional Search / Filter for Tiers */}
+              {tiers.length > 3 && (
+                <div className="flex justify-between items-center mb-4">
+                  <div className="relative w-full sm:max-w-xs">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search ticket tiers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none rounded-xl text-xs text-slate-800 transition-colors shadow-2xs"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Data Layout */}
+              {/* Loading Skeletons */}
               {loading ? (
-                // Skeletons loader
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
                   {[...Array(2)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-56 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl animate-pulse"
+                      className="h-32 bg-white rounded-2xl p-5 shadow-sm border border-slate-100 animate-pulse"
                     />
                   ))}
                 </div>
               ) : error ? (
-                // Error screen
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-                  <AlertCircle className="w-12 h-12 text-red-500 mb-3" />
-                  <h4 className="text-lg font-semibold text-[#2D1B3D]">Error loading ticket data</h4>
-                  <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{error}</p>
+                /* Error Screen */
+                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
+                  <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+                  <h4 className="text-base font-semibold text-slate-900">Error loading ticket data</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
                   <button
                     onClick={() => selectedEventId && fetchTicketingData(selectedEventId)}
-                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     Retry
                   </button>
                 </div>
               ) : tiers.length === 0 ? (
-                // Empty state
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-                  <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                    <Ticket className="w-8 h-8 text-[#C9A84C]" />
+                /* Empty Tiers State */
+                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-purple-50 text-indigo-500 flex items-center justify-center mb-4 shadow-sm">
+                    <Tag className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">No Ticket Tiers Found</h3>
-                  <p className="text-xs text-[#2D1B3D]/50 max-w-sm mb-6">
-                    Create ticket tiers for this event to set up pricing structures for your guests.
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">No Ticket Tiers Found</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mb-5">
+                    Create ticket tiers for this event to set up pricing structures and sell tickets to your guests.
                   </p>
                   <button
                     onClick={handleCreateClick}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl transition-all shadow-md active:scale-95"
                   >
-                    <PlusCircle className="w-4 h-4" />
-                    Create First Ticket Tier
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>Create First Ticket Tier</span>
                   </button>
                 </div>
               ) : filteredTiers.length === 0 ? (
-                // Empty search result state
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-                  <Search className="w-10 h-10 text-[#2D1B3D]/30 mb-2" />
-                  <p className="text-sm font-semibold text-[#2D1B3D]/60">No ticket tiers matches your search criteria.</p>
+                /* Search No Results */
+                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
+                  <Search className="w-8 h-8 text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-600">No ticket tiers match your search.</p>
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="mt-2 text-xs text-[#C9A84C] font-semibold hover:underline"
+                    className="mt-2 text-xs text-blue-600 font-semibold hover:underline"
                   >
-                    Clear Search Filter
+                    Clear search filter
                   </button>
                 </div>
               ) : (
-                // Cards Grid
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredTiers.map((tier) => {
-                    const sold = tier.quantitySold || 0;
-                    const cap = tier.capacity || 0;
-                    const percentage = cap > 0 ? Math.min(100, Math.round((sold / cap) * 100)) : 0;
+                /* Ticket Tier Cards */
+                filteredTiers.map((tier) => {
+                  const sold = tier.quantitySold || 0;
+                  const cap = tier.capacity || 0;
+                  const percentage = cap > 0 ? Math.min(100, Math.round((sold / cap) * 100)) : 0;
+                  const earned = tier.revenueEarned ?? (sold * tier.price);
 
-                    return (
-                      <motion.div
-                        key={tier.id}
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 flex flex-col justify-between shadow-sm relative group hover:shadow-md transition-all duration-200"
-                      >
-                        {/* Top row: Name & Badges */}
-                        <div>
-                          <div className="flex justify-between items-start gap-4 mb-2">
-                            <div>
-                              <h4 className="text-lg font-bold text-[#2D1B3D] leading-snug">
+                  return (
+                    <motion.div
+                      key={tier.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-100/80 mb-4 hover:shadow-md transition-all"
+                    >
+                      {/* Header Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-purple-50 text-indigo-500 flex items-center justify-center flex-shrink-0">
+                            <Tag className="w-5 h-5 stroke-[2]" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <h4 className="font-semibold text-slate-900 text-base md:text-lg">
                                 {tier.name}
                               </h4>
-                              {tier.description && (
-                                <p className="text-xs text-[#2D1B3D]/60 mt-1 line-clamp-2">
-                                  {tier.description}
-                                </p>
+                              {tier.status !== "ACTIVE" && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                    tier.status === "SOLD_OUT"
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-slate-100 text-slate-600 border-slate-200"
+                                  }`}
+                                >
+                                  {tier.status.replace("_", " ")}
+                                </span>
                               )}
                             </div>
-
-                            {/* Status Badge */}
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${tier.status === "ACTIVE"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : tier.status === "INACTIVE"
-                                  ? "bg-gray-50 text-gray-700 border-gray-200"
-                                  : tier.status === "SOLD_OUT"
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : tier.status === "SCHEDULED"
-                                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                                      : tier.status === "EXPIRED"
-                                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                                        : "bg-gray-50 text-gray-600 border-gray-200"
-                                }`}
-                            >
-                              {tier.status.replace("_", " ")}
-                            </span>
-                          </div>
-
-                          {/* Pricing details */}
-                          <div className="flex items-baseline gap-1.5 mt-3">
-                            <span className="text-2xl font-extrabold text-[#C9A84C]">
-                              {tier.price.toLocaleString()}
-                            </span>
-                            <span className="text-[10px] font-bold text-[#2D1B3D]/50 uppercase">
-                              {tier.currency}
-                            </span>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {tier.description || "Standard entry to the event"}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Mid section: Sales progress bar */}
-                        <div className="my-5 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-xl p-3.5 text-xs">
-                          <div className="flex justify-between items-center text-[10px] font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
-                            <span>Sales Progress</span>
-                            <span>{percentage}%</span>
-                          </div>
+                        {/* Right side: Price & Action Icons */}
+                        <div className="flex items-center gap-4 self-end sm:self-center">
+                          <span className="text-xl font-bold text-slate-900">
+                            {formatPrice(tier.price, tier.currency)}
+                          </span>
 
-                          {/* Progress pill */}
-                          <div className="w-full h-2 bg-[#E8C4B8]/25 rounded-full overflow-hidden mb-2">
-                            <div
-                              className="h-full bg-[#C9A84C] rounded-full transition-all duration-300"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
+                          <div className="flex items-center gap-2 text-slate-400">
+                            {tier.status === "ACTIVE" && (
+                              <button
+                                onClick={() => tier.id && handleBuyTicket(tier.id)}
+                                disabled={buyingTierId !== null}
+                                title="Buy Ticket"
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl transition-all shadow-xs"
+                              >
+                                {buyingTierId === tier.id ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                ) : (
+                                  <ShoppingCart className="w-3.5 h-3.5" />
+                                )}
+                                <span>Buy</span>
+                              </button>
+                            )}
 
-                          <div className="grid grid-cols-3 gap-2 text-center mt-1">
-                            <div className="border-r border-[#E8C4B8]/20">
-                              <p className="text-[10px] text-[#2D1B3D]/40 font-semibold uppercase">Sold</p>
-                              <p className="font-bold text-sm text-[#2D1B3D] mt-0.5">{tier.quantitySold}</p>
-                            </div>
-                            <div className="border-r border-[#E8C4B8]/20">
-                              <p className="text-[10px] text-[#2D1B3D]/40 font-semibold uppercase">Left</p>
-                              <p className="font-bold text-sm text-[#2D1B3D] mt-0.5">{tier.remainingQuantity}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-[#2D1B3D]/40 font-semibold uppercase">Revenue</p>
-                              <p className="font-bold text-sm text-[#C9A84C] mt-0.5">{(tier.revenueEarned || 0).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Bottom Row: Dates + Actions */}
-                        <div className="flex justify-between items-end border-t border-[#E8C4B8]/15 pt-4 text-[10px] text-[#2D1B3D]/50">
-                          <div className="space-y-1">
-                            <p className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#C9A84C]" />
-                              <span>Starts: {formatDateTime(tier.salesStartAt)}</span>
-                            </p>
-                            <p className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-red-500" />
-                              <span>Ends: {formatDateTime(tier.salesEndAt)}</span>
-                            </p>
-                          </div>
-
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => tier.id && handleBuyTicket(tier.id)}
-                              disabled={buyingTierId !== null || tier.status !== "ACTIVE"}
-                              className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-white bg-[#C9A84C] hover:bg-[#b0903c] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm focus:outline-none"
-                            >
-                              {buyingTierId === tier.id ? (
-                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                              ) : (
-                                <ShoppingCart className="w-3 h-3" />
-                              )}
-                              Buy Ticket
-                            </button>
                             <button
                               onClick={() => handleEditClick(tier)}
                               aria-label={`Edit ${tier.name}`}
-                              className="p-2 text-[#2D1B3D]/60 hover:text-[#C9A84C] hover:bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/30 transition-all focus:outline-none"
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                             >
-                              <Edit2 className="w-3.5 h-3.5" />
+                              <Edit2 className="w-4 h-4 stroke-[2]" />
                             </button>
+
                             <button
                               onClick={() => setDeleteConfirmId(tier.id || null)}
                               aria-label={`Delete ${tier.name}`}
-                              className="p-2 text-[#2D1B3D]/60 hover:text-red-600 hover:bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/30 transition-all focus:outline-none"
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4 stroke-[2]" />
                             </button>
                           </div>
                         </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                      </div>
+
+                      {/* Progress / Sales Row */}
+                      <div className="mt-5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-slate-500">
+                            {sold} / {cap} sold
+                          </span>
+                          <span className="font-bold text-slate-800">
+                            {formatPrice(earned, tier.currency)} earned
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                          <div
+                            className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })
               )}
             </div>
 
             {/* ───── MY TICKETS SECTION ───── */}
-            <div className="mt-8 bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3
-                    className="text-2xl font-semibold text-[#2D1B3D] font-display"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
-                    My Tickets
-                  </h3>
-                  <p className="text-xs text-[#2D1B3D]/60 mt-1">Your purchased tickets for this event</p>
+            {myTickets.length > 0 && (
+              <div className="mt-10 bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col">
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      My Tickets
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Your purchased tickets for this event
+                    </p>
+                  </div>
                 </div>
+
+                {/* Payment Verification Banner */}
+                {isVerifyingPayment && verificationState === "verifying" && (
+                  <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-semibold flex items-center gap-3">
+                    <div className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin flex-shrink-0"></div>
+                    <span>Verifying your ticket payment with the server. Please wait...</span>
+                  </div>
+                )}
+
+                {(verificationState === "failed" || verificationState === "timed_out") && (
+                  <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <span>{verificationError || "Payment verification failed."}</span>
+                    </div>
+                    <button
+                      onClick={handleRetryVerification}
+                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm"
+                    >
+                      Retry Verification
+                    </button>
+                  </div>
+                )}
+
+                {myTicketsLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-40 bg-slate-50 rounded-2xl animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : myTicketsError ? (
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+                    <h4 className="text-sm font-semibold text-slate-900">Error loading tickets</h4>
+                    <p className="text-xs text-slate-500 mt-1 max-w-xs">{myTicketsError}</p>
+                    <button
+                      onClick={() => selectedEventId && fetchMyTicketsData(selectedEventId)}
+                      className="mt-3 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {myTickets.map((ticket) => {
+                      const tierName = ticket.items?.map((i: any) => i.ticketTier?.name).join(", ") || "N/A";
+                      const quantity = ticket.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0;
+                      const paidDate = formatDateTime(ticket.paidAt || ticket.createdAt);
+
+                      return (
+                        <motion.div
+                          key={ticket.id}
+                          initial={{ opacity: 0, scale: 0.98 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-blue-200 transition-all duration-200"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start gap-4 mb-3">
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 truncate max-w-[160px]">
+                                  {ticket.event?.title || "Event Name"}
+                                </h4>
+                                <p className="text-[11px] font-semibold text-blue-600 mt-0.5 uppercase tracking-wider">
+                                  {tierName}
+                                </p>
+                              </div>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200">
+                                ACTIVE
+                              </span>
+                            </div>
+
+                            <div className="border-t border-dashed border-slate-200 my-3"></div>
+
+                            <div className="grid grid-cols-2 gap-y-2.5 text-[11px] font-medium text-slate-700">
+                              <div>
+                                <p className="text-slate-400 font-bold uppercase text-[9px]">Quantity</p>
+                                <p className="font-bold text-slate-900 mt-0.5">{quantity} Ticket{quantity > 1 ? "s" : ""}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400 font-bold uppercase text-[9px]">Amount Paid</p>
+                                <p className="font-bold text-slate-900 mt-0.5">{parseFloat(ticket.totalAmount).toLocaleString()} {ticket.currency}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400 font-bold uppercase text-[9px]">Purchase Date</p>
+                                <p className="font-bold text-slate-900 mt-0.5">{paidDate}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400 font-bold uppercase text-[9px]">Booking ID</p>
+                                <p className="font-mono font-bold text-slate-900 mt-0.5 truncate max-w-[100px]" title={ticket.id}>
+                                  #{ticket.id.slice(-8).toUpperCase()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-3 border-t border-slate-200/70 flex justify-between items-center">
+                            <span className="text-[10px] font-mono text-slate-400">Status: PAID</span>
+                            <button
+                              onClick={() => {
+                                alert(`Booking Details:\nEvent: ${ticket.event?.title}\nTier: ${tierName}\nQuantity: ${quantity}\nPaid: ${parseFloat(ticket.totalAmount).toLocaleString()} ${ticket.currency}\nBooking Reference: ${ticket.id}`);
+                              }}
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            >
+                              View Ticket
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-
-              {/* Payment Verification Banner */}
-              {isVerifyingPayment && verificationState === "verifying" && (
-                <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 text-xs font-semibold flex items-center gap-3">
-                  <div className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin flex-shrink-0"></div>
-                  <span>Verifying your ticket payment with the server. Please wait...</span>
-                </div>
-              )}
-
-              {(verificationState === "failed" || verificationState === "timed_out") && (
-                <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2.5">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                    <span>{verificationError || "Payment verification failed."}</span>
-                  </div>
-                  <button
-                    onClick={handleRetryVerification}
-                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm"
-                  >
-                    Retry Verification
-                  </button>
-                </div>
-              )}
-
-              {myTicketsLoading ? (
-                // Skeletons loader for tickets
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-40 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : myTicketsError ? (
-                // Error state
-                <div className="flex flex-col items-center justify-center text-center py-12">
-                  <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
-                  <h4 className="text-sm font-semibold text-[#2D1B3D]">Error loading tickets</h4>
-                  <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{myTicketsError}</p>
-                  <button
-                    onClick={() => selectedEventId && fetchMyTicketsData(selectedEventId)}
-                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : myTickets.length === 0 && verificationState !== "verifying" ? (
-                // Empty state
-                <div className="flex flex-col items-center justify-center text-center py-12 bg-[#FAF8F5]/30 rounded-2xl border border-dashed border-[#E8C4B8]/60">
-                  <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-4">
-                    <Ticket className="w-6 h-6 text-[#C9A84C]" />
-                  </div>
-                  <p className="text-sm font-semibold text-[#2D1B3D]/60">You have not purchased any tickets for this event yet</p>
-                </div>
-              ) : (
-                // Tickets Grid
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {myTickets.map((ticket) => {
-                    const tierName = ticket.items?.map((i: any) => i.ticketTier?.name).join(", ") || "N/A";
-                    const quantity = ticket.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0;
-                    const paidDate = formatDateTime(ticket.paidAt || ticket.createdAt);
-
-                    return (
-                      <motion.div
-                        key={ticket.id}
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group hover:shadow-md hover:border-[#C9A84C]/40 transition-all duration-200"
-                      >
-                        {/* Decorative ticket notch left & right */}
-                        <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white border border-[#E8C4B8]/40 rounded-full -translate-y-1/2 z-10 hidden sm:block"></div>
-                        <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white border border-[#E8C4B8]/40 rounded-full -translate-y-1/2 z-10 hidden sm:block"></div>
-
-                        <div>
-                          <div className="flex justify-between items-start gap-4 mb-3">
-                            <div>
-                              <h4 className="text-sm font-bold text-[#2D1B3D] truncate max-w-[160px]">
-                                {ticket.event?.title || "Event Name"}
-                              </h4>
-                              <p className="text-[10px] font-bold text-[#C9A84C] mt-0.5 uppercase tracking-wider">
-                                {tierName}
-                              </p>
-                            </div>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200">
-                              ACTIVE
-                            </span>
-                          </div>
-
-                          <div className="border-t border-dashed border-[#E8C4B8]/40 my-3"></div>
-
-                          <div className="grid grid-cols-2 gap-y-2.5 text-[10px] font-medium text-[#2D1B3D]/70">
-                            <div>
-                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Quantity</p>
-                              <p className="font-bold text-[#2D1B3D] mt-0.5">{quantity} Ticket{quantity > 1 ? "s" : ""}</p>
-                            </div>
-                            <div>
-                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Amount Paid</p>
-                              <p className="font-bold text-[#2D1B3D] mt-0.5">{parseFloat(ticket.totalAmount).toLocaleString()} {ticket.currency}</p>
-                            </div>
-                            <div>
-                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Purchase Date</p>
-                              <p className="font-bold text-[#2D1B3D] mt-0.5">{paidDate}</p>
-                            </div>
-                            <div>
-                              <p className="text-[#2D1B3D]/40 font-bold uppercase text-[9px]">Booking ID</p>
-                              <p className="font-mono font-bold text-[#2D1B3D] mt-0.5 truncate max-w-[100px] cursor-help" title={ticket.id}>
-                                #{ticket.id.slice(-8).toUpperCase()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-[#E8C4B8]/20 flex justify-between items-center">
-                          <span className="text-[9px] font-mono text-[#2D1B3D]/40">Status: PAID</span>
-                          <button
-                            onClick={() => {
-                              alert(`Booking Details:\nEvent: ${ticket.event?.title}\nTier: ${tierName}\nQuantity: ${quantity}\nPaid: ${parseFloat(ticket.totalAmount).toLocaleString()} ${ticket.currency}\nBooking Reference: ${ticket.id}`);
-                            }}
-                            className="text-[10px] font-bold text-[#C9A84C] hover:text-[#b0903c] transition-colors"
-                          >
-                            View Ticket
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            )}
           </>
         )}
       </main>
@@ -1114,23 +1067,23 @@ function TicketingPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddEditModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body flex flex-col max-h-[calc(100dvh-32px)]"
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 text-slate-800 font-sans flex flex-col max-h-[calc(100dvh-32px)]"
             >
-              {/* Header - fixed */}
+              {/* Header */}
               <div className="flex-shrink-0 p-6 pb-0">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-xl font-bold text-slate-900">
                     {editingTier ? "Edit Ticket Tier" : "New Ticket Tier"}
                   </h3>
                   <button
                     onClick={() => setIsAddEditModalOpen(false)}
-                    className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#FAF8F5] border border-transparent hover:border-[#E8C4B8]/30 transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1141,7 +1094,7 @@ function TicketingPageContent() {
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-6" style={{ WebkitOverflowScrolling: "touch" }}>
                 {/* Form level error */}
                 {formErrors.form && (
-                  <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center gap-2">
+                  <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                     <span>{formErrors.form}</span>
                   </div>
@@ -1151,14 +1104,14 @@ function TicketingPageContent() {
                 <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold">
                   {/* Tier Name */}
                   <div>
-                    <label className="block text-[#2D1B3D]/70 mb-1">Ticket Tier Name *</label>
+                    <label className="block text-slate-700 mb-1">Ticket Tier Name *</label>
                     <input
                       type="text"
                       required
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g. Early Bird, VIP Pass"
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                      placeholder="e.g. General Admission, VIP Pass"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                     />
                     {formErrors.name && (
                       <p className="text-[10px] text-red-600 mt-1">{formErrors.name}</p>
@@ -1167,22 +1120,22 @@ function TicketingPageContent() {
 
                   {/* Description */}
                   <div>
-                    <label className="block text-[#2D1B3D]/70 mb-1">Description</label>
+                    <label className="block text-slate-700 mb-1">Description</label>
                     <textarea
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder="Brief details about what the ticket includes (e.g. VIP drinks, front row seating)"
+                      placeholder="Brief details about what the ticket includes (e.g. Standard entry to the event)"
                       rows={2}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                     />
                   </div>
 
                   {/* Price & Currency */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Price *</label>
+                      <label className="block text-slate-700 mb-1">Price *</label>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#2D1B3D]/40 text-sm">₹</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
                         <input
                           type="number"
                           min="0"
@@ -1190,7 +1143,7 @@ function TicketingPageContent() {
                           required
                           value={formPrice}
                           onChange={(e) => setFormPrice(e.target.value)}
-                          className="w-full pl-8 pr-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                          className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                         />
                       </div>
                       {formErrors.price && (
@@ -1199,35 +1152,36 @@ function TicketingPageContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Currency</label>
+                      <label className="block text-slate-700 mb-1">Currency</label>
                       <select
                         value={formCurrency}
                         onChange={(e) => setFormCurrency(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] cursor-pointer"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
                       >
-                        <option value="INR">INR (₹)</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="GBP">GBP (£)</option>
                       </select>
                     </div>
                   </div>
 
                   {/* Capacity */}
                   <div>
-                    <label className="block text-[#2D1B3D]/70 mb-1">Capacity / Quantity Available *</label>
+                    <label className="block text-slate-700 mb-1">Capacity / Quantity Available *</label>
                     <input
                       type="number"
                       min="1"
                       required
                       value={formCapacity}
                       onChange={(e) => setFormCapacity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                     />
                     {formErrors.capacity && (
                       <p className="text-[10px] text-red-600 mt-1">{formErrors.capacity}</p>
                     )}
                     {editingTier && (
-                      <p className="text-[10px] text-[#2D1B3D]/40 mt-1">
+                      <p className="text-[10px] text-slate-500 mt-1">
                         Already sold: {editingTier.quantitySold} ticket(s)
                       </p>
                     )}
@@ -1236,14 +1190,14 @@ function TicketingPageContent() {
                   {/* Min / Max Tickets Per Order */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Min Tickets Per Order</label>
+                      <label className="block text-slate-700 mb-1">Min Tickets Per Order</label>
                       <input
                         type="number"
                         min="1"
                         required
                         value={formMinPerOrder}
                         onChange={(e) => setFormMinPerOrder(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                       />
                       {formErrors.minPerOrder && (
                         <p className="text-[10px] text-red-600 mt-1">{formErrors.minPerOrder}</p>
@@ -1251,14 +1205,14 @@ function TicketingPageContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Max Tickets Per Order</label>
+                      <label className="block text-slate-700 mb-1">Max Tickets Per Order</label>
                       <input
                         type="number"
                         min="1"
                         placeholder="No limit"
                         value={formMaxPerOrder}
                         onChange={(e) => setFormMaxPerOrder(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
                       />
                       {formErrors.maxPerOrder && (
                         <p className="text-[10px] text-red-600 mt-1">{formErrors.maxPerOrder}</p>
@@ -1269,22 +1223,22 @@ function TicketingPageContent() {
                   {/* Sales Start / End Dates */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Sales Start Date & Time</label>
+                      <label className="block text-slate-700 mb-1">Sales Start Date & Time</label>
                       <input
                         type="datetime-local"
                         value={formSalesStartAt}
                         onChange={(e) => setFormSalesStartAt(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] cursor-pointer"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[#2D1B3D]/70 mb-1">Sales End Date & Time</label>
+                      <label className="block text-slate-700 mb-1">Sales End Date & Time</label>
                       <input
                         type="datetime-local"
                         value={formSalesEndAt}
                         onChange={(e) => setFormSalesEndAt(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm font-medium focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] cursor-pointer"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
                       />
                       {formErrors.salesEndAt && (
                         <p className="text-[10px] text-red-600 mt-1">{formErrors.salesEndAt}</p>
@@ -1293,26 +1247,26 @@ function TicketingPageContent() {
                   </div>
 
                   {/* Status Options */}
-                  <div className="flex items-center gap-6 pt-2 bg-[#FAF8F5]/30 p-3 rounded-xl border border-[#E8C4B8]/20">
+                  <div className="flex items-center gap-6 pt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="isActiveCheckbox"
                         checked={formIsActive}
                         onChange={(e) => setFormIsActive(e.target.checked)}
-                        className="w-4 h-4 rounded border-[#E8C4B8]/40 text-[#C9A84C] focus:ring-[#C9A84C] cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
-                      <label htmlFor="isActiveCheckbox" className="text-[#2D1B3D] cursor-pointer select-none">
+                      <label htmlFor="isActiveCheckbox" className="text-slate-800 cursor-pointer select-none">
                         Active (visible to buyers)
                       </label>
                     </div>
 
                     <div className="flex-1 flex items-center justify-end gap-2">
-                      <label className="text-[#2D1B3D]/70">Admin Status:</label>
+                      <label className="text-slate-600">Status:</label>
                       <select
                         value={formStatus}
                         onChange={(e) => setFormStatus(e.target.value as TicketTierStatus)}
-                        className="px-2 py-1.5 bg-white border border-[#E8C4B8]/40 rounded-lg focus:outline-none text-[#2D1B3D] cursor-pointer"
+                        className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none text-slate-800 cursor-pointer"
                       >
                         <option value="ACTIVE">Active</option>
                         <option value="INACTIVE">Inactive</option>
@@ -1322,18 +1276,18 @@ function TicketingPageContent() {
                   </div>
 
                   {/* Footer Buttons */}
-                  <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/15">
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => setIsAddEditModalOpen(false)}
-                      className="px-5 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#FAF8F5] rounded-xl transition-all"
+                      className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl disabled:opacity-50 transition-all shadow-md"
+                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl disabled:opacity-50 transition-all shadow-md active:scale-95"
                     >
                       {submitting && (
                         <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -1357,27 +1311,27 @@ function TicketingPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D]"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 p-6 text-slate-800 font-sans"
             >
               <div className="flex items-start gap-4 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                   <Trash2 className="w-5 h-5 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-lg font-bold text-slate-900">
                     Confirm Action
                   </h3>
-                  <p className="text-xs text-[#2D1B3D]/60 mt-1 leading-relaxed">
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                     Are you sure you want to delete this ticket tier?
                   </p>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3 text-[10px] text-amber-900 leading-normal flex gap-2 font-semibold">
-                    <Info className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3 text-[11px] text-amber-900 leading-normal flex gap-2 font-medium">
+                    <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                     <span>
                       If this tier already has successful ticket sales, the system will automatically archive it to preserve historical purchase transaction records instead of deleting it.
                     </span>
@@ -1385,18 +1339,18 @@ function TicketingPageContent() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-[#E8C4B8]/15">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
                   disabled={isDeleting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 shadow-md"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 shadow-md transition-all active:scale-95"
                 >
                   {isDeleting && (
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -1414,11 +1368,13 @@ function TicketingPageContent() {
 
 export default function TicketingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+        </div>
+      }
+    >
       <TicketingPageContent />
     </Suspense>
   );

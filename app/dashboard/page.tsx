@@ -209,14 +209,14 @@ export default function DashboardPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50/40 to-slate-100 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-300/50 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50/40 to-slate-100 flex flex-col font-body text-slate-800 relative overflow-hidden">
       <Navbar />
 
       {/* Main container */}
@@ -227,19 +227,19 @@ export default function DashboardPage() {
             {/* Hamburger Button for Mobile Sidebar */}
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-200/60 bg-white/80 backdrop-blur-sm hover:bg-blue-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-blue-700" />
             </button>
             <div>
               <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
+                className="text-4xl md:text-5xl font-semibold text-slate-800 font-display"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 Dashboard
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage your events</p>
+              <p className="text-sm text-slate-500 mt-1">Manage your events</p>
             </div>
           </div>
         </div>
@@ -251,17 +251,17 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white/95 backdrop-blur-sm border-blue-100/60"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm animate-pulse"
+                  className="bg-white/90 backdrop-blur-sm border border-blue-100/60 rounded-2xl p-6 shadow-sm animate-pulse"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 mb-5" />
                   <div className="h-4 w-24 bg-slate-100 rounded mb-2" />
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0 }}
-                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white/90 backdrop-blur-sm border border-blue-100/60 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-sm">
                   <Calendar className="w-6 h-6 text-white" />
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white/90 backdrop-blur-sm border border-blue-100/60 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="w-12 h-12 rounded-2xl bg-[#0EA5E9] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
                   <Users className="w-6 h-6 text-white" />
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white/90 backdrop-blur-sm border border-blue-100/60 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="w-12 h-12 rounded-2xl bg-[#00C853] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
                   <TrendingUp className="w-6 h-6 text-white" />
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+                className="bg-white/90 backdrop-blur-sm border border-blue-100/60 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default"
               >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#FF5722] to-[#FF3D00] flex items-center justify-center flex-shrink-0 text-white shadow-sm">
                   <Zap className="w-6 h-6 text-white" />
@@ -364,11 +364,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Inner page content container */}
-        <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
+        <div className="flex-1 flex flex-col bg-white/80 border border-blue-100/60 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
           {/* Top Actions bar - Only show create button at top if there are events */}
           {!loadingEvents && events.length > 0 && (
             <div className="flex justify-between items-center mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 {events.length} {events.length === 1 ? "Event" : "Events"} Found
               </span>
               <button
@@ -384,17 +384,17 @@ export default function DashboardPage() {
           {/* Loading Indicator */}
           {loadingEvents ? (
             <div className="flex-1 flex flex-col items-center justify-center py-24">
-              <div className="w-8 h-8 border-3 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-              <p className="text-xs font-semibold text-[#2D1B3D]/50 mt-4">Loading your events...</p>
+              <div className="w-8 h-8 border-3 border-blue-200/50 border-t-blue-600 rounded-full animate-spin"></div>
+              <p className="text-xs font-semibold text-slate-400 mt-4">Loading your events...</p>
             </div>
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
               <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-              <h3 className="text-lg font-semibold text-[#2D1B3D]">Failed to load events</h3>
-              <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
+              <h3 className="text-lg font-semibold text-slate-800">Failed to load events</h3>
+              <p className="text-sm text-slate-500 max-w-sm mt-1">{error}</p>
               <button
                 onClick={fetchEvents}
-                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700"
               >
                 Try Again
               </button>
@@ -402,11 +402,11 @@ export default function DashboardPage() {
           ) : events.length === 0 ? (
             /* Empty State */
             <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                <Calendar className="w-8 h-8 text-[#C9A84C]" />
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+                <Calendar className="w-8 h-8 text-blue-500" />
               </div>
-              <h3 className="text-2xl font-bold font-display text-[#2D1B3D] mb-2">No Events Found</h3>
-              <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">
+              <h3 className="text-2xl font-bold font-display text-slate-800 mb-2">No Events Found</h3>
+              <p className="text-sm text-slate-500 max-w-md mb-8">
                 Create your first event to start managing your details, venues, and schedules seamlessly.
               </p>
               <button
@@ -422,52 +422,52 @@ export default function DashboardPage() {
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                  <tr className="border-b border-blue-100/50">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Event Name
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Event Type
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Time
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Venue
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Created At
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
+                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
+                <tbody className="divide-y divide-blue-100/30">
                   {events.map((event) => (
                     <tr
                       key={event.id}
-                      className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
+                      className="hover:bg-blue-50/40 transition-colors duration-150 group"
                     >
-                      <td className="py-4 px-4 text-sm font-semibold text-[#2D1B3D]">
+                      <td className="py-4 px-4 text-sm font-semibold text-slate-800">
                         {event.title}
                       </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
+                      <td className="py-4 px-4 text-sm text-slate-600">
                         {event.eventType || "-"}
                       </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
+                      <td className="py-4 px-4 text-sm text-slate-600">
                         {formatDate(event.eventDate)}
                       </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
+                      <td className="py-4 px-4 text-sm text-slate-600">
                         {event.eventTime}
                       </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80 max-w-[150px] truncate">
+                      <td className="py-4 px-4 text-sm text-slate-600 max-w-[150px] truncate">
                         {event.venue}
                       </td>
                       <td className="py-4 px-4">
@@ -482,7 +482,7 @@ export default function DashboardPage() {
                           {event.status || "Draft"}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/60">
+                      <td className="py-4 px-4 text-xs text-slate-400">
                         {formatDateTime(event.createdAt || "")}
                       </td>
                       <td className="py-4 px-4 text-right">
@@ -490,21 +490,21 @@ export default function DashboardPage() {
                           <button
                             onClick={() => setViewingEvent(event)}
                             title="View details"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditClick(event)}
                             title="Edit event"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(event.id || null)}
                             title="Delete event"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -542,12 +542,12 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden z-10 text-slate-800 font-body"
             >
               {/* Fixed Header */}
-              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10">
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-blue-100/40 flex-shrink-0 bg-white z-10">
                 <div className="pr-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
                     {viewingEvent.eventType || "General"} Event
                   </span>
                   <h3
@@ -559,7 +559,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors flex-shrink-0 -mr-1"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-blue-50 transition-colors flex-shrink-0 -mr-1"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
@@ -569,7 +569,7 @@ export default function DashboardPage() {
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
                 {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
+                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100/40 bg-blue-50/30 flex-shrink-0">
                     <img
                       src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
                       alt={viewingEvent.title}
@@ -582,30 +582,30 @@ export default function DashboardPage() {
                 )}
 
                 {viewingEvent.description && (
-                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full">
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1.5">
+                  <div className="p-3.5 sm:p-4 bg-blue-50/40 rounded-xl border border-blue-100/40 max-w-full">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
                       Description
                     </p>
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-[#2D1B3D]/90">
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-slate-700">
                       {viewingEvent.description}
                     </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5]/60 p-3.5 rounded-xl border border-[#E8C4B8]/20">
+                <div className="grid grid-cols-2 gap-4 bg-blue-50/40 p-3.5 rounded-xl border border-blue-100/40">
                   <div className="flex items-start gap-2.5">
-                    <Calendar className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                    <Calendar className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                         Date
                       </p>
                       <p className="font-semibold text-xs">{formatDate(viewingEvent.eventDate)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <Clock className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                    <Clock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                         Time
                       </p>
                       <p className="font-semibold text-xs">{viewingEvent.eventTime}</p>
@@ -613,18 +613,18 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5]/60 rounded-xl border border-[#E8C4B8]/20">
-                  <MapPin className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2.5 p-3.5 bg-blue-50/40 rounded-xl border border-blue-100/40">
+                  <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       Location
                     </p>
-                    <p className="font-semibold text-xs text-[#2D1B3D] break-words">{viewingEvent.venue}</p>
+                    <p className="font-semibold text-xs text-slate-800 break-words">{viewingEvent.venue}</p>
                     {(viewingEvent.address ||
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5 break-words">
+                        <p className="text-xs text-slate-500 mt-0.5 break-words">
                           {[
                             viewingEvent.address,
                             viewingEvent.city,
@@ -638,17 +638,17 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 px-1 text-xs text-[#2D1B3D]/50">
-                  <span>Status: <strong className="text-[#2D1B3D] uppercase font-bold">{viewingEvent.status}</strong></span>
+                <div className="flex justify-between items-center pt-2 px-1 text-xs text-slate-400">
+                  <span>Status: <strong className="text-slate-700 uppercase font-bold">{viewingEvent.status}</strong></span>
                   <span>Created: {formatDateTime(viewingEvent.createdAt || "")}</span>
                 </div>
               </div>
 
               {/* Fixed Footer */}
-              <div className="flex items-center justify-end p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0">
+              <div className="flex items-center justify-end p-4 sm:px-6 bg-blue-50/50 border-t border-blue-100/40 flex-shrink-0">
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
                 >
                   Close
                 </button>
@@ -673,7 +673,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <h3
                 className="text-lg font-semibold font-display mb-2"
@@ -681,13 +681,13 @@ export default function DashboardPage() {
               >
                 Delete Event
               </h3>
-              <p className="text-sm text-[#2D1B3D]/70 mb-6">
+              <p className="text-sm text-slate-500 mb-6">
                 Are you sure you want to delete this event? This action is permanent and cannot be undone.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all focus:outline-none"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-100 rounded-xl hover:bg-blue-50 transition-all focus:outline-none"
                 >
                   Cancel
                 </button>

@@ -17,7 +17,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex text-[#2D1B3D]">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex text-slate-900">
       {/* Responsive Left Sidebar */}
       <Sidebar />
 

@@ -8,14 +8,13 @@ import Navbar from "../../../components/Navbar";
 import analyticsService, { AnalyticsOverview } from "../../../services/analyticsService";
 import {
   Menu,
-  Mail,
   Users,
-  MousePointerClick,
   Clock,
   Download,
   AlertCircle,
-  RefreshCw,
   TrendingUp,
+  BarChart2,
+  PieChart,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -123,120 +122,117 @@ export default function AnalyticsPage() {
   // Auth Loading Screen
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div
+      className="min-h-screen flex flex-col font-body text-slate-900 relative overflow-hidden"
+      style={{
+        backgroundColor: "#f8fafc",
+        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+        backgroundSize: "24px 24px",
+      }}
+    >
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
-        {/* Header section */}
+        {/* Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Analytics
-              </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">
+              <h1 className="text-3xl font-bold text-slate-900">Analytics</h1>
+              <p className="text-sm text-slate-500 mt-1">
                 Insights and metrics for your events
               </p>
             </div>
           </div>
 
-          {data && (
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-md active:scale-95 focus:outline-none"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export Report
-            </button>
-          )}
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium px-4 py-2 rounded-xl shadow-sm text-sm transition-all"
+          >
+            <Download className="w-4 h-4" />
+            Export Report
+          </button>
         </div>
 
         {loading ? (
-          // Loading skeleton state
+          // Loading skeleton
           <div className="space-y-8 animate-pulse">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-28 bg-white border border-[#E8C4B8]/20 rounded-2xl" />
+                <div key={i} className="h-28 bg-white border border-slate-100 rounded-2xl" />
               ))}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="h-96 bg-white border border-[#E8C4B8]/20 rounded-2xl" />
-              <div className="h-96 bg-white border border-[#E8C4B8]/20 rounded-2xl" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-72 bg-white border border-slate-100 rounded-2xl" />
+              <div className="h-72 bg-white border border-slate-100 rounded-2xl" />
             </div>
           </div>
         ) : error ? (
-          // Error loading state
-          <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+          // Error state
+          <div className="bg-white border border-slate-100 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
             <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-            <h4 className="text-xl font-bold font-display text-[#2D1B3D]">
+            <h4 className="text-xl font-bold text-slate-900">
               Unable to load analytics information
             </h4>
-            <p className="text-xs text-[#2D1B3D]/60 mt-2 max-w-sm leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
               {error}
             </p>
             <button
               onClick={fetchAnalyticsData}
-              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
+              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-xl shadow-sm transition-all active:scale-95 focus:outline-none"
             >
               Retry Connection
             </button>
           </div>
         ) : !data || data.totalInvitations === 0 ? (
-          // Empty State
-          <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-            <Users className="w-12 h-12 text-[#2D1B3D]/30 mb-4" />
-            <h4 className="text-xl font-bold font-display text-[#2D1B3D]">
+          // Empty state
+          <div className="bg-white border border-slate-100 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+            <Users className="w-12 h-12 text-slate-300 mb-4" />
+            <h4 className="text-xl font-bold text-slate-900">
               No analytics data available
             </h4>
-            <p className="text-xs text-[#2D1B3D]/60 mt-2 max-w-sm leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
               Add guests to your events to start tracking responses, clicks, and engagement.
             </p>
             <button
               onClick={() => router.push("/dashboard/guests")}
-              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
+              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-xl shadow-sm transition-all active:scale-95 focus:outline-none"
             >
               Manage Guests
             </button>
           </div>
         ) : (
-          <div className="space-y-8">
-            {/* Stats Cards Grid */}
+          <div className="space-y-6">
+            {/* ── Top Metric Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
               {/* Card 1: Total Invitations */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200"
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#E8EEFF] text-[#5B5FEF]">
-                    <Mail className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Total Invitations
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {data.totalInvitations}
-                    </p>
-                  </div>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-blue-50 text-blue-500">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Total Invitations</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {data.totalInvitations}
+                  </p>
                 </div>
               </motion.div>
 
@@ -245,20 +241,16 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200"
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-50 text-emerald-600">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Response Rate
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {data.responseRate.toFixed(1)}%
-                    </p>
-                  </div>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-emerald-50 text-emerald-500">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Response Rate</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {data.responseRate.toFixed(1)}%
+                  </p>
                 </div>
               </motion.div>
 
@@ -267,20 +259,16 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200"
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-50 text-amber-600">
-                    <MousePointerClick className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Click Rate
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {data.clickRate.toFixed(1)}%
-                    </p>
-                  </div>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-indigo-50 text-indigo-500">
+                  <PieChart className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Click Rate</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {data.clickRate.toFixed(1)}%
+                  </p>
                 </div>
               </motion.div>
 
@@ -289,175 +277,139 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200"
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-50 text-purple-600">
-                    <Clock className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Avg Response Time
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {formatResponseTime(data.averageResponseTimeDays)}
-                    </p>
-                  </div>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-amber-50 text-amber-500">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Avg Response Time</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatResponseTime(data.averageResponseTimeDays)}
+                  </p>
                 </div>
               </motion.div>
             </div>
 
-            {/* Split Main Analytics Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* RSVP Breakdown Section */}
+            {/* ── Lower 2-Column Grid ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+              {/* Left Card: RSVP Breakdown */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col gap-6"
+                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80"
               >
-                <div>
-                  <h2 className="text-lg font-bold font-display text-[#2D1B3D]">
-                    RSVP Breakdown
-                  </h2>
-                  <p className="text-xs text-[#2D1B3D]/50 mt-1">
-                    Real-time invitation response distribution
-                  </p>
+                <h2 className="text-base font-semibold text-slate-900 mb-5">
+                  RSVP breakdown
+                </h2>
+
+                {/* Attending */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Attending</span>
+                    <span className="text-xs text-slate-500">
+                      {data.rsvpBreakdown.attending.count} ({data.rsvpBreakdown.attending.percentage}%)
+                    </span>
+                  </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.rsvpBreakdown.attending.percentage)}%` }}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-5">
-                  {/* Attending */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                        Attending
-                      </span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.rsvpBreakdown.attending.count} ({data.rsvpBreakdown.attending.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.rsvpBreakdown.attending.percentage)}%` }}
-                      ></div>
-                    </div>
+                {/* Declined */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Declined</span>
+                    <span className="text-xs text-slate-500">
+                      {data.rsvpBreakdown.declined.count} ({data.rsvpBreakdown.declined.percentage}%)
+                    </span>
                   </div>
-
-                  {/* Declined */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md">
-                        Declined
-                      </span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.rsvpBreakdown.declined.count} ({data.rsvpBreakdown.declined.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-rose-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.rsvpBreakdown.declined.percentage)}%` }}
-                      ></div>
-                    </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="bg-rose-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.rsvpBreakdown.declined.percentage)}%` }}
+                    />
                   </div>
+                </div>
 
-                  {/* Maybe */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
-                        Maybe
-                      </span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.rsvpBreakdown.maybe.count} ({data.rsvpBreakdown.maybe.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.rsvpBreakdown.maybe.percentage)}%` }}
-                      ></div>
-                    </div>
+                {/* Maybe */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Maybe</span>
+                    <span className="text-xs text-slate-500">
+                      {data.rsvpBreakdown.maybe.count} ({data.rsvpBreakdown.maybe.percentage}%)
+                    </span>
                   </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="bg-amber-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.rsvpBreakdown.maybe.percentage)}%` }}
+                    />
+                  </div>
+                </div>
 
-                  {/* Pending */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md">
-                        Pending
-                      </span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.rsvpBreakdown.pending.count} ({data.rsvpBreakdown.pending.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-slate-400 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.rsvpBreakdown.pending.percentage)}%` }}
-                      ></div>
-                    </div>
+                {/* Pending */}
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Pending</span>
+                    <span className="text-xs text-slate-500">
+                      {data.rsvpBreakdown.pending.count} ({data.rsvpBreakdown.pending.percentage}%)
+                    </span>
+                  </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="bg-slate-400 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.rsvpBreakdown.pending.percentage)}%` }}
+                    />
                   </div>
                 </div>
               </motion.div>
 
-              {/* Event Performance Section */}
+              {/* Right Card: Event Performance */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col gap-6"
+                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80"
               >
-                <div>
-                  <h2 className="text-lg font-bold font-display text-[#2D1B3D]">
-                    Event Performance
-                  </h2>
-                  <p className="text-xs text-[#2D1B3D]/50 mt-1">
-                    Email invitation delivery metrics
-                  </p>
+                <h2 className="text-base font-semibold text-slate-900 mb-5">
+                  Event performance
+                </h2>
+
+                {/* Open Rate */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-900">Open Rate</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {data.eventPerformance.openRate.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.eventPerformance.openRate)}%` }}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-6">
-                  {/* Open Rate */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-[#2D1B3D]">Open Rate</span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.eventPerformance.openRate.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2.5 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-[#5B5FEF] h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.eventPerformance.openRate)}%` }}
-                      ></div>
-                    </div>
+                {/* Click Rate */}
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-900">Click Rate</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {data.clickRate.toFixed(1)}%
+                    </span>
                   </div>
-
-                  {/* Click Rate */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-[#2D1B3D]">Click Rate</span>
-                      <span className="font-bold text-[#2D1B3D]">
-                        {data.clickRate.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#FAF8F5] rounded-full h-2.5 overflow-hidden border border-[#E8C4B8]/10">
-                      <div
-                        className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${clampPercent(data.clickRate)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Micro-Interaction Indicator */}
-                  <div className="mt-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E8C4B8]/20 flex items-start gap-3">
-                    <TrendingUp className="w-5 h-5 text-[#5B5FEF] flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-bold text-[#2D1B3D]">Pro Insight</h4>
-                      <p className="text-[11px] text-[#2D1B3D]/60 mt-0.5 leading-relaxed">
-                        To maximize your click rate, customize the RSVP button color and text on your invitation templates. Clicks are tracked each time a guest clicks your event link.
-                      </p>
-                    </div>
+                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${clampPercent(data.clickRate)}%` }}
+                    />
                   </div>
                 </div>
               </motion.div>

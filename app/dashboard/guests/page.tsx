@@ -503,14 +503,18 @@ export default function GuestsPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex flex-col font-body text-slate-800 relative overflow-hidden">
+      {/* Decorative ambient background glows */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none -z-0" />
+      <div className="absolute bottom-10 left-10 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none -z-0" />
+
       <Navbar />
 
       {/* Hidden file input for CSV */}
@@ -528,7 +532,7 @@ export default function GuestsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
               <Menu className="w-5 h-5 text-[#2D1B3D]" />
@@ -548,7 +552,7 @@ export default function GuestsPage() {
             <button
               onClick={handleAddClick}
               disabled={events.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20 focus:outline-none"
             >
               <Plus className="w-4 h-4" />
               Add Guest
@@ -563,17 +567,17 @@ export default function GuestsPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -583,11 +587,11 @@ export default function GuestsPage() {
 
         {/* Warning if no events */}
         {events.length === 0 && !loading && (
-          <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-sm flex gap-3 items-center">
+          <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-sm flex gap-3 items-center">
             <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0" />
             <div>
               You must create at least one event in the{" "}
-              <span className="font-semibold cursor-pointer underline" onClick={() => router.push("/dashboard")}>
+              <span className="font-semibold cursor-pointer underline text-blue-600" onClick={() => router.push("/dashboard")}>
                 Events dashboard
               </span>{" "}
               before you can add, import or manage guests.
@@ -606,7 +610,7 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="View all guests"
-            className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
+            className="bg-white/90 backdrop-blur-sm border border-blue-200/60 shadow-sm hover:shadow-md hover:border-blue-300 rounded-2xl p-5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
@@ -632,10 +636,10 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="View event breakdown modal"
-            className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
+            className="bg-white/90 backdrop-blur-sm border border-blue-200/60 shadow-sm hover:shadow-md hover:border-blue-300 rounded-2xl p-5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-indigo-50 text-indigo-600">
                 <Calendar className="w-6 h-6" />
               </div>
               <div>
@@ -658,14 +662,14 @@ export default function GuestsPage() {
             role="button"
             tabIndex={0}
             aria-label="Filter guests imported this month"
-            className={`bg-white border ${
+            className={`bg-white/90 backdrop-blur-sm border ${
               isImportedMonthOnly
                 ? "border-blue-500 ring-2 ring-blue-500/20 shadow-md"
-                : "border-slate-100 shadow-sm"
+                : "border-blue-200/60 shadow-sm hover:border-blue-300"
             } rounded-2xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative overflow-hidden`}
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-sky-50 text-sky-600">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
@@ -684,23 +688,23 @@ export default function GuestsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left panel: Import Options */}
           <div className="col-span-12 lg:col-span-4 space-y-6">
-            <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <div className="bg-white/90 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold mb-1 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Import Options
               </h3>
-              <p className="text-xs text-[#2D1B3D]/50 mb-6">Import guests directly into any of your events.</p>
+              <p className="text-xs text-slate-500 mb-6">Import guests directly into any of your events.</p>
 
               <div className="space-y-3">
                 <button
                   onClick={triggerCSVUpload}
                   disabled={events.length === 0}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left"
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-100 hover:border-blue-300 bg-white hover:bg-blue-50/60 disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left text-slate-800 shadow-xs"
                 >
                   <span className="flex items-center gap-2.5">
-                    <Upload className="w-4 h-4 text-[#C9A84C]" />
+                    <Upload className="w-4 h-4 text-blue-600" />
                     Upload CSV File
                   </span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-[#C9A84C]/10 text-[#C9A84C] rounded">
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100">
                     CSV
                   </span>
                 </button>
@@ -712,13 +716,13 @@ export default function GuestsPage() {
                     setIsGoogleImportModalOpen(true);
                   }}
                   disabled={events.length === 0}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left"
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-100 hover:border-blue-300 bg-white hover:bg-blue-50/60 disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left text-slate-800 shadow-xs"
                 >
                   <span className="flex items-center gap-2.5">
                     <Globe className="w-4 h-4 text-sky-600" />
                     Google Contacts
                   </span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded">
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-sky-50 text-sky-600 rounded-md border border-sky-100">
                     Connect
                   </span>
                 </button>
@@ -730,30 +734,30 @@ export default function GuestsPage() {
                     setIsEmailImportModalOpen(true);
                   }}
                   disabled={events.length === 0}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left"
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-100 hover:border-blue-300 bg-white hover:bg-blue-50/60 disabled:opacity-50 disabled:hover:bg-white transition-all text-sm font-semibold text-left text-slate-800 shadow-xs"
                 >
                   <span className="flex items-center gap-2.5">
                     <Mail className="w-4 h-4 text-emerald-600" />
                     Email Contacts List
                   </span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded">
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100">
                     List
                   </span>
                 </button>
               </div>
 
               {events.length > 0 && (
-                <div className="mt-6 pt-5 border-t border-[#E8C4B8]/20 bg-[#FAF8F5]/50 p-3.5 rounded-xl border">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50 mb-2">
+                <div className="mt-6 pt-4 border-t border-blue-100 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100/80">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
                     CSV Format Instructions
                   </p>
-                  <p className="text-xs text-[#2D1B3D]/70 leading-relaxed mb-2">
+                  <p className="text-xs text-slate-600 leading-relaxed mb-2">
                     Ensure your file has a header row like this:
                   </p>
-                  <code className="block bg-white p-2 rounded border border-[#E8C4B8]/40 font-mono text-[10px] text-[#2D1B3D] overflow-x-auto whitespace-nowrap">
+                  <code className="block bg-white p-2 rounded-lg border border-blue-200/60 font-mono text-[10px] text-blue-950 overflow-x-auto whitespace-nowrap">
                     name,email,phone,status
                   </code>
-                  <p className="text-[10px] text-[#2D1B3D]/40 mt-2">
+                  <p className="text-[10px] text-slate-400 mt-2">
                     Status values: invited, confirmed, declined, pending. Default is invited.
                   </p>
                 </div>
@@ -763,15 +767,15 @@ export default function GuestsPage() {
 
           {/* Right panel: Search and Guests Table */}
           <div className="col-span-12 lg:col-span-8" ref={tableSectionRef}>
-            <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
+            <div className="bg-white/90 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
               {/* Active Filter Banner */}
               {(isImportedMonthOnly || selectedEventId || search) && (
-                <div className="mb-5 p-3.5 rounded-xl bg-[#8B1E5A]/5 border border-[#8B1E5A]/20 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#8B1E5A] font-semibold">
-                    <Filter className="w-3.5 h-3.5 text-[#8B1E5A]" />
+                <div className="mb-5 p-3.5 rounded-xl bg-blue-50 border border-blue-200/70 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-blue-900 font-semibold">
+                    <Filter className="w-3.5 h-3.5 text-blue-600" />
                     <span>Active Filters:</span>
                     {isImportedMonthOnly && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#8B1E5A] text-white text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs">
                         Imported This Month ({importedThisMonthCount})
                         <button
                           onClick={() => setIsImportedMonthOnly(false)}
@@ -783,7 +787,7 @@ export default function GuestsPage() {
                       </span>
                     )}
                     {selectedEventId && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#2D1B3D] text-white text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs">
                         Event: {events.find((e) => e.id === selectedEventId)?.title || "Selected"}
                         <button
                           onClick={() => setSelectedEventId("")}
@@ -795,7 +799,7 @@ export default function GuestsPage() {
                       </span>
                     )}
                     {search && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-[#8B1E5A]/30 text-[#8B1E5A] text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-blue-200 text-blue-800 text-[10px] font-bold flex items-center gap-1 shadow-xs">
                         Search: "{search}"
                         <button
                           onClick={() => setSearch("")}
@@ -814,7 +818,7 @@ export default function GuestsPage() {
                       setSearch("");
                       triggerToast("All filters cleared", "success");
                     }}
-                    className="text-[11px] font-bold text-[#8B1E5A] hover:underline"
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     Clear All Filters
                   </button>
@@ -824,25 +828,25 @@ export default function GuestsPage() {
               <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6 w-full">
                 {/* Search field */}
                 <div className="relative w-full sm:max-w-xs">
-                  <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search guests..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 bg-blue-50/40 border border-blue-200/60 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
 
                 {/* Event Filter dropdown & Export CSV */}
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
                   <div className="relative flex-1 sm:flex-initial flex items-center gap-2">
-                    <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
+                    <Filter className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">Filter Event:</span>
                     <select
                       value={selectedEventId}
                       onChange={(e) => setSelectedEventId(e.target.value)}
-                      className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                      className="appearance-none bg-blue-50/40 border border-blue-200/60 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                       <option value="">All Events</option>
                       {events.map((e) => (
@@ -851,16 +855,16 @@ export default function GuestsPage() {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
                   </div>
 
                   <button
                     onClick={handleExportCSV}
                     disabled={filteredGuests.length === 0}
                     title={filteredGuests.length === 0 ? "No guests available to export" : "Export visible guests to CSV"}
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] hover:border-[#2D1B3D]/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none whitespace-nowrap"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-blue-200/60 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs active:scale-95 focus:outline-none whitespace-nowrap"
                   >
-                    <Download className="w-3.5 h-3.5 text-[#C9A84C]" />
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
                     <span>Export CSV</span>
                   </button>
                 </div>
@@ -873,18 +877,18 @@ export default function GuestsPage() {
                   {[...Array(5)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-14 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-xl animate-pulse"
+                      className="h-14 bg-blue-50/40 border border-blue-100 rounded-xl animate-pulse"
                     />
                   ))}
                 </div>
               ) : error ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
                   <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-                  <h4 className="text-lg font-semibold text-[#2D1B3D]">Error loading guests</h4>
-                  <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{error}</p>
+                  <h4 className="text-lg font-semibold text-slate-900">Error loading guests</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
                   <button
                     onClick={fetchData}
-                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     Retry
                   </button>
@@ -892,13 +896,13 @@ export default function GuestsPage() {
               ) : filteredGuests.length === 0 ? (
                 // Empty state
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-                  <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                    <Users className="w-8 h-8 text-[#C9A84C]" />
+                  <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-6 shadow-sm">
+                    <Users className="w-8 h-8 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">
+                  <h3 className="text-xl font-bold font-display text-slate-900 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {search || selectedEventId ? "No guests found" : "No guests added yet"}
                   </h3>
-                  <p className="text-xs text-[#2D1B3D]/50 max-w-sm">
+                  <p className="text-xs text-slate-500 max-w-sm">
                     {search || selectedEventId
                       ? "Try clearing your search filters or check another event."
                       : "No guests added yet. Click 'Add Guest' or import a CSV file to add guests."}
@@ -909,37 +913,37 @@ export default function GuestsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-[#E8C4B8]/30">
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <tr className="border-b border-blue-100">
+                        <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Name
                         </th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Contact Details
                         </th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Event
                         </th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                        <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
+                        <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E8C4B8]/20">
+                    <tbody className="divide-y divide-blue-100/60">
                       {paginatedGuests.map((g) => (
                         <tr
                           key={g.id}
-                          className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
+                          className="hover:bg-blue-50/40 transition-colors duration-150 group"
                         >
                           {/* Name */}
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-[#2D1B3D]">
+                              <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-blue-700">
                                 {g.name.substring(0, 2).toUpperCase()}
                               </div>
-                              <span className="text-sm font-semibold text-[#2D1B3D]">
+                              <span className="text-sm font-semibold text-slate-900">
                                 {g.name}
                               </span>
                             </div>
@@ -947,17 +951,17 @@ export default function GuestsPage() {
 
                           {/* Contact details */}
                           <td className="py-4 px-4 text-xs">
-                            <p className="text-[#2D1B3D] font-medium">{g.email}</p>
+                            <p className="text-slate-800 font-medium">{g.email}</p>
                             {g.phone && (
-                              <p className="text-[#2D1B3D]/55 flex items-center gap-1 mt-0.5">
-                                <Phone className="w-3 h-3 text-[#C9A84C]" />
+                              <p className="text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Phone className="w-3 h-3 text-blue-500" />
                                 {g.phone}
                               </p>
                             )}
                           </td>
 
                           {/* Event */}
-                          <td className="py-4 px-4 text-xs font-medium text-[#2D1B3D]/70 max-w-[130px] truncate">
+                          <td className="py-4 px-4 text-xs font-medium text-slate-600 max-w-[130px] truncate">
                             {g.eventTitle || "General"}
                           </td>
 
@@ -984,21 +988,21 @@ export default function GuestsPage() {
                               <button
                                 onClick={() => setViewingGuest(g)}
                                 title="View Details"
-                                className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:outline-none"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleEditClick(g)}
                                 title="Edit Guest"
-                                className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:outline-none"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => setDeleteConfirmId(g.id || null)}
                                 title="Delete Guest"
-                                className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:outline-none"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1036,21 +1040,21 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddEditModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-xl font-semibold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {editingGuest ? "Edit Guest Details" : "Add New Guest"}
                 </h3>
                 <button
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1066,7 +1070,7 @@ export default function GuestsPage() {
               <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
                 {/* Name */}
                 <div>
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Guest Name *
                   </label>
                   <input
@@ -1075,13 +1079,13 @@ export default function GuestsPage() {
                     placeholder="Enter guest name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors text-slate-900"
                   />
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Email Address *
                   </label>
                   <input
@@ -1090,13 +1094,13 @@ export default function GuestsPage() {
                     placeholder="Enter guest email"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors text-slate-900"
                   />
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Phone Number (Optional)
                   </label>
                   <input
@@ -1104,19 +1108,19 @@ export default function GuestsPage() {
                     placeholder="Enter phone number"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors text-slate-900"
                   />
                 </div>
 
                 {/* Associated Event */}
                 <div className="relative">
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Select Event *
                   </label>
                   <select
                     value={formEventId}
                     onChange={(e) => setFormEventId(e.target.value)}
-                    className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs font-semibold cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs font-semibold cursor-pointer text-slate-900"
                   >
                     {events.map((e) => (
                       <option key={e.id} value={e.id}>
@@ -1124,40 +1128,40 @@ export default function GuestsPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 bottom-3 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 bottom-3 pointer-events-none" />
                 </div>
 
                 {/* Status */}
                 <div className="relative">
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Status *
                   </label>
                   <select
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as Guest["status"])}
-                    className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs font-semibold cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs font-semibold cursor-pointer text-slate-900"
                   >
                     <option value="invited">Invited</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="declined">Declined</option>
                     <option value="pending">Pending</option>
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 bottom-3 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 bottom-3 pointer-events-none" />
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/20">
+                <div className="flex justify-end gap-3 pt-4 border-t border-blue-100">
                   <button
                     type="button"
                     onClick={() => setIsAddEditModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all shadow-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-60 rounded-xl active:scale-95 transition-all shadow-md"
+                    className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20"
                   >
                     {submitting ? "Saving..." : editingGuest ? "Save Changes" : "Create Guest"}
                   </button>
@@ -1177,91 +1181,91 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setViewingGuest(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
                     Guest Profile Details
                   </span>
-                  <h3 className="text-2xl font-semibold font-display mt-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-2xl font-semibold font-display mt-0.5 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {viewingGuest.name}
                   </h3>
                 </div>
                 <button
                   onClick={() => setViewingGuest(null)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-4 mt-6 text-sm text-[#2D1B3D]/95">
-                <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                  <User className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+              <div className="space-y-4 mt-6 text-sm text-slate-800">
+                <div className="flex items-center gap-3 p-3 bg-blue-50/40 rounded-xl border border-blue-100">
+                  <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <div>
-                    <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                       Name
                     </p>
-                    <p className="font-semibold text-xs">{viewingGuest.name}</p>
+                    <p className="font-semibold text-xs text-slate-900">{viewingGuest.name}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                  <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-blue-50/40 rounded-xl border border-blue-100">
+                  <Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <div>
-                    <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                       Email
                     </p>
-                    <p className="font-semibold text-xs">{viewingGuest.email}</p>
+                    <p className="font-semibold text-xs text-slate-900">{viewingGuest.email}</p>
                   </div>
                 </div>
 
                 {viewingGuest.phone && (
-                  <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                    <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-blue-50/40 rounded-xl border border-blue-100">
+                    <Phone className="w-4 h-4 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                         Phone
                       </p>
-                      <p className="font-semibold text-xs">{viewingGuest.phone}</p>
+                      <p className="font-semibold text-xs text-slate-900">{viewingGuest.phone}</p>
                     </div>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                    <Calendar className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-blue-50/40 rounded-xl border border-blue-100">
+                    <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                         Event
                       </p>
-                      <p className="font-semibold text-xs truncate max-w-[120px]">{viewingGuest.eventTitle || "General"}</p>
+                      <p className="font-semibold text-xs truncate max-w-[120px] text-slate-900">{viewingGuest.eventTitle || "General"}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20">
-                    <Sparkles className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-blue-50/40 rounded-xl border border-blue-100">
+                    <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                         RSVP Status
                       </p>
-                      <p className="font-bold text-xs uppercase text-[#2D1B3D]">{viewingGuest.status}</p>
+                      <p className="font-bold text-xs uppercase text-blue-700">{viewingGuest.status}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6 pt-4 border-t border-[#E8C4B8]/25">
+              <div className="flex justify-end mt-6 pt-4 border-t border-blue-100">
                 <button
                   onClick={() => setViewingGuest(null)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
                 >
                   Close
                 </button>
@@ -1280,30 +1284,30 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsImportCSVModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold font-display mb-1 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Import Guests From CSV
               </h3>
-              <p className="text-xs text-[#2D1B3D]/60 mb-5">
+              <p className="text-xs text-slate-500 mb-5">
                 Select which event you want to associate the imported guests with:
               </p>
 
               <div className="space-y-4">
                 <div className="relative text-xs">
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Target Event
                   </label>
                   <select
                     value={csvTargetEventId}
                     onChange={(e) => setCsvTargetEventId(e.target.value)}
-                    className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] outline-none rounded-xl font-semibold cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white focus:border-blue-500 outline-none rounded-xl font-semibold cursor-pointer text-slate-900"
                   >
                     {events.map((e) => (
                       <option key={e.id} value={e.id}>
@@ -1311,20 +1315,20 @@ export default function GuestsPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 bottom-3 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 bottom-3 pointer-events-none" />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/20">
+                <div className="flex justify-end gap-3 pt-4 border-t border-blue-100">
                   <button
                     onClick={() => setIsImportCSVModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all shadow-xs"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCSVImportSubmit}
                     disabled={submitting || !csvTargetEventId}
-                    className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md"
+                    className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20"
                   >
                     {submitting ? "Importing..." : "Start Import"}
                   </button>
@@ -1344,39 +1348,39 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsGoogleImportModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-1">
-                <h3 className="text-lg font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-lg font-semibold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Import from Google Contacts
                 </h3>
                 <button
                   onClick={() => setIsGoogleImportModalOpen(false)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-[#2D1B3D]/60 mb-5">
+              <p className="text-xs text-slate-500 mb-5">
                 Select Google contacts to import and choose a target event.
               </p>
 
               <div className="space-y-4 text-xs">
                 {/* Event picker */}
                 <div className="relative">
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Target Event
                   </label>
                   <select
                     value={contactImportEventId}
                     onChange={(e) => setContactImportEventId(e.target.value)}
-                    className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 outline-none rounded-xl font-semibold cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white outline-none rounded-xl font-semibold cursor-pointer text-slate-900"
                   >
                     {events.map((e) => (
                       <option key={e.id} value={e.id}>
@@ -1384,24 +1388,24 @@ export default function GuestsPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 bottom-3 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 bottom-3 pointer-events-none" />
                 </div>
 
                 {/* Contacts List */}
                 <div>
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-2">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-2">
                     Google Contacts ({selectedImportContacts.length} selected)
                   </label>
                   {googleContacts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-[#E8C4B8]/40 rounded-xl bg-[#FAF8F5]/30">
-                      <Users className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
-                      <p className="text-xs font-semibold text-[#2D1B3D]">No contacts found</p>
-                      <p className="text-[11px] text-[#2D1B3D]/50 mt-0.5">
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-blue-100 rounded-xl bg-blue-50/30">
+                      <Users className="w-8 h-8 text-blue-300 mb-2" />
+                      <p className="text-xs font-semibold text-slate-800">No contacts found</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         No Google contacts are available to import.
                       </p>
                     </div>
                   ) : (
-                    <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
+                    <div className="max-h-48 overflow-y-auto border border-blue-100 rounded-xl divide-y divide-blue-100 bg-blue-50/20">
                       {googleContacts.map((contact, idx) => {
                         const isChecked = selectedImportContacts.includes(idx);
                         return (
@@ -1412,17 +1416,17 @@ export default function GuestsPage() {
                                 isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
                               );
                             }}
-                            className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
+                            className="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer transition-colors"
                           >
                             <input
                               type="checkbox"
                               checked={isChecked}
                               readOnly
-                              className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
+                              className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 border-blue-200"
                             />
                             <div>
-                              <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
-                              <p className="text-[10px] text-[#2D1B3D]/50">
+                              <p className="font-semibold text-slate-900">{contact.name}</p>
+                              <p className="text-[10px] text-slate-500">
                                 {contact.email}{contact.phone ? ` • ${contact.phone}` : ""}
                               </p>
                             </div>
@@ -1434,17 +1438,17 @@ export default function GuestsPage() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/20">
+                <div className="flex justify-end gap-3 pt-4 border-t border-blue-100">
                   <button
                     onClick={() => setIsGoogleImportModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all shadow-xs"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => handleContactImportSubmit(googleContacts)}
                     disabled={submitting || selectedImportContacts.length === 0 || !contactImportEventId}
-                    className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md"
+                    className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20"
                   >
                     {submitting ? "Importing..." : `Import Selected (${selectedImportContacts.length})`}
                   </button>
@@ -1464,39 +1468,39 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsEmailImportModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-1">
-                <h3 className="text-lg font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-lg font-semibold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Import from Email Contact List
                 </h3>
                 <button
                   onClick={() => setIsEmailImportModalOpen(false)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-[#2D1B3D]/60 mb-5">
+              <p className="text-xs text-slate-500 mb-5">
                 Select email contacts to import and choose a target event.
               </p>
 
               <div className="space-y-4 text-xs">
                 {/* Event picker */}
                 <div className="relative">
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-1.5">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                     Target Event
                   </label>
                   <select
                     value={contactImportEventId}
                     onChange={(e) => setContactImportEventId(e.target.value)}
-                    className="w-full appearance-none px-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 outline-none rounded-xl font-semibold cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 bg-blue-50/30 border border-blue-200/70 focus:bg-white outline-none rounded-xl font-semibold cursor-pointer text-slate-900"
                   >
                     {events.map((e) => (
                       <option key={e.id} value={e.id}>
@@ -1504,24 +1508,24 @@ export default function GuestsPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 bottom-3 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 bottom-3 pointer-events-none" />
                 </div>
 
                 {/* Contacts List */}
                 <div>
-                  <label className="block font-bold text-[#2D1B3D]/60 uppercase tracking-wider mb-2">
+                  <label className="block font-bold text-slate-600 uppercase tracking-wider mb-2">
                     Contacts ({selectedImportContacts.length} selected)
                   </label>
                   {emailContacts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-[#E8C4B8]/40 rounded-xl bg-[#FAF8F5]/30">
-                      <Users className="w-8 h-8 text-[#2D1B3D]/30 mb-2" />
-                      <p className="text-xs font-semibold text-[#2D1B3D]">No contacts found</p>
-                      <p className="text-[11px] text-[#2D1B3D]/50 mt-0.5">
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border border-blue-100 rounded-xl bg-blue-50/30">
+                      <Users className="w-8 h-8 text-blue-300 mb-2" />
+                      <p className="text-xs font-semibold text-slate-800">No contacts found</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         No email contacts are available to import.
                       </p>
                     </div>
                   ) : (
-                    <div className="max-h-48 overflow-y-auto border border-[#E8C4B8]/40 rounded-xl divide-y divide-[#E8C4B8]/20 bg-[#FAF8F5]/30">
+                    <div className="max-h-48 overflow-y-auto border border-blue-100 rounded-xl divide-y divide-blue-100 bg-blue-50/20">
                       {emailContacts.map((contact, idx) => {
                         const isChecked = selectedImportContacts.includes(idx);
                         return (
@@ -1532,17 +1536,17 @@ export default function GuestsPage() {
                                 isChecked ? prev.filter((i) => i !== idx) : [...prev, idx]
                               );
                             }}
-                            className="flex items-center gap-3 p-3 hover:bg-[#FAF8F5] cursor-pointer transition-colors"
+                            className="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer transition-colors"
                           >
                             <input
                               type="checkbox"
                               checked={isChecked}
                               readOnly
-                              className="rounded text-[#2D1B3D] focus:ring-[#2D1B3D] h-4 w-4 border-[#E8C4B8]/70"
+                              className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 border-blue-200"
                             />
                             <div>
-                              <p className="font-semibold text-[#2D1B3D]">{contact.name}</p>
-                              <p className="text-[10px] text-[#2D1B3D]/50">
+                              <p className="font-semibold text-slate-900">{contact.name}</p>
+                              <p className="text-[10px] text-slate-500">
                                 {contact.email}{contact.phone ? ` • ${contact.phone}` : ""}
                               </p>
                             </div>
@@ -1554,17 +1558,17 @@ export default function GuestsPage() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/20">
+                <div className="flex justify-end gap-3 pt-4 border-t border-blue-100">
                   <button
                     onClick={() => setIsEmailImportModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all shadow-xs"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => handleContactImportSubmit(emailContacts)}
                     disabled={submitting || selectedImportContacts.length === 0 || !contactImportEventId}
-                    className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md"
+                    className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20"
                   >
                     {submitting ? "Importing..." : `Import Selected (${selectedImportContacts.length})`}
                   </button>
@@ -1584,24 +1588,24 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold font-display mb-2 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Delete Guest
               </h3>
-              <p className="text-sm text-[#2D1B3D]/70 mb-6">
+              <p className="text-sm text-slate-600 mb-6">
                 Are you sure you want to delete this guest? This action cannot be undone and the guest will be permanently removed from this event list.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all focus:outline-none"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all focus:outline-none shadow-xs"
                 >
                   Cancel
                 </button>
@@ -1626,29 +1630,29 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsEventsModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-center pb-4 border-b border-[#E8C4B8]/20">
+              <div className="flex justify-between items-center pb-4 border-b border-blue-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#8B1E5A]/10 flex items-center justify-center text-[#8B1E5A]">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h3 className="text-xl font-semibold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                       Event Details & Guests
                     </h3>
-                    <p className="text-xs text-[#2D1B3D]/60">Total {events.length} event(s) registered in workspace</p>
+                    <p className="text-xs text-slate-500">Total {events.length} event(s) registered in workspace</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsEventsModalOpen(false)}
-                  className="p-1.5 rounded-lg text-[#2D1B3D]/40 hover:text-[#2D1B3D] hover:bg-[#FAF8F5] transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-blue-50 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1656,7 +1660,7 @@ export default function GuestsPage() {
 
               <div className="py-4 space-y-3 max-h-[360px] overflow-y-auto pr-1">
                 {events.length === 0 ? (
-                  <div className="text-center py-8 text-xs text-[#2D1B3D]/60">
+                  <div className="text-center py-8 text-xs text-slate-500">
                     No events found. Create an event in the dashboard first.
                   </div>
                 ) : (
@@ -1677,25 +1681,25 @@ export default function GuestsPage() {
                         key={event.id}
                         className={`p-4 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "bg-[#8B1E5A]/5 border-[#8B1E5A]/40 ring-1 ring-[#8B1E5A]/30"
-                            : "bg-[#FAF8F5]/60 border-[#E8C4B8]/30 hover:bg-[#FAF8F5]"
+                            ? "bg-blue-50/80 border-blue-400 ring-1 ring-blue-400/30"
+                            : "bg-blue-50/30 border-blue-100 hover:bg-blue-50/60"
                         }`}
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-[#2D1B3D] truncate">{event.title}</h4>
+                            <h4 className="text-sm font-bold text-slate-900 truncate">{event.title}</h4>
                             {isSelected && (
-                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#8B1E5A] text-white rounded-full">
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-600 text-white rounded-full">
                                 Filter Active
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-[#2D1B3D]/60 mt-1">
+                          <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
                             <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-[#C9A84C]" />
+                              <Calendar className="w-3 h-3 text-blue-500" />
                               {eventDate}
                             </span>
-                            <span className="flex items-center gap-1 font-semibold text-[#8B1E5A]">
+                            <span className="flex items-center gap-1 font-semibold text-indigo-600">
                               <Users className="w-3 h-3" />
                               {guestCountForEvent} {guestCountForEvent === 1 ? "Guest" : "Guests"}
                             </span>
@@ -1711,8 +1715,8 @@ export default function GuestsPage() {
                           }}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 whitespace-nowrap ${
                             isSelected
-                              ? "bg-[#8B1E5A] text-white hover:bg-[#73174a]"
-                              : "bg-white border border-[#E8C4B8]/40 text-[#2D1B3D] hover:bg-[#2D1B3D] hover:text-white"
+                              ? "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+                              : "bg-white border border-blue-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600"
                           }`}
                         >
                           <Filter className="w-3 h-3" />
@@ -1724,14 +1728,14 @@ export default function GuestsPage() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-[#E8C4B8]/20 flex justify-between items-center">
+              <div className="pt-4 border-t border-blue-100 flex justify-between items-center">
                 <button
                   onClick={() => {
                     setSelectedEventId("");
                     setIsEventsModalOpen(false);
                     triggerToast("Showing guests from all events", "success");
                   }}
-                  className="text-xs font-semibold text-[#8B1E5A] hover:underline"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
                 >
                   Show All Events Guests
                 </button>
@@ -1740,7 +1744,7 @@ export default function GuestsPage() {
                     setIsEventsModalOpen(false);
                     router.push("/dashboard");
                   }}
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-sm"
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-sm shadow-blue-500/20"
                 >
                   Manage Events Dashboard
                 </button>
@@ -1759,31 +1763,31 @@ export default function GuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsImportedModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-center pb-4 border-b border-[#E8C4B8]/20">
+              <div className="flex justify-between items-center pb-4 border-b border-blue-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h3 className="text-xl font-semibold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                       Imported This Month
                     </h3>
-                    <p className="text-xs text-[#2D1B3D]/60">
+                    <p className="text-xs text-slate-500">
                       {importedThisMonthCount} guest(s) added during {new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsImportedModalOpen(false)}
-                  className="p-1.5 rounded-lg text-[#2D1B3D]/40 hover:text-[#2D1B3D] hover:bg-[#FAF8F5] transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-blue-50 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1791,7 +1795,7 @@ export default function GuestsPage() {
 
               <div className="py-4 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
                 {importedThisMonthCount === 0 ? (
-                  <div className="text-center py-8 text-xs text-[#2D1B3D]/60">
+                  <div className="text-center py-8 text-xs text-slate-500">
                     No guests imported or created during this current calendar month.
                   </div>
                 ) : (
@@ -1805,11 +1809,11 @@ export default function GuestsPage() {
                     .map((g) => (
                       <div
                         key={g.id}
-                        className="p-3.5 rounded-xl border border-[#E8C4B8]/30 bg-[#FAF8F5]/60 flex items-center justify-between gap-3"
+                        className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/30 flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#2D1B3D] truncate">{g.name}</span>
+                            <span className="text-xs font-bold text-slate-900 truncate">{g.name}</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
                                 g.status === "confirmed"
@@ -1822,9 +1826,9 @@ export default function GuestsPage() {
                               {g.status}
                             </span>
                           </div>
-                          <p className="text-[11px] text-[#2D1B3D]/60 truncate mt-0.5">{g.email}</p>
+                          <p className="text-[11px] text-slate-500 truncate mt-0.5">{g.email}</p>
                         </div>
-                        <div className="text-right text-[10px] text-[#2D1B3D]/50 flex-shrink-0">
+                        <div className="text-right text-[10px] text-slate-400 flex-shrink-0">
                           {g.createdAt
                             ? new Date(g.createdAt).toLocaleDateString(undefined, {
                                 month: "short",
@@ -1837,14 +1841,14 @@ export default function GuestsPage() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-[#E8C4B8]/20 flex justify-between items-center">
+              <div className="pt-4 border-t border-blue-100 flex justify-between items-center">
                 <button
                   onClick={() => {
                     setIsImportedMonthOnly(false);
                     setIsImportedModalOpen(false);
                     triggerToast("Cleared monthly filter", "success");
                   }}
-                  className="text-xs font-semibold text-[#2D1B3D]/60 hover:text-[#2D1B3D]"
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800"
                 >
                   Clear Month Filter
                 </button>
@@ -1855,7 +1859,7 @@ export default function GuestsPage() {
                     triggerToast("Filtered table view to this month's imports", "success");
                     tableSectionRef.current?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#8B1E5A] hover:bg-[#73174a] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-sm shadow-blue-500/20 flex items-center gap-1.5"
                 >
                   <Filter className="w-3.5 h-3.5" />
                   Apply Filter to Table
