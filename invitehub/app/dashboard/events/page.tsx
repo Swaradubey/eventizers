@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
@@ -21,8 +21,10 @@ import {
   X,
   CheckCircle,
   Menu,
-  Sparkles,
+  ArrowRight,
   Mail,
+  Users,
+  MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -53,6 +55,8 @@ const getTemplateImage = (templateId?: string | null) => {
   return mapping[templateId] || null;
 };
 
+type FilterStatus = "all" | "active" | "draft" | "completed";
+
 function EventsPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
@@ -63,9 +67,15 @@ function EventsPageContent() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Active filter tab
+  const [selectedFilter, setSelectedFilter] = useState<FilterStatus>("all");
+
   // Pagination state
-  const ITEMS_PER_PAGE = 7;
-  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(6);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Active action dropdown menu for individual card
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,13 +93,20 @@ function EventsPageContent() {
     }
   }, [user, authLoading, router]);
 
+  // Close card menu on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
   // Fetch events
-  const fetchEvents = async (page: number = currentPage) => {
+  const fetchEvents = async () => {
     if (!user) return;
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await eventService.getEvents(page, ITEMS_PER_PAGE);
+      const data = await eventService.getEvents();
       if (data && data.success) {
         setEvents(data.events || []);
       }
@@ -112,9 +129,9 @@ function EventsPageContent() {
 
   useEffect(() => {
     if (user) {
-      fetchEvents(currentPage);
+      fetchEvents();
     }
-  }, [user, currentPage]);
+  }, [user]);
 
   // Auto-open create modal when navigated with ?create=true
   const searchParams = useSearchParams();
@@ -122,12 +139,11 @@ function EventsPageContent() {
     if (searchParams.get("create") === "true" && user) {
       setEditingEvent(null);
       setIsModalOpen(true);
-      // Clean up the URL to avoid re-triggering on refresh
       router.replace("/dashboard/events", { scroll: false });
     }
-  }, [searchParams, user]);
+  }, [searchParams, user, router]);
 
-  // Handle toast timers
+  // Toast timers
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4000);
@@ -138,7 +154,6 @@ function EventsPageContent() {
   const triggerToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
   };
-
 
   // Open modal for creation
   const handleCreateClick = () => {
@@ -175,7 +190,19 @@ function EventsPageContent() {
     fetchEvents();
   };
 
-  // Format date readable
+  // Format date helper (e.g. "Jun 15")
+  const formatCardDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  };
+
+  // Format full date readable
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
     const date = new Date(dateStr);
@@ -184,7 +211,7 @@ function EventsPageContent() {
       month: "short",
       day: "numeric",
       year: "numeric",
-      timeZone: "UTC"
+      timeZone: "UTC",
     });
   };
 
@@ -201,56 +228,156 @@ function EventsPageContent() {
     });
   };
 
+  // Determine normalized status category
+  const getEventCategory = (event: Event): "active" | "draft" | "completed" => {
+    const status = (event.status || "").toLowerCase().trim();
+    if (status === "draft") return "draft";
+    if (status === "completed" || status === "archived") return "completed";
+    if (status === "active" || status === "published") return "active";
+
+    // If status is empty or undefined, check date
+    if (event.eventDate) {
+      const d = new Date(event.eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!isNaN(d.getTime()) && d < today) {
+        return "completed";
+      }
+    }
+    return "active";
+  };
+
+  // Dynamic filter counts
+  const filterCounts = useMemo(() => {
+    let all = events.length;
+    let active = 0;
+    let draft = 0;
+    let completed = 0;
+
+    events.forEach((event) => {
+      const cat = getEventCategory(event);
+      if (cat === "active") active++;
+      else if (cat === "draft") draft++;
+      else if (cat === "completed") completed++;
+    });
+
+    return { all, active, draft, completed };
+  }, [events]);
+
+  // Filtered events
+  const filteredEvents = useMemo(() => {
+    if (selectedFilter === "all") return events;
+    return events.filter((e) => getEventCategory(e) === selectedFilter);
+  }, [events, selectedFilter]);
+
   // Pagination calculations
-  const totalEvents = events.length;
-  const totalPages = Math.ceil(totalEvents / ITEMS_PER_PAGE) || 1;
+  const totalItems = filteredEvents.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalEvents, totalPages, currentPage]);
+    setCurrentPage(1);
+  }, [selectedFilter]);
 
-  const paginatedEvents = events.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredEvents.slice(start, start + itemsPerPage);
+  }, [filteredEvents, currentPage, itemsPerPage]);
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-900 relative">
       <Navbar />
 
       {/* Main container */}
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
-        {/* Top bar with Heading */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <main className="flex-1 flex flex-col max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-16 z-10">
+        {/* Header Row: Title, Subtitle, and + New Event Button */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             {/* Hamburger Button for Mobile Sidebar */}
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Events
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                All events
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage your event listings</p>
+              <p className="text-sm text-slate-500 mt-0.5">
+                View and manage all your events
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={handleCreateClick}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0070F3] hover:bg-[#0060df] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>New Event</span>
+          </button>
+        </div>
+
+        {/* Dynamic Filter Pills */}
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 mb-6 scrollbar-none">
+          <button
+            onClick={() => setSelectedFilter("all")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap focus:outline-none ${
+              selectedFilter === "all"
+                ? "bg-[#625BF6] text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            All Events ({filterCounts.all})
+          </button>
+
+          <button
+            onClick={() => setSelectedFilter("active")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap focus:outline-none ${
+              selectedFilter === "active"
+                ? "bg-[#625BF6] text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Active ({filterCounts.active})
+          </button>
+
+          <button
+            onClick={() => setSelectedFilter("draft")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap focus:outline-none ${
+              selectedFilter === "draft"
+                ? "bg-[#625BF6] text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Draft ({filterCounts.draft})
+          </button>
+
+          <button
+            onClick={() => setSelectedFilter("completed")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap focus:outline-none ${
+              selectedFilter === "completed"
+                ? "bg-[#625BF6] text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Completed ({filterCounts.completed})
+          </button>
         </div>
 
         {/* Success/Error Toast */}
@@ -260,17 +387,17 @@ function EventsPageContent() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-600 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -278,183 +405,292 @@ function EventsPageContent() {
           )}
         </AnimatePresence>
 
-        {/* Inner page content container */}
-        <div className="flex-1 flex flex-col bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
-          {/* Top Actions bar - Only show create button at top if there are events */}
-          {!loadingEvents && events.length > 0 && (
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                {events.length} {events.length === 1 ? "Event" : "Events"} Found
-              </span>
-              <button
-                onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
+        {/* Content Section */}
+        {loadingEvents ? (
+          /* Loading skeleton */
+          <div className="space-y-4">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xs animate-pulse"
               >
-                <Plus className="w-4 h-4" />
-                Create Event
-              </button>
-            </div>
-          )}
-
-          {/* Loading Indicator */}
-          {loadingEvents ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-24">
-              <div className="w-8 h-8 border-3 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-              <p className="text-xs font-semibold text-[#2D1B3D]/50 mt-4">Loading your events...</p>
-            </div>
-          ) : error ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
-              <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-              <h3 className="text-lg font-semibold text-[#2D1B3D]">Failed to load events</h3>
-              <p className="text-sm text-[#2D1B3D]/60 max-w-sm mt-1">{error}</p>
-              {error !== "Session expired. Please sign in again." && (
-                <button
-                  onClick={() => fetchEvents()}
-                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
-                >
-                  Try Again
-                </button>
-              )}
-            </div>
-          ) : events.length === 0 ? (
-            /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                <Calendar className="w-8 h-8 text-[#C9A84C]" />
-              </div>
-              <h3 className="text-2xl font-bold font-display text-[#2D1B3D] mb-2">No Events Found</h3>
-              <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">
-                Create your first event.
-              </p>
-              <button
-                onClick={handleCreateClick}
-                className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none"
-              >
-                <Plus className="w-4 h-4" />
-                Create Event
-              </button>
-            </div>
-          ) : (
-            /* Events Table */
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Event Name
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Event Type
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Time
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Venue
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
-                      Created At
-                    </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-center">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
-                  {paginatedEvents.map((event) => (
-                    <tr
-                      key={event.id}
-                      className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group"
-                    >
-                      <td className="py-4 px-4 text-sm font-semibold text-[#2D1B3D]">
-                        {event.title}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
-                        {event.eventType || "-"}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
-                        {formatDate(event.eventDate)}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80">
-                        {event.eventTime}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-[#2D1B3D]/80 max-w-[150px] truncate">
-                        {event.venue}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${event.status === "published"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : event.status === "cancelled"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                        >
-                          {event.status || "Draft"}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/60">
-                        {formatDateTime(event.createdAt || "")}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => setViewingEvent(event)}
-                            title="View details"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
-                            title="Design Invitation"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
-                          >
-                            <Mail className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEditClick(event)}
-                            title="Edit event"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(event.id || null)}
-                            title="Delete event"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                <div className="flex justify-between items-center mb-3">
+                  <div className="h-6 bg-slate-200 rounded-md w-1/3"></div>
+                  <div className="h-5 w-5 bg-slate-200 rounded-full"></div>
+                </div>
+                <div className="h-4 bg-slate-100 rounded-md w-1/2 mb-6"></div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-t border-b border-slate-100 my-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="h-3 bg-slate-100 rounded w-12"></div>
+                      <div className="h-5 bg-slate-200 rounded w-16"></div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <div className="h-10 bg-slate-100 rounded-xl flex-1"></div>
+                  <div className="h-10 bg-slate-100 rounded-xl flex-1"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          /* Error State */
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+            <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-slate-900">Failed to load events</h3>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1 mb-4">{error}</p>
+            {error !== "Session expired. Please sign in again." && (
+              <button
+                onClick={() => fetchEvents()}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#625BF6] rounded-xl hover:bg-indigo-700 transition-colors"
+              >
+                Try Again
+              </button>
+            )}
+          </div>
+        ) : filteredEvents.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
+              <Calendar className="w-8 h-8 text-[#625BF6]" />
             </div>
-          )}
+            <h3 className="text-xl font-bold text-slate-900 mb-1">
+              {selectedFilter === "all"
+                ? "No Events Found"
+                : `No ${selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)} Events`}
+            </h3>
+            <p className="text-sm text-slate-500 max-w-md mb-6">
+              {selectedFilter === "all"
+                ? "Get started by creating your very first event and inviting guests."
+                : `There are currently no events matching the "${selectedFilter}" filter.`}
+            </p>
+            <button
+              onClick={handleCreateClick}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0070F3] hover:bg-[#0060df] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Create Event</span>
+            </button>
+          </div>
+        ) : (
+          /* Card-Based Event Layout */
+          <div className="space-y-4">
+            {paginatedEvents.map((event) => {
+              const category = getEventCategory(event);
+              const totalGuests = event.totalGuests ?? 0;
+              const attending = event.attendingCount ?? 0;
+              const declined = event.declinedCount ?? 0;
+              const rsvpRate =
+                event.rsvpRate !== undefined
+                  ? event.rsvpRate
+                  : totalGuests > 0
+                  ? Math.round((attending / totalGuests) * 100)
+                  : 0;
 
-          {/* Pagination */}
-          {!loadingEvents && !error && events.length > 0 && (
+              return (
+                <div
+                  key={event.id}
+                  className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all duration-200"
+                >
+                  {/* Card Top: Title, Status Badge, and Arrow Link */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h2
+                          onClick={() => setViewingEvent(event)}
+                          className="text-lg sm:text-xl font-bold text-[#4F46E5] hover:text-[#3730A3] transition-colors cursor-pointer truncate"
+                        >
+                          {event.title}
+                        </h2>
+
+                        {/* Status Badge */}
+                        {category === "active" && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#E8F8EE] text-[#10B981]">
+                            Active
+                          </span>
+                        )}
+                        {category === "draft" && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
+                            Draft
+                          </span>
+                        )}
+                        {category === "completed" && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                            Completed
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Event Description / Subtitle */}
+                      <p className="text-sm text-slate-500 mt-1 font-normal line-clamp-1">
+                        {event.description || event.venue || "No description provided"}
+                      </p>
+                    </div>
+
+                    {/* Right-arrow link & Extra Menu */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuId(activeMenuId === event.id ? null : (event.id || null));
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none"
+                          title="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {activeMenuId === event.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-30 font-medium text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-100"
+                          >
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                handleEditClick(event);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Edit Event</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                router.push(`/dashboard/invitations?eventId=${event.id}`);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                              <span>Design Invitation</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                router.push(`/dashboard/guests?eventId=${event.id}`);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                            >
+                              <Users className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Manage Guests</span>
+                            </button>
+                            <div className="border-t border-slate-100 my-1"></div>
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setDeleteConfirmId(event.id || null);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Delete Event</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                        className="p-1 text-[#625BF6] hover:text-[#4338CA] hover:translate-x-0.5 transition-all focus:outline-none"
+                        title="Go to Event"
+                        aria-label="Go to event"
+                      >
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metrics & RSVP Stats Row (5 Columns) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6 py-4 border-t border-b border-slate-100 my-5">
+                    {/* Date */}
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium block">Date</span>
+                      <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5 block">
+                        {formatCardDate(event.eventDate)}
+                      </span>
+                    </div>
+
+                    {/* Total Guests */}
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium block">Total Guests</span>
+                      <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5 block">
+                        {totalGuests}
+                      </span>
+                    </div>
+
+                    {/* Attending */}
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium block">Attending</span>
+                      <span className="text-sm sm:text-base font-bold text-[#10B981] mt-0.5 block">
+                        {attending}
+                      </span>
+                    </div>
+
+                    {/* Declined */}
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium block">Declined</span>
+                      <span className="text-sm sm:text-base font-bold text-[#EF4444] mt-0.5 block">
+                        {declined}
+                      </span>
+                    </div>
+
+                    {/* RSVP Rate */}
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium block">RSVP Rate</span>
+                      <div className="flex items-center gap-2.5 mt-1.5">
+                        <div className="w-14 sm:w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
+                          <div
+                            className="bg-[#10B981] h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(100, Math.max(0, rsvpRate))}%` }}
+                          />
+                        </div>
+                        <span className="text-sm sm:text-base font-bold text-slate-900">
+                          {rsvpRate}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Bottom Actions: Manage & Preview */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                      className="flex-1 py-2.5 px-4 bg-[#F4F3FF] hover:bg-[#EBE9FE] text-[#5B50E5] font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none"
+                    >
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => setViewingEvent(event)}
+                      className="flex-1 py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none shadow-xs"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loadingEvents && !error && filteredEvents.length > 0 && (
+          <div className="mt-8">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={totalEvents}
-              limit={ITEMS_PER_PAGE}
+              totalItems={totalItems}
+              limit={itemsPerPage}
               onPageChange={(page) => setCurrentPage(page)}
               loading={loadingEvents}
               itemName="events"
               hideOnSinglePage={false}
             />
-          )}
-        </div>
+          </div>
+        )}
       </main>
 
       {/* CREATE / EDIT EVENT MODAL */}
@@ -465,40 +701,36 @@ function EventsPageContent() {
         eventToEdit={editingEvent}
       />
 
-      {/* EVENT DETAILS VIEW DIALOG */}
+      {/* EVENT DETAILS / PREVIEW DIALOG */}
       <AnimatePresence>
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setViewingEvent(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 text-[#2D1B3D] font-body"
-              style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: '32rem', position: 'relative', zIndex: 10, margin: 'auto' }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 text-slate-900"
             >
-              {/* Fixed Header */}
-              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-[#E8C4B8]/20 flex-shrink-0 bg-white z-10" style={{ flexShrink: 0, borderBottom: '1px solid rgba(232,196,184,0.2)' }}>
+              {/* Header */}
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-slate-100 flex-shrink-0 bg-white">
                 <div className="pr-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#625BF6]">
                     {viewingEvent.eventType || "General"} Event
                   </span>
-                  <h3
-                    className="text-xl sm:text-2xl font-semibold font-display mt-0.5 leading-snug break-words"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5 leading-snug break-words">
                     {viewingEvent.title}
                   </h3>
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors flex-shrink-0 -mr-1"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0 -mr-1"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
@@ -506,9 +738,9 @@ function EventsPageContent() {
               </div>
 
               {/* Scrollable Content Body */}
-              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain" style={{ overflowY: 'auto', flex: '1 1 0%', minHeight: 0 }}>
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
                 {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-[#E8C4B8]/20 bg-[#FAF8F5] flex-shrink-0">
+                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
                     <img
                       src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
                       alt={viewingEvent.title}
@@ -520,50 +752,72 @@ function EventsPageContent() {
                   </div>
                 )}
 
+                {/* RSVP Stats Grid in Preview */}
+                <div className="grid grid-cols-4 gap-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-center">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
+                    <span className="text-sm font-bold text-slate-900">{viewingEvent.totalGuests ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Attending</span>
+                    <span className="text-sm font-bold text-emerald-600">{viewingEvent.attendingCount ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Declined</span>
+                    <span className="text-sm font-bold text-rose-500">{viewingEvent.declinedCount ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">RSVP Rate</span>
+                    <span className="text-sm font-bold text-[#625BF6]">
+                      {viewingEvent.rsvpRate ?? (viewingEvent.totalGuests ? Math.round(((viewingEvent.attendingCount || 0) / viewingEvent.totalGuests) * 100) : 0)}%
+                    </span>
+                  </div>
+                </div>
+
                 {viewingEvent.description && (
-                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 max-w-full">
-                    <p className="text-xs font-semibold text-[#2D1B3D]/50 uppercase tracking-wider mb-1.5">
+                  <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-100 max-w-full">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                       Description
                     </p>
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-[#2D1B3D]/90">
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-slate-700">
                       {viewingEvent.description}
                     </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5]/60 p-3.5 rounded-xl border border-[#E8C4B8]/20">
+                <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
                   <div className="flex items-start gap-2.5">
-                    <Calendar className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                    <Calendar className="w-4 h-4 text-[#625BF6] mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                         Date
                       </p>
-                      <p className="font-semibold text-xs">{formatDate(viewingEvent.eventDate)}</p>
+                      <p className="font-semibold text-xs text-slate-800">{formatDate(viewingEvent.eventDate)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <Clock className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                    <Clock className="w-4 h-4 text-[#625BF6] mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                         Time
                       </p>
-                      <p className="font-semibold text-xs">{viewingEvent.eventTime}</p>
+                      <p className="font-semibold text-xs text-slate-800">{viewingEvent.eventTime}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5]/60 rounded-xl border border-[#E8C4B8]/20">
-                  <MapPin className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2.5 p-3.5 bg-slate-50/70 rounded-xl border border-slate-100">
+                  <MapPin className="w-4 h-4 text-[#625BF6] mt-0.5 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       Location
                     </p>
-                    <p className="font-semibold text-xs text-[#2D1B3D] break-words">{viewingEvent.venue}</p>
+                    <p className="font-semibold text-xs text-slate-800 break-words">{viewingEvent.venue}</p>
                     {(viewingEvent.address ||
                       viewingEvent.city ||
                       viewingEvent.state ||
                       viewingEvent.country) && (
-                        <p className="text-xs text-[#2D1B3D]/70 mt-0.5 break-words">
+                        <p className="text-xs text-slate-500 mt-0.5 break-words">
                           {[
                             viewingEvent.address,
                             viewingEvent.city,
@@ -577,24 +831,28 @@ function EventsPageContent() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 px-1 text-xs text-[#2D1B3D]/50">
-                  <span>Status: <strong className="text-[#2D1B3D] uppercase font-bold">{viewingEvent.status}</strong></span>
+                <div className="flex justify-between items-center pt-2 px-1 text-xs text-slate-400">
+                  <span>Status: <strong className="text-slate-700 uppercase font-bold">{viewingEvent.status || "Draft"}</strong></span>
                   <span>Created: {formatDateTime(viewingEvent.createdAt || "")}</span>
                 </div>
               </div>
 
-              {/* Fixed Footer */}
-              <div className="flex items-center justify-end gap-3 p-4 sm:px-6 bg-[#FAF8F5] border-t border-[#E8C4B8]/20 flex-shrink-0" style={{ flexShrink: 0, borderTop: '1px solid rgba(232,196,184,0.2)' }}>
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 p-4 sm:px-6 bg-slate-50 border-t border-slate-100 flex-shrink-0">
                 <button
-                  onClick={() => router.push(`/dashboard/invitations?eventId=${viewingEvent.id}`)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center gap-1.5"
+                  onClick={() => {
+                    const id = viewingEvent.id;
+                    setViewingEvent(null);
+                    router.push(`/dashboard/invitations?eventId=${id}`);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-[#625BF6] hover:bg-indigo-700 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none flex items-center gap-1.5"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  Design Invitation
+                  Manage Invitation
                 </button>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="px-5 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-xl active:scale-95 transition-all focus:outline-none"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl active:scale-95 transition-all focus:outline-none"
                 >
                   Close
                 </button>
@@ -613,33 +871,30 @@ function EventsPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 p-6 text-slate-900"
             >
-              <h3
-                className="text-lg font-semibold font-display mb-2"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
                 Delete Event
               </h3>
-              <p className="text-sm text-[#2D1B3D]/70 mb-6">
-                Are you sure you want to delete this event? This action is permanent and cannot be undone.
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                Are you sure you want to delete this event? This will remove the event, its guest list, and invitations permanently.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all focus:outline-none"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all focus:outline-none"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md focus:outline-none"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all shadow-sm focus:outline-none"
                 >
                   Yes, Delete
                 </button>
@@ -654,11 +909,13 @@ function EventsPageContent() {
 
 export default function EventsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        </div>
+      }
+    >
       <EventsPageContent />
     </Suspense>
   );

@@ -18,6 +18,10 @@ export interface Event {
   createdBy?: number;
   createdAt?: string;
   updatedAt?: string;
+  totalGuests?: number;
+  attendingCount?: number;
+  declinedCount?: number;
+  rsvpRate?: number;
 }
 
 interface EventsResponse {

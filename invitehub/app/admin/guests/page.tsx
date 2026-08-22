@@ -319,35 +319,35 @@ export default function AdminGuestsPage() {
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex flex-col font-body text-slate-800 relative overflow-hidden">
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-100 bg-white/90 hover:bg-blue-50 transition-colors shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
               <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
+                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 Guests
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Manage guest lists across all events</p>
+              <p className="text-sm text-slate-500 mt-1">Manage guest lists across all events</p>
             </div>
           </div>
         </div>
@@ -359,13 +359,13 @@ export default function AdminGuestsPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100/80"
             >
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -378,17 +378,17 @@ export default function AdminGuestsPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#2D1B3D]/5 flex items-center justify-center flex-shrink-0">
-                <Users className="w-6 h-6 text-[#2D1B3D]" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-blue-500/20">
+                <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Total Guests Across Platform
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   {loading ? "..." : totalGuestsCount}
                 </p>
               </div>
@@ -398,17 +398,17 @@ export default function AdminGuestsPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white/90 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/80 hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-6 h-6 text-[#C9A84C]" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white shadow-md shadow-indigo-500/20">
+                <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Total Events Across Platform
                 </p>
-                <p className="text-3xl font-bold text-[#2D1B3D] mt-0.5">
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   {loading ? "..." : totalEventsCount}
                 </p>
               </div>
@@ -417,28 +417,28 @@ export default function AdminGuestsPage() {
         </div>
 
         {/* Search and Table Area */}
-        <div className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
+        <div className="bg-white/90 border border-blue-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px] backdrop-blur-md">
           <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6 w-full">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="w-4 h-4 text-[#2D1B3D]/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search guests..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 placeholder:text-slate-400 transition-all"
               />
             </div>
 
             {/* Event Filter dropdown & Export CSV */}
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/55 flex-shrink-0" />
-                <span className="text-xs font-semibold text-[#2D1B3D]/60 whitespace-nowrap">Filter Event:</span>
+                <Filter className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">Filter Event:</span>
                 <select
                   value={selectedEventId}
                   onChange={(e) => setSelectedEventId(e.target.value)}
-                  className="appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                  className="appearance-none bg-slate-50 border border-blue-100 px-4 py-2.5 pr-8 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="">All Events</option>
                   {events.map((e) => (
@@ -447,16 +447,16 @@ export default function AdminGuestsPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-[#2D1B3D]/40 absolute right-2.5 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
               </div>
 
               <button
                 onClick={handleExportCSV}
                 disabled={filteredGuests.length === 0}
                 title={filteredGuests.length === 0 ? "No guests available to export" : "Export visible guests to CSV"}
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#FAF8F5] hover:border-[#2D1B3D]/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none whitespace-nowrap"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/40 whitespace-nowrap"
               >
-                <Download className="w-3.5 h-3.5 text-[#C9A84C]" />
+                <Download className="w-3.5 h-3.5 text-white" />
                 <span>Export CSV</span>
               </button>
             </div>
@@ -465,28 +465,28 @@ export default function AdminGuestsPage() {
           {loading ? (
             <div className="space-y-4 py-6">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-14 bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-xl animate-pulse" />
+                <div key={i} className="h-14 bg-blue-50/50 border border-blue-100/60 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
               <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-              <h4 className="text-lg font-semibold text-[#2D1B3D]">Error loading guests</h4>
-              <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{error}</p>
+              <h4 className="text-lg font-semibold text-slate-900">Error loading guests</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
               <button
                 onClick={fetchData}
-                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52]"
+                className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               >
                 Retry
               </button>
             </div>
           ) : filteredGuests.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                <Users className="w-8 h-8 text-[#C9A84C]" />
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+                <Users className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">No Guests Found</h3>
-              <p className="text-xs text-[#2D1B3D]/50 max-w-sm">
+              <h3 className="text-xl font-bold font-display text-slate-900 mb-1">No Guests Found</h3>
+              <p className="text-xs text-slate-500 max-w-sm">
                 No guests have been registered under these search parameters.
               </p>
             </div>
@@ -494,60 +494,60 @@ export default function AdminGuestsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                  <tr className="border-b border-blue-100 bg-blue-50/50">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider rounded-l-xl">
                       Name
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Contact Details
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Event Title
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Event Creator
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       Check-In Status
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider">
                       RSVP Status
                     </th>
-                    <th className="py-4 px-4 text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">
+                    <th className="py-3.5 px-4 text-xs font-bold text-blue-900/70 uppercase tracking-wider text-right rounded-r-xl">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
+                <tbody className="divide-y divide-blue-50">
                   {paginatedGuests.map((g) => (
-                    <tr key={g.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group">
+                    <tr key={g.id} className="hover:bg-blue-50/40 transition-colors duration-150 group">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-[#2D1B3D]">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-blue-700 shadow-2xs">
                             {g.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <span className="text-sm font-semibold text-[#2D1B3D]">{g.name}</span>
+                          <span className="text-sm font-semibold text-slate-900">{g.name}</span>
                         </div>
                       </td>
 
                       <td className="py-4 px-4 text-xs">
-                        <p className="text-[#2D1B3D] font-medium">{g.email}</p>
+                        <p className="text-slate-800 font-medium">{g.email}</p>
                         {g.phone && (
-                          <p className="text-[#2D1B3D]/55 flex items-center gap-1 mt-0.5">
-                            <Phone className="w-3 h-3 text-[#C9A84C]" />
+                          <p className="text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-blue-500" />
                             {g.phone}
                           </p>
                         )}
                       </td>
 
-                      <td className="py-4 px-4 text-xs font-medium text-[#2D1B3D]/70 max-w-[130px] truncate">
+                      <td className="py-4 px-4 text-xs font-medium text-slate-600 max-w-[130px] truncate">
                         {g.eventTitle || "General"}
                       </td>
 
-                      <td className="py-4 px-4 text-xs text-[#2D1B3D]/80">
+                      <td className="py-4 px-4 text-xs text-slate-700">
                         <div className="flex flex-col">
                           <span className="font-semibold">{g.eventCreator?.name || "-"}</span>
-                          <span className="text-[10px] text-[#2D1B3D]/50">{g.eventCreator?.email || "-"}</span>
+                          <span className="text-[10px] text-slate-400">{g.eventCreator?.email || "-"}</span>
                         </div>
                       </td>
 
@@ -584,21 +584,21 @@ export default function AdminGuestsPage() {
                           <button
                             onClick={() => setViewingGuest(g)}
                             title="View Details"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#2D1B3D] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditClick(g)}
                             title="Edit Guest"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-[#C9A84C] hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(g.id || null)}
                             title="Delete Guest"
-                            className="p-2 text-[#2D1B3D]/65 hover:text-red-600 hover:bg-[#F0EBE8] rounded-lg transition-all focus:outline-none"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500/20"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -634,67 +634,67 @@ export default function AdminGuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setViewingGuest(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
+                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Guest Details
                 </h3>
                 <button
                   onClick={() => setViewingGuest(null)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs font-semibold text-[#2D1B3D]/70 uppercase tracking-wider">
+              <div className="space-y-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 <div>
-                  <span className="text-[10px] text-[#2D1B3D]/40">Full Name</span>
-                  <p className="text-sm font-bold text-[#2D1B3D] mt-0.5 normal-case">{viewingGuest.name}</p>
+                  <span className="text-[10px] text-slate-400">Full Name</span>
+                  <p className="text-sm font-bold text-slate-900 mt-0.5 normal-case">{viewingGuest.name}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#2D1B3D]/40">Email Address</span>
-                  <p className="text-sm font-semibold text-[#2D1B3D] mt-0.5 normal-case">{viewingGuest.email}</p>
+                  <span className="text-[10px] text-slate-400">Email Address</span>
+                  <p className="text-sm font-semibold text-slate-800 mt-0.5 normal-case">{viewingGuest.email}</p>
                 </div>
                 {viewingGuest.phone && (
                   <div>
-                    <span className="text-[10px] text-[#2D1B3D]/40">Phone Number</span>
-                    <p className="text-sm font-semibold text-[#2D1B3D] mt-0.5 normal-case">{viewingGuest.phone}</p>
+                    <span className="text-[10px] text-slate-400">Phone Number</span>
+                    <p className="text-sm font-semibold text-slate-800 mt-0.5 normal-case">{viewingGuest.phone}</p>
                   </div>
                 )}
                 <div>
-                  <span className="text-[10px] text-[#2D1B3D]/40">Event Title</span>
-                  <p className="text-xs font-bold text-[#C9A84C] mt-0.5 normal-case">{viewingGuest.eventTitle}</p>
+                  <span className="text-[10px] text-slate-400">Event Title</span>
+                  <p className="text-xs font-bold text-blue-600 mt-0.5 normal-case">{viewingGuest.eventTitle}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#2D1B3D]/40">Event Creator</span>
-                  <p className="text-xs font-semibold text-[#2D1B3D] mt-0.5 normal-case">
+                  <span className="text-[10px] text-slate-400">Event Creator</span>
+                  <p className="text-xs font-semibold text-slate-700 mt-0.5 normal-case">
                     {viewingGuest.eventCreator?.name || "-"} ({viewingGuest.eventCreator?.email || "-"})
                   </p>
                 </div>
                 <div className="flex gap-4">
                   <div>
-                    <span className="text-[10px] text-[#2D1B3D]/40">RSVP Status</span>
-                    <p className="text-xs font-bold text-[#2D1B3D] mt-0.5">{viewingGuest.status}</p>
+                    <span className="text-[10px] text-slate-400">RSVP Status</span>
+                    <p className="text-xs font-bold text-blue-700 mt-0.5 uppercase">{viewingGuest.status}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-[#2D1B3D]/40">Checked In</span>
-                    <p className="text-xs font-bold text-[#2D1B3D] mt-0.5">{viewingGuest.isCheckedIn ? "YES" : "NO"}</p>
+                    <span className="text-[10px] text-slate-400">Checked In</span>
+                    <p className="text-xs font-bold text-slate-900 mt-0.5">{viewingGuest.isCheckedIn ? "YES" : "NO"}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end mt-6 pt-3 border-t border-blue-100">
                 <button
                   onClick={() => setViewingGuest(null)}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
                   Close
                 </button>
@@ -713,21 +713,21 @@ export default function AdminGuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddEditModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
+                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Edit Guest Details (Admin)
                 </h3>
                 <button
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-lg hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -742,7 +742,7 @@ export default function AdminGuestsPage() {
 
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     Guest Name *
                   </label>
                   <input
@@ -750,12 +750,12 @@ export default function AdminGuestsPage() {
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     Email Address *
                   </label>
                   <input
@@ -763,30 +763,30 @@ export default function AdminGuestsPage() {
                     required
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     Phone Number
                   </label>
                   <input
                     type="text"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-blue-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/60 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                     RSVP Status
                   </label>
                   <select
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-[#E8C4B8]/40 px-3.5 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                    className="w-full bg-slate-50 border border-blue-100 px-3.5 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="invited">Invited</option>
                     <option value="confirmed">Confirmed</option>
@@ -795,18 +795,18 @@ export default function AdminGuestsPage() {
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6 pt-3 border-t border-blue-100">
                   <button
                     type="button"
                     onClick={() => setIsAddEditModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl transition-all shadow-md disabled:opacity-50"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {submitting ? "Saving..." : "Save Changes"}
                   </button>
@@ -826,24 +826,24 @@ export default function AdminGuestsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold font-display mb-2 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Delete Guest
               </h3>
-              <p className="text-sm text-[#2D1B3D]/70 mb-6">
+              <p className="text-sm text-slate-500 mb-6">
                 Are you sure you want to delete this guest? This action is permanent and cannot be undone.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                 >
                   Cancel
                 </button>

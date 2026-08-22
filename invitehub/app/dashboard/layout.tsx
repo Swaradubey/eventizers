@@ -9,7 +9,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex text-[#2D1B3D]">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/60 flex text-slate-800">
       {/* Responsive Left Sidebar */}
       <Sidebar />
 

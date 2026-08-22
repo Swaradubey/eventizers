@@ -53,7 +53,6 @@ export default function BillingPage() {
   // Payment method & Invoices states
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  // True only during the very first fetch; never reset to true on background refreshes.
   const [initialBillingLoading, setInitialBillingLoading] = useState(true);
   const [billingError, setBillingError] = useState<string | null>(null);
 
@@ -65,9 +64,8 @@ export default function BillingPage() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
-  // Per-row downloading state for invoices
+  // Per-row downloading / deleting state
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
-  // Per-row deleting state for invoices
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
 
   // Authentication check
@@ -81,11 +79,9 @@ export default function BillingPage() {
   const currentFetchId = useRef(0);
   const fetchedUserId = useRef<number | null>(null);
 
-  // Load billing data from backend
   const fetchBillingData = useCallback(async (isRefresh = false) => {
     const id = ++currentFetchId.current;
 
-    // On initial load, show skeletons. On refresh, keep existing data visible.
     if (!isRefresh) {
       setLoading(true);
       setInitialBillingLoading(true);
@@ -107,7 +103,6 @@ export default function BillingPage() {
         }
       }
 
-      // Load payment method and invoices in parallel, catching errors individually
       const [pmRes, invRes] = await Promise.all([
         BillingAPI.getPaymentMethod().catch(err => {
           console.error("Error fetching payment method", err);
@@ -124,7 +119,6 @@ export default function BillingPage() {
       if (pmRes && pmRes.success) {
         setPaymentMethod(pmRes.data);
       } else if (pmRes && pmRes.success === false) {
-        // Server responded but user has no payment method on file
         setPaymentMethod(null);
       }
 
@@ -156,7 +150,6 @@ export default function BillingPage() {
     }
   }, []);
 
-  // Open the Stripe Elements modal for updating payment method
   const handleOpenUpdateModal = () => {
     setShowUpdateModal(true);
   };
@@ -168,7 +161,6 @@ export default function BillingPage() {
     if (pendingPlanId) {
       const planToSubscribe = pendingPlanId;
       setPendingPlanId(null);
-      // Automatically subscribe using the newly added card
       setTimeout(() => {
         handleUpdatePlan(planToSubscribe);
       }, 500);
@@ -179,7 +171,6 @@ export default function BillingPage() {
     triggerToast(message, "error");
   };
 
-  // Secure download via auth token and blob conversion
   const handleDownloadInvoice = async (invoiceId: string) => {
     if (!invoiceId) {
       triggerToast("Invoice identifier is missing.", "error");
@@ -192,7 +183,6 @@ export default function BillingPage() {
         responseType: "blob"
       });
 
-      // Handle cases where server returned a JSON error inside a blob
       if (response.data && response.data.type === "application/json") {
         const errorText = await (response.data as Blob).text();
         let parsedMessage = "Failed to download invoice PDF.";
@@ -238,7 +228,6 @@ export default function BillingPage() {
     }
   };
 
-  // Safe delete invoice record
   const handleDeleteInvoice = async (invoice: Invoice) => {
     const targetId = invoice.invoiceNumber || invoice.id || invoice.transactionId;
     if (!targetId) {
@@ -250,7 +239,6 @@ export default function BillingPage() {
     try {
       const res = await BillingAPI.deleteInvoice(targetId);
       if (res && res.success) {
-        // Immediately update state without requiring full page refresh
         setInvoices((prev) =>
           prev.filter(
             (inv) =>
@@ -276,16 +264,12 @@ export default function BillingPage() {
   };
 
   useEffect(() => {
-    // Wait for auth initialisation to complete before fetching billing data.
-    // This prevents a spurious fetch (and skeleton flash) during SSR hydration
-    // when user is momentarily null.
     if (!authLoading && user && fetchedUserId.current !== user.id) {
       fetchedUserId.current = user.id;
       fetchBillingData();
     }
   }, [authLoading, user, fetchBillingData]);
 
-  // Toast auto-dismiss effect
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4000);
@@ -300,13 +284,11 @@ export default function BillingPage() {
   const handleUpdatePlan = async (planId: string) => {
     setUpdating(true);
     try {
-      // Enterprise still uses Contact Sales
       if (planId === "enterprise") {
         window.open("mailto:sales@invitehub.com", "_blank");
         return;
       }
 
-      // Pro and Business use Stripe Checkout
       if (planId === "pro" || planId === "business") {
         const res = await BillingAPI.createCheckoutSession(planId);
         if (res && res.url) {
@@ -318,10 +300,8 @@ export default function BillingPage() {
         return;
       }
 
-      // Free plan - use direct subscription update
       const res = await BillingAPI.subscribeToPlan(planId);
       if (res && res.requiresPaymentMethod && res.clientSecret) {
-        // Stripe Customer needs a payment method.
         setPendingPlanId(planId);
         setShowUpdateModal(true);
         triggerToast("Please add a card to complete the subscription.", "success");
@@ -340,34 +320,34 @@ export default function BillingPage() {
     }
   };
 
-  // Show a spinner only while auth is still initialising (hydration phase).
-  // Once authLoading is false, we know whether the user is logged in or not.
-  // The redirect effect above will handle the unauthenticated case.
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-slate-50/50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div
+      className="min-h-screen flex flex-col font-body text-slate-900 relative overflow-hidden"
+      style={{
+        backgroundColor: "#f8fafc",
+        backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
+        backgroundSize: "24px 24px",
+      }}
+    >
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
-        {/* Header bar */}
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-6 pb-12 z-10">
+        {/* ── Page Header ── */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
+            <CreditCard className="w-6 h-6 text-indigo-600" />
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Billing
-              </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">
-                Manage your plan, usage and invoices
+              <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Manage your plan, usage, and invoices
               </p>
             </div>
           </div>
@@ -377,7 +357,7 @@ export default function BillingPage() {
               fetchBillingData(true);
               refetchUsage();
             }}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none self-end sm:self-auto"
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm focus:outline-none self-end sm:self-auto"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Refresh
@@ -385,23 +365,21 @@ export default function BillingPage() {
         </div>
 
         {loading ? (
-          // Loading skeleton state
           <div className="space-y-8 animate-pulse">
-            <div className="h-64 bg-white border border-[#E8C4B8]/20 rounded-2xl" />
+            <div className="h-32 bg-white border border-slate-100 rounded-2xl" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-96 bg-white border border-[#E8C4B8]/20 rounded-2xl" />
+                <div key={i} className="h-96 bg-white border border-slate-100 rounded-2xl" />
               ))}
             </div>
           </div>
         ) : error ? (
-          // Error loading state
-          <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
             <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-            <h4 className="text-xl font-bold font-display text-[#2D1B3D]">
+            <h4 className="text-xl font-bold text-slate-900">
               Unable to load billing details
             </h4>
-            <p className="text-xs text-[#2D1B3D]/60 mt-2 max-w-sm leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
               {error}
             </p>
             <button
@@ -409,14 +387,14 @@ export default function BillingPage() {
                 fetchBillingData(true);
                 refetchUsage();
               }}
-              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
+              className="mt-6 px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all active:scale-95 focus:outline-none"
             >
               Retry Connection
             </button>
           </div>
         ) : billingInfo ? (
-          <div className="space-y-10">
-            {/* Usage Metrics Card */}
+          <div>
+            {/* ── 1. Current Usage Card ── */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -430,134 +408,9 @@ export default function BillingPage() {
               />
             </motion.div>
 
-            {/* Payment Method & Invoice History Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Payment Method Section (Takes 1 column) */}
-              <div className="lg:col-span-1 space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    Payment Method
-                  </h2>
-                  <p className="text-xs text-[#2D1B3D]/50 mt-1">
-                    Manage your billing cards and default settings.
-                  </p>
-                </div>
-
-                {initialBillingLoading ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-48" />
-                ) : billingError ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
-                    <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                    <p className="text-xs font-semibold text-[#2D1B3D]">Failed to load card details</p>
-                  </div>
-                ) : paymentMethod ? (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-48">
-                    {/* Gold accent line at the top */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C9A84C] to-[#2D1B3D]" />
-                    
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-7 bg-[#2D1B3D] text-white flex items-center justify-center rounded font-extrabold italic text-sm select-none shadow-sm">
-                          {paymentMethod.cardBrand === "Visa" ? (
-                            <span className="text-[#C9A84C]">Visa</span>
-                          ) : paymentMethod.cardBrand === "Mastercard" ? (
-                            <span className="text-orange-400">MC</span>
-                          ) : (
-                            <span>Card</span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-[#2D1B3D]">
-                            {paymentMethod.cardBrand} Card
-                          </p>
-                          <p className="text-[10px] text-[#2D1B3D]/40">Default Payment Method</p>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        paymentMethod.status === "Active"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-250"
-                          : "bg-amber-50 text-amber-700 border-amber-250"
-                      }`}>
-                        {paymentMethod.status}
-                      </span>
-                    </div>
-
-                    <div>
-                      {/* Masked Card Number */}
-                      <p className="text-lg font-mono tracking-widest text-[#2D1B3D]/80 font-bold">
-                        •••• •••• •••• {paymentMethod.last4}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <div>
-                        <p className="text-[9px] text-[#2D1B3D]/40 uppercase tracking-wider">Expiration Date</p>
-                        <p className="font-semibold text-[#2D1B3D]">Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear.slice(-2)}</p>
-                      </div>
-
-                      <button
-                        onClick={handleOpenUpdateModal}
-                        disabled={updating}
-                        className="text-[10px] font-bold text-[#C9A84C] hover:text-[#2D1B3D] transition-colors border border-[#C9A84C]/25 hover:border-[#2D1B3D] rounded-lg px-2 py-1 bg-white hover:bg-[#FAF8F5] shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Update
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-48">
-                    {/* Gold accent line at the top */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C9A84C] to-[#2D1B3D]" />
-                    
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-7 bg-gray-100 border border-gray-200 flex items-center justify-center rounded text-gray-400 shadow-sm">
-                        <CreditCard className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-[#2D1B3D]">No card linked</p>
-                        <p className="text-[10px] text-[#2D1B3D]/40">No payment method added.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end items-center">
-                      <button
-                        onClick={handleOpenUpdateModal}
-                        disabled={updating}
-                        className="text-[10px] font-bold text-[#C9A84C] hover:text-[#2D1B3D] transition-colors border border-[#C9A84C]/25 hover:border-[#2D1B3D] rounded-lg px-3 py-1.5 bg-white hover:bg-[#FAF8F5] shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Add Card
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Invoice History Section (Takes 2 columns) */}
-              <div className="lg:col-span-2">
-                <InvoiceHistoryTable
-                  invoices={invoices}
-                  loading={initialBillingLoading}
-                  error={billingError}
-                  onDownload={handleDownloadInvoice}
-                  downloadingInvoiceId={downloadingInvoiceId}
-                  onDelete={handleDeleteInvoice}
-                  deletingInvoiceId={deletingInvoiceId}
-                  itemsPerPage={5}
-                />
-              </div>
-            </div>
-
-            {/* Pricing Section */}
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  Choose Your Plan
-                </h2>
-                <p className="text-xs text-[#2D1B3D]/50 mt-1">
-                  Select a subscription plan that aligns with your hosting requirements.
-                </p>
-              </div>
-
+            {/* ── 2. Choose your plan ── */}
+            <div className="mb-10">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">Choose your plan</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                 {billingInfo.plans.map((plan, index) => (
                   <motion.div
@@ -577,6 +430,108 @@ export default function BillingPage() {
                 ))}
               </div>
             </div>
+
+            {/* ── 3. Payment Method + Invoice History ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
+              {/* Payment Method — left ~30% */}
+              <div className="lg:col-span-1">
+                <h2 className="font-bold text-2xl text-slate-900 mb-0.5">Payment Method</h2>
+                <p className="text-xs text-slate-500 mb-4">
+                  Manage your billing cards and default settings.
+                </p>
+
+                {initialBillingLoading ? (
+                  <div className="bg-white border border-slate-100/80 rounded-2xl p-5 shadow-sm animate-pulse h-40" />
+                ) : billingError && !paymentMethod ? (
+                  <div className="bg-white border border-slate-100/80 rounded-2xl p-5 shadow-sm flex flex-col items-center justify-center text-center h-40">
+                    <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">Failed to load card details</p>
+                  </div>
+                ) : paymentMethod ? (
+                  /* ── Card Widget ── */
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80">
+                    {/* Top row */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-7 bg-slate-900 text-white flex items-center justify-center rounded font-extrabold italic text-sm select-none shadow-sm">
+                          {paymentMethod.cardBrand === "Visa" ? (
+                            <span className="text-yellow-300 text-[11px]">VISA</span>
+                          ) : paymentMethod.cardBrand === "Mastercard" ? (
+                            <span className="text-orange-400 text-[11px]">MC</span>
+                          ) : (
+                            <span className="text-[11px]">Card</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-900">
+                            {paymentMethod.cardBrand} Card
+                          </p>
+                          <p className="text-[10px] text-slate-400">Default Payment Method</p>
+                        </div>
+                      </div>
+                      <span className="bg-emerald-50 text-emerald-600 text-xs px-2 py-0.5 rounded-md font-medium border border-emerald-100">
+                        {paymentMethod.status || "Active"}
+                      </span>
+                    </div>
+
+                    {/* Masked card number */}
+                    <p className="text-base font-bold font-mono tracking-widest text-slate-900 my-3">
+                      •••• •••• •••• {paymentMethod.last4}
+                    </p>
+
+                    {/* Bottom row */}
+                    <div className="flex justify-between items-center mt-3">
+                      <p className="text-xs text-slate-500">
+                        Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear.slice(-2)}
+                      </p>
+                      <button
+                        onClick={handleOpenUpdateModal}
+                        disabled={updating}
+                        className="border border-amber-200 text-amber-600 hover:bg-amber-50 px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* No card linked */
+                  <div className="bg-white border border-slate-100/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-7 bg-slate-100 border border-slate-200 flex items-center justify-center rounded text-slate-400 shadow-sm">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-900">No card linked</p>
+                        <p className="text-[10px] text-slate-400">No payment method added.</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleOpenUpdateModal}
+                        disabled={updating}
+                        className="border border-blue-200 text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Add Card
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Invoice History — right ~70% */}
+              <div className="lg:col-span-2">
+                <InvoiceHistoryTable
+                  invoices={invoices}
+                  loading={initialBillingLoading}
+                  error={billingError}
+                  onDownload={handleDownloadInvoice}
+                  downloadingInvoiceId={downloadingInvoiceId}
+                  onDelete={handleDeleteInvoice}
+                  deletingInvoiceId={deletingInvoiceId}
+                  itemsPerPage={5}
+                />
+              </div>
+            </div>
           </div>
         ) : null}
       </main>
@@ -588,17 +543,17 @@ export default function BillingPage() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-100"
           >
             {toast.type === "success" ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             ) : (
               <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
             )}
-            <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+            <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+              className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
             >
               <X className="w-3.5 h-3.5" />
             </button>

@@ -415,14 +415,18 @@ function InvitationDesignerPageContent() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex flex-col font-body text-slate-800 relative overflow-hidden">
+      {/* Decorative ambient background glows */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none -z-0" />
+      <div className="absolute bottom-10 left-10 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none -z-0" />
+
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
@@ -432,7 +436,7 @@ function InvitationDesignerPageContent() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
               <Menu className="w-5 h-5 text-[#2D1B3D]" />
@@ -451,8 +455,8 @@ function InvitationDesignerPageContent() {
           <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Event switcher dropdown if user has events */}
             {events.length > 0 && (
-              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs">
-                <span className="text-[#2D1B3D]/50 font-semibold">Event:</span>
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-blue-200/70 shadow-sm text-xs">
+                <span className="text-slate-500 font-semibold">Event:</span>
                 <select
                   value={selectedEventId || ""}
                   onChange={(e) => {
@@ -467,7 +471,7 @@ function InvitationDesignerPageContent() {
                     }
                     window.history.pushState({}, "", url.toString());
                   }}
-                  className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer max-w-[150px] truncate"
+                  className="bg-transparent font-bold focus:outline-none text-slate-800 cursor-pointer max-w-[150px] truncate"
                 >
                   <option value="">Select Event...</option>
                   {events.map((e) => (
@@ -489,17 +493,17 @@ function InvitationDesignerPageContent() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -510,18 +514,18 @@ function InvitationDesignerPageContent() {
         {/* Main Workspace split */}
         {!selectedEventId ? (
           /* Empty selection state */
-          <div className="flex-1 bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-              <Calendar className="w-8 h-8 text-[#C9A84C]" />
+          <div className="flex-1 bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-6 shadow-sm">
+              <Calendar className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-bold font-display text-[#2D1B3D] mb-2">Select an Event to Begin</h3>
-            <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">
+            <h3 className="text-2xl font-bold font-display text-slate-900 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Select an Event to Begin</h3>
+            <p className="text-sm text-slate-500 max-w-md mb-8">
               Select one of your existing events above, or create a new event from the dashboard to start styling customized invitation pages.
             </p>
             {events.length === 0 && (
               <button
                 onClick={() => router.push("/dashboard")}
-                className="px-6 py-3 text-xs font-bold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors shadow-md focus:outline-none"
+                className="px-6 py-3 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20 focus:outline-none"
               >
                 Go to Dashboard
               </button>
@@ -529,21 +533,21 @@ function InvitationDesignerPageContent() {
           </div>
         ) : inviteLoading ? (
           /* Loading designer */
-          <div className="flex-1 bg-white/60 border border-[#E8C4B8]/30 rounded-2xl p-24 text-center flex flex-col items-center justify-center shadow-sm">
-            <div className="w-8 h-8 border-3 border-[#2D1B3D]/25 border-t-[#2D1B3D] rounded-full animate-spin"></div>
-            <p className="text-xs font-semibold text-[#2D1B3D]/50 mt-4">Loading invitation editor...</p>
+          <div className="flex-1 bg-white/70 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-24 text-center flex flex-col items-center justify-center shadow-sm">
+            <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-xs font-semibold text-slate-500 mt-4">Loading invitation editor...</p>
           </div>
         ) : !invitation ? (
           /* Error loading event/details */
-          <div className="flex-1 bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+          <div className="flex-1 bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
             <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-            <h3 className="text-xl font-bold text-[#2D1B3D] mb-2">Could Not Load Designer Data</h3>
-            <p className="text-sm text-[#2D1B3D]/60 max-w-sm mb-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Could Not Load Designer Data</h3>
+            <p className="text-sm text-slate-500 max-w-sm mb-6">
               {inviteError || "The event could not be found or you do not have permission to view it."}
             </p>
             <button
               onClick={() => setSelectedEventId(null)}
-              className="px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl"
+              className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
             >
               Back to Events selection
             </button>
@@ -556,16 +560,16 @@ function InvitationDesignerPageContent() {
             <div className="lg:col-span-5 flex flex-col gap-6">
 
               {/* Toolbar Actions Bar (Publish, Save Draft, Preview) */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-wrap gap-2 items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-4 shadow-sm flex flex-wrap gap-2 items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></span>
                   {invitation.status} mode
                 </span>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setIsPreviewOpen(true); setCoverImgError(false); }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#FAF8F5] rounded-xl transition-all shadow-sm active:scale-95"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-blue-200 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all shadow-xs active:scale-95"
                     title="Preview full screen"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -574,19 +578,19 @@ function InvitationDesignerPageContent() {
                   <button
                     onClick={() => handleSave("draft")}
                     disabled={inviteSaving}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 hover:bg-[#FAF8F5] rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-blue-200 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all shadow-xs active:scale-95 disabled:opacity-50"
                   >
                     {inviteSaving ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Save className="w-3.5 h-3.5 text-[#C9A84C]" />
+                      <Save className="w-3.5 h-3.5 text-blue-600" />
                     )}
                     Save Draft
                   </button>
                   <button
                     onClick={() => handleSave("published")}
                     disabled={inviteSaving}
-                    className="flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-white bg-[#C9A84C] hover:bg-[#b0903c] rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                    className="flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50"
                   >
                     Publish
                   </button>
@@ -594,19 +598,19 @@ function InvitationDesignerPageContent() {
               </div>
 
               {/* Main Editing Controls Accordion Card */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl shadow-sm overflow-hidden divide-y divide-[#E8C4B8]/20">
+              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl shadow-sm overflow-hidden divide-y divide-blue-100">
 
                 {/* Accordion 1: Text Content */}
                 <div>
                   <button
                     onClick={() => toggleSection("text")}
-                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
-                      <Type className="w-4 h-4 text-[#C9A84C]" />
-                      <span className="text-sm font-bold text-[#2D1B3D]">1. Text Content</span>
+                      <Type className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">1. Text Content</span>
                     </div>
-                    {openSection === "text" ? <ChevronUp className="w-4 h-4 text-[#2D1B3D]/50" /> : <ChevronDown className="w-4 h-4 text-[#2D1B3D]/50" />}
+                    {openSection === "text" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
 
                   <AnimatePresence initial={false}>
@@ -619,35 +623,35 @@ function InvitationDesignerPageContent() {
                       >
                         <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Main Title (required)</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Main Title (required)</label>
                             <input
                               type="text"
                               value={invitation.title}
                               onChange={(e) => handleInputChange("title", e.target.value)}
-                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                               placeholder="e.g. You're Invited!"
                             />
-                            <p className="text-[10px] text-[#2D1B3D]/40 mt-0.5">Keep title length between 5 and 60 characters for best layout.</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Keep title length between 5 and 60 characters for best layout.</p>
                           </div>
 
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Subtitle</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Subtitle</label>
                             <input
                               type="text"
                               value={invitation.subtitle || ""}
                               onChange={(e) => handleInputChange("subtitle", e.target.value)}
-                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                               placeholder="e.g. Please join us to celebrate"
                             />
                           </div>
 
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Description / Main Text</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Description / Main Text</label>
                             <textarea
                               value={invitation.mainText || ""}
                               onChange={(e) => handleInputChange("mainText", e.target.value)}
                               rows={3}
-                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                               placeholder="Describe your event parameters..."
                             />
                           </div>
@@ -655,8 +659,8 @@ function InvitationDesignerPageContent() {
                           {/* Title size slider */}
                           <div>
                             <div className="flex justify-between items-center mb-1">
-                              <label className="font-semibold text-[#2D1B3D]/70">Title Size</label>
-                              <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded-lg">{invitation.titleSize}px</span>
+                              <label className="font-semibold text-slate-700">Title Size</label>
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">{invitation.titleSize}px</span>
                             </div>
                             <input
                               type="range"
@@ -664,18 +668,18 @@ function InvitationDesignerPageContent() {
                               max="80"
                               value={invitation.titleSize}
                               onChange={(e) => handleInputChange("titleSize", parseInt(e.target.value, 10))}
-                              className="w-full accent-[#C9A84C] h-1.5 bg-[#FAF8F5] rounded-lg cursor-pointer"
+                              className="w-full accent-blue-600 h-1.5 bg-blue-100 rounded-lg cursor-pointer"
                             />
                           </div>
 
                           {/* Font Family / Weight */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Font Family</label>
+                              <label className="block font-semibold text-slate-700 mb-1">Font Family</label>
                               <select
                                 value={invitation.fontFamily}
                                 onChange={(e) => handleInputChange("fontFamily", e.target.value)}
-                                className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-xs focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                                className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                               >
                                 <option value="Playfair Display">Playfair Display</option>
                                 <option value="Inter">Inter (Sans)</option>
@@ -685,11 +689,11 @@ function InvitationDesignerPageContent() {
                             </div>
 
                             <div>
-                              <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Font Weight</label>
+                              <label className="block font-semibold text-slate-700 mb-1">Font Weight</label>
                               <select
                                 value={invitation.fontWeight}
                                 onChange={(e) => handleInputChange("fontWeight", e.target.value)}
-                                className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-xs focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                                className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                               >
                                 <option value="300">Light (300)</option>
                                 <option value="400">Regular (400)</option>
@@ -703,7 +707,7 @@ function InvitationDesignerPageContent() {
 
                           {/* Text alignment selection */}
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1.5">Text Alignment</label>
+                            <label className="block font-semibold text-slate-700 mb-1.5">Text Alignment</label>
                             <div className="flex gap-2">
                               {["left", "center", "right"].map((align) => (
                                 <button
@@ -711,8 +715,8 @@ function InvitationDesignerPageContent() {
                                   type="button"
                                   onClick={() => handleInputChange("textAlignment", align)}
                                   className={`flex-1 py-2 flex items-center justify-center rounded-xl border transition-all ${invitation.textAlignment === align
-                                      ? "bg-[#2D1B3D] text-white border-[#2D1B3D]"
-                                      : "bg-[#FAF8F5] text-[#2D1B3D]/60 border-[#E8C4B8]/40 hover:bg-[#F0EBE8]"
+                                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                      : "bg-blue-50/40 text-slate-600 border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                                     }`}
                                 >
                                   {align === "left" && <AlignLeft className="w-4 h-4" />}
@@ -733,13 +737,13 @@ function InvitationDesignerPageContent() {
                 <div>
                   <button
                     onClick={() => toggleSection("colors")}
-                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
-                      <Palette className="w-4 h-4 text-[#C9A84C]" />
-                      <span className="text-sm font-bold text-[#2D1B3D]">2. Color Customization</span>
+                      <Palette className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">2. Color Customization</span>
                     </div>
-                    {openSection === "colors" ? <ChevronUp className="w-4 h-4 text-[#2D1B3D]/50" /> : <ChevronDown className="w-4 h-4 text-[#2D1B3D]/50" />}
+                    {openSection === "colors" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
 
                   <AnimatePresence initial={false}>
@@ -753,19 +757,19 @@ function InvitationDesignerPageContent() {
                         <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
                           {/* Background color */}
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Background Color</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Background Color</label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
                                 value={invitation.backgroundColor}
                                 onChange={(e) => handleInputChange("backgroundColor", e.target.value)}
-                                className="w-10 h-10 border border-[#E8C4B8]/40 rounded-xl cursor-pointer bg-transparent"
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
                               />
                               <input
                                 type="text"
                                 value={invitation.backgroundColor}
                                 onChange={(e) => handleInputChange("backgroundColor", e.target.value)}
-                                className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] font-mono uppercase"
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900 font-mono uppercase"
                                 placeholder="#F6F9FC"
                               />
                             </div>
@@ -773,40 +777,40 @@ function InvitationDesignerPageContent() {
 
                           {/* Accent Color */}
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Accent Color</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Accent Color</label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
                                 value={invitation.accentColor}
                                 onChange={(e) => handleInputChange("accentColor", e.target.value)}
-                                className="w-10 h-10 border border-[#E8C4B8]/40 rounded-xl cursor-pointer bg-transparent"
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
                               />
                               <input
                                 type="text"
                                 value={invitation.accentColor}
                                 onChange={(e) => handleInputChange("accentColor", e.target.value)}
-                                className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] font-mono uppercase"
-                                placeholder="#5B5FEF"
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900 font-mono uppercase"
+                                placeholder="#2563EB"
                               />
                             </div>
                           </div>
 
                           {/* Text Color */}
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Text Color</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Text Color</label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
                                 value={invitation.textColor}
                                 onChange={(e) => handleInputChange("textColor", e.target.value)}
-                                className="w-10 h-10 border border-[#E8C4B8]/40 rounded-xl cursor-pointer bg-transparent"
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
                               />
                               <input
                                 type="text"
                                 value={invitation.textColor}
                                 onChange={(e) => handleInputChange("textColor", e.target.value)}
-                                className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] font-mono uppercase"
-                                placeholder="#1A1118"
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900 font-mono uppercase"
+                                placeholder="#0F172A"
                               />
                             </div>
                           </div>
@@ -820,13 +824,13 @@ function InvitationDesignerPageContent() {
                 <div>
                   <button
                     onClick={() => toggleSection("media")}
-                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
-                      <ImageIcon className="w-4 h-4 text-[#C9A84C]" />
-                      <span className="text-sm font-bold text-[#2D1B3D]">3. Media Cover</span>
+                      <ImageIcon className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">3. Media Cover</span>
                     </div>
-                    {openSection === "media" ? <ChevronUp className="w-4 h-4 text-[#2D1B3D]/50" /> : <ChevronDown className="w-4 h-4 text-[#2D1B3D]/50" />}
+                    {openSection === "media" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
 
                   <AnimatePresence initial={false}>
@@ -839,7 +843,7 @@ function InvitationDesignerPageContent() {
                       >
                         <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-2">Cover Image URL or File Upload</label>
+                            <label className="block font-semibold text-slate-700 mb-2">Cover Image URL or File Upload</label>
 
                             {/* Drag & Drop zone */}
                             <div
@@ -848,16 +852,16 @@ function InvitationDesignerPageContent() {
                               onDrop={handleDrop}
                               onClick={() => fileInputRef.current?.click()}
                               className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center ${isDragging
-                                  ? "border-[#C9A84C] bg-[#FAF8F5]"
-                                  : "border-[#E8C4B8]/40 bg-white hover:bg-[#FAF8F5]/55"
+                                  ? "border-blue-500 bg-blue-50/70"
+                                  : "border-blue-200 bg-blue-50/20 hover:bg-blue-50/50 hover:border-blue-300"
                                 }`}
                             >
-                              <Upload className="w-6 h-6 text-[#C9A84C] mb-2" />
-                              <p className="font-semibold text-xs text-[#2D1B3D]">Drag & Drop Cover Image here</p>
-                              <p className="text-[10px] text-[#2D1B3D]/40 mt-1">Accepts PNG, JPG, JPEG, WEBP</p>
+                              <Upload className="w-6 h-6 text-blue-600 mb-2" />
+                              <p className="font-semibold text-xs text-slate-800">Drag & Drop Cover Image here</p>
+                              <p className="text-[10px] text-slate-400 mt-1">Accepts PNG, JPG, JPEG, WEBP</p>
                               <button
                                 type="button"
-                                className="mt-3 px-3 py-1.5 bg-[#FAF8F5] text-[#2D1B3D] border border-[#E8C4B8]/50 hover:bg-[#F0EBE8] rounded-lg font-semibold text-[10px] transition-all"
+                                className="mt-3 px-3 py-1.5 bg-white text-slate-700 border border-blue-200 hover:bg-blue-50 rounded-lg font-semibold text-[10px] transition-all shadow-xs"
                               >
                                 Select File
                               </button>
@@ -872,9 +876,9 @@ function InvitationDesignerPageContent() {
                           </div>
 
                           {invitation.imageUrl && (
-                            <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8C4B8]/20 space-y-2">
-                              <p className="font-semibold text-[#2D1B3D]/50 text-[10px] uppercase">Active Preview</p>
-                              <div className="relative w-full h-24 rounded-lg overflow-hidden border border-[#E8C4B8]/30">
+                            <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-100 space-y-2">
+                              <p className="font-semibold text-slate-500 text-[10px] uppercase">Active Preview</p>
+                              <div className="relative w-full h-24 rounded-lg overflow-hidden border border-blue-200">
                                 <img
                                   src={getImageUrl(invitation.imageUrl)}
                                   alt="Cover preview"
@@ -893,14 +897,14 @@ function InvitationDesignerPageContent() {
                                 <button
                                   type="button"
                                   onClick={() => fileInputRef.current?.click()}
-                                  className="flex-1 py-1 px-2 border border-[#E8C4B8]/40 rounded-lg text-[10px] font-semibold text-center hover:bg-[#F0EBE8] transition-colors"
+                                  className="flex-1 py-1 px-2 border border-blue-200 bg-white rounded-lg text-[10px] font-semibold text-center hover:bg-blue-50 transition-colors text-slate-700"
                                 >
                                   Replace Image
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleInputChange("imageUrl", "")}
-                                  className="py-1 px-2 border border-red-200 text-red-700 hover:bg-red-50 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                                  className="py-1 px-2 border border-red-200 text-red-700 hover:bg-red-50 rounded-lg text-[10px] font-semibold text-center transition-colors bg-white"
                                 >
                                   Remove
                                 </button>
@@ -909,12 +913,12 @@ function InvitationDesignerPageContent() {
                           )}
 
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Or Paste Image URL</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Or Paste Image URL</label>
                             <input
                               type="text"
                               value={invitation.imageUrl || ""}
                               onChange={(e) => handleInputChange("imageUrl", e.target.value)}
-                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900"
                               placeholder="https://example.com/cover.png"
                             />
                           </div>
@@ -928,13 +932,13 @@ function InvitationDesignerPageContent() {
                 <div>
                   <button
                     onClick={() => toggleSection("button")}
-                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
-                      <MousePointerClick className="w-4 h-4 text-[#C9A84C]" />
-                      <span className="text-sm font-bold text-[#2D1B3D]">4. RSVP Call to Action Button</span>
+                      <MousePointerClick className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">4. RSVP Call to Action Button</span>
                     </div>
-                    {openSection === "button" ? <ChevronUp className="w-4 h-4 text-[#2D1B3D]/50" /> : <ChevronDown className="w-4 h-4 text-[#2D1B3D]/50" />}
+                    {openSection === "button" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
 
                   <AnimatePresence initial={false}>
@@ -947,31 +951,31 @@ function InvitationDesignerPageContent() {
                       >
                         <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Button Text</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Button Text</label>
                             <input
                               type="text"
                               value={invitation.buttonText}
                               onChange={(e) => handleInputChange("buttonText", e.target.value)}
-                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D]"
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900"
                               placeholder="RSVP Now"
                             />
                           </div>
 
                           <div>
-                            <label className="block font-semibold text-[#2D1B3D]/70 mb-1">Button Color</label>
+                            <label className="block font-semibold text-slate-700 mb-1">Button Color</label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
                                 value={invitation.buttonColor}
                                 onChange={(e) => handleInputChange("buttonColor", e.target.value)}
-                                className="w-10 h-10 border border-[#E8C4B8]/40 rounded-xl cursor-pointer bg-transparent"
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
                               />
                               <input
                                 type="text"
                                 value={invitation.buttonColor}
                                 onChange={(e) => handleInputChange("buttonColor", e.target.value)}
-                                className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#E8C4B8]/40 rounded-xl text-sm focus:outline-none focus:border-[#C9A84C] text-[#2D1B3D] font-mono uppercase"
-                                placeholder="#5B5FEF"
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 text-slate-900 font-mono uppercase"
+                                placeholder="#2563EB"
                               />
                             </div>
                           </div>
@@ -979,8 +983,8 @@ function InvitationDesignerPageContent() {
                           {/* Button Radius slider */}
                           <div>
                             <div className="flex justify-between items-center mb-1">
-                              <label className="font-semibold text-[#2D1B3D]/70">Button Corner Radius</label>
-                              <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded-lg">{invitation.buttonRadius}px</span>
+                              <label className="font-semibold text-slate-700">Button Corner Radius</label>
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">{invitation.buttonRadius}px</span>
                             </div>
                             <input
                               type="range"
@@ -988,7 +992,7 @@ function InvitationDesignerPageContent() {
                               max="24"
                               value={invitation.buttonRadius}
                               onChange={(e) => handleInputChange("buttonRadius", parseInt(e.target.value, 10))}
-                              className="w-full accent-[#C9A84C] h-1.5 bg-[#FAF8F5] rounded-lg cursor-pointer"
+                              className="w-full accent-blue-600 h-1.5 bg-blue-100 rounded-lg cursor-pointer"
                             />
                           </div>
                         </div>
@@ -1001,13 +1005,13 @@ function InvitationDesignerPageContent() {
                 <div>
                   <button
                     onClick={() => toggleSection("event")}
-                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#FAF8F5] transition-colors focus:outline-none"
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-[#C9A84C]" />
-                      <span className="text-sm font-bold text-[#2D1B3D]">5. Event Details (Read-only)</span>
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">5. Event Details (Read-only)</span>
                     </div>
-                    {openSection === "event" ? <ChevronUp className="w-4 h-4 text-[#2D1B3D]/50" /> : <ChevronDown className="w-4 h-4 text-[#2D1B3D]/50" />}
+                    {openSection === "event" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
 
                   <AnimatePresence initial={false}>
@@ -1019,33 +1023,33 @@ function InvitationDesignerPageContent() {
                         className="overflow-hidden"
                       >
                         <div className="px-6 pb-6 pt-2 space-y-3 text-xs">
-                          <div className="p-3.5 bg-amber-50/50 border border-[#E8C4B8]/30 rounded-xl space-y-2.5 text-[#2D1B3D]">
+                          <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2.5 text-slate-800">
                             <div className="flex items-start gap-2">
-                              <Info className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
-                              <p className="text-[10px] text-[#2D1B3D]/65">These details are synced automatically from the event parameters. Edit these in the Events module.</p>
+                              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-slate-600">These details are synced automatically from the event parameters. Edit these in the Events module.</p>
                             </div>
 
                             {event ? (
-                              <div className="space-y-2 mt-2 pt-2 border-t border-[#E8C4B8]/20">
+                              <div className="space-y-2 mt-2 pt-2 border-t border-blue-100">
                                 <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-[#2D1B3D]/50 block">Name</span>
-                                  <span className="font-bold text-xs">{event.title}</span>
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Name</span>
+                                  <span className="font-bold text-xs text-slate-900">{event.title}</span>
                                 </div>
                                 <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-[#2D1B3D]/50 block">Date</span>
-                                  <span className="font-bold text-xs">{formatEventDate(event.eventDate)}</span>
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Date</span>
+                                  <span className="font-bold text-xs text-slate-900">{formatEventDate(event.eventDate)}</span>
                                 </div>
                                 <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-[#2D1B3D]/50 block">Time</span>
-                                  <span className="font-bold text-xs">{event.eventTime}</span>
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Time</span>
+                                  <span className="font-bold text-xs text-slate-900">{event.eventTime}</span>
                                 </div>
                                 <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-[#2D1B3D]/50 block">Venue</span>
-                                  <span className="font-bold text-xs">{event.venue}</span>
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Venue</span>
+                                  <span className="font-bold text-xs text-slate-900">{event.venue}</span>
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-xs text-[#2D1B3D]/40 py-2">No event sync details found.</p>
+                              <p className="text-xs text-slate-400 py-2">No event sync details found.</p>
                             )}
                           </div>
                         </div>
@@ -1060,18 +1064,18 @@ function InvitationDesignerPageContent() {
             <div className="lg:col-span-7 flex flex-col gap-6 lg:sticky lg:top-24">
 
               {/* Toolbar sending actions & Guest List selection */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[#C9A84C]" />
-                    <span className="text-xs font-bold text-[#2D1B3D]">Share with Guests:</span>
+                    <Mail className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-slate-900">Share with Guests:</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handleWhatsAppShare}
                       disabled={inviteSending || inviteSaving}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50 cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl active:scale-95 transition-all shadow-md shadow-emerald-500/20 focus:outline-none disabled:opacity-50 cursor-pointer"
                       title="Share Published Invitation Page via WhatsApp"
                     >
                       <Share2 className="w-3.5 h-3.5" />
@@ -1080,7 +1084,7 @@ function InvitationDesignerPageContent() {
                     <button
                       onClick={handleSend}
                       disabled={inviteSending || inviteSaving}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50 cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20 focus:outline-none disabled:opacity-50 cursor-pointer"
                       title="Distribute HTML Email to Guests"
                     >
                       {inviteSending ? (
@@ -1090,7 +1094,7 @@ function InvitationDesignerPageContent() {
                         </>
                       ) : (
                         <>
-                          <Send className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          <Send className="w-3.5 h-3.5 text-white" />
                           <span>Send Invitations ({selectedGuestIds.length + (recipientEmails.trim() ? recipientEmails.split(/[\s,;\n]+/).filter(e => e.includes("@")).length : 0)})</span>
                         </>
                       )}
@@ -1099,10 +1103,10 @@ function InvitationDesignerPageContent() {
                 </div>
 
                 {/* Event Guest List Section with Checkboxes */}
-                <div className="pt-3 border-t border-[#E8C4B8]/20 flex flex-col gap-3">
+                <div className="pt-3 border-t border-blue-100 flex flex-col gap-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#2D1B3D]/80 font-bold flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-[#C9A84C]" />
+                    <span className="text-slate-800 font-bold flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-blue-600" />
                       Event Guests ({selectedGuestIds.length}/{eventGuests.length} selected)
                     </span>
 
@@ -1111,13 +1115,13 @@ function InvitationDesignerPageContent() {
                         <button
                           type="button"
                           onClick={handleToggleSelectAllGuests}
-                          className="text-[11px] font-semibold text-[#5B5FEF] hover:text-[#3d2a52] transition-colors focus:outline-none flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors focus:outline-none flex items-center gap-1 cursor-pointer"
                         >
                           <input
                             type="checkbox"
                             checked={isAllGuestsSelected}
                             onChange={handleToggleSelectAllGuests}
-                            className="w-3.5 h-3.5 accent-[#2D1B3D] rounded cursor-pointer"
+                            className="w-3.5 h-3.5 accent-blue-600 rounded cursor-pointer"
                           />
                           <span>{isAllGuestsSelected ? "Deselect All" : "Select All"}</span>
                         </button>
@@ -1126,17 +1130,17 @@ function InvitationDesignerPageContent() {
                       <button
                         type="button"
                         onClick={() => setIsGuestListVisible((prev) => !prev)}
-                        className="text-[11px] font-semibold text-[#5B5FEF] hover:text-[#3d2a52] transition-colors focus:outline-none flex items-center gap-1 cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#5B5FEF]/10 transition-all"
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors focus:outline-none flex items-center gap-1 cursor-pointer py-0.5 px-1.5 rounded hover:bg-blue-50 transition-all"
                         title={isGuestListVisible ? "Hide guest list" : "Show guest list"}
                       >
                         {isGuestListVisible ? (
                           <>
-                            <EyeOff className="w-3 h-3 text-[#5B5FEF]" />
+                            <EyeOff className="w-3 h-3 text-blue-600" />
                             <span>Hide</span>
                           </>
                         ) : (
                           <>
-                            <Eye className="w-3 h-3 text-[#5B5FEF]" />
+                            <Eye className="w-3 h-3 text-blue-600" />
                             <span>Show</span>
                           </>
                         )}
@@ -1146,19 +1150,19 @@ function InvitationDesignerPageContent() {
 
                   {isGuestListVisible && (
                     loadingGuests ? (
-                      <div className="py-4 text-center text-xs text-[#2D1B3D]/50 flex items-center justify-center gap-2">
-                        <div className="w-3.5 h-3.5 border-2 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                      <div className="py-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                        <div className="w-3.5 h-3.5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                         <span>Loading guest list...</span>
                       </div>
                     ) : eventGuests.length > 0 ? (
-                      <div className="max-h-44 overflow-y-auto border border-[#E8C4B8]/30 rounded-xl p-2 bg-[#FAF8F5]/60 divide-y divide-[#E8C4B8]/15 space-y-1">
+                      <div className="max-h-44 overflow-y-auto border border-blue-100 rounded-xl p-2 bg-blue-50/30 divide-y divide-blue-100/60 space-y-1">
                         {eventGuests.map((guest) => {
                           const isSelected = selectedGuestIds.includes(guest.id);
                           return (
                             <label
                               key={guest.id}
                               className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
-                                isSelected ? "bg-white shadow-xs border border-[#E8C4B8]/30" : "hover:bg-white/50"
+                                isSelected ? "bg-white shadow-xs border border-blue-200" : "hover:bg-white/60"
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1166,11 +1170,11 @@ function InvitationDesignerPageContent() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleGuest(guest.id)}
-                                  className="w-4 h-4 accent-[#2D1B3D] rounded cursor-pointer flex-shrink-0"
+                                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer flex-shrink-0"
                                 />
                                 <div className="truncate">
-                                  <p className="font-bold text-[#2D1B3D] truncate">{guest.name || "Guest"}</p>
-                                  <p className="text-[10px] text-[#2D1B3D]/60 truncate">
+                                  <p className="font-bold text-slate-900 truncate">{guest.name || "Guest"}</p>
+                                  <p className="text-[10px] text-slate-500 truncate">
                                     {guest.email || "No email"} {guest.phone ? `• 📞 ${guest.phone}` : ""}
                                   </p>
                                 </div>
@@ -1191,16 +1195,16 @@ function InvitationDesignerPageContent() {
                         })}
                       </div>
                     ) : (
-                      <div className="p-3 bg-[#FAF8F5] border border-[#E8C4B8]/30 rounded-xl text-center">
-                        <p className="text-xs text-[#2D1B3D]/60 italic">No guests registered for this event yet.</p>
-                        <p className="text-[10px] text-[#2D1B3D]/40 mt-0.5">Use the custom fields below to send or share invitations directly.</p>
+                      <div className="p-3 bg-blue-50/40 border border-blue-100 rounded-xl text-center">
+                        <p className="text-xs text-slate-600 italic">No guests registered for this event yet.</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Use the custom fields below to send or share invitations directly.</p>
                       </div>
                     )
                   )}
 
                   {/* Intact Manual Custom Email Input */}
                   <div className="mt-1">
-                    <label className="block text-[11px] font-semibold text-[#2D1B3D]/70 mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Additional Custom Recipient Email(s):
                     </label>
                     <input
@@ -1208,9 +1212,9 @@ function InvitationDesignerPageContent() {
                       value={recipientEmails}
                       onChange={(e) => setRecipientEmails(e.target.value)}
                       placeholder="Enter custom email address(es) e.g. swaraswn@gmail.com..."
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-[#E8C4B8]/40 bg-[#FAF8F5] text-[#2D1B3D] placeholder-[#2D1B3D]/40 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-blue-200/70 bg-blue-50/30 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/30"
                     />
-                    <p className="text-[10px] text-[#2D1B3D]/40 mt-1">
+                    <p className="text-[10px] text-slate-400 mt-1">
                       Invitations will be sent to all selected event guests checked above plus any custom emails specified here.
                     </p>
                   </div>
@@ -1218,12 +1222,12 @@ function InvitationDesignerPageContent() {
               </div>
 
               {/* Mockup Container */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-3xl p-6 shadow-sm flex flex-col items-center w-full">
-                <span className="text-[10px] font-bold text-[#2D1B3D]/40 uppercase tracking-widest mb-4">Live Preview Screen</span>
+              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-3xl p-6 shadow-sm flex flex-col items-center w-full">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Live Preview Screen</span>
 
                 {/* Device Screen frame */}
                 <div
-                  className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-[#E8C4B8]/30 transition-all duration-300"
+                  className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-blue-100 transition-all duration-300"
                   style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                 >
                   {/* Image cover preview */}
@@ -1235,8 +1239,8 @@ function InvitationDesignerPageContent() {
                         className="invitation-image"
                       />
                     ) : (
-                      <div className="w-full h-32 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
-                        <span className="text-xs text-[#2D1B3D]/20 italic">No cover image uploaded</span>
+                      <div className="w-full h-32 bg-gradient-to-b from-blue-500/5 to-transparent flex items-center justify-center">
+                        <span className="text-xs text-slate-400 italic">No cover image uploaded</span>
                       </div>
                     )}
                   </div>
@@ -1361,7 +1365,7 @@ function InvitationDesignerPageContent() {
       <AnimatePresence>
         {isPreviewOpen && invitation && (
           <div
-            className="fixed inset-0 z-50 bg-[#2D1B3D]/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md"
             onClick={() => setIsPreviewOpen(false)}
             role="dialog"
             aria-modal="true"
@@ -1375,7 +1379,7 @@ function InvitationDesignerPageContent() {
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+                className="relative w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-blue-100"
                 style={{ backgroundColor: invitation.backgroundColor }}
               >
 
@@ -1383,19 +1387,19 @@ function InvitationDesignerPageContent() {
                 <div className="overflow-y-auto flex-1">
 
                   {/* Sticky Header Navigation */}
-                  <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-[#E8C4B8]/20 flex items-center justify-between px-4 sm:px-6 py-3">
+                  <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-blue-100 flex items-center justify-between px-4 sm:px-6 py-3">
                     <button
                       onClick={() => setIsPreviewOpen(false)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#2D1B3D] bg-white/70 hover:bg-white rounded-xl transition-all border border-[#E8C4B8]/30 shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white/80 hover:bg-white rounded-xl transition-all border border-blue-200 shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       aria-label="Go back"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       Back
                     </button>
-                    <h2 className="text-xs sm:text-sm font-bold text-[#2D1B3D]">Invitation Preview</h2>
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900">Invitation Preview</h2>
                     <button
                       onClick={() => setIsPreviewOpen(false)}
-                      className="p-2 bg-white/70 hover:bg-white text-[#2D1B3D] rounded-xl transition-all border border-[#E8C4B8]/30 shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
+                      className="p-2 bg-white/80 hover:bg-white text-slate-700 rounded-xl transition-all border border-blue-200 shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       aria-label="Close preview"
                     >
                       <X className="w-4 h-4" />
@@ -1416,14 +1420,14 @@ function InvitationDesignerPageContent() {
                           onError={() => setCoverImgError(true)}
                         />
                       ) : invitation.imageUrl && coverImgError ? (
-                        <div className="w-full h-48 bg-gradient-to-br from-[#2D1B3D]/5 to-transparent flex items-center justify-center">
+                        <div className="w-full h-48 bg-gradient-to-br from-blue-500/5 to-transparent flex items-center justify-center">
                           <div className="text-center">
-                            <ImageIcon className="w-10 h-10 text-[#2D1B3D]/20 mx-auto mb-2" />
-                            <p className="text-xs text-[#2D1B3D]/30">Cover image failed to load</p>
+                            <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                            <p className="text-xs text-slate-400">Cover image failed to load</p>
                           </div>
                         </div>
                       ) : (
-                        <div className="w-full h-16 bg-gradient-to-b from-[#2D1B3D]/5 to-transparent"></div>
+                        <div className="w-full h-16 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
                       )}
                     </div>
 
@@ -1551,8 +1555,8 @@ function InvitationDesignerPageContent() {
 export default function InvitationDesignerPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     }>
       <InvitationDesignerPageContent />

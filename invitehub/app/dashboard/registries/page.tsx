@@ -15,17 +15,16 @@ import {
   AlertCircle,
   X,
   Gift,
-  PiggyBank,
   Heart,
-  Globe,
   Plus,
   Edit2,
   Trash2,
   ExternalLink,
+  Link2,
   Lock,
   Unlock,
   DollarSign,
-  Briefcase,
+  Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -56,7 +55,7 @@ function RegistriesPageContent() {
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formGoalAmount, setFormGoalAmount] = useState("");
-  const [formCurrency, setFormCurrency] = useState("INR");
+  const [formCurrency, setFormCurrency] = useState("USD");
   const [formExternalUrl, setFormExternalUrl] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
@@ -170,7 +169,7 @@ function RegistriesPageContent() {
     setFormTitle("");
     setFormDescription("");
     setFormGoalAmount("");
-    setFormCurrency("INR");
+    setFormCurrency("USD");
     setFormExternalUrl("");
     setFormIsActive(true);
     setFormError(null);
@@ -184,7 +183,7 @@ function RegistriesPageContent() {
     setFormTitle(registry.title);
     setFormDescription(registry.description || "");
     setFormGoalAmount(registry.goalAmount !== null ? String(registry.goalAmount) : "");
-    setFormCurrency(registry.currency);
+    setFormCurrency(registry.currency || "USD");
     setFormExternalUrl(registry.externalUrl || "");
     setFormIsActive(registry.isActive);
     setFormError(null);
@@ -208,7 +207,7 @@ function RegistriesPageContent() {
     // Validation for external link
     if (formType === "EXTERNAL_LINK") {
       if (!formExternalUrl || !formExternalUrl.trim()) {
-        setFormError("External URL is required for EXTERNAL_LINK registry.");
+        setFormError("External URL is required for External Link registry.");
         return;
       }
       if (!formExternalUrl.startsWith("http://") && !formExternalUrl.startsWith("https://")) {
@@ -314,77 +313,91 @@ function RegistriesPageContent() {
   };
 
   // Helper to format currency
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: currency || "INR",
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const formatPrice = (amount: number, currency: string = "USD") => {
+    const symbol =
+      currency === "USD" ? "$" : currency === "EUR" ? "€" : currency === "INR" ? "₹" : currency === "GBP" ? "£" : "$";
+    return `${symbol}${amount.toLocaleString()}`;
   };
 
-  // Helper to retrieve icon corresponding to registry type
-  const getRegistryIcon = (type: RegistryType) => {
+  // Helper to retrieve category badge styling & icon
+  const getRegistryBadge = (type: RegistryType) => {
     switch (type) {
       case "CASH_FUND":
-        return <PiggyBank className="w-5 h-5 text-amber-600" />;
+        return {
+          gradient: "bg-gradient-to-br from-emerald-400 to-green-500",
+          icon: <DollarSign className="w-5 h-5 text-white stroke-[2.5]" />,
+          category: "Cash Fund",
+          progressGradient: "bg-gradient-to-r from-emerald-500 to-green-400",
+        };
       case "GIFT_REGISTRY":
-        return <Gift className="w-5 h-5 text-emerald-600" />;
+        return {
+          gradient: "bg-gradient-to-br from-indigo-500 to-blue-500",
+          icon: <Gift className="w-5 h-5 text-white stroke-[2]" />,
+          category: "Gift Registry",
+          progressGradient: "bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400",
+        };
       case "DONATION":
-        return <Heart className="w-5 h-5 text-red-600" />;
+        return {
+          gradient: "bg-gradient-to-br from-rose-400 to-teal-400",
+          icon: <Heart className="w-5 h-5 text-white stroke-[2]" />,
+          category: "Donation",
+          progressGradient: "bg-gradient-to-r from-rose-500 to-teal-400",
+        };
       case "EXTERNAL_LINK":
-        return <Globe className="w-5 h-5 text-sky-600" />;
+        return {
+          gradient: "bg-gradient-to-br from-sky-400 to-blue-600",
+          icon: <Link2 className="w-5 h-5 text-white stroke-[2.5]" />,
+          category: "External Link",
+          progressGradient: "",
+        };
       default:
-        return <Gift className="w-5 h-5 text-gray-600" />;
-    }
-  };
-
-  // Helper to retrieve type display string
-  const getRegistryTypeName = (type: RegistryType) => {
-    switch (type) {
-      case "CASH_FUND":
-        return "Cash Fund";
-      case "GIFT_REGISTRY":
-        return "Gift Registry";
-      case "DONATION":
-        return "Donation";
-      case "EXTERNAL_LINK":
-        return "External Link";
-      default:
-        return type;
+        return {
+          gradient: "bg-gradient-to-br from-slate-400 to-slate-600",
+          icon: <Gift className="w-5 h-5 text-white stroke-[2]" />,
+          category: "Registry",
+          progressGradient: "bg-gradient-to-r from-blue-600 to-cyan-500",
+        };
     }
   };
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-slate-50/50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative overflow-hidden">
+    <div
+      className="min-h-screen bg-slate-50/50 flex flex-col font-sans text-slate-800 relative overflow-hidden"
+      style={{
+        backgroundImage: `radial-gradient(circle at 10% 15%, rgba(59, 130, 246, 0.05) 0%, transparent 45%),
+                          radial-gradient(circle at 90% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 45%),
+                          radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 60%),
+                          url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.5 6.5h1v5h-1zm-2 2h5v1h-5z' fill='%2394A3B8' fill-opacity='0.09'/%3E%3C/svg%3E")`,
+      }}
+    >
       <Navbar />
 
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-6 pb-12 z-10">
         {/* Header bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-[#E8C4B8]/40 bg-white hover:bg-[#F0EBE8] transition-colors shadow-sm focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
               aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5 text-[#2D1B3D]" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                 Registries
               </h1>
-              <p className="text-sm text-[#2D1B3D]/60 mt-1">Gifts, donations, and cash funds for your event</p>
+              <p className="text-slate-500 text-sm mt-1">
+                Gifts, donations, and cash funds for your event
+              </p>
             </div>
           </div>
 
@@ -392,19 +405,19 @@ function RegistriesPageContent() {
             <button
               onClick={handleAddClick}
               disabled={events.length === 0}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl active:scale-95 transition-all shadow-md focus:outline-none w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-medium px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              Add Registry
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Registry</span>
             </button>
           </div>
         </div>
 
-        {/* Top switch selector & warning alerts */}
-        <div className="flex flex-col gap-6 mb-8">
-          {events.length > 0 && (
-            <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-[#E8C4B8]/40 shadow-sm text-xs self-start w-full sm:w-auto">
-              <span className="text-[#2D1B3D]/50 font-semibold">Event:</span>
+        {/* Filter & Summary Metrics Bar */}
+        {events.length > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            {/* Event Selector Dropdown */}
+            <div className="relative w-full sm:w-64">
               <select
                 value={selectedEventId || ""}
                 onChange={(e) => {
@@ -412,7 +425,7 @@ function RegistriesPageContent() {
                   setSelectedEventId(val);
                   updateUrl(val);
                 }}
-                className="bg-transparent font-bold focus:outline-none text-[#2D1B3D] cursor-pointer max-w-[200px] truncate"
+                className="w-full appearance-none bg-white border border-slate-100 shadow-sm rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 cursor-pointer"
               >
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>
@@ -420,22 +433,26 @@ function RegistriesPageContent() {
                   </option>
                 ))}
               </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-          )}
 
-          {events.length === 0 && !loading && (
-            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-sm flex gap-3 items-center">
-              <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0" />
-              <div>
-                You must create at least one event in the{" "}
-                <span className="font-semibold cursor-pointer underline" onClick={() => router.push("/dashboard")}>
-                  Events dashboard
-                </span>{" "}
-                before you can manage registry lists.
+            {/* Summary Metrics (Right Side) */}
+            <div className="flex items-center gap-8 self-end sm:self-auto">
+              <div className="text-left sm:text-right">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  {loading ? "..." : formatPrice(summary?.totalRaised || 0, "USD")}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">Total raised</div>
+              </div>
+              <div className="text-left sm:text-right">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  {loading ? "..." : summary?.totalContributors || 0}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">Contributors</div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Toast Alerts */}
         <AnimatePresence>
@@ -444,17 +461,17 @@ function RegistriesPageContent() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200/80"
             >
               {toast.type === "success" ? (
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               )}
-              <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
               <button
                 onClick={() => setToast(null)}
-                className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -462,239 +479,179 @@ function RegistriesPageContent() {
           )}
         </AnimatePresence>
 
+        {/* If user has no events created */}
+        {events.length === 0 && !loading && (
+          <div className="flex-1 bg-white border border-slate-100/80 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+              <Calendar className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">No Events Found</h3>
+            <p className="text-sm text-slate-500 max-w-md mb-8">
+              You must create at least one event in the dashboard before you can manage registries or cash funds.
+            </p>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="px-6 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md focus:outline-none"
+            >
+              Go to Events
+            </button>
+          </div>
+        )}
+
         {events.length > 0 && (
           <div className="space-y-8">
-            {/* Dynamic Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Total Raised */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 text-amber-600">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Total Raised
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {loading ? "..." : formatCurrency(summary?.totalRaised || 0, "INR")}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Total Contributors */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 text-emerald-600">
-                    <CheckCircle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Total Contributors
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {loading ? "..." : summary?.totalContributors || 0}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Registry Count */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white/80 border border-[#E8C4B8]/30 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0 text-sky-600">
-                    <Briefcase className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
-                      Active Registries
-                    </p>
-                    <p className="text-2xl font-bold text-[#2D1B3D] mt-0.5">
-                      {loading ? "..." : summary?.registryCount || 0}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
             {/* List / Grid of Registry Cards */}
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {[...Array(4)].map((_, i) => (
                   <div
                     key={i}
-                    className="h-48 bg-white border border-[#E8C4B8]/20 rounded-2xl animate-pulse shadow-sm"
+                    className="h-44 bg-white border border-slate-100/80 rounded-2xl animate-pulse shadow-sm"
                   />
                 ))}
               </div>
             ) : error ? (
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+              <div className="bg-white border border-slate-100/80 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
                 <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-                <h4 className="text-lg font-semibold text-[#2D1B3D]">Error loading registries</h4>
-                <p className="text-xs text-[#2D1B3D]/60 mt-1 max-w-xs">{error}</p>
+                <h4 className="text-lg font-semibold text-slate-900">Error loading registries</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
                 <button
                   onClick={() => selectedEventId && fetchRegistriesData(selectedEventId)}
-                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors focus:outline-none"
+                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none shadow-sm"
                 >
                   Retry
                 </button>
               </div>
             ) : registries.length === 0 ? (
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-                <div className="w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E8C4B8]/40 flex items-center justify-center mb-6 shadow-sm">
-                  <Gift className="w-8 h-8 text-[#C9A84C]" />
+              <div className="bg-white border border-slate-100/80 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+                  <Gift className="w-8 h-8 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-bold font-display text-[#2D1B3D] mb-1">No Registries Found</h3>
-                <p className="text-xs text-[#2D1B3D]/50 max-w-sm mb-6">
+                <h3 className="text-xl font-bold text-slate-900 mb-1">No Registries Found</h3>
+                <p className="text-xs text-slate-500 max-w-sm mb-6">
                   No registries created for this event yet. Create a cash fund, gift list, donation support, or external registry.
                 </p>
                 <button
                   onClick={handleAddClick}
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-colors focus:outline-none"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl transition-all shadow-md focus:outline-none"
                 >
                   Create Your First Registry
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {registries.map((registry) => {
-                  const hasGoal = registry.type !== "EXTERNAL_LINK" && registry.goalAmount !== null;
+                  const badge = getRegistryBadge(registry.type);
+                  const isExternal = registry.type === "EXTERNAL_LINK";
+                  const hasGoal = !isExternal && registry.goalAmount !== null && (registry.goalAmount || 0) > 0;
                   const progressPercentage = hasGoal
-                    ? Math.max(0, Math.min(100, (registry.currentAmount / (registry.goalAmount || 1)) * 100))
+                    ? Math.max(0, Math.min(100, ((registry.currentAmount || 0) / (registry.goalAmount || 1)) * 100))
                     : 0;
 
                   return (
                     <motion.div
                       layout
                       key={registry.id}
-                      className={`bg-white rounded-2xl p-6 border shadow-sm transition-all duration-200 hover:shadow-md ${registry.isActive ? "border-[#E8C4B8]/40" : "border-[#E8C4B8]/20 opacity-75"
-                        }`}
+                      className={`bg-white rounded-2xl p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-all ${
+                        !registry.isActive ? "opacity-75" : ""
+                      }`}
                     >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-[#2D1B3D]/5 flex items-center justify-center flex-shrink-0">
-                            {getRegistryIcon(registry.type)}
+                      <div>
+                        {/* Top row: Icon Badge, Title, Category & Delete action */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm ${badge.gradient}`}
+                            >
+                              {badge.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs text-slate-400 font-medium leading-none">
+                                {badge.category}
+                              </p>
+                              <h3 className="text-slate-900 font-semibold text-base mt-1 truncate">
+                                {registry.title}
+                              </h3>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D1B3D]/40">
-                              {getRegistryTypeName(registry.type)}
-                            </span>
-                            <h3 className="text-base font-bold text-[#2D1B3D] mt-0.5 truncate max-w-[200px] sm:max-w-[240px]">
-                              {registry.title}
-                            </h3>
+
+                          {/* Action icons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => handleEditClick(registry)}
+                              title="Edit Registry"
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors focus:outline-none"
+                              aria-label="Edit registry"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(registry.id)}
+                              title="Delete Registry"
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors focus:outline-none"
+                              aria-label="Delete registry"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEditClick(registry)}
-                            title="Edit Registry"
-                            className="p-2 text-[#2D1B3D]/50 hover:text-[#C9A84C] hover:bg-[#FAF8F5] rounded-xl transition-all focus:outline-none"
-                            aria-label="Edit registry"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(registry.id)}
-                            title="Delete Registry"
-                            className="p-2 text-[#2D1B3D]/50 hover:text-red-600 hover:bg-[#FAF8F5] rounded-xl transition-all focus:outline-none"
-                            aria-label="Delete registry"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {/* Description */}
+                        <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                          {registry.description || "No description provided."}
+                        </p>
                       </div>
 
-                      {/* Description */}
-                      <p className="text-xs text-[#2D1B3D]/60 mt-3.5 line-clamp-2 h-8 leading-relaxed">
-                        {registry.description || "No description provided."}
-                      </p>
-
-                      <div className="mt-5 space-y-4 pt-4 border-t border-[#E8C4B8]/15">
-                        {/* Amounts display */}
-                        {registry.type !== "EXTERNAL_LINK" && (
-                          <div className="flex justify-between items-end text-xs">
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/40">Raised</p>
-                              <p className="text-sm font-bold text-emerald-700 mt-0.5">
-                                {formatCurrency(registry.currentAmount, registry.currency)}
-                              </p>
-                            </div>
-                            {hasGoal && (
-                              <div className="text-right">
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/40">Goal</p>
-                                <p className="text-sm font-semibold text-[#2D1B3D]/80 mt-0.5">
-                                  {formatCurrency(registry.goalAmount || 0, registry.currency)}
-                                </p>
-                              </div>
+                      {/* Card Bottom / Footer Section */}
+                      <div className="mt-4 pt-3">
+                        {isExternal ? (
+                          <div className="flex items-center justify-between">
+                            {registry.externalUrl ? (
+                              <a
+                                href={registry.externalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 font-medium text-xs flex items-center gap-1 hover:underline hover:text-indigo-700 transition-colors"
+                              >
+                                <span>View Registry</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400">No URL configured</span>
                             )}
-                          </div>
-                        )}
-
-                        {/* Progress Bar */}
-                        {hasGoal && (
-                          <div className="space-y-1.5">
-                            <div className="w-full h-2 bg-[#2D1B3D]/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-[#C9A84C] rounded-full transition-all duration-500 ease-out"
-                                style={{ width: `${progressPercentage}%` }}
-                              />
-                            </div>
-                            <div className="flex justify-between text-[10px] text-[#2D1B3D]/45 font-semibold">
-                              <span>{progressPercentage.toFixed(0)}% Completed</span>
-                              <span>{registry.contributorCount} contributor{registry.contributorCount !== 1 ? "s" : ""}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {registry.type !== "EXTERNAL_LINK" && !hasGoal && (
-                          <div className="flex justify-between items-center text-[10px] text-[#2D1B3D]/45 font-semibold">
-                            <span>No goal set</span>
-                            <span>{registry.contributorCount} contributor{registry.contributorCount !== 1 ? "s" : ""}</span>
-                          </div>
-                        )}
-
-                        {/* External Link button */}
-                        {registry.externalUrl && (
-                          <div className="flex items-center justify-between gap-3 pt-1">
-                            <a
-                              href={registry.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-[11px] font-bold text-[#C9A84C] hover:text-[#b0913e] transition-colors focus:outline-none"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              Visit Link
-                            </a>
                             {!registry.isActive && (
-                              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded border border-gray-200">
+                              <span className="text-[10px] font-medium px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
                                 Inactive
                               </span>
                             )}
                           </div>
-                        )}
+                        ) : (
+                          <div>
+                            {/* Amounts & Contributor Count */}
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500">
+                                <span className="font-bold text-slate-900">
+                                  {formatPrice(registry.currentAmount || 0, registry.currency)}
+                                </span>
+                                {hasGoal && (
+                                  <span className="text-slate-400 font-normal">
+                                    {" "}of {formatPrice(registry.goalAmount || 0, registry.currency)}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {registry.contributorCount || 0} contributor
+                                {(registry.contributorCount || 0) === 1 ? "" : "s"}
+                              </span>
+                            </div>
 
-                        {!registry.externalUrl && !registry.isActive && (
-                          <div className="text-right">
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded border border-gray-200">
-                              Inactive
-                            </span>
+                            {/* Full-width thin rounded progress bar */}
+                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ease-out ${badge.progressGradient}`}
+                                style={{ width: `${progressPercentage}%` }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -716,29 +673,29 @@ function RegistriesPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddEditModalOpen(false)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 flex flex-col max-h-[90vh]"
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 flex flex-col max-h-[90vh]"
             >
               {/* Modal Header */}
-              <div className="flex justify-between items-center px-6 py-4 border-b border-[#E8C4B8]/20 bg-[#FAF8F5]">
-                <h3 className="text-lg font-bold font-display text-[#2D1B3D]" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="text-base font-bold text-slate-900">
                   {editingRegistry ? "Edit Registry Details" : "Add New Registry"}
                 </h3>
                 <button
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-xl hover:bg-[#F0EBE8] transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
                 {formError && (
                   <div className="p-3 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
@@ -748,7 +705,7 @@ function RegistriesPageContent() {
 
                 {/* Registry Type */}
                 <div className="space-y-1.5">
-                  <label htmlFor="modal-type" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                  <label htmlFor="modal-type" className="text-xs font-semibold text-slate-700">
                     Registry Type *
                   </label>
                   <div className="relative">
@@ -756,36 +713,36 @@ function RegistriesPageContent() {
                       id="modal-type"
                       value={formType}
                       onChange={(e) => setFormType(e.target.value as RegistryType)}
-                      className="w-full appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-3.5 py-2.5 pr-10 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                      className="w-full appearance-none bg-slate-50/50 border border-slate-200 px-3.5 py-2.5 pr-10 rounded-xl text-xs font-semibold text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                     >
                       <option value="CASH_FUND">Cash Fund (Honeymoon Fund, etc.)</option>
                       <option value="GIFT_REGISTRY">Gift Registry (Kitchen Essentials, etc.)</option>
                       <option value="DONATION">Donation (Shelter, Charity support, etc.)</option>
-                      <option value="EXTERNAL_LINK">External Wishlist (Amazon link, target registries, etc.)</option>
+                      <option value="EXTERNAL_LINK">External Link (Amazon Wishlist, Target, etc.)</option>
                     </select>
-                    <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Title */}
                 <div className="space-y-1.5">
-                  <label htmlFor="modal-title" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                  <label htmlFor="modal-title" className="text-xs font-semibold text-slate-700">
                     Registry Title *
                   </label>
                   <input
                     id="modal-title"
                     type="text"
-                    placeholder="e.g. Honeymoon Travel Fund or Kitchen Appliances"
+                    placeholder="e.g. Honeymoon Fund or Kitchen Essentials"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 transition-colors"
                     required
                   />
                 </div>
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                  <label htmlFor="modal-description" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                  <label htmlFor="modal-description" className="text-xs font-semibold text-slate-700">
                     Description
                   </label>
                   <textarea
@@ -794,7 +751,7 @@ function RegistriesPageContent() {
                     rows={3}
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors resize-none"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 transition-colors resize-none"
                   />
                 </div>
 
@@ -803,7 +760,7 @@ function RegistriesPageContent() {
                   <div className="grid grid-cols-2 gap-4">
                     {/* Goal Amount */}
                     <div className="space-y-1.5">
-                      <label htmlFor="modal-goal" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                      <label htmlFor="modal-goal" className="text-xs font-semibold text-slate-700">
                         Goal Amount (Optional)
                       </label>
                       <input
@@ -811,16 +768,16 @@ function RegistriesPageContent() {
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="e.g. 50000"
+                        placeholder="e.g. 5000"
                         value={formGoalAmount}
                         onChange={(e) => setFormGoalAmount(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                        className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 transition-colors"
                       />
                     </div>
 
                     {/* Currency */}
                     <div className="space-y-1.5">
-                      <label htmlFor="modal-currency" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                      <label htmlFor="modal-currency" className="text-xs font-semibold text-slate-700">
                         Currency
                       </label>
                       <div className="relative">
@@ -828,72 +785,74 @@ function RegistriesPageContent() {
                           id="modal-currency"
                           value={formCurrency}
                           onChange={(e) => setFormCurrency(e.target.value)}
-                          className="w-full appearance-none bg-[#FAF8F5] border border-[#E8C4B8]/40 px-3.5 py-2.5 pr-10 rounded-xl text-xs font-semibold text-[#2D1B3D] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2D1B3D]"
+                          className="w-full appearance-none bg-slate-50/50 border border-slate-200 px-3.5 py-2.5 pr-10 rounded-xl text-xs font-semibold text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                         >
-                          <option value="INR">INR (₹)</option>
                           <option value="USD">USD ($)</option>
+                          <option value="INR">INR (₹)</option>
                           <option value="EUR">EUR (€)</option>
                           <option value="GBP">GBP (£)</option>
                           <option value="CAD">CAD ($)</option>
                           <option value="AUD">AUD ($)</option>
                         </select>
-                        <ChevronDown className="w-4 h-4 text-[#2D1B3D]/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* External Link URL (conditional/required depending on type) */}
+                {/* External Link URL */}
                 <div className="space-y-1.5">
-                  <label htmlFor="modal-url" className="text-[11px] font-bold uppercase tracking-wider text-[#2D1B3D]/60">
+                  <label htmlFor="modal-url" className="text-xs font-semibold text-slate-700">
                     {formType === "EXTERNAL_LINK" ? "External Wishlist Link * (Required)" : "External Link URL (Optional)"}
                   </label>
                   <input
                     id="modal-url"
                     type="url"
-                    placeholder="https://amazon.in/wishlist/..."
+                    placeholder="https://amazon.com/baby-reg/..."
                     value={formExternalUrl}
                     onChange={(e) => setFormExternalUrl(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E8C4B8]/40 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] outline-none rounded-xl text-xs transition-colors"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none rounded-xl text-xs text-slate-800 transition-colors"
                     required={formType === "EXTERNAL_LINK"}
                   />
                 </div>
 
                 {/* Active Switch */}
-                <div className="flex items-center justify-between bg-[#FAF8F5] p-3 border border-[#E8C4B8]/20 rounded-xl">
+                <div className="flex items-center justify-between bg-slate-50 p-3 border border-slate-200/80 rounded-xl">
                   <div className="flex items-center gap-2">
-                    {formIsActive ? <Unlock className="w-4 h-4 text-emerald-600" /> : <Lock className="w-4 h-4 text-gray-500" />}
+                    {formIsActive ? <Unlock className="w-4 h-4 text-emerald-600" /> : <Lock className="w-4 h-4 text-slate-400" />}
                     <div>
-                      <p className="text-xs font-bold text-[#2D1B3D]">Registry Active</p>
-                      <p className="text-[10px] text-[#2D1B3D]/50">Guests will be able to see and contribute to this</p>
+                      <p className="text-xs font-semibold text-slate-800">Registry Active</p>
+                      <p className="text-[11px] text-slate-500">Guests will be able to see and contribute to this</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFormIsActive(!formIsActive)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formIsActive ? "bg-[#2D1B3D]" : "bg-gray-200"
-                      }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formIsActive ? "bg-blue-600" : "bg-slate-200"
+                    }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${formIsActive ? "translate-x-5" : "translate-x-0"
-                        }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        formIsActive ? "translate-x-5" : "translate-x-0"
+                      }`}
                     />
                   </button>
                 </div>
 
                 {/* Modal Actions Footer */}
-                <div className="flex justify-end gap-2 pt-4 border-t border-[#E8C4B8]/20">
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setIsAddEditModalOpen(false)}
-                    className="w-28 py-3 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none"
+                    className="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm focus:outline-none"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-28 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md focus:outline-none"
+                    className="px-5 py-2.5 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md focus:outline-none"
                   >
                     {submitting ? "Saving..." : "Save Registry"}
                   </button>
@@ -913,35 +872,35 @@ function RegistriesPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-[#E8C4B8]/30 p-6 z-10 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 p-6 z-10 text-slate-800"
             >
               <div className="flex items-center gap-3 mb-4 text-red-600">
                 <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                   <Trash2 className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-bold font-display" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-base font-bold text-slate-900">
                   Delete Registry
                 </h3>
               </div>
-              <p className="text-xs text-[#2D1B3D]/60 leading-relaxed mb-6">
+              <p className="text-xs text-slate-500 leading-relaxed mb-6">
                 Are you sure you want to delete this registry? This will permanently remove all contributions and details. This operation cannot be undone.
               </p>
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2.5 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none"
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm focus:outline-none"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="px-4 py-2.5 text-xs font-bold text-white bg-red-650 hover:bg-red-700 bg-red-600 rounded-xl transition-all shadow-md focus:outline-none"
+                  className="px-4 py-2.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md focus:outline-none"
                 >
                   Confirm Delete
                 </button>
@@ -958,8 +917,8 @@ export default function RegistriesPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+        <div className="min-h-screen bg-slate-50/50 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
       }
     >

@@ -124,44 +124,41 @@ export default function InvoiceHistoryTable({
   return (
     <div ref={tableContainerRef} className="space-y-6">
       <div>
-        <h2
-          className="text-xl font-bold font-display text-[#2D1B3D]"
-          style={{ fontFamily: "'Playfair Display', serif" }}
-        >
+        <h2 className="font-bold text-2xl text-slate-900">
           Invoice History
         </h2>
-        <p className="text-xs font-bold text-[#2D1B3D]/50 mt-1">
+        <p className="text-xs text-slate-500 mt-0.5">
           View and download your past billing transactions.
         </p>
       </div>
 
       {loading ? (
-        <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm animate-pulse h-64" />
+        <div className="bg-white border border-slate-100/80 rounded-2xl p-4 shadow-sm animate-pulse h-64" />
       ) : error ? (
-        <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
+        <div className="bg-white border border-slate-100/80 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center h-48">
           <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-          <p className="text-xs font-semibold text-[#2D1B3D]">{error || "Failed to load invoices"}</p>
+          <p className="text-xs font-semibold text-slate-700">{error || "Failed to load invoices"}</p>
         </div>
       ) : (
-        <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+        <div className="bg-white border border-slate-100/80 rounded-2xl p-4 shadow-sm overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-black font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-5">Invoice Number</th>
-                  <th className="py-3 px-5">Plan</th>
-                  <th className="py-3 px-5">Billing Period</th>
-                  <th className="py-3 px-5">Customer</th>
-                  <th className="py-3 px-5">Amount</th>
-                  <th className="py-3 px-5">Transaction ID</th>
-                  <th className="py-3 px-5">Status</th>
-                  <th className="py-3 px-5 text-right">Actions</th>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4">Invoice Number</th>
+                  <th className="py-3 px-4">Plan</th>
+                  <th className="py-3 px-4">Billing Period</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Amount</th>
+                  <th className="py-3 px-4">Transaction ID</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E8C4B8]/10">
+              <tbody className="divide-y divide-slate-100">
                 {displayedInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#2D1B3D]/50 font-medium">
+                    <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                       No invoices available.
                     </td>
                   </tr>
@@ -172,50 +169,50 @@ export default function InvoiceHistoryTable({
                     const isDeletingThis = deletingInvoiceId === targetId || (isDeletingLocal && invoiceToDelete?.id === invoice.id);
 
                     return (
-                      <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
-                        <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
+                      <tr key={invoice.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-slate-900">
                           {invoice.invoiceNumber || invoice.id}
                         </td>
-                        <td className="py-3 px-5 font-bold text-black">
+                        <td className="py-3 px-4 font-semibold text-slate-900">
                           {invoice.planName || "Pro"}
                         </td>
-                        <td className="py-3 px-5 text-[11px] font-bold text-black">
+                        <td className="py-3 px-4 text-[11px] text-slate-500">
                           {invoice.billingPeriod || "Monthly"}
                         </td>
-                        <td className="py-3 px-5 text-black font-bold">
+                        <td className="py-3 px-4 text-slate-900 font-medium">
                           <div>{invoice.customerName || "Customer"}</div>
-                          <div className="text-[10px] font-bold text-black">{invoice.customerEmail}</div>
+                          <div className="text-[10px] text-slate-400">{invoice.customerEmail}</div>
                         </td>
-                        <td className="py-3 px-5 font-semibold text-[#2D1B3D]">
+                        <td className="py-3 px-4 font-bold text-slate-900">
                           {invoice.currency === "USD" ? "$" : invoice.currency}
                           {typeof invoice.amount === "number" ? invoice.amount.toFixed(2) : invoice.amount}
                         </td>
-                        <td className="py-3 px-5 font-mono text-[10px] font-bold text-black">
+                        <td className="py-3 px-4 font-mono text-[10px] text-slate-500">
                           {invoice.transactionId || "-"}
                         </td>
-                        <td className="py-3 px-5">
+                        <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
                               invoice.status === "Paid"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                : "bg-amber-50 text-amber-600 border-amber-100"
                             }`}
                           >
                             {invoice.status}
                           </span>
                         </td>
-                        <td className="py-3 px-5 text-right">
+                        <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {/* Download Button */}
                             <button
                               onClick={() => onDownload?.(targetId)}
                               disabled={isDownloading || isDeletingThis || !onDownload}
-                              className="p-1.5 text-[#C9A84C] hover:text-[#2D1B3D] hover:bg-[#FAF8F5] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg border border-[#E8C4B8]/10 transition-colors inline-flex items-center justify-center"
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors inline-flex items-center justify-center"
                               title="Download Invoice PDF"
                               aria-label={`Download invoice ${invoice.invoiceNumber || invoice.id}`}
                             >
                               {isDownloading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C9A84C]" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
                               ) : (
                                 <Download className="w-3.5 h-3.5" />
                               )}
@@ -225,7 +222,7 @@ export default function InvoiceHistoryTable({
                             <button
                               onClick={() => setInvoiceToDelete(invoice)}
                               disabled={isDeletingThis || isDownloading || !onDelete}
-                              className="hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors text-slate-400 inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors text-slate-400 inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Delete Invoice Record"
                               aria-label={`Delete invoice ${invoice.invoiceNumber || invoice.id}`}
                             >
