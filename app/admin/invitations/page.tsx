@@ -243,10 +243,7 @@ export default function AdminInvitationsPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                 Invitations
               </h1>
               <p className="text-sm text-slate-500 mt-1">Manage invitations across all events</p>
@@ -336,7 +333,7 @@ export default function AdminInvitationsPage() {
               <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
                 <Mail className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold font-display text-slate-900 mb-1">No Invitations Found</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">No Invitations Found</h3>
               <p className="text-xs text-slate-500 max-w-sm">
                 No invitations found under the search criteria.
               </p>
@@ -472,7 +469,7 @@ export default function AdminInvitationsPage() {
               <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar" style={{ padding: "24px" }}>
                 {/* Header */}
                 <div className="flex justify-between items-start pb-3 border-b border-blue-100">
-                  <h3 className="text-lg sm:text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     Invitation Details
                   </h3>
                   <button
@@ -562,7 +559,7 @@ export default function AdminInvitationsPage() {
             >
               <div className="overflow-y-auto p-4 sm:p-6 custom-scrollbar" style={{ padding: "24px" }}>
                 <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
-                  <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-xl font-bold text-slate-900">
                     Edit Invitation (Admin)
                   </h3>
                   <button
@@ -663,7 +660,7 @@ export default function AdminInvitationsPage() {
               style={{ maxHeight: "calc(100vh - 40px)" }}
             >
               <div className="overflow-y-auto p-4 sm:p-6 custom-scrollbar" style={{ padding: "24px" }}>
-                <h3 className="text-lg font-semibold font-display mb-2 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-lg font-semibold mb-2 text-slate-900">
                   Delete Invitation
                 </h3>
                 <p className="text-sm text-slate-500 mb-6">

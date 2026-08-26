@@ -301,10 +301,7 @@ export default function AdminCheckInPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                 Check-In Portal
               </h1>
               <p className="text-sm text-slate-500 mt-1">Manage guest arrivals across all events</p>
@@ -618,7 +615,7 @@ export default function AdminCheckInPage() {
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
-                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-xl font-bold text-slate-900">
                   Scan / Validate Ticket Code
                 </h3>
                 <button

@@ -58,7 +58,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
   const getProgressColor = (percent: number) => {
     if (percent >= 90) return "bg-rose-500";
     if (percent >= 75) return "bg-amber-500";
-    return "bg-[#C9A84C]";
+    return "bg-blue-600";
   };
 
   // Mock invoice history matching design aesthetic
@@ -80,7 +80,24 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
   ].filter(inv => inv.amount > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .modal-blue-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .modal-blue-scrollbar::-webkit-scrollbar-track {
+          background: #f0f9ff;
+          border-radius: 3px;
+        }
+        .modal-blue-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #2563eb, #38bdf8);
+          border-radius: 3px;
+        }
+        .modal-blue-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #1d4ed8, #0284c7);
+        }
+      `}} />
+
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -95,17 +112,17 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#E8C4B8]/30 z-10 p-6 sm:p-8 text-[#2D1B3D] font-body"
+        className="relative bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-blue-scrollbar rounded-2xl shadow-2xl border border-blue-100/80 z-10 p-6 sm:p-8 pt-8 my-auto text-[#2D1B3D] font-body"
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] flex items-center gap-1">
-              <CreditCard className="w-3 h-3" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-blue-600" />
               Billing Profile
             </span>
             <h3
-              className="text-2xl sm:text-3xl font-semibold font-display mt-1 break-words"
+              className="text-2xl sm:text-3xl font-semibold font-display mt-1 break-words text-[#2D1B3D]"
               style={{ fontFamily: "'Playfair Display', serif", overflowWrap: "break-word", wordBreak: "break-word" }}
             >
               {user.name}
@@ -113,7 +130,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-xl hover:bg-[#F0EBE8] transition-colors"
+            className="p-1.5 text-[#2D1B3D]/50 hover:text-[#2D1B3D] rounded-xl hover:bg-blue-50 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -122,26 +139,26 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           {/* Column 1: Info Card */}
           <div className="space-y-4">
-            <div className="bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl p-4 space-y-3">
-              <h4 className="text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider mb-2">
+            <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2">
                 User Details
               </h4>
               <div className="flex items-center gap-3 min-w-0 w-full">
-                <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Email Address</p>
                   <p className="text-xs font-semibold break-all" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{user.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Shield className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <Shield className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Current Subscription</p>
                   <p className="text-xs font-semibold uppercase">{user.plan}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Status</p>
                   <div className="flex flex-wrap gap-2 mt-0.5">
@@ -167,19 +184,19 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
             </div>
 
             {/* Billing dates */}
-            <div className="bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl p-4 space-y-3">
-              <h4 className="text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider mb-2">
+            <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2">
                 Billing Cycle
               </h4>
               <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-[#C9A84C]" />
+                <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Cycle Started</p>
                   <p className="text-xs font-semibold">{formatDate(user.planStartDate)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-[#C9A84C]" />
+                <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-[#2D1B3D]/50 uppercase">Renewal Date</p>
                   <p className="text-xs font-semibold">{formatDate(user.planExpiryDate)}</p>
@@ -189,9 +206,9 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           </div>
 
           {/* Column 2: Usage Stats */}
-          <div className="bg-[#FAF8F5] border border-[#E8C4B8]/20 rounded-2xl p-4 flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
             <div>
-              <h4 className="text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider mb-4">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-4">
                 Usage Statistics
               </h4>
 
@@ -203,11 +220,11 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                     <span>{getLimitText(user.usage.eventsCreated, user.usage.eventsLimit)}</span>
                   </div>
                   {user.usage.eventsLimit === -1 ? (
-                    <div className="h-2 w-full bg-[#E8C4B8]/10 rounded-full overflow-hidden">
-                      <div className="h-full w-full bg-[#C9A84C]" style={{ opacity: 0.3 }} />
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
+                      <div className="h-full w-full bg-blue-500" style={{ opacity: 0.3 }} />
                     </div>
                   ) : (
-                    <div className="h-2 w-full bg-[#E8C4B8]/20 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getProgressColor(getPercent(user.usage.eventsCreated, user.usage.eventsLimit))} rounded-full transition-all`}
                         style={{ width: `${getPercent(user.usage.eventsCreated, user.usage.eventsLimit)}%` }}
@@ -223,11 +240,11 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                     <span>{getLimitText(user.usage.guestsUsed, user.usage.guestsLimit)}</span>
                   </div>
                   {user.usage.guestsLimit === -1 ? (
-                    <div className="h-2 w-full bg-[#E8C4B8]/10 rounded-full overflow-hidden">
-                      <div className="h-full w-full bg-[#C9A84C]" style={{ opacity: 0.3 }} />
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
+                      <div className="h-full w-full bg-blue-500" style={{ opacity: 0.3 }} />
                     </div>
                   ) : (
-                    <div className="h-2 w-full bg-[#E8C4B8]/20 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getProgressColor(getPercent(user.usage.guestsUsed, user.usage.guestsLimit))} rounded-full transition-all`}
                         style={{ width: `${getPercent(user.usage.guestsUsed, user.usage.guestsLimit)}%` }}
@@ -236,18 +253,18 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                   )}
                 </div>
 
-                {/* Messages Used */}
+                {/* Messages Sent */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
                     <span>Messages Sent</span>
                     <span>{getLimitText(user.usage.messagesUsed, user.usage.messagesLimit)}</span>
                   </div>
                   {user.usage.messagesLimit === -1 ? (
-                    <div className="h-2 w-full bg-[#E8C4B8]/10 rounded-full overflow-hidden">
-                      <div className="h-full w-full bg-[#C9A84C]" style={{ opacity: 0.3 }} />
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
+                      <div className="h-full w-full bg-blue-500" style={{ opacity: 0.3 }} />
                     </div>
                   ) : (
-                    <div className="h-2 w-full bg-[#E8C4B8]/20 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-blue-200/70 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getProgressColor(getPercent(user.usage.messagesUsed, user.usage.messagesLimit))} rounded-full transition-all`}
                         style={{ width: `${getPercent(user.usage.messagesUsed, user.usage.messagesLimit)}%` }}
@@ -269,27 +286,27 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
 
         {/* Invoice / Billing History */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold text-[#2D1B3D]/50 uppercase tracking-wider">
+          <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider">
             Billing History
           </h4>
           {mockInvoices.length === 0 ? (
-            <div className="border border-dashed border-[#E8C4B8]/40 rounded-2xl p-6 text-center text-xs text-[#2D1B3D]/50 bg-[#FAF8F5]/30">
+            <div className="border border-dashed border-blue-200/60 rounded-2xl p-6 text-center text-xs text-[#2D1B3D]/60 bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 shadow-sm">
               No invoice history available for Free plan.
             </div>
           ) : (
-            <div className="border border-[#E8C4B8]/25 rounded-2xl overflow-x-auto bg-white shadow-sm">
+            <div className="border border-blue-100/80 rounded-2xl overflow-x-auto bg-white shadow-sm">
               <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E8C4B8]/20 text-[#2D1B3D]/50 font-bold">
+                  <tr className="bg-gradient-to-r from-blue-50/80 to-sky-50/60 border-b border-blue-100/80 text-blue-900/60 font-bold">
                     <th className="py-2.5 px-4">Invoice #</th>
                     <th className="py-2.5 px-4">Date</th>
                     <th className="py-2.5 px-4">Amount</th>
                     <th className="py-2.5 px-4 text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/10">
+                <tbody className="divide-y divide-blue-100/50">
                   {mockInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-[#FAF8F5]/30">
+                    <tr key={invoice.id} className="hover:bg-blue-50/30 transition-colors">
                       <td className="py-2.5 px-4 font-semibold">{invoice.invoiceNumber}</td>
                       <td className="py-2.5 px-4">{new Date(invoice.date).toLocaleDateString("en-US", {
                         month: "short",
@@ -298,7 +315,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                       })}</td>
                       <td className="py-2.5 px-4 font-medium">${invoice.amount.toFixed(2)}</td>
                       <td className="py-2.5 px-4 text-right">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-150">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           {invoice.status}
                         </span>
                       </td>
@@ -323,7 +340,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           <button
             disabled={deleting}
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-[#FAF8F5] bg-[#2D1B3D] hover:bg-[#3d2a52] rounded-xl active:scale-95 transition-all shadow-md focus:outline-none flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl active:scale-95 transition-all shadow-md hover:shadow-lg focus:outline-none flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Close Profile
           </button>
@@ -345,7 +362,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#E8C4B8]/30 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
             >
               <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Delete User
@@ -365,7 +382,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
                 <button
                   disabled={deleting}
                   onClick={() => setShowConfirmDelete(false)}
-                  className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#E8C4B8]/50 rounded-xl hover:bg-[#F0EBE8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

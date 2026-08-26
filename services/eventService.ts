@@ -51,16 +51,18 @@ export const getEventById = async (id: string): Promise<EventResponse> => {
   return response.data;
 };
 
-export const createEvent = async (event: Omit<Event, "id">): Promise<EventResponse> => {
-  const response = await API.post<EventResponse>("/events", event);
+export const createEvent = async (event: FormData | Omit<Event, "id">): Promise<EventResponse> => {
+  const headers = event instanceof FormData ? { "Content-Type": "multipart/form-data" } : undefined;
+  const response = await API.post<EventResponse>("/events", event, { headers });
   return response.data;
 };
 
 export const updateEvent = async (
   id: string,
-  event: Omit<Event, "id" | "createdAt" | "updatedAt">
+  event: FormData | Omit<Event, "id" | "createdAt" | "updatedAt">
 ): Promise<EventResponse> => {
-  const response = await API.put<EventResponse>(`/events/${id}`, event);
+  const headers = event instanceof FormData ? { "Content-Type": "multipart/form-data" } : undefined;
+  const response = await API.put<EventResponse>(`/events/${id}`, event, { headers });
   return response.data;
 };
 

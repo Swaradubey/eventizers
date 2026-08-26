@@ -218,6 +218,21 @@ function InvitationDesignerPageContent() {
     }
   }, [isPreviewOpen]);
 
+  // Load uploaded invitation from Hero "Upload Existing" tab if navigated from there
+  useEffect(() => {
+    try {
+      const pendingUpload = sessionStorage.getItem("pending_upload_invite");
+      if (pendingUpload) {
+        sessionStorage.removeItem("pending_upload_invite");
+        if (invitation) {
+          setInvitation((prev) => prev ? ({ ...prev, imageUrl: pendingUpload }) : prev);
+          setToast({ message: "Uploaded invitation loaded into designer! ✨", type: "success" });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load pending upload draft:", e);
+    }
+  }, [invitation, setInvitation]);
 
   const handleInputChange = (field: string, value: any) => {
     if (!invitation) return;
