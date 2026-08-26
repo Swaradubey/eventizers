@@ -196,10 +196,7 @@ export default function AdminTicketingPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                 Ticketing
               </h1>
               <p className="text-sm text-slate-500 mt-1">Manage ticket sales across the platform</p>
@@ -328,7 +325,7 @@ export default function AdminTicketingPage() {
               <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
                 <Ticket className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold font-display text-slate-900 mb-1">No Ticket Tiers Found</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">No Ticket Tiers Found</h3>
               <p className="text-xs text-slate-500 max-w-sm">
                 No active ticket tiers found under the search criteria.
               </p>
@@ -453,7 +450,7 @@ export default function AdminTicketingPage() {
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
               <div className="flex justify-between items-start mb-4 pb-3 border-b border-blue-100">
-                <h3 className="text-xl font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-xl font-bold text-slate-900">
                   Edit Ticket Tier (Admin)
                 </h3>
                 <button
@@ -580,7 +577,7 @@ export default function AdminTicketingPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2 text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold mb-2 text-slate-900">
                 Delete / Archive Ticket Tier
               </h3>
               <p className="text-sm text-slate-500 mb-6">

@@ -16,7 +16,7 @@ export default function Page() {
           Feature Showcase
         </span>
         
-        <h1 className="text-4xl md:text-5xl font-display font-bold text-[#2D1B3D] mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 mb-4">
           Security Center
         </h1>
         

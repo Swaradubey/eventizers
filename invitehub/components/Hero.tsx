@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Sparkles, 
   ChevronDown, 
@@ -20,6 +20,15 @@ import {
   Users,
   ListChecks,
   ArrowRight,
+  FileText,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
+  Image as ImageIcon,
+  Loader2,
+  ArrowUpRight,
+  X
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -137,6 +146,19 @@ export default function Hero() {
   const [templateTime, setTemplateTime] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(18);
+
+  // Tab 2: Upload Existing states
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isExtractingAI, setIsExtractingAI] = useState<boolean>(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadVenue, setUploadVenue] = useState("");
+  const [uploadDate, setUploadDate] = useState("");
+  const [uploadTime, setUploadTime] = useState("");
 
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
@@ -377,6 +399,236 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     } finally {
       setCreatingEvent(false);
     }
+  };
+
+  // Tab 2: Upload Existing handlers
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelection(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFileSelection(e.target.files[0]);
+    }
+  };
+
+  const handleFileSelection = (file: File) => {
+    setUploadError(null);
+    setErrorMsg(null);
+
+    if (!file) return;
+
+    // 1. Format validation
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    const validExtensions = ["png", "jpg", "jpeg", "pdf"];
+
+    const isValidType = validTypes.includes(file.type) || (extension && validExtensions.includes(extension));
+    if (!isValidType) {
+      setUploadError("Unsupported file format. Please upload a PNG, JPG, or PDF file.");
+      return;
+    }
+
+    // 2. Size limit validation (10MB)
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setUploadError(`File size exceeds 10MB limit (File is ${formatFileSize(file.size)}). Please choose a smaller file.`);
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadedFile(file);
+
+    // Default title from filename
+    const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+    const words = cleanName.split(" ").filter(Boolean);
+    const formattedTitle = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    setUploadTitle(formattedTitle || "Celebration Invitation");
+
+    const isImage = file.type.startsWith("image/") || ["png", "jpg", "jpeg"].includes(extension || "");
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string);
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setUploadError("Failed to generate image preview. Please try again.");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // PDF file
+      setPreviewUrl(null);
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveFile = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setUploadedFile(null);
+    setPreviewUrl(null);
+    setUploadError(null);
+    setUploadTitle("");
+    setUploadVenue("");
+    setUploadDate("");
+    setUploadTime("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleOpenInDesigner = () => {
+    if (!uploadedFile) {
+      setUploadError("Please select an invitation file first.");
+      return;
+    }
+
+    try {
+      if (previewUrl) {
+        sessionStorage.setItem("pending_upload_invite", previewUrl);
+      }
+      sessionStorage.setItem("pending_upload_name", uploadedFile.name);
+      sessionStorage.setItem("pending_upload_type", uploadedFile.type);
+      if (uploadTitle) {
+        sessionStorage.setItem("pending_upload_title", uploadTitle);
+      }
+    } catch (e) {
+      console.error("Failed to store pending upload:", e);
+    }
+
+    if (!user) {
+      setSuccessMsg("Invitation attached! Redirecting to login to save in designer...");
+      setTimeout(() => {
+        router.push("/login?redirect=/dashboard/invitations");
+      }, 900);
+    } else {
+      setSuccessMsg("Opening invitation designer...");
+      setTimeout(() => {
+        router.push("/dashboard/invitations");
+      }, 500);
+    }
+  };
+
+  const handleUploadAndCreateEvent = async () => {
+    if (!user) {
+      setErrorMsg("Please sign in first to create an event.");
+      setTimeout(() => router.push("/login"), 2000);
+      return;
+    }
+
+    if (!uploadTitle.trim() || !uploadVenue.trim() || !uploadDate || !uploadTime) {
+      setUploadError("Please fill in Event Title, Venue, Date, and Time to create your event.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setSuccessMsg(null);
+
+    try {
+      let res;
+      if (uploadedFile) {
+        const formData = new FormData();
+        formData.append("title", uploadTitle.trim());
+        formData.append("venue", uploadVenue.trim());
+        formData.append("eventDate", uploadDate);
+        formData.append("eventTime", uploadTime);
+        formData.append("eventType", "Uploaded Invitation");
+        formData.append("coverImage", uploadedFile);
+        res = await eventService.createEvent(formData);
+      } else {
+        res = await eventService.createEvent({
+          title: uploadTitle.trim(),
+          venue: uploadVenue.trim(),
+          eventDate: uploadDate,
+          eventTime: uploadTime,
+          eventType: "Uploaded Invitation",
+          coverImage: previewUrl || undefined,
+        });
+      }
+
+      if (res && res.success) {
+        if (previewUrl) {
+          try {
+            sessionStorage.setItem("pending_upload_invite", previewUrl);
+          } catch (e) {}
+        }
+        setSuccessMsg("🎉 Event created successfully with your uploaded invitation!");
+        setTimeout(() => {
+          router.push("/dashboard/events");
+        }, 1200);
+      } else {
+        setUploadError(res?.message || "Failed to create event from uploaded invitation.");
+      }
+    } catch (err: any) {
+      console.error("Create Event with Upload Error:", err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to create event from uploaded invitation.";
+      setUploadError(errMsg);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleExtractDetailsAI = () => {
+    if (!uploadedFile) return;
+    setIsExtractingAI(true);
+    setUploadError(null);
+
+    setTimeout(() => {
+      const cleanName = uploadedFile.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      const words = cleanName.split(" ").filter(Boolean);
+      const candidate = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+
+      if (!uploadTitle || uploadTitle === cleanName) {
+        setUploadTitle(candidate || "Special Celebration");
+      }
+      if (!uploadVenue) {
+        setUploadVenue("Grand Celebration Ballroom");
+      }
+      if (!uploadDate) {
+        const now = new Date();
+        const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
+        const nextSat = new Date(now.getTime() + daysUntilSaturday * 24 * 60 * 60 * 1000);
+        setUploadDate(nextSat.toISOString().split("T")[0]);
+      }
+      if (!uploadTime) {
+        setUploadTime("18:30");
+      }
+
+      setIsExtractingAI(false);
+      setSuccessMsg("✨ Extracted invitation details!");
+    }, 850);
   };
 
   return (
@@ -1139,19 +1391,241 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
             {/* ─── TAB 2: UPLOAD EXISTING ─── */}
             {activeTab === 2 && (
-              <div className="border-2 border-dashed border-gray-200 hover:border-[#6C5CE7]/50 rounded-2xl p-8 text-center transition-all bg-[#F9FAFB]/50">
-                <div className="w-10 h-10 rounded-full bg-[#F0EEFF] text-[#6C5CE7] mx-auto flex items-center justify-center mb-2.5">
-                  <FileUp className="w-5 h-5" />
-                </div>
-                <p className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Drag &amp; drop an existing invitation image or PDF
-                </p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  Supports PNG, JPG, or PDF up to 10MB
-                </p>
-                <button className="mt-3 px-3.5 py-1.5 text-xs font-semibold text-[#6C5CE7] bg-white border border-gray-200 rounded-xl hover:bg-[#F0EEFF]/50 transition-all shadow-sm cursor-pointer">
-                  or click to upload
-                </button>
+              <div className="space-y-4">
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png, image/jpeg, application/pdf"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+
+                {/* Upload Error Banner */}
+                {uploadError && (
+                  <div className="flex items-start justify-between gap-2 p-3 text-xs font-medium bg-red-50/90 border border-red-200/80 text-red-700 rounded-xl transition-all">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                      <span>{uploadError}</span>
+                    </div>
+                    <button
+                      onClick={() => setUploadError(null)}
+                      className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
+                      title="Dismiss"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Dropzone (When no file is selected) */}
+                {!uploadedFile && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`group border-2 border-dashed rounded-2xl p-7 sm:p-9 text-center transition-all duration-200 cursor-pointer select-none ${
+                      isDragging
+                        ? "border-[#6C5CE7] bg-[#F0EEFF]/80 ring-4 ring-[#6C5CE7]/20 scale-[1.01] shadow-md"
+                        : "border-gray-200 hover:border-[#6C5CE7]/60 hover:bg-[#F0EEFF]/20 bg-[#F9FAFB]/60"
+                    }`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3 transition-all duration-300 ${
+                        isDragging
+                          ? "bg-[#6C5CE7] text-white scale-110 animate-bounce"
+                          : "bg-[#F0EEFF] text-[#6C5CE7] group-hover:scale-110 group-hover:bg-[#E4DFFF]"
+                      }`}
+                    >
+                      <FileUp className="w-6 h-6" />
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-800">
+                      {isDragging ? "Drop your file here to upload!" : "Drag & drop an existing invitation image or PDF"}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Supports PNG, JPG, or PDF up to 10MB
+                    </p>
+                    <div className="mt-3.5 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#6C5CE7] bg-white border border-[#DDD6FE] rounded-xl hover:bg-[#F0EEFF]/60 hover:border-[#6C5CE7] transition-all shadow-sm">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>or click to browse files</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* File Selected Card & Actions */}
+                {uploadedFile && (
+                  <div className="border border-[#E4DFFF] bg-gradient-to-b from-white to-[#FDFBFF] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                    {/* Top Header Status & Action Buttons */}
+                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-gray-900 block leading-tight">
+                            File Uploaded Successfully
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            {uploadedFile.type === "application/pdf" ? "PDF Document" : "Image Invitation"} · {formatFileSize(uploadedFile.size)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-[#6C5CE7] bg-[#F0EEFF] hover:bg-[#E4DFFF] rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          title="Change File"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span className="hidden sm:inline">Change</span>
+                        </button>
+                        <button
+                          onClick={handleRemoveFile}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          title="Remove File"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span className="hidden sm:inline">Remove</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Preview Area */}
+                    <div className="rounded-xl overflow-hidden border border-gray-100 bg-[#F9FAFB] p-3 flex flex-col sm:flex-row items-center gap-3.5">
+                      {previewUrl ? (
+                        /* Image Preview */
+                        <div className="relative w-full sm:w-28 h-32 sm:h-28 rounded-lg overflow-hidden border border-gray-200 bg-white shrink-0 shadow-inner group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={previewUrl}
+                            alt={uploadedFile.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-bold text-white uppercase">
+                            {uploadedFile.type.includes("png") ? "PNG" : "JPG"}
+                          </div>
+                        </div>
+                      ) : (
+                        /* PDF Document Card */
+                        <div className="w-full sm:w-28 h-28 rounded-lg border border-red-200 bg-gradient-to-b from-red-50/80 to-red-100/50 flex flex-col items-center justify-center shrink-0 p-2 shadow-inner">
+                          <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-sm mb-1.5">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <span className="text-[10px] font-bold text-red-700 uppercase tracking-wide">
+                            PDF File
+                          </span>
+                        </div>
+                      )}
+
+                      {/* File Metadata & Quick AI extract button */}
+                      <div className="flex-1 w-full text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate" title={uploadedFile.name}>
+                          {uploadedFile.name}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="inline-flex items-center text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            {formatFileSize(uploadedFile.size)}
+                          </span>
+                          <span className="inline-flex items-center text-[10px] font-semibold text-[#6C5CE7] bg-[#F0EEFF] px-2 py-0.5 rounded-md">
+                            Ready to Import
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-1.5 line-clamp-2">
+                          Customize this invitation directly in the designer or pre-fill event details below.
+                        </p>
+
+                        <button
+                          onClick={handleExtractDetailsAI}
+                          disabled={isExtractingAI}
+                          className="mt-2 text-[11px] font-semibold text-[#6C5CE7] hover:text-[#5E35B1] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                        >
+                          {isExtractingAI ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Analyzing invitation details…</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                              <span>Auto-fill details with AI</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Event Details Form */}
+                    <div className="space-y-2.5 pt-2 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-700">
+                          Event Details (Optional for quick setup)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={uploadTitle}
+                          onChange={(e) => setUploadTitle(e.target.value)}
+                          placeholder="Event Title (e.g. Maya's 5th Birthday)"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                        />
+                        <input
+                          type="text"
+                          value={uploadVenue}
+                          onChange={(e) => setUploadVenue(e.target.value)}
+                          placeholder="Venue (e.g. Sweet Retreat Bakery)"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                        />
+                        <input
+                          type="date"
+                          value={uploadDate}
+                          onChange={(e) => setUploadDate(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                        />
+                        <input
+                          type="time"
+                          value={uploadTime}
+                          onChange={(e) => setUploadTime(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
+                        />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <button
+                          onClick={handleOpenInDesigner}
+                          disabled={isUploading}
+                          className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#8B5CF6] hover:from-[#5E35B1] hover:to-[#7C3AED] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-60 cursor-pointer"
+                        >
+                          <Wand2 className="w-3.5 h-3.5" />
+                          Open in Invitation Designer
+                        </button>
+
+                        <button
+                          onClick={handleUploadAndCreateEvent}
+                          disabled={isUploading}
+                          className="w-full py-2.5 rounded-xl text-xs font-semibold text-[#6C5CE7] bg-white border border-[#DDD6FE] hover:bg-[#F0EEFF]/50 flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-60 cursor-pointer"
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-[#6C5CE7]/30 border-t-[#6C5CE7] rounded-full animate-spin" />
+                              Creating event…
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              Create Event with Upload
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

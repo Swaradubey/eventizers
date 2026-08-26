@@ -171,10 +171,7 @@ export default function AdminMessagesPage() {
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1
-                  className="text-4xl md:text-5xl font-bold tracking-tight text-black font-display"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                   Admin Messages
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100/80 text-blue-700 border border-blue-200">
@@ -284,7 +281,7 @@ export default function AdminMessagesPage() {
         <div className="bg-white/90 border border-blue-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px] backdrop-blur-md">
           {/* Controls */}
           <div className="flex flex-col xl:flex-row gap-4 justify-between items-center mb-6 w-full">
-            <h3 className="text-lg font-bold font-display text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h3 className="text-lg font-bold text-slate-900">
               All Platform Messages ({messages.length})
             </h3>
 
@@ -360,7 +357,7 @@ export default function AdminMessagesPage() {
               <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
                 <MessageSquare className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold font-display text-slate-900 mb-1">No Messages Found</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">No Messages Found</h3>
               <p className="text-xs text-slate-500 max-w-sm">
                 There are no messages matching your search or filter options.
               </p>
@@ -490,10 +487,7 @@ export default function AdminMessagesPage() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
                     Admin Inspection &bull; Event: {viewingMessage.eventTitle}
                   </span>
-                  <h3
-                    className="text-2xl font-bold font-display mt-0.5 text-slate-900 text-ellipsis overflow-hidden"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
+                  <h3 className="text-2xl font-bold mt-0.5 text-slate-900 text-ellipsis overflow-hidden">
                     {viewingMessage.subject}
                   </h3>
                 </div>

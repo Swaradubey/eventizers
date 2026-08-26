@@ -179,10 +179,7 @@ export default function SecurityPage() {
               <Menu className="w-5 h-5 text-blue-700" />
             </button>
             <div>
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-slate-800 font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                 Security Center
               </h1>
               <p className="text-sm text-slate-500 mt-1">
@@ -524,7 +521,7 @@ export default function SecurityPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold mb-2 text-slate-900">
                 Delete Audit Log
               </h3>
               <p className="text-sm text-slate-500 mb-6">

@@ -244,10 +244,7 @@ export default function AdminDashboardPage() {
             </button>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1
-                  className="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 font-display"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                   Admin Dashboard
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100/80 text-blue-700 border border-blue-200 shadow-2xs">
@@ -422,7 +419,7 @@ export default function AdminDashboardPage() {
               <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
                 <Calendar className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold font-display text-slate-900 mb-2">No Events Found</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">No Events Found</h3>
               <p className="text-sm text-slate-500 max-w-md mb-8">
                 No events have been created on the platform yet. Set up the first platform event here.
               </p>
@@ -595,10 +592,7 @@ export default function AdminDashboardPage() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
                     {viewingEvent.eventType || "General"} Event &bull; Creator: {viewingEvent.user?.name || "Admin"}
                   </span>
-                  <h3
-                    className="text-xl sm:text-2xl font-bold font-display mt-0.5 leading-snug break-words text-slate-900"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
+                  <h3 className="text-xl sm:text-2xl font-bold mt-0.5 leading-snug break-words text-slate-900">
                     {viewingEvent.title}
                   </h3>
                 </div>
@@ -794,10 +788,7 @@ export default function AdminDashboardPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-blue-100 overflow-hidden z-10 p-6 text-slate-800 font-body"
             >
-              <h3
-                className="text-lg font-semibold font-display mb-2 text-slate-900"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+              <h3 className="text-lg font-semibold mb-2 text-slate-900">
                 Delete Event
               </h3>
               <p className="text-sm text-slate-500 mb-6">

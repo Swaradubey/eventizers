@@ -158,7 +158,7 @@ export default function AdminBillingPage() {
       console.error("Error loading admin billing data:", err);
       setError(
         err.response?.data?.error ||
-          "Unable to load admin billing data. Please verify database connection."
+        "Unable to load admin billing data. Please verify database connection."
       );
       setLoading(false);
     }
@@ -364,84 +364,81 @@ export default function AdminBillingPage() {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
       pages.push(1);
-      
+
       let start = Math.max(2, page - 1);
       let end = Math.min(totalPages - 1, page + 1);
-      
+
       if (page <= 2) {
         end = 3;
       }
       if (page >= totalPages - 1) {
         start = totalPages - 2;
       }
-      
+
       if (start > 2) {
         pages.push("...");
       }
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-      
+
       if (end < totalPages - 1) {
         pages.push("...");
       }
-      
+
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
   // Server-side paginated and filtered users list
   const filteredUsers = users;
-  
+
   const isServerPaginated = totalUsers > users.length;
   const startIndex = isServerPaginated ? 0 : (page - 1) * limit;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#2D1B3D]/30 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-100 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-body text-[#2D1B3D] relative">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-100 flex flex-col font-body text-slate-800 relative">
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-full w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <div className="flex items-center gap-2">
-              <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
                 Billing
               </h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/25">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                 Admin
               </span>
             </div>
-            <p className="text-sm text-[#2D1B3D]/60 mt-1">
+            <p className="text-sm text-slate-500 mt-1">
               Manage user subscriptions, plans and usage
             </p>
           </div>
           <button
             onClick={() => fetchBillingData()}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-[#2D1B3D] bg-white border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-xl transition-all shadow-sm focus:outline-none disabled:opacity-55 self-end sm:self-auto"
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white/90 border border-blue-100 hover:bg-blue-50/80 hover:text-blue-700 hover:border-blue-200 rounded-xl transition-all shadow-xs focus:outline-none disabled:opacity-55 self-end sm:self-auto cursor-pointer"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh Data
@@ -455,73 +452,73 @@ export default function AdminBillingPage() {
             [...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm animate-pulse"
+                className="bg-white/80 border border-blue-100/80 rounded-2xl p-4 shadow-xs backdrop-blur-sm animate-pulse"
               >
-                <div className="h-3 w-16 bg-[#E8C4B8]/20 rounded mb-2" />
-                <div className="h-6 w-10 bg-[#E8C4B8]/30 rounded" />
+                <div className="h-3 w-16 bg-blue-100/60 rounded mb-2" />
+                <div className="h-6 w-10 bg-blue-200/50 rounded" />
               </div>
             ))
           ) : (
             <>
               {/* Total Subscribers */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Total Subscribers
                 </p>
-                <p className="text-xl font-bold text-[#2D1B3D] mt-1 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-[#C9A84C]" />
+                <p className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-blue-600" />
                   {stats.totalSubscribers}
                 </p>
               </div>
 
               {/* Free Users */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Free Users
                 </p>
-                <p className="text-xl font-bold text-[#2D1B3D] mt-1">
+                <p className="text-xl font-bold text-slate-900 mt-1">
                   {stats.freeUsers}
                 </p>
               </div>
 
               {/* Paid Users */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Paid Users
                 </p>
-                <p className="text-xl font-bold text-[#2D1B3D] mt-1 flex items-center gap-1.5">
+                <p className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-1.5">
                   <TrendingUp className="w-4 h-4 text-emerald-600" />
                   {stats.paidUsers}
                 </p>
               </div>
 
               {/* Monthly Revenue */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Monthly Revenue
                 </p>
-                <p className="text-xl font-bold text-[#2D1B3D] mt-1 flex items-center gap-1">
-                  <CreditCard className="w-4 h-4 text-[#C9A84C]" />
+                <p className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-1">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
                   ${stats.monthlyRevenue}
                 </p>
               </div>
 
               {/* Active Subscriptions */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Active Subs
                 </p>
-                <p className="text-xl font-bold text-emerald-700 mt-1">
+                <p className="text-xl font-bold text-emerald-600 mt-1">
                   {stats.activeSubscriptions}
                 </p>
               </div>
 
               {/* Expired Plans */}
-              <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/50">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-blue-200 transition-all cursor-default">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Expired Plans
                 </p>
-                <p className="text-xl font-bold text-rose-700 mt-1">
+                <p className="text-xl font-bold text-rose-600 mt-1">
                   {stats.expiredPlans}
                 </p>
               </div>
@@ -530,10 +527,10 @@ export default function AdminBillingPage() {
         </div>
 
         {/* Filter Toolbar */}
-        <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-4 sm:p-5 shadow-sm mb-6 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+        <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-4 sm:p-5 shadow-xs mb-6 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
           {/* Search bar */}
           <div className="relative flex-1 max-w-md">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#2D1B3D]/45">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4" />
             </span>
             <input
@@ -541,7 +538,7 @@ export default function AdminBillingPage() {
               placeholder="Search user by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-xs text-[#2D1B3D] bg-[#FAF8F5] border border-[#E8C4B8]/30 focus:border-[#2D1B3D] focus:ring-1 focus:ring-[#2D1B3D] rounded-xl transition-all shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 bg-blue-50/30 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-xl transition-all shadow-xs"
             />
           </div>
 
@@ -549,18 +546,16 @@ export default function AdminBillingPage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter by Plan */}
             <div className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-[#2D1B3D]/50" />
+              <Filter className="w-3.5 h-3.5 text-blue-600" />
               <select
                 value={planFilter}
                 onChange={(e) => setPlanFilter(e.target.value)}
-                className="px-3 py-2 text-xs text-[#2D1B3D] bg-[#FAF8F5] border border-[#E8C4B8]/30 focus:border-[#2D1B3D] rounded-xl transition-all shadow-sm cursor-pointer"
+                className="px-3 py-2 text-xs text-slate-700 bg-blue-50/30 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-xl transition-all shadow-xs cursor-pointer hover:border-blue-200"
               >
                 <option value="ALL">All Plans</option>
                 <option value="FREE">Free</option>
-                <option value="STARTER">Starter</option>
                 <option value="PRO">Pro</option>
                 <option value="BUSINESS">Business</option>
-                <option value="ENTERPRISE">Enterprise</option>
               </select>
             </div>
 
@@ -568,7 +563,7 @@ export default function AdminBillingPage() {
             <select
               value={subFilter}
               onChange={(e) => setSubFilter(e.target.value)}
-              className="px-3 py-2 text-xs text-[#2D1B3D] bg-[#FAF8F5] border border-[#E8C4B8]/30 focus:border-[#2D1B3D] rounded-xl transition-all shadow-sm cursor-pointer"
+              className="px-3 py-2 text-xs text-slate-700 bg-blue-50/30 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-xl transition-all shadow-xs cursor-pointer hover:border-blue-200"
             >
               <option value="ALL">All Subscription Statuses</option>
               <option value="ACTIVE">Active</option>
@@ -580,7 +575,7 @@ export default function AdminBillingPage() {
             <select
               value={billingFilter}
               onChange={(e) => setBillingFilter(e.target.value)}
-              className="px-3 py-2 text-xs text-[#2D1B3D] bg-[#FAF8F5] border border-[#E8C4B8]/30 focus:border-[#2D1B3D] rounded-xl transition-all shadow-sm cursor-pointer"
+              className="px-3 py-2 text-xs text-slate-700 bg-blue-50/30 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-xl transition-all shadow-xs cursor-pointer hover:border-blue-200"
             >
               <option value="ALL">All Billing Statuses</option>
               <option value="PAID">Paid</option>
@@ -591,43 +586,43 @@ export default function AdminBillingPage() {
         </div>
 
         {/* Users Billing Access Table */}
-        <div className="bg-white/70 border border-[#E8C4B8]/30 rounded-2xl p-6 shadow-sm backdrop-blur-sm flex-1 flex flex-col min-h-[300px]">
+        <div className="bg-white/80 backdrop-blur-sm border border-blue-100/80 rounded-2xl p-6 shadow-xs flex-1 flex flex-col min-h-[300px]">
           {loading ? (
-            <div className="flex-1 overflow-x-auto animate-pulse">
+            <div className="flex-1 overflow-x-auto admin-table-scrollbar animate-pulse">
               <table className="w-full text-left border-collapse whitespace-nowrap">
                 <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">User Name</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Email</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Role</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Current Plan</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Events Created</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Guests Used</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Messages Used</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Billing Status</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Subscription Status</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Plan Start Date</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Plan Expiry Date</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Last Updated</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">Actions</th>
+                  <tr className="border-b border-blue-100/80">
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">User Name</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Current Plan</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Events Created</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Guests Used</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Messages Used</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing Status</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Status</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Start Date</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Expiry Date</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Last Updated</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
+                <tbody className="divide-y divide-blue-100/60">
                   {[...Array(5)].map((_, idx) => (
                     <tr key={idx}>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-20 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-36 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-12 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-4 w-12 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-4 w-12 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3"><div className="h-3 w-10 bg-[#E8C4B8]/20 rounded" /></td>
-                      <td className="py-3.5 px-3 text-right"><div className="h-6 w-20 bg-[#E8C4B8]/20 rounded-lg ml-auto" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-20 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-36 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-12 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-14 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-4 w-12 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-4 w-12 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3.5 w-16 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3"><div className="h-3 w-10 bg-blue-100/40 rounded" /></td>
+                      <td className="py-3.5 px-3 text-right"><div className="h-6 w-20 bg-blue-100/40 rounded-lg ml-auto" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -636,188 +631,185 @@ export default function AdminBillingPage() {
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
               <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-[#C9A84C]" />
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
               </div>
-              <h3 className="text-base font-bold text-[#2D1B3D]">No Billing Records Available</h3>
-              <p className="text-xs text-[#2D1B3D]/55 max-w-xs mt-1">
+              <h3 className="text-base font-bold text-slate-900">No Billing Records Available</h3>
+              <p className="text-xs text-slate-500 max-w-xs mt-1">
                 {error || "We're having trouble retrieving the billing registry right now. Please try refreshing the data."}
               </p>
               <button
                 onClick={() => fetchBillingData()}
-                className="mt-5 px-4 py-2 text-xs font-semibold text-white bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] transition-all"
+                className="mt-5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
               >
                 Try Again
               </button>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-12 h-12 rounded-xl bg-[#FAF8F5] border border-[#E8C4B8]/30 flex items-center justify-center mb-4">
-                <Search className="w-6 h-6 text-[#C9A84C]" />
+              <div className="w-12 h-12 rounded-xl bg-blue-50/50 border border-blue-100 flex items-center justify-center mb-4">
+                <Search className="w-6 h-6 text-blue-500" />
               </div>
-              <h3 className="text-base font-bold text-[#2D1B3D]">No Billing Records Found</h3>
-              <p className="text-xs text-[#2D1B3D]/55 max-w-xs mt-1">
+              <h3 className="text-base font-bold text-slate-900">No Billing Records Found</h3>
+              <p className="text-xs text-slate-500 max-w-xs mt-1">
                 We couldn't find any users matching your query or filter criteria.
               </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-x-auto relative">
+            <div className="flex-1 overflow-x-auto admin-table-scrollbar relative">
               {loading && (
                 <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center z-10 transition-opacity">
-                  <div className="w-8 h-8 border-4 border-[#2D1B3D]/20 border-t-[#2D1B3D] rounded-full animate-spin"></div>
+                  <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
                 </div>
               )}
               <table className={`w-full text-left border-collapse whitespace-nowrap transition-opacity duration-150 ${loading ? "opacity-50 pointer-events-none" : ""}`}>
                 <thead>
-                  <tr className="border-b border-[#E8C4B8]/30">
-                    <th 
+                  <tr className="border-b border-blue-100/80">
+                    <th
                       onClick={() => handleSort("name")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         User Name
                         {sortBy === "name" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("email")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Email
                         {sortBy === "email" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("role")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Role
                         {sortBy === "role" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("plan")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Current Plan
                         {sortBy === "plan" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Events Created</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Guests Used</th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider">Messages Used</th>
-                    <th 
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Events Created</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Guests Used</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Messages Used</th>
+                    <th
                       onClick={() => handleSort("billingStatus")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Billing Status
                         {sortBy === "billingStatus" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("subscriptionStatus")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Subscription Status
                         {sortBy === "subscriptionStatus" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("planStartDate")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Plan Start Date
                         {sortBy === "planStartDate" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("planExpiryDate")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Plan Expiry Date
                         {sortBy === "planExpiryDate" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => handleSort("created_at")}
-                      className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider cursor-pointer hover:text-[#2D1B3D] select-none transition-colors"
+                      className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Last Updated
                         {sortBy === "created_at" && (
-                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-[#C9A84C]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#C9A84C]" />
+                          sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                         )}
                       </div>
                     </th>
-                    <th className="py-3 px-3 text-[10px] font-bold text-[#2D1B3D]/50 uppercase tracking-wider text-right">Actions</th>
+                    <th className="py-3 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E8C4B8]/20">
+                <tbody className="divide-y divide-blue-100/60">
                   {paginatedUsers.map((u) => {
                     const isDropdownActive = activeActionsUserId === u.id;
 
                     return (
-                      <tr key={u.id} className="hover:bg-[#FAF8F5]/60 transition-colors duration-150 group">
-                        <td className="py-3.5 px-3 text-xs font-semibold text-[#2D1B3D]">{u.name}</td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/80">{u.email}</td>
+                      <tr key={u.id} className="hover:bg-blue-50/50 transition-colors duration-150 group">
+                        <td className="py-3.5 px-3 text-xs font-semibold text-slate-900">{u.name}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-600">{u.email}</td>
                         <td className="py-3.5 px-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            u.role === "ADMIN" 
-                              ? "bg-rose-50 text-rose-700 border border-rose-200" 
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === "ADMIN"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
                               : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}>
+                            }`}>
                             {u.role}
                           </span>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            u.plan.toLowerCase() === "free"
-                              ? "bg-[#2D1B3D]/5 text-[#2D1B3D] border border-[#2D1B3D]/10"
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.plan.toLowerCase() === "free"
+                              ? "bg-slate-100 text-slate-700 border border-slate-200"
                               : u.plan.toLowerCase() === "starter"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : u.plan.toLowerCase() === "pro"
-                              ? "bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/25"
-                              : "bg-purple-50 text-purple-700 border border-purple-200"
-                          }`}>
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : u.plan.toLowerCase() === "pro"
+                                  ? "bg-sky-100 text-sky-700 border border-sky-200"
+                                  : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            }`}>
                             {u.plan}
                           </span>
                         </td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/80">{getLimitText(u.usage.eventsCreated, u.usage.eventsLimit)}</td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/80">{getLimitText(u.usage.guestsUsed, u.usage.guestsLimit)}</td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/80">{getLimitText(u.usage.messagesUsed, u.usage.messagesLimit)}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-600">{getLimitText(u.usage.eventsCreated, u.usage.eventsLimit)}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-600">{getLimitText(u.usage.guestsUsed, u.usage.guestsLimit)}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-600">{getLimitText(u.usage.messagesUsed, u.usage.messagesLimit)}</td>
                         <td className="py-3.5 px-3">
                           <button
                             onClick={() => handleToggleBillingStatus(u.id, u.billingStatus)}
                             title="Click to toggle status"
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-95 border ${
-                              u.billingStatus === "PAID" || u.billingStatus === "ACTIVE" || u.billingStatus === "Active"
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-95 border ${u.billingStatus === "PAID" || u.billingStatus === "ACTIVE" || u.billingStatus === "Active"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : u.billingStatus === "PENDING"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-red-50 text-red-700 border-red-200"
+                              }`}
                           >
                             {u.billingStatus}
                           </button>
@@ -826,18 +818,17 @@ export default function AdminBillingPage() {
                           <button
                             onClick={() => handleToggleSubscription(u.id, u.subscriptionStatus)}
                             title="Click to suspend/activate"
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-95 border ${
-                              u.subscriptionStatus === "ACTIVE"
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-95 border ${u.subscriptionStatus === "ACTIVE"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-red-50 text-red-700 border-red-200"
-                            }`}
+                              }`}
                           >
                             {u.subscriptionStatus}
                           </button>
                         </td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/70">{formatDate(u.planStartDate)}</td>
-                        <td className="py-3.5 px-3 text-xs text-[#2D1B3D]/70">{formatDate(u.planExpiryDate)}</td>
-                        <td className="py-3.5 px-3 text-[11px] text-[#2D1B3D]/50">{formatLastUpdated(u.usage.updatedAt)}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-500">{formatDate(u.planStartDate)}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-500">{formatDate(u.planExpiryDate)}</td>
+                        <td className="py-3.5 px-3 text-[11px] text-slate-400">{formatLastUpdated(u.usage.updatedAt)}</td>
                         <td className="py-3.5 px-3 text-right relative">
                           <div className="flex justify-end gap-1.5">
                             <button
@@ -845,7 +836,7 @@ export default function AdminBillingPage() {
                                 setSelectedUser(u);
                                 setDetailsOpen(true);
                               }}
-                              className="px-2 py-1 text-[10px] font-bold bg-[#FAF8F5] border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-lg transition-colors shadow-sm focus:outline-none"
+                              className="px-2.5 py-1 text-[10px] font-bold text-blue-700 bg-blue-50/60 border border-blue-200/80 hover:bg-blue-100 rounded-lg transition-colors shadow-xs focus:outline-none cursor-pointer"
                             >
                               View
                             </button>
@@ -854,16 +845,16 @@ export default function AdminBillingPage() {
                                 setSelectedUser(u);
                                 setChangePlanOpen(true);
                               }}
-                              className="px-2 py-1 text-[10px] font-bold bg-[#FAF8F5] border border-[#E8C4B8]/40 hover:bg-[#F0EBE8] rounded-lg transition-colors shadow-sm focus:outline-none"
+                              className="px-2.5 py-1 text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 rounded-lg transition-colors shadow-xs focus:outline-none cursor-pointer"
                             >
                               Plan
                             </button>
-                            
+
                             {/* Dropdown triggers for usage resetting & suspend operations */}
                             <div className="relative inline-block text-left">
                               <button
                                 onClick={() => setActiveActionsUserId(isDropdownActive ? null : u.id)}
-                                className="p-1 text-[#2D1B3D]/50 hover:text-[#2D1B3D] hover:bg-[#FAF8F5] rounded-lg border border-[#E8C4B8]/10 transition-colors focus:outline-none"
+                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-blue-50 rounded-lg border border-slate-200/60 transition-colors focus:outline-none cursor-pointer"
                               >
                                 <ChevronDown className="w-3.5 h-3.5" />
                               </button>
@@ -880,40 +871,40 @@ export default function AdminBillingPage() {
                                       initial={{ opacity: 0, scale: 0.95, y: 5 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                                      className="absolute right-0 mt-1 w-44 rounded-xl shadow-xl bg-white border border-[#E8C4B8]/30 z-30 overflow-hidden font-body text-[#2D1B3D]"
+                                      className="absolute right-0 mt-1 w-44 rounded-xl shadow-xl bg-white border border-blue-100 z-30 overflow-hidden font-body text-slate-700"
                                     >
                                       <div className="py-1">
-                                        <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-[#2D1B3D]/40">
+                                        <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                                           Reset Usage Metrics
                                         </div>
                                         <button
                                           onClick={() => handleResetUsage(u.id, "events")}
-                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-[#FAF8F5] transition-colors"
+                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors"
                                         >
                                           Reset Events Usage
                                         </button>
                                         <button
                                           onClick={() => handleResetUsage(u.id, "guests")}
-                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-[#FAF8F5] transition-colors"
+                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors"
                                         >
                                           Reset Guests Usage
                                         </button>
                                         <button
                                           onClick={() => handleResetUsage(u.id, "messages")}
-                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-[#FAF8F5] transition-colors"
+                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors"
                                         >
                                           Reset Messages Usage
                                         </button>
                                         <button
                                           onClick={() => handleResetUsage(u.id, "all")}
-                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-[#FAF8F5] transition-colors text-rose-700 font-semibold"
+                                          className="w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors text-rose-600 font-semibold"
                                         >
                                           Reset All Usage
                                         </button>
-                                        <div className="border-t border-[#E8C4B8]/20 my-1" />
+                                        <div className="border-t border-blue-50 my-1" />
                                         <button
                                           onClick={() => handleToggleSubscription(u.id, u.subscriptionStatus)}
-                                          className="w-full text-left px-4 py-2 text-xs hover:bg-[#FAF8F5] transition-colors flex items-center gap-1.5"
+                                          className="w-full text-left px-4 py-2 text-xs hover:bg-blue-50 transition-colors flex items-center gap-1.5"
                                         >
                                           {u.subscriptionStatus === "ACTIVE" ? (
                                             <>
@@ -991,17 +982,17 @@ export default function AdminBillingPage() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-[#E8C4B8]/40"
+            className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-blue-100"
           >
             {toast.type === "success" ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             ) : (
               <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
             )}
-            <span className="text-xs font-semibold text-[#2D1B3D]">{toast.message}</span>
+            <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-[#2D1B3D]/40 hover:text-[#2D1B3D] transition-colors ml-2"
+              className="text-slate-400 hover:text-slate-700 transition-colors ml-2 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
