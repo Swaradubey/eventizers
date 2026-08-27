@@ -294,11 +294,21 @@ export const useInvitation = (eventId: string | null) => {
       try {
         const inviteRes = await invitationService.getInvitationByEvent(eventId);
         if (inviteRes.success && inviteRes.invitation) {
-          // If the saved invitation has no imageUrl but the event has a coverImage,
-          // fall back to the event's coverImage so it surfaces in the designer preview.
           const fetchedInvitation = inviteRes.invitation;
-          if (!fetchedInvitation.imageUrl && eventRes.event.coverImage) {
-            fetchedInvitation.imageUrl = eventRes.event.coverImage;
+          const tplKey = eventRes.event.selectedTemplateId;
+          const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+          const cleanTemplateImg = tplConfig?.image || eventRes.event.coverImage || "";
+
+          // If imageUrl is a snapshot (e.g. contains snapshot/invitation_snapshot or data:) or missing,
+          // restore clean template artwork so canvas renders only the raw artwork without baked text
+          if (
+            !fetchedInvitation.imageUrl ||
+            fetchedInvitation.imageUrl.includes("snapshot") ||
+            fetchedInvitation.imageUrl.startsWith("data:")
+          ) {
+            if (cleanTemplateImg) {
+              fetchedInvitation.imageUrl = cleanTemplateImg;
+            }
           }
           setInvitation(fetchedInvitation);
         } else {

@@ -1994,7 +1994,7 @@ html[data-theme="dark"] .bg-\[\#2D1B3D\]\/60 {
   display: block;
   width: 100%;
   height: auto;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .invitation-content {

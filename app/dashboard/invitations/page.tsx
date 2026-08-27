@@ -300,18 +300,25 @@ function InvitationDesignerPageContent() {
       const dataUrl = await toPng(cardPreviewRef.current, {
         cacheBust: true,
         pixelRatio: 2,
+        quality: 0.95,
       });
       if (!dataUrl) return null;
 
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
-      const uploadRes = await templateService.uploadTemplateImage(blob, filename);
-      if (uploadRes.success && uploadRes.url) {
-        return uploadRes.url;
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
+        const uploadRes = await templateService.uploadTemplateImage(blob, filename);
+        if (uploadRes.success && uploadRes.url) {
+          return uploadRes.url;
+        }
+      } catch (uploadErr) {
+        console.warn("[Canvas Snapshot] Upload failed, falling back to base64 dataUrl:", uploadErr);
       }
+
+      return dataUrl;
     } catch (snapshotErr) {
-      console.warn("[Canvas Snapshot] Could not capture/upload invitation card snapshot:", snapshotErr);
+      console.warn("[Canvas Snapshot] Could not capture invitation card snapshot:", snapshotErr);
     }
     return null;
   };
@@ -320,12 +327,8 @@ function InvitationDesignerPageContent() {
   const handleSave = async (statusOverride?: "draft" | "published") => {
     if (!invitation) return;
 
-    // Capture & upload canvas snapshot to get a clean public HTTPS URL
-    const snapshotUrl = await captureAndUploadSnapshot();
-
     const payload = {
       ...invitation,
-      imageUrl: snapshotUrl || invitation.imageUrl,
       status: statusOverride || invitation.status,
     };
     await saveInvitation(payload);
@@ -377,18 +380,17 @@ function InvitationDesignerPageContent() {
       return;
     }
 
-    // Capture & upload high-resolution image snapshot of the rendered card DOM
+    // Capture & upload high-resolution image snapshot of the rendered card DOM ONLY for the outgoing email
     const snapshotUrl = await captureAndUploadSnapshot();
 
-    // Auto-save any pending changes first with the clean HTTPS snapshot URL
+    // Auto-save any pending changes first preserving clean template artwork imageUrl
     const payloadToSave = {
       ...invitation,
-      imageUrl: snapshotUrl || invitation.imageUrl,
     };
     const saved = await saveInvitation(payloadToSave);
     const targetId = saved?.id || invitation.id;
     if (targetId) {
-      await queueInvitation(combinedRecipients, targetId, snapshotUrl || saved?.imageUrl || invitation.imageUrl);
+      await queueInvitation(combinedRecipients, targetId, snapshotUrl || undefined);
     }
   };
 
@@ -396,11 +398,9 @@ function InvitationDesignerPageContent() {
   const handleWhatsAppShare = async () => {
     if (!invitation) return;
 
-    // 1. Capture snapshot and auto-save any pending changes first to ensure invitation is published
-    const snapshotUrl = await captureAndUploadSnapshot();
+    // Auto-save any pending changes first to ensure invitation is published (preserving clean imageUrl)
     const payload = {
       ...invitation,
-      imageUrl: snapshotUrl || invitation.imageUrl,
       status: "published" as const,
     };
     const saved = await saveInvitation(payload);
@@ -1317,7 +1317,7 @@ function InvitationDesignerPageContent() {
                     }}
                   >
 
-                    {/* Headers */}
+                    {/* 1. [Event Title & Subtitle] */}
                     <div className="w-full">
                       <h1
                         className="invitation-title text-balance"
@@ -1345,7 +1345,7 @@ function InvitationDesignerPageContent() {
                       )}
                     </div>
 
-                    {/* Main Description */}
+                    {/* 2. [Event Description] */}
                     {invitation.mainText && (
                       <p
                         className="invitation-description opacity-70 leading-relaxed font-body"
@@ -1357,7 +1357,21 @@ function InvitationDesignerPageContent() {
                       </p>
                     )}
 
-                    {/* Synthesized Event Info box */}
+                    {/* 3. [RSVP Button / Action Card] */}
+                    <div className="w-full max-w-xs mx-auto">
+                      <button
+                        type="button"
+                        className="w-full py-3 px-6 text-xs font-bold text-white shadow-md active:scale-97 transition-all focus:outline-none"
+                        style={{
+                          backgroundColor: invitation.buttonColor,
+                          borderRadius: `${invitation.buttonRadius}px`,
+                        }}
+                      >
+                        {invitation.buttonText}
+                      </button>
+                    </div>
+
+                    {/* 4. [Date, Time, Location & Event Details Card] */}
                     {event ? (
                       <div
                         className="w-full max-w-sm p-4 rounded-xl space-y-3.5 text-left border border-opacity-10 backdrop-blur-sm"
@@ -1401,20 +1415,6 @@ function InvitationDesignerPageContent() {
                         <span className="text-xs opacity-40 italic">Syncing event metadata...</span>
                       </div>
                     )}
-
-                    {/* Call to Action Button */}
-                    <div className="pt-2 w-full max-w-xs mx-auto">
-                      <button
-                        type="button"
-                        className="w-full py-3 px-6 text-xs font-bold text-white shadow-md active:scale-97 transition-all focus:outline-none"
-                        style={{
-                          backgroundColor: invitation.buttonColor,
-                          borderRadius: `${invitation.buttonRadius}px`,
-                        }}
-                      >
-                        {invitation.buttonText}
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1504,7 +1504,7 @@ function InvitationDesignerPageContent() {
                       }}
                     >
 
-                      {/* Headers */}
+                      {/* 1. [Event Title & Subtitle] */}
                       <div className="w-full max-w-2xl">
                         <h1
                           className="invitation-title text-balance"
@@ -1532,7 +1532,7 @@ function InvitationDesignerPageContent() {
                         )}
                       </div>
 
-                      {/* Description info */}
+                      {/* 2. [Event Description] */}
                       {invitation.mainText && (
                         <p
                           className="invitation-description opacity-70 leading-relaxed font-body"
@@ -1544,7 +1544,22 @@ function InvitationDesignerPageContent() {
                         </p>
                       )}
 
-                      {/* Date location boxes */}
+                      {/* 3. [RSVP Button / Action Card] */}
+                      <div className="w-full max-w-sm">
+                        <button
+                          type="button"
+                          className="w-full py-4 px-6 text-sm font-bold text-white shadow-lg active:scale-98 transition-all hover:opacity-95 focus:outline-none"
+                          style={{
+                            backgroundColor: invitation.buttonColor,
+                            borderRadius: `${invitation.buttonRadius}px`,
+                          }}
+                        >
+                          {invitation.buttonText}
+                        </button>
+                        <p className="text-[10px] opacity-45 mt-2.5 font-semibold text-center">Brought to you by InviteHub</p>
+                      </div>
+
+                      {/* 4. [Date, Time, Location & Event Details Card] */}
                       {event ? (
                         <div
                           className="w-full max-w-md p-5 rounded-xl space-y-4 text-left border border-opacity-10 backdrop-blur-md"
@@ -1589,20 +1604,6 @@ function InvitationDesignerPageContent() {
                         </div>
                       )}
 
-                      {/* Confirm RSVP button */}
-                      <div className="w-full max-w-sm pt-4">
-                        <button
-                          type="button"
-                          className="w-full py-4 px-6 text-sm font-bold text-white shadow-lg active:scale-98 transition-all hover:opacity-95 focus:outline-none"
-                          style={{
-                            backgroundColor: invitation.buttonColor,
-                            borderRadius: `${invitation.buttonRadius}px`,
-                          }}
-                        >
-                          {invitation.buttonText}
-                        </button>
-                        <p className="text-[10px] opacity-45 mt-2.5 font-semibold text-center">Brought to you by InviteHub</p>
-                      </div>
                     </div>
                   </div>
                 </div>

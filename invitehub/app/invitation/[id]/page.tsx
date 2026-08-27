@@ -19,10 +19,37 @@ import {
 import { motion } from "framer-motion";
 import invitationService from "@/services/invitationService";
 import { getImageUrl } from "@/utils/imageUrl";
+import { NEW_TEMPLATE_IMAGES } from "@/lib/newTemplatesData";
+
+const getTemplateImage = (templateId?: string | null) => {
+  if (!templateId) return null;
+  const mapping: Record<string, string> = {
+    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
+    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
+    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
+    "tpl-dinner-party": "/assets/templates/dinner.jpg",
+    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
+    "tpl-charity-gala": "/assets/templates/gala.jpg",
+    "tpl-live-music": "/assets/templates/music.jpg",
+    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
+    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
+    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
+    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
+    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
+    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
+    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
+    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
+    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
+    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
+    ...NEW_TEMPLATE_IMAGES,
+  };
+  return mapping[templateId] || null;
+};
 
 export default function PublicInvitationPage() {
   const params = useParams();
-  const invitationId = params?.id as string;
+  // Support multiple route aliases: /invitation/[id], /e/[slug], /p/[id]
+  const invitationId = (params?.id || params?.slug || params?.eventId) as string;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +87,16 @@ export default function PublicInvitationPage() {
           setError(res.error || "Invitation not found.");
         }
       } catch (err: any) {
-        console.error("Error loading public invitation:", err);
-        setError("Unable to load event invitation. Please check the link.");
+        const status = err.response?.status;
+        const serverError = err.response?.data?.error || err.response?.data?.message;
+        console.error(`Error loading public invitation (HTTP ${status || "N/A"}):`, serverError || err.message || err);
+        if (status === 404) {
+          setError(serverError || "Invitation not found.");
+        } else if (status === 401 || status === 403) {
+          setError("Access denied. This invitation link may have expired.");
+        } else {
+          setError(serverError || "Unable to load event invitation. Please check the link.");
+        }
       } finally {
         setLoading(false);
       }
@@ -184,7 +219,21 @@ export default function PublicInvitationPage() {
     .filter(Boolean)
     .join(", ");
 
-  const coverImage = getImageUrl(invitation?.imageUrl || eventData.coverImage);
+  // Resolve clean raw artwork (avoiding snapshot images with baked-in text)
+  const getCleanCoverImage = () => {
+    const rawImg = invitation?.imageUrl || eventData?.coverImage;
+    const tplImg = getTemplateImage(eventData?.selectedTemplateId);
+
+    // If raw image contains snapshot or data: URL, fall back to clean template artwork
+    if (rawImg && (rawImg.includes("snapshot") || rawImg.startsWith("data:"))) {
+      return tplImg || null;
+    }
+
+    return rawImg || tplImg || null;
+  };
+
+  const rawCover = getCleanCoverImage();
+  const coverImage = rawCover ? getImageUrl(rawCover) : null;
 
   return (
     <div
@@ -199,14 +248,13 @@ export default function PublicInvitationPage() {
       >
         {/* Header Cover Image */}
         {coverImage && !coverImgError && (
-          <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gray-100">
+          <div className="relative w-full overflow-hidden bg-gray-50 flex items-center justify-center">
             <img
               src={coverImage}
               alt="Invitation Cover"
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain block"
               onError={() => setCoverImgError(true)}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
           </div>
         )}
         {coverImage && coverImgError && (
@@ -227,7 +275,7 @@ export default function PublicInvitationPage() {
             <span>You're Cordially Invited</span>
           </div>
 
-          {/* Event Title */}
+          {/* 1. [Event Title & Subtitle] */}
           <div>
             <h1
               className="font-bold tracking-tight leading-tight"
@@ -249,95 +297,15 @@ export default function PublicInvitationPage() {
             )}
           </div>
 
-          {/* Main Description / Message */}
+          {/* 2. [Event Description] */}
           {(invitation?.mainText || eventData.description) && (
             <div className="bg-[#FAF8F5] p-6 rounded-2xl border border-black/5 text-sm sm:text-base leading-relaxed opacity-90">
               {invitation?.mainText || eventData.description}
             </div>
           )}
 
-          {/* Event Details Card (Date, Time, Venue) */}
-          <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 space-y-5 text-left shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Event Details</h3>
-
-            {/* Date */}
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
-                <Calendar className="w-5 h-5" style={{ color: accentColor }} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase">Date</p>
-                <p className="text-base font-bold text-gray-900">
-                  {formatEventDate(eventData.eventDate) || "Date to be announced"}
-                </p>
-              </div>
-            </div>
-
-            {/* Time */}
-            {eventData.eventTime && (
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
-                  <Clock className="w-5 h-5" style={{ color: accentColor }} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Time</p>
-                  <p className="text-base font-bold text-gray-900">
-                    {formatEventTime(eventData.eventTime)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Venue & Location */}
-            {eventData.venue && (
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
-                  <MapPin className="w-5 h-5" style={{ color: accentColor }} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Venue / Location</p>
-                  <p className="text-base font-bold text-gray-900">{eventData.venue}</p>
-                  {fullVenueLocation && (
-                    <p className="text-xs text-gray-600 mt-0.5">{fullVenueLocation}</p>
-                  )}
-                  {/* Google Maps link */}
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullVenueLocation || eventData.venue)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold mt-2 hover:underline"
-                    style={{ color: accentColor }}
-                  >
-                    Open in Google Maps →
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons (Add to Calendar, Share Link) */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <a
-              href={generateGoogleCalendarUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm"
-            >
-              <CalendarPlus className="w-4 h-4 text-emerald-600" />
-              Add to Google Calendar
-            </a>
-
-            <button
-              onClick={copyShareLink}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm"
-            >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-amber-600" />}
-              {copied ? "Link Copied!" : "Share Invitation"}
-            </button>
-          </div>
-
-          {/* RSVP Section */}
-          <div className="pt-8 border-t border-gray-100 text-left">
+          {/* 3. [RSVP Button / Action Card] */}
+          <div className="pt-2 text-left">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900 font-display">RSVP & Attendance</h2>
               <p className="text-xs text-gray-500 mt-1">Please confirm whether you will be joining us</p>
@@ -461,6 +429,86 @@ export default function PublicInvitationPage() {
                 </button>
               </form>
             )}
+          </div>
+
+          {/* 4. [Date, Time, Location & Event Details Card] */}
+          <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 space-y-5 text-left shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Event Details</h3>
+
+            {/* Date */}
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
+                <Calendar className="w-5 h-5" style={{ color: accentColor }} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase">Date</p>
+                <p className="text-base font-bold text-gray-900">
+                  {formatEventDate(eventData.eventDate) || "Date to be announced"}
+                </p>
+              </div>
+            </div>
+
+            {/* Time */}
+            {eventData.eventTime && (
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
+                  <Clock className="w-5 h-5" style={{ color: accentColor }} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Time</p>
+                  <p className="text-base font-bold text-gray-900">
+                    {formatEventTime(eventData.eventTime)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Venue & Location */}
+            {eventData.venue && (
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-white text-[#2D1B3D] shadow-sm border border-black/5">
+                  <MapPin className="w-5 h-5" style={{ color: accentColor }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Venue / Location</p>
+                  <p className="text-base font-bold text-gray-900">{eventData.venue}</p>
+                  {fullVenueLocation && (
+                    <p className="text-xs text-gray-600 mt-0.5">{fullVenueLocation}</p>
+                  )}
+                  {/* Google Maps link */}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullVenueLocation || eventData.venue)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold mt-2 hover:underline"
+                    style={{ color: accentColor }}
+                  >
+                    Open in Google Maps →
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons (Add to Calendar, Share Link) */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <a
+              href={generateGoogleCalendarUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <CalendarPlus className="w-4 h-4 text-emerald-600" />
+              Add to Google Calendar
+            </a>
+
+            <button
+              onClick={copyShareLink}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-amber-600" />}
+              {copied ? "Link Copied!" : "Share Invitation"}
+            </button>
           </div>
         </div>
 

@@ -45,12 +45,18 @@ export const sendInvitation = async (
   recipients?: string[] | string,
   snapshotUrlOrBase64?: string
 ): Promise<SendInvitationResponse> => {
-  const isUrl = snapshotUrlOrBase64 && /^https?:\/\//i.test(snapshotUrlOrBase64.trim());
+  const isBase64 = Boolean(
+    snapshotUrlOrBase64 &&
+      (snapshotUrlOrBase64.startsWith("data:") ||
+        (!snapshotUrlOrBase64.startsWith("http") && !snapshotUrlOrBase64.startsWith("/") && snapshotUrlOrBase64.length > 300))
+  );
+  const isUrl = Boolean(snapshotUrlOrBase64 && !isBase64);
+
   const response = await API.post<SendInvitationResponse>(`/invitations/${id}/send`, {
     recipients,
     snapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardSnapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
-    cardImageBase64: !isUrl ? snapshotUrlOrBase64 : undefined,
+    cardImageBase64: isBase64 ? snapshotUrlOrBase64 : undefined,
   });
   return response.data;
 };
@@ -61,14 +67,20 @@ export const sendInvitationToGuests = async (
   recipients?: string[] | string,
   snapshotUrlOrBase64?: string
 ): Promise<SendInvitationResponse> => {
-  const isUrl = snapshotUrlOrBase64 && /^https?:\/\//i.test(snapshotUrlOrBase64.trim());
+  const isBase64 = Boolean(
+    snapshotUrlOrBase64 &&
+      (snapshotUrlOrBase64.startsWith("data:") ||
+        (!snapshotUrlOrBase64.startsWith("http") && !snapshotUrlOrBase64.startsWith("/") && snapshotUrlOrBase64.length > 300))
+  );
+  const isUrl = Boolean(snapshotUrlOrBase64 && !isBase64);
+
   const response = await API.post<SendInvitationResponse>("/invitations/send", {
     invitationId,
     guestIds,
     recipients,
     snapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardSnapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
-    cardImageBase64: !isUrl ? snapshotUrlOrBase64 : undefined,
+    cardImageBase64: isBase64 ? snapshotUrlOrBase64 : undefined,
   });
   return response.data;
 };
