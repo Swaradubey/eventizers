@@ -47,6 +47,7 @@ export default function AnalyticsPage() {
           averageResponseTimeDays: res.averageResponseTimeDays,
           rsvpBreakdown: res.rsvpBreakdown,
           eventPerformance: res.eventPerformance,
+          eventsPerformance: res.eventsPerformance || [],
         });
       } else {
         setError("Invalid response format received from server.");
@@ -55,7 +56,7 @@ export default function AnalyticsPage() {
       console.error("Error loading analytics data:", err);
       setError(
         err.response?.data?.error ||
-          "Unable to load analytics information. Please verify your connection."
+        "Unable to load analytics information. Please verify your connection."
       );
     } finally {
       setLoading(false);
@@ -375,45 +376,106 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80"
+                className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm"
               >
-                <h2 className="text-base font-semibold text-slate-900 mb-5">
-                  Event performance
-                </h2>
+                <h3 className="text-lg font-bold text-slate-900 mb-6">Event performance</h3>
 
-                {/* Open Rate */}
-                <div className="mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-slate-900">Open Rate</span>
-                    <span className="text-sm font-bold text-blue-600">
-                      {data.eventPerformance.openRate.toFixed(1)}%
-                    </span>
+                <div className="space-y-6">
+                  {/* Open Rate */}
+                  <div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-700">Open Rate</span>
+                      <span className="font-bold text-blue-600">
+                        {Number(data.eventPerformance?.openRate || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-2.5">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(data.eventPerformance?.openRate || 0, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${clampPercent(data.eventPerformance.openRate)}%` }}
-                    />
-                  </div>
-                </div>
 
-                {/* Click Rate */}
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-slate-900">Click Rate</span>
-                    <span className="text-sm font-bold text-blue-600">
-                      {data.clickRate.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${clampPercent(data.clickRate)}%` }}
-                    />
+                  {/* Click Rate */}
+                  <div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-700">Click Rate</span>
+                      <span className="font-bold text-blue-600">
+                        {Number(data.eventPerformance?.clickRate ?? data.clickRate ?? 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-2.5">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(data.eventPerformance?.clickRate ?? data.clickRate ?? 0, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               </motion.div>
             </div>
+
+            {/* ── Event Performance Table ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white border border-slate-100/80 rounded-3xl p-6 shadow-sm"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-6">Event performance</h2>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-sm font-bold text-slate-500">
+                      <th className="pb-4 font-medium">Event Name</th>
+                      <th className="pb-4 font-medium">Total Guests</th>
+                      <th className="pb-4 font-medium">RSVP Rate</th>
+                      <th className="pb-4 font-medium">Open Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-sm">
+                    {data.eventsPerformance && data.eventsPerformance.length > 0 ? (
+                      data.eventsPerformance.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 font-medium text-slate-800">{item.name}</td>
+                          <td className="py-4 text-slate-600">{item.totalGuests}</td>
+                          <td className="py-4">
+                            <div className="flex items-center">
+                              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mr-3">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(item.rsvpRate, 100)}%` }}
+                                />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-xs">{item.rsvpRate}%</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <div className="flex items-center">
+                              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mr-3">
+                                <div
+                                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(item.openRate, 100)}%` }}
+                                />
+                              </div>
+                              <span className="font-semibold text-slate-700 text-xs">{item.openRate}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-400">
+                          No event performance data available yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
           </div>
         )}
       </main>

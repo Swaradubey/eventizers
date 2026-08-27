@@ -9,12 +9,12 @@ export function getImageUrl(url?: string | null): string {
     return "";
   }
 
-  // 1. Data URLs (e.g. base64 uploads)
+  // 1. Data URLs (legacy or preview)
   if (trimmed.startsWith("data:")) {
     return trimmed;
   }
 
-  // 2. Full external URLs
+  // 2. Full HTTPS / HTTP URLs (e.g. Cloudinary, S3, external or full backend URLs)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }
@@ -22,14 +22,14 @@ export function getImageUrl(url?: string | null): string {
   // 3. Remove accidental route prefixes like /dashboard/ or dashboard/
   let cleaned = trimmed.replace(/^(\/)?dashboard\//i, "/");
 
-  // 4. Ensure leading slash for relative asset paths
+  // 4. Ensure leading slash for relative paths
   if (!cleaned.startsWith("/")) {
     cleaned = "/" + cleaned;
   }
 
   // 5. Prepend backend URL for uploads served by backend server
   if (cleaned.startsWith("/uploads/")) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     const baseUrl = apiUrl.replace(/\/+$/, "");
     return `${baseUrl}${cleaned}`;
   }

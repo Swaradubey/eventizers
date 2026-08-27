@@ -17,6 +17,14 @@ export interface EventPerformance {
   clickRate: number;
 }
 
+export interface EventPerformanceItem {
+  id: string;
+  name: string;
+  totalGuests: number;
+  rsvpRate: number;
+  openRate: number;
+}
+
 export interface AnalyticsOverview {
   totalInvitations: number;
   responseRate: number;
@@ -24,6 +32,7 @@ export interface AnalyticsOverview {
   averageResponseTimeDays: number;
   rsvpBreakdown: RSVPBreakdown;
   eventPerformance: EventPerformance;
+  eventsPerformance?: EventPerformanceItem[];
 }
 
 interface AnalyticsOverviewResponse {
@@ -34,6 +43,7 @@ interface AnalyticsOverviewResponse {
   averageResponseTimeDays: number;
   rsvpBreakdown: RSVPBreakdown;
   eventPerformance: EventPerformance;
+  eventsPerformance?: EventPerformanceItem[];
 }
 
 export const getAnalyticsOverview = async (): Promise<AnalyticsOverviewResponse> => {

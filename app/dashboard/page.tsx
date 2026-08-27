@@ -24,6 +24,7 @@ import {
   Users,
   TrendingUp,
   Zap,
+  ImageIcon,
 } from "lucide-react";
 import { useSidebar } from "../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,6 +71,9 @@ export default function DashboardPage() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Image preview modal state
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   // Dashboard stats
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -450,13 +454,55 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-100/30">
-                  {events.map((event) => (
+                  {events.map((event) => {
+                    const thumbUrl = getImageUrl(event.coverImage || getTemplateImage(event.selectedTemplateId) || "");
+                    return (
                     <tr
                       key={event.id}
                       className="hover:bg-blue-50/40 transition-colors duration-150 group"
                     >
-                      <td className="py-4 px-4 text-sm font-semibold text-slate-800">
-                        {event.title}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          {thumbUrl ? (
+                            <button
+                              onClick={() => setPreviewImage({ url: thumbUrl, title: event.title })}
+                              className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 rounded-xl transition-transform hover:scale-105 active:scale-95"
+                              title="Click to preview"
+                            >
+                              <img
+                                src={thumbUrl}
+                                alt={event.title}
+                                loading="lazy"
+                                className="w-12 h-12 rounded-xl object-cover border border-slate-200/80 shadow-sm"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  if (target.nextElementSibling) {
+                                    (target.nextElementSibling as HTMLElement).style.display = "flex";
+                                  }
+                                }}
+                              />
+                              <div
+                                className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center text-white font-semibold text-sm shadow-sm"
+                                style={{ display: "none" }}
+                              >
+                                {event.title?.charAt(0)?.toUpperCase() || "E"}
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold flex-shrink-0 text-sm shadow-sm">
+                              {event.title?.charAt(0)?.toUpperCase() || "E"}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors truncate">
+                              {event.title}
+                            </p>
+                            <span className="text-xs text-slate-400 font-normal md:hidden">
+                              {event.eventType}
+                            </span>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
                         {event.eventType || "-"}
@@ -511,7 +557,8 @@ export default function DashboardPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -697,6 +744,68 @@ export default function DashboardPage() {
                 >
                   Yes, Delete
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* IMAGE PREVIEW MODAL */}
+      <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPreviewImage(null)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative z-10 max-w-2xl w-full bg-white rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-blue-100/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                    <ImageIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 truncate max-w-[280px]">{previewImage.title}</p>
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Card Preview</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/80 transition-colors"
+                  aria-label="Close preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Image */}
+              <div className="p-4 bg-slate-50/50">
+                <img
+                  src={previewImage.url}
+                  alt={previewImage.title}
+                  className="w-full max-h-[65vh] object-contain rounded-xl shadow-sm"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    if (target.parentElement) {
+                      target.parentElement.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+                          <svg class="w-12 h-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          <p class="text-sm font-medium">Image could not be loaded</p>
+                        </div>
+                      `;
+                    }
+                  }}
+                />
               </div>
             </motion.div>
           </div>

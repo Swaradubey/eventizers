@@ -61,9 +61,38 @@ export const getTemplates = async (): Promise<Template[]> => {
   }
 };
 
+export const uploadTemplateImage = async (
+  fileOrBlob: File | Blob,
+  filename = "canvas_snapshot.png"
+): Promise<{ success: boolean; url: string; fileUrl: string; message?: string }> => {
+  const formData = new FormData();
+  formData.append("templateFile", fileOrBlob, filename);
+
+  const response = await API.post<{
+    success: boolean;
+    url?: string;
+    fileUrl?: string;
+    message?: string;
+  }>("/templates/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  const finalUrl = response.data.url || response.data.fileUrl || "";
+  return {
+    success: response.data.success ?? true,
+    url: finalUrl,
+    fileUrl: finalUrl,
+    message: response.data.message,
+  };
+};
+
 const templateService = {
   getTemplates,
+  uploadTemplateImage,
 };
 
 export default templateService;
+
 

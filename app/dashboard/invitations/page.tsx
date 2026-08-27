@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toPng } from "html-to-image";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import { useInvitation } from "../../../hooks/useInvitation";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
+import templateService from "../../../services/templateService";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {
   Calendar,
@@ -75,6 +77,9 @@ function InvitationDesignerPageContent() {
   // Drag-and-drop state
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Card Snapshot DOM ref for html-to-image export
+  const cardPreviewRef = useRef<HTMLDivElement>(null);
 
   // Preview Modal
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -242,24 +247,27 @@ function InvitationDesignerPageContent() {
     });
   };
 
-  // Image Upload helper converting to Base64
-  const processImageFile = (file: File) => {
+  // Direct Cloud/Server Image Upload for Custom User Images
+  const processImageFile = async (file: File) => {
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
       setToast({ message: "Only PNG, JPG, JPEG, and WEBP image formats are accepted.", type: "error" });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64Data = e.target?.result as string;
-      handleInputChange("imageUrl", base64Data);
-      setToast({ message: "Image loaded successfully. Save to update.", type: "success" });
-    };
-    reader.onerror = () => {
-      setToast({ message: "Failed to read image file.", type: "error" });
-    };
-    reader.readAsDataURL(file);
+    try {
+      setToast({ message: "Uploading image...", type: "success" });
+      const uploadRes = await templateService.uploadTemplateImage(file, file.name);
+      if (uploadRes.success && uploadRes.url) {
+        handleInputChange("imageUrl", uploadRes.url);
+        setToast({ message: "Image uploaded successfully. Save to update.", type: "success" });
+      } else {
+        throw new Error(uploadRes.message || "Upload failed");
+      }
+    } catch (err: any) {
+      console.error("Image upload error:", err);
+      setToast({ message: "Failed to upload image. Please try again.", type: "error" });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,11 +293,39 @@ function InvitationDesignerPageContent() {
     }
   };
 
+  // Helper to capture exact canvas DOM view and upload as a clean public HTTPS URL
+  const captureAndUploadSnapshot = async (): Promise<string | null> => {
+    if (!cardPreviewRef.current) return null;
+    try {
+      const dataUrl = await toPng(cardPreviewRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      if (!dataUrl) return null;
+
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
+      const uploadRes = await templateService.uploadTemplateImage(blob, filename);
+      if (uploadRes.success && uploadRes.url) {
+        return uploadRes.url;
+      }
+    } catch (snapshotErr) {
+      console.warn("[Canvas Snapshot] Could not capture/upload invitation card snapshot:", snapshotErr);
+    }
+    return null;
+  };
+
   // Save Flow
   const handleSave = async (statusOverride?: "draft" | "published") => {
     if (!invitation) return;
+
+    // Capture & upload canvas snapshot to get a clean public HTTPS URL
+    const snapshotUrl = await captureAndUploadSnapshot();
+
     const payload = {
       ...invitation,
+      imageUrl: snapshotUrl || invitation.imageUrl,
       status: statusOverride || invitation.status,
     };
     await saveInvitation(payload);
@@ -341,11 +377,18 @@ function InvitationDesignerPageContent() {
       return;
     }
 
-    // Auto-save any pending changes first
-    const saved = await saveInvitation(invitation);
+    // Capture & upload high-resolution image snapshot of the rendered card DOM
+    const snapshotUrl = await captureAndUploadSnapshot();
+
+    // Auto-save any pending changes first with the clean HTTPS snapshot URL
+    const payloadToSave = {
+      ...invitation,
+      imageUrl: snapshotUrl || invitation.imageUrl,
+    };
+    const saved = await saveInvitation(payloadToSave);
     const targetId = saved?.id || invitation.id;
     if (targetId) {
-      await queueInvitation(combinedRecipients, targetId);
+      await queueInvitation(combinedRecipients, targetId, snapshotUrl || saved?.imageUrl || invitation.imageUrl);
     }
   };
 
@@ -353,9 +396,11 @@ function InvitationDesignerPageContent() {
   const handleWhatsAppShare = async () => {
     if (!invitation) return;
 
-    // 1. Auto-save any pending changes first to ensure invitation is published
+    // 1. Capture snapshot and auto-save any pending changes first to ensure invitation is published
+    const snapshotUrl = await captureAndUploadSnapshot();
     const payload = {
       ...invitation,
+      imageUrl: snapshotUrl || invitation.imageUrl,
       status: "published" as const,
     };
     const saved = await saveInvitation(payload);
@@ -1242,6 +1287,7 @@ function InvitationDesignerPageContent() {
 
                 {/* Device Screen frame */}
                 <div
+                  ref={cardPreviewRef}
                   className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-blue-100 transition-all duration-300"
                   style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                 >
@@ -1252,6 +1298,7 @@ function InvitationDesignerPageContent() {
                         src={getImageUrl(invitation.imageUrl)}
                         alt="Invitation cover"
                         className="invitation-image"
+                        crossOrigin="anonymous"
                       />
                     ) : (
                       <div className="w-full h-32 bg-gradient-to-b from-blue-500/5 to-transparent flex items-center justify-center">
@@ -1432,6 +1479,7 @@ function InvitationDesignerPageContent() {
                           src={getImageUrl(invitation.imageUrl)}
                           alt="Invitation cover"
                           className="invitation-image"
+                          crossOrigin="anonymous"
                           onError={() => setCoverImgError(true)}
                         />
                       ) : invitation.imageUrl && coverImgError ? (

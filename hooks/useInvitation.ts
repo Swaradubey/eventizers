@@ -417,7 +417,11 @@ export const useInvitation = (eventId: string | null) => {
     }
   };
 
-  const queueInvitation = async (recipients?: string[] | string, targetInvitationId?: string) => {
+  const queueInvitation = async (
+    recipients?: string[] | string,
+    targetInvitationId?: string,
+    snapshotUrlOrBase64?: string
+  ) => {
     const invId = targetInvitationId || invitation?.id;
     if (!invId) {
       setError("Please save the invitation before sending.");
@@ -429,7 +433,7 @@ export const useInvitation = (eventId: string | null) => {
     setSuccessMessage(null);
 
     try {
-      const res = await invitationService.sendInvitation(invId, recipients);
+      const res = await invitationService.sendInvitation(invId, recipients, snapshotUrlOrBase64);
       if (res.success) {
         setSuccessMessage(res.message || "Invitation successfully sent!");
         setInvitation(prev => prev ? { ...prev, status: "published" } : null);
