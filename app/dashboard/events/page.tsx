@@ -834,9 +834,10 @@ function EventsPageContent() {
                   Close
                 </button>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
       {/* DELETE CONFIRMATION DIALOG */}
       <AnimatePresence>

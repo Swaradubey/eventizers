@@ -424,6 +424,9 @@ export default function DashboardPage() {
                     </th>
                     <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
                       Actions
+                    </th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-blue-100/30">
                   {events.map((event) => {
                     return (
@@ -462,39 +465,39 @@ export default function DashboardPage() {
                       </td>
                       <td className="py-4 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(
-                            event.status
-                          )}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${event.status === "published"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : event.status === "cancelled"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
                         >
-                          {event.status || "draft"}
+                          {event.status || "Draft"}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-400">
-                        {formatDate(event.createdAt)}
+                      <td className="py-4 px-4 text-xs text-slate-400">
+                        {formatDateTime(event.createdAt || "")}
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2">
                           <button
                             onClick={() => setViewingEvent(event)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-colors"
                             title="View details"
-                            aria-label={`View details for ${event.title}`}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditClick(event)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-colors"
                             title="Edit event"
-                            aria-label={`Edit ${event.title}`}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteClick(event)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-lg transition-colors"
+                            onClick={() => setDeleteConfirmId(event.id || null)}
                             title="Delete event"
-                            aria-label={`Delete ${event.title}`}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all focus:outline-none"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -507,38 +510,50 @@ export default function DashboardPage() {
               </table>
             </div>
           )}
-        </motion.div>
+        </div>
+      </main>
 
-        {/* ========================================================================= */}
-        {/* VIEW EVENT MODAL */}
-        {/* ========================================================================= */}
+      {/* CREATE / EDIT EVENT MODAL */}
+      <EventModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleSuccess}
+        eventToEdit={editingEvent}
+      />
+
+      {/* EVENT DETAILS VIEW DIALOG */}
+      <AnimatePresence>
         {viewingEvent && (
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
-            onClick={() => setViewingEvent(null)}
-          >
-            <div
-              className="bg-white/95 backdrop-blur-xl rounded-2xl max-w-lg w-full shadow-2xl border border-blue-100/60 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
-              onClick={(e) => e.stopPropagation()}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setViewingEvent(null)}
+              className="fixed inset-0 bg-[#2D1B3D]/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden z-10 text-slate-800 font-body"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between p-5 sm:p-6 border-b border-blue-100/40 bg-gradient-to-r from-blue-50/30 to-indigo-50/20 flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100/60 flex items-center justify-center text-blue-600 flex-shrink-0">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base leading-snug truncate max-w-[260px] sm:max-w-xs">
-                      {viewingEvent.title}
-                    </h3>
-                    <span className="text-xs text-slate-500 font-normal">
-                      {viewingEvent.eventType || "Event"}
-                    </span>
-                  </div>
+              {/* Fixed Header */}
+              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-blue-100/40 flex-shrink-0 bg-white z-10">
+                <div className="pr-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
+                    {viewingEvent.eventType || "General"} Event
+                  </span>
+                  <h3
+                    className="text-xl sm:text-2xl font-semibold font-display mt-0.5 leading-snug break-words"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    {viewingEvent.title}
+                  </h3>
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-blue-50/50 rounded-xl transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-blue-50 transition-colors flex-shrink-0 -mr-1"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
