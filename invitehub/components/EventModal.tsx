@@ -65,10 +65,10 @@ export default function EventModal({
     setIsUploadingImage(true);
 
     try {
-      // 1. Client-side compression & format normalization
+      // 1. Client-side compression & format normalization (max 1200px, quality 0.8)
       const { file: compressedFile } = await compressAndNormalizeImage(file, {
-        maxDimension: 1920,
-        quality: 0.85,
+        maxDimension: 1200,
+        quality: 0.8,
         maxSizeBytes: 1.5 * 1024 * 1024,
       });
 

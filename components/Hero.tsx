@@ -558,10 +558,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
     if (isImage) {
       try {
-        // Compress and format normalize mobile camera and high-res images to < 1.5MB
+        // Compress and format normalize mobile camera and high-res images (max 1200px, quality 0.8)
         const { file: compressedFile, dataUrl } = await compressAndNormalizeImage(file, {
-          maxDimension: 1920,
-          quality: 0.85,
+          maxDimension: 1200,
+          quality: 0.8,
           maxSizeBytes: 1.5 * 1024 * 1024,
         });
 

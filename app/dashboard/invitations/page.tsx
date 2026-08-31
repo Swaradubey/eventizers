@@ -276,21 +276,24 @@ function InvitationDesignerPageContent() {
     try {
       setToast({ message: "Optimizing & uploading image...", type: "success" });
 
-      // 1. Client-side compression & format normalization (max 1.5MB, JPEG/WebP)
+      // 1. Client-side compression & format normalization (max 1200px, quality 0.8, < 1.5MB)
       const { file: compressedFile } = await compressAndNormalizeImage(file, {
-        maxDimension: 1920,
-        quality: 0.85,
+        maxDimension: 1200,
+        quality: 0.8,
         maxSizeBytes: 1.5 * 1024 * 1024,
       });
 
+      console.log(`[ImageUpload] Compressed file size: ${(compressedFile.size / 1024).toFixed(1)} KB (original: ${(file.size / 1024).toFixed(1)} KB)`);
+
       // 2. Upload to public cloud/server storage
       const uploadRes = await templateService.uploadTemplateImage(compressedFile, compressedFile.name);
-      if (uploadRes.success && uploadRes.url) {
+      if (uploadRes.success && uploadRes.url && !uploadRes.url.startsWith("blob:")) {
+        console.log("[ImageUpload] Resolved public storage URL:", uploadRes.url);
         handleInputChange("imageUrl", uploadRes.url);
         setCoverImgError(false);
         setToast({ message: "Image uploaded and applied to invitation! ✨", type: "success" });
       } else {
-        throw new Error(uploadRes.message || "Upload failed");
+        throw new Error(uploadRes.message || "Upload failed or invalid URL returned");
       }
     } catch (err: any) {
       console.error("Image upload error:", err);
@@ -369,40 +372,63 @@ function InvitationDesignerPageContent() {
       );
 
       // Brief animation frame pause to ensure DOM paint has settled
-      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60)));
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 80)));
 
-      // 3. Capture high-resolution PNG snapshot using html-to-image with CORS enabled
-      const dataUrl = await toPng(previewNode, {
-        cacheBust: true,
-        pixelRatio: 2,
-        quality: 0.95,
-        skipAutoScale: true,
-        backgroundColor: invitation?.backgroundColor || "#ffffff",
-        fetchRequestInit: {
-          mode: "cors",
-          cache: "no-cache",
-        },
-      });
+      // Dynamic pixelRatio: downscale appropriately on mobile / high-DPI screens to prevent memory crashes
+      const clientPixelRatio = typeof window !== "undefined" && window.devicePixelRatio
+        ? Math.min(2, Math.max(1, window.devicePixelRatio))
+        : 1.5;
+
+      // 3. Capture snapshot using html-to-image with CORS enabled
+      let dataUrl: string | null = null;
+      try {
+        dataUrl = await toPng(previewNode, {
+          cacheBust: true,
+          pixelRatio: clientPixelRatio,
+          quality: 0.85,
+          skipAutoScale: true,
+          backgroundColor: invitation?.backgroundColor || "#ffffff",
+          fetchRequestInit: {
+            mode: "cors",
+            cache: "no-cache",
+          },
+        });
+      } catch (firstAttemptErr) {
+        console.warn("[Canvas Snapshot] First capture attempt failed, retrying with pixelRatio 1.0:", firstAttemptErr);
+        // Fallback retry with safe 1.0 pixelRatio
+        dataUrl = await toPng(previewNode, {
+          cacheBust: true,
+          pixelRatio: 1.0,
+          quality: 0.8,
+          skipAutoScale: true,
+          backgroundColor: invitation?.backgroundColor || "#ffffff",
+          fetchRequestInit: {
+            mode: "cors",
+            cache: "no-cache",
+          },
+        });
+      }
 
       if (!dataUrl || !dataUrl.startsWith("data:")) {
         console.warn("[Canvas Snapshot] html-to-image returned invalid or empty dataUrl");
         return null;
       }
 
-      console.log("[Canvas Snapshot] Snapshot dataUrl generated successfully (length:", dataUrl.length, ")");
+      const payloadSizeBytes = dataUrl.length;
+      console.log(`[Canvas Snapshot] Snapshot dataUrl generated successfully (Size: ${(payloadSizeBytes / 1024).toFixed(1)} KB)`);
 
-      // 4. Try uploading snapshot blob to backend storage for a clean URL
+      // 4. Try uploading snapshot blob to backend storage for a clean permanent public URL
       try {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
         const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
         const uploadRes = await templateService.uploadTemplateImage(blob, filename);
         if (uploadRes && uploadRes.success && uploadRes.url) {
-          console.log("[Canvas Snapshot] Cloud upload successful:", uploadRes.url);
+          console.log("[Canvas Snapshot] Cloud upload successful, public URL:", uploadRes.url);
           return uploadRes.url;
         }
       } catch (uploadErr) {
-        console.warn("[Canvas Snapshot] Upload failed, falling back to direct Base64 Data URL:", uploadErr);
+        console.warn("[Canvas Snapshot] Cloud upload failed, falling back to direct Base64 Data URL:", uploadErr);
       }
 
       // Fall back directly to the Base64 Data URL
@@ -448,6 +474,14 @@ function InvitationDesignerPageContent() {
   const handleSend = async () => {
     if (!invitation) return;
 
+    if (isImageUploading) {
+      setToast({
+        message: "Please wait for your image upload to finish before sending.",
+        type: "error",
+      });
+      return;
+    }
+
     // 1. Collect emails from selected guests from checkboxes
     const selectedGuestEmails = eventGuests
       .filter((g: any) => selectedGuestIds.includes(g.id) && g.email && g.email.trim())
@@ -476,8 +510,10 @@ function InvitationDesignerPageContent() {
     });
 
     try {
+      console.log(`[Send Invitation Flow] Dispatching for invitation imageUrl: ${invitation.imageUrl || "(none)"}`);
       // Capture & upload high-resolution image snapshot of the rendered card DOM ONLY for the outgoing email
       const snapshotUrl = await captureAndUploadSnapshot();
+      console.log(`[Send Invitation Flow] Snapshot URL/Base64 length: ${snapshotUrl?.length || 0}`);
 
       // Auto-save any pending changes first preserving clean template artwork imageUrl
       const payloadToSave = {

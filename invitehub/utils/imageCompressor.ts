@@ -28,8 +28,8 @@ export async function compressAndNormalizeImage(
   options: CompressionOptions = {}
 ): Promise<CompressionResult> {
   const {
-    maxDimension = 1920,
-    quality = 0.85,
+    maxDimension = 1200,
+    quality = 0.8,
     maxSizeBytes = 1.5 * 1024 * 1024, // 1.5 MB
     outputFormat = "image/jpeg",
   } = options;
