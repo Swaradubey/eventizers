@@ -485,6 +485,15 @@ function InvitationDesignerPageContent() {
     setOpenSection(openSection === section ? "" : section);
   };
 
+  // Resolved cover image with comprehensive fallback chain
+  const resolvedCoverImage = invitation?.imageUrl
+    || event?.imageUrl
+    || event?.coverImage
+    || event?.uploadedFileUrl
+    || event?.designData?.coverImage
+    || event?.thumbnail
+    || "";
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex items-center justify-center">
@@ -947,14 +956,15 @@ function InvitationDesignerPageContent() {
                             </div>
                           </div>
 
-                          {invitation.imageUrl && (
+                          {resolvedCoverImage && (
                             <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-100 space-y-2">
                               <p className="font-semibold text-slate-500 text-[10px] uppercase">Active Preview</p>
                               <div className="relative w-full h-24 rounded-lg overflow-hidden border border-blue-200">
                                 <img
-                                  src={getImageUrl(invitation.imageUrl)}
+                                  src={getImageUrl(resolvedCoverImage)}
                                   alt="Cover preview"
                                   className="w-full h-full object-cover"
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 />
                                 <button
                                   type="button"
@@ -1305,12 +1315,13 @@ function InvitationDesignerPageContent() {
                 >
                   {/* Image cover preview */}
                   <div className="invitation-image-wrapper">
-                    {invitation.imageUrl ? (
+                    {resolvedCoverImage ? (
                       <img
-                        src={getImageUrl(invitation.imageUrl)}
+                        src={getImageUrl(resolvedCoverImage)}
                         alt="Invitation cover"
                         className="invitation-image"
                         crossOrigin="anonymous"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     ) : (
                       <div className="w-full h-32 bg-gradient-to-b from-blue-500/5 to-transparent flex items-center justify-center">
@@ -1486,15 +1497,15 @@ function InvitationDesignerPageContent() {
                   >
                     {/* Cover Image */}
                     <div className="invitation-image-wrapper">
-                      {invitation.imageUrl && !coverImgError ? (
+                      {resolvedCoverImage && !coverImgError ? (
                         <img
-                          src={getImageUrl(invitation.imageUrl)}
+                          src={getImageUrl(resolvedCoverImage)}
                           alt="Invitation cover"
                           className="invitation-image"
                           crossOrigin="anonymous"
                           onError={() => setCoverImgError(true)}
                         />
-                      ) : invitation.imageUrl && coverImgError ? (
+                      ) : resolvedCoverImage && coverImgError ? (
                         <div className="w-full h-48 bg-gradient-to-br from-blue-500/5 to-transparent flex items-center justify-center">
                           <div className="text-center">
                             <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
