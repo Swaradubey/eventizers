@@ -86,6 +86,9 @@ function InvitationDesignerPageContent() {
   const [coverImgError, setCoverImgError] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Reset cover image error state when the resolved image URL changes
+  const resolvedCoverImageRef = useRef<string>("");
+
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -493,6 +496,12 @@ function InvitationDesignerPageContent() {
     || event?.designData?.coverImage
     || event?.thumbnail
     || "";
+
+  // Reset error state when the cover image URL changes
+  if (resolvedCoverImage !== resolvedCoverImageRef.current) {
+    resolvedCoverImageRef.current = resolvedCoverImage;
+    if (coverImgError) setCoverImgError(false);
+  }
 
   if (authLoading || !user) {
     return (
@@ -1315,14 +1324,20 @@ function InvitationDesignerPageContent() {
                 >
                   {/* Image cover preview */}
                   <div className="invitation-image-wrapper">
-                    {resolvedCoverImage ? (
+                    {resolvedCoverImage && !coverImgError ? (
                       <img
                         src={getImageUrl(resolvedCoverImage)}
                         alt="Invitation cover"
                         className="invitation-image"
-                        crossOrigin="anonymous"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        onError={() => setCoverImgError(true)}
                       />
+                    ) : resolvedCoverImage && coverImgError ? (
+                      <div className="w-full h-36 bg-gradient-to-br from-blue-500/5 to-transparent flex items-center justify-center">
+                        <div className="text-center">
+                          <ImageIcon className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
+                          <p className="text-[10px] text-slate-400">Cover image failed to load</p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="w-full h-32 bg-gradient-to-b from-blue-500/5 to-transparent flex items-center justify-center">
                         <span className="text-xs text-slate-400 italic">No cover image uploaded</span>
@@ -1502,7 +1517,6 @@ function InvitationDesignerPageContent() {
                           src={getImageUrl(resolvedCoverImage)}
                           alt="Invitation cover"
                           className="invitation-image"
-                          crossOrigin="anonymous"
                           onError={() => setCoverImgError(true)}
                         />
                       ) : resolvedCoverImage && coverImgError ? (
