@@ -1,4 +1,51 @@
 
+/**
+ * Resolves the backend server origin from environment variables.
+ * Strips any trailing path segments like `/api` so we get just the host origin
+ * (e.g. `http://localhost:5000`).
+ */
+function getBackendOrigin(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:5000";
+
+  try {
+    const parsed = new URL(raw);
+    // Return just protocol + host (strips /api or any other path)
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    // Fallback: strip trailing path-like segments manually
+    return raw.replace(/\/api\/?$/i, "").replace(/\/+$/, "");
+  }
+}
+
+/**
+ * If the stored image URL points at a localhost/127.0.0.1 backend but the
+ * browser is running on a different host (e.g. mobile device accessing via
+ * LAN IP), rewrite the origin so the image is reachable.
+ */
+function normalizeOriginForClient(fullUrl: string): string {
+  if (typeof window === "undefined") return fullUrl;
+
+  try {
+    const imgUrl = new URL(fullUrl);
+    const isLocalBackend =
+      imgUrl.hostname === "localhost" || imgUrl.hostname === "127.0.0.1";
+    const browserIsLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    if (isLocalBackend && !browserIsLocal) {
+      imgUrl.hostname = window.location.hostname;
+      return imgUrl.toString();
+    }
+  } catch {
+    // If URL parsing fails, return as-is
+  }
+  return fullUrl;
+}
+
 export function getImageUrl(url?: string | null): string {
   if (!url || typeof url !== "string") {
     return "";
@@ -16,7 +63,7 @@ export function getImageUrl(url?: string | null): string {
 
   // 2. Full HTTPS / HTTP URLs (e.g. Cloudinary, S3, Supabase, external or full backend URLs)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
+    return normalizeOriginForClient(trimmed);
   }
 
   // 3. Remove accidental route prefixes like /dashboard/ or dashboard/
@@ -27,11 +74,11 @@ export function getImageUrl(url?: string | null): string {
     cleaned = "/" + cleaned;
   }
 
-  // 5. Prepend backend URL for uploads served by backend server
+  // 5. Prepend backend origin for uploads served by backend server
   if (cleaned.startsWith("/uploads/")) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const baseUrl = apiUrl.replace(/\/+$/, "");
-    return `${baseUrl}${cleaned}`;
+    const origin = getBackendOrigin();
+    const fullUrl = `${origin}${cleaned}`;
+    return normalizeOriginForClient(fullUrl);
   }
 
   // 6. Static public Next.js assets starting with /assets/
@@ -43,3 +90,4 @@ export function getImageUrl(url?: string | null): string {
 }
 
 export default getImageUrl;
+
