@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import securityService from "../../../services/securityService";
+import AttendanceGuaranteeSection from "../../../components/AttendanceGuaranteeSection";
 import { SecurityStats, SecurityAlert, AuditLog } from "../../../types/securityTypes";
 import {
   Menu,
@@ -500,6 +501,9 @@ export default function SecurityPage() {
                 </div>
               </div>
             </div>
+
+            {/* Attendance Guarantee Section */}
+            <AttendanceGuaranteeSection onToast={triggerToast} />
           </div>
         )}
       </main>

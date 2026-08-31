@@ -27,33 +27,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { NEW_TEMPLATE_IMAGES } from "../../../lib/newTemplatesData";
-
-const getTemplateImage = (templateId?: string | null) => {
-  if (!templateId) return null;
-  const mapping: Record<string, string> = {
-    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
-    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
-    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
-    "tpl-dinner-party": "/assets/templates/dinner.jpg",
-    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
-    "tpl-charity-gala": "/assets/templates/gala.jpg",
-    "tpl-live-music": "/assets/templates/music.jpg",
-    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
-    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
-    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
-    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
-    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
-    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
-    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
-    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
-    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
-    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
-    ...NEW_TEMPLATE_IMAGES,
-  };
-  return mapping[templateId] || null;
-};
+import EventThumbnail, { getTemplateImage } from "../../../components/EventThumbnail";
 
 type FilterStatus = "all" | "active" | "draft" | "completed";
 
@@ -495,37 +469,45 @@ function EventsPageContent() {
                 >
                   {/* Card Top: Title, Status Badge, and Arrow Link */}
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <h2
-                          onClick={() => setViewingEvent(event)}
-                          className="text-lg sm:text-xl font-bold text-[#4F46E5] hover:text-[#3730A3] transition-colors cursor-pointer truncate"
-                        >
-                          {event.title}
-                        </h2>
+                    <div className="flex items-start gap-3.5 sm:gap-4 min-w-0 flex-1">
+                      <EventThumbnail
+                        event={event}
+                        size="md"
+                        className="rounded-xl shrink-0 mt-0.5"
+                        onPreview={() => setViewingEvent(event)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <h2
+                            onClick={() => setViewingEvent(event)}
+                            className="text-lg sm:text-xl font-bold text-[#4F46E5] hover:text-[#3730A3] transition-colors cursor-pointer truncate"
+                          >
+                            {event.title}
+                          </h2>
 
-                        {/* Status Badge */}
-                        {category === "active" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#E8F8EE] text-[#10B981]">
-                            Active
-                          </span>
-                        )}
-                        {category === "draft" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
-                            Draft
-                          </span>
-                        )}
-                        {category === "completed" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
-                            Completed
-                          </span>
-                        )}
+                          {/* Status Badge */}
+                          {category === "active" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#E8F8EE] text-[#10B981]">
+                              Active
+                            </span>
+                          )}
+                          {category === "draft" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
+                              Draft
+                            </span>
+                          )}
+                          {category === "completed" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Event Description / Subtitle */}
+                        <p className="text-sm text-slate-500 mt-1 font-normal line-clamp-1">
+                          {event.description || event.venue || "No description provided"}
+                        </p>
                       </div>
-
-                      {/* Event Description / Subtitle */}
-                      <p className="text-sm text-slate-500 mt-1 font-normal line-clamp-1">
-                        {event.description || event.venue || "No description provided"}
-                      </p>
                     </div>
 
                     {/* Right-arrow link & Extra Menu */}
@@ -578,15 +560,25 @@ function EventsPageContent() {
                               <Users className="w-3.5 h-3.5 text-slate-500" />
                               <span>Manage Guests</span>
                             </button>
-                            <div className="border-t border-slate-100 my-1"></div>
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setViewingEvent(event);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-500" />
+                              <span>View Details</span>
+                            </button>
+                            <div className="border-t border-slate-100 my-1" />
                             <button
                               onClick={() => {
                                 setActiveMenuId(null);
                                 setDeleteConfirmId(event.id || null);
                               }}
-                              className="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600"
+                              className="w-full text-left px-3.5 py-2 hover:bg-red-50 flex items-center gap-2 text-red-600"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
                               <span>Delete Event</span>
                             </button>
                           </div>
@@ -594,80 +586,66 @@ function EventsPageContent() {
                       </div>
 
                       <button
-                        onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
-                        className="p-1 text-[#625BF6] hover:text-[#4338CA] hover:translate-x-0.5 transition-all focus:outline-none"
-                        title="Go to Event"
-                        aria-label="Go to event"
+                        onClick={() => setViewingEvent(event)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] active:scale-95 transition-all focus:outline-none"
                       >
-                        <ArrowRight className="w-5 h-5" />
+                        <span>Manage</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Metrics & RSVP Stats Row (5 Columns) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6 py-4 border-t border-b border-slate-100 my-5">
-                    {/* Date */}
+                  {/* Card Middle: 3 Stat Blocks (Guests, Attending, RSVP Rate) */}
+                  <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5 p-4 bg-[#F8FAFC] rounded-xl border border-slate-100">
                     <div>
-                      <span className="text-xs text-slate-400 font-medium block">Date</span>
-                      <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5 block">
-                        {formatCardDate(event.eventDate)}
-                      </span>
-                    </div>
-
-                    {/* Total Guests */}
-                    <div>
-                      <span className="text-xs text-slate-400 font-medium block">Total Guests</span>
-                      <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5 block">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Total Guests
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-0.5">
                         {totalGuests}
-                      </span>
+                      </p>
                     </div>
-
-                    {/* Attending */}
                     <div>
-                      <span className="text-xs text-slate-400 font-medium block">Attending</span>
-                      <span className="text-sm sm:text-base font-bold text-[#10B981] mt-0.5 block">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Attending
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-[#10B981] mt-0.5">
                         {attending}
-                      </span>
+                      </p>
                     </div>
-
-                    {/* Declined */}
                     <div>
-                      <span className="text-xs text-slate-400 font-medium block">Declined</span>
-                      <span className="text-sm sm:text-base font-bold text-[#EF4444] mt-0.5 block">
-                        {declined}
-                      </span>
-                    </div>
-
-                    {/* RSVP Rate */}
-                    <div>
-                      <span className="text-xs text-slate-400 font-medium block">RSVP Rate</span>
-                      <div className="flex items-center gap-2.5 mt-1.5">
-                        <div className="w-14 sm:w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
-                          <div
-                            className="bg-[#10B981] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, Math.max(0, rsvpRate))}%` }}
-                          />
-                        </div>
-                        <span className="text-sm sm:text-base font-bold text-slate-900">
-                          {rsvpRate}%
-                        </span>
-                      </div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        RSVP Rate
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-[#4F46E5] mt-0.5">
+                        {rsvpRate}%
+                      </p>
                     </div>
                   </div>
 
-                  {/* Card Bottom Actions: Manage & Preview */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <button
-                      onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
-                      className="flex-1 py-2.5 px-4 bg-[#F4F3FF] hover:bg-[#EBE9FE] text-[#5B50E5] font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none"
-                    >
-                      Manage
-                    </button>
+                  {/* Card Bottom: Date/Time, Venue, and View RSVP Link */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100/80 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-1.5 font-medium text-slate-600">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{formatDate(event.eventDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-medium text-slate-600">
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{event.eventTime}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-medium text-slate-600 max-w-[200px] truncate">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{event.venue}</span>
+                      </div>
+                    </div>
+
                     <button
                       onClick={() => setViewingEvent(event)}
-                      className="flex-1 py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none shadow-xs"
+                      className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3] hover:underline transition-colors focus:outline-none flex items-center gap-1"
                     >
-                      Preview
+                      <span>View RSVPs</span>
+                      <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -684,10 +662,12 @@ function EventsPageContent() {
               totalPages={totalPages}
               totalItems={totalItems}
               limit={itemsPerPage}
-              onPageChange={(page) => setCurrentPage(page)}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               loading={loadingEvents}
               itemName="events"
-              hideOnSinglePage={false}
             />
           </div>
         )}
@@ -701,36 +681,36 @@ function EventsPageContent() {
         eventToEdit={editingEvent}
       />
 
-      {/* EVENT DETAILS / PREVIEW DIALOG */}
-      <AnimatePresence>
-        {viewingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setViewingEvent(null)}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="relative bg-white w-full max-w-lg max-h-[90vh] my-auto flex flex-col rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 text-slate-900"
-            >
-              {/* Header */}
-              <div className="flex justify-between items-start p-5 sm:p-6 pb-4 border-b border-slate-100 flex-shrink-0 bg-white">
-                <div className="pr-4">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#625BF6]">
-                    {viewingEvent.eventType || "General"} Event
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5 leading-snug break-words">
-                    {viewingEvent.title}
-                  </h3>
+      {/* ========================================================================= */}
+      {/* VIEW EVENT MODAL */}
+      {/* ========================================================================= */}
+      {viewingEvent && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setViewingEvent(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#4F46E5] flex-shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-800 text-base leading-snug truncate">
+                      {viewingEvent.title}
+                    </h3>
+                    <span className="text-xs text-slate-500 font-normal">
+                      {viewingEvent.eventType || "Event"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setViewingEvent(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0 -mr-1"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
@@ -739,18 +719,13 @@ function EventsPageContent() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
-                    <img
-                      src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
-                      alt={viewingEvent.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
+                <EventThumbnail
+                  event={viewingEvent}
+                  size="full"
+                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0"
+                  imageClassName="w-full h-full"
+                  clickable={false}
+                />
 
                 {/* RSVP Stats Grid in Preview */}
                 <div className="grid grid-cols-4 gap-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-center">
@@ -857,10 +832,9 @@ function EventsPageContent() {
                   Close
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
 
       {/* DELETE CONFIRMATION DIALOG */}
       <AnimatePresence>

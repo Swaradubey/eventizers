@@ -27,33 +27,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { NEW_TEMPLATE_IMAGES } from "../../../lib/newTemplatesData";
-
-const getTemplateImage = (templateId?: string | null) => {
-  if (!templateId) return null;
-  const mapping: Record<string, string> = {
-    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
-    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
-    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
-    "tpl-dinner-party": "/assets/templates/dinner.jpg",
-    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
-    "tpl-charity-gala": "/assets/templates/gala.jpg",
-    "tpl-live-music": "/assets/templates/music.jpg",
-    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
-    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
-    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
-    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
-    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
-    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
-    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
-    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
-    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
-    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
-    ...NEW_TEMPLATE_IMAGES,
-  };
-  return mapping[templateId] || null;
-};
+import EventThumbnail, { getTemplateImage } from "../../../components/EventThumbnail";
 
 type FilterStatus = "all" | "active" | "draft" | "completed";
 
@@ -495,37 +469,45 @@ function EventsPageContent() {
                 >
                   {/* Card Top: Title, Status Badge, and Arrow Link */}
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <h2
-                          onClick={() => setViewingEvent(event)}
-                          className="text-lg sm:text-xl font-bold text-[#4F46E5] hover:text-[#3730A3] transition-colors cursor-pointer truncate"
-                        >
-                          {event.title}
-                        </h2>
+                    <div className="flex items-start gap-3.5 sm:gap-4 min-w-0 flex-1">
+                      <EventThumbnail
+                        event={event}
+                        size="md"
+                        className="rounded-xl shrink-0 mt-0.5"
+                        onPreview={() => setViewingEvent(event)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <h2
+                            onClick={() => setViewingEvent(event)}
+                            className="text-lg sm:text-xl font-bold text-[#4F46E5] hover:text-[#3730A3] transition-colors cursor-pointer truncate"
+                          >
+                            {event.title}
+                          </h2>
 
-                        {/* Status Badge */}
-                        {category === "active" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#E8F8EE] text-[#10B981]">
-                            Active
-                          </span>
-                        )}
-                        {category === "draft" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
-                            Draft
-                          </span>
-                        )}
-                        {category === "completed" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
-                            Completed
-                          </span>
-                        )}
+                          {/* Status Badge */}
+                          {category === "active" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#E8F8EE] text-[#10B981]">
+                              Active
+                            </span>
+                          )}
+                          {category === "draft" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
+                              Draft
+                            </span>
+                          )}
+                          {category === "completed" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Event Description / Subtitle */}
+                        <p className="text-sm text-slate-500 mt-1 font-normal line-clamp-1">
+                          {event.description || event.venue || "No description provided"}
+                        </p>
                       </div>
-
-                      {/* Event Description / Subtitle */}
-                      <p className="text-sm text-slate-500 mt-1 font-normal line-clamp-1">
-                        {event.description || event.venue || "No description provided"}
-                      </p>
                     </div>
 
                     {/* Right-arrow link & Extra Menu */}
@@ -739,18 +721,13 @@ function EventsPageContent() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
-                    <img
-                      src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
-                      alt={viewingEvent.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
+                <EventThumbnail
+                  event={viewingEvent}
+                  size="full"
+                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0"
+                  imageClassName="w-full h-full"
+                  clickable={false}
+                />
 
                 {/* RSVP Stats Grid in Preview */}
                 <div className="grid grid-cols-4 gap-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-center">
@@ -857,10 +834,9 @@ function EventsPageContent() {
                   Close
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
 
       {/* DELETE CONFIRMATION DIALOG */}
       <AnimatePresence>

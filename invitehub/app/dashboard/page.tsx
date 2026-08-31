@@ -28,33 +28,7 @@ import {
 } from "lucide-react";
 import { useSidebar } from "../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { NEW_TEMPLATE_IMAGES } from "../../lib/newTemplatesData";
-
-const getTemplateImage = (templateId?: string | null) => {
-  if (!templateId) return null;
-  const mapping: Record<string, string> = {
-    "tpl-birthday-maya": "/assets/templates/birthday.jpg",
-    "tpl-wedding-liam": "/assets/templates/wedding.jpg",
-    "tpl-corporate-launch": "/assets/templates/corporate.jpg",
-    "tpl-dinner-party": "/assets/templates/dinner.jpg",
-    "tpl-baby-shower": "/assets/templates/babyshower.jpg",
-    "tpl-charity-gala": "/assets/templates/gala.jpg",
-    "tpl-live-music": "/assets/templates/music.jpg",
-    "tpl-anniversary-james": "/assets/templates/anniversary.jpg",
-    "tpl-grad-gala": "/assets/templates/graduation_gala.jpg",
-    "tpl-grad-class2026": "/assets/templates/graduation_class_2026.jpg",
-    "tpl-grad-degree": "/assets/templates/graduation_degree.jpg",
-    "tpl-comm-meetup": "/assets/templates/community_meetup.jpg",
-    "tpl-comm-celebration": "/assets/templates/community_celebration.jpg",
-    "tpl-comm-volunteer": "/assets/templates/community_volunteer.jpg",
-    "tpl-net-professional": "/assets/templates/networking_professional.jpg",
-    "tpl-net-founders": "/assets/templates/networking_founders.jpg",
-    "tpl-net-connections": "/assets/templates/networking_connections.jpg",
-    ...NEW_TEMPLATE_IMAGES,
-  };
-  return mapping[templateId] || null;
-};
+import EventThumbnail, { getTemplateImage } from "../../components/EventThumbnail";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -455,7 +429,6 @@ export default function DashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-blue-100/30">
                   {events.map((event) => {
-                    const thumbUrl = getImageUrl(event.coverImage || getTemplateImage(event.selectedTemplateId) || "");
                     return (
                     <tr
                       key={event.id}
@@ -463,37 +436,11 @@ export default function DashboardPage() {
                     >
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          {thumbUrl ? (
-                            <button
-                              onClick={() => setPreviewImage({ url: thumbUrl, title: event.title })}
-                              className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 rounded-xl transition-transform hover:scale-105 active:scale-95"
-                              title="Click to preview"
-                            >
-                              <img
-                                src={thumbUrl}
-                                alt={event.title}
-                                loading="lazy"
-                                className="w-12 h-12 rounded-xl object-cover border border-slate-200/80 shadow-sm"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = "none";
-                                  if (target.nextElementSibling) {
-                                    (target.nextElementSibling as HTMLElement).style.display = "flex";
-                                  }
-                                }}
-                              />
-                              <div
-                                className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center text-white font-semibold text-sm shadow-sm"
-                                style={{ display: "none" }}
-                              >
-                                {event.title?.charAt(0)?.toUpperCase() || "E"}
-                              </div>
-                            </button>
-                          ) : (
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold flex-shrink-0 text-sm shadow-sm">
-                              {event.title?.charAt(0)?.toUpperCase() || "E"}
-                            </div>
-                          )}
+                          <EventThumbnail
+                            event={event}
+                            size="md"
+                            onPreview={(url, title) => setPreviewImage({ url, title: title || event.title })}
+                          />
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors truncate">
                               {event.title}
@@ -615,18 +562,13 @@ export default function DashboardPage() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                {(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId)) && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100/40 bg-blue-50/30 flex-shrink-0">
-                    <img
-                      src={getImageUrl(viewingEvent.coverImage || getTemplateImage(viewingEvent.selectedTemplateId) || "")}
-                      alt={viewingEvent.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
+                <EventThumbnail
+                  event={viewingEvent}
+                  size="full"
+                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100/40 bg-blue-50/30 flex-shrink-0"
+                  imageClassName="w-full h-full"
+                  clickable={false}
+                />
 
                 {viewingEvent.description && (
                   <div className="p-3.5 sm:p-4 bg-blue-50/40 rounded-xl border border-blue-100/40 max-w-full">

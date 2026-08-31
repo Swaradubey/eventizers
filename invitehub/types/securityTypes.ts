@@ -57,3 +57,16 @@ export interface SecurityAuditLogsResponse {
   data: AuditLog[];
 }
 
+export interface AttendanceGuaranteeSettings {
+  isEnabled: boolean;
+  guaranteeAmount: number;
+  reviewWindowDays: number;
+}
+
+export interface AttendanceGuaranteeResponse {
+  success: boolean;
+  data: AttendanceGuaranteeSettings;
+  message?: string;
+}
+
+

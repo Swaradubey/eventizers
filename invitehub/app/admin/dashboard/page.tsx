@@ -8,6 +8,7 @@ import EventModal from "../../../components/EventModal";
 import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
 import Pagination from "../../../components/Pagination";
 import { getImageUrl } from "../../../utils/imageUrl";
+import EventThumbnail from "../../../components/EventThumbnail";
 
 import { Guest } from "../../../types/guestTypes";
 import {
@@ -473,8 +474,17 @@ export default function AdminDashboardPage() {
                       key={event.id}
                       className="hover:bg-blue-50/40 transition-colors duration-150 group"
                     >
-                      <td className="py-4 px-4 text-sm font-semibold text-slate-900">
-                        {event.title}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <EventThumbnail
+                            event={event}
+                            size="sm"
+                            onPreview={() => setViewingEvent(event)}
+                          />
+                          <span className="text-sm font-semibold text-slate-900 truncate max-w-[180px]">
+                            {event.title}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-xs text-slate-700">
                         <div className="flex flex-col">
@@ -611,18 +621,13 @@ export default function AdminDashboardPage() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                {viewingEvent.coverImage && (
-                  <div className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100 bg-blue-50/50 flex-shrink-0">
-                    <img
-                      src={getImageUrl(viewingEvent.coverImage)}
-                      alt={viewingEvent.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
+                <EventThumbnail
+                  event={viewingEvent}
+                  size="full"
+                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100 bg-blue-50/50 flex-shrink-0"
+                  imageClassName="w-full h-full"
+                  clickable={false}
+                />
 
                 {viewingEvent.description && (
                   <div className="p-3.5 sm:p-4 bg-blue-50/40 rounded-xl border border-blue-100/80 max-w-full">

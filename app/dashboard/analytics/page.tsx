@@ -425,55 +425,78 @@ export default function AnalyticsPage() {
             >
               <h2 className="text-xl font-bold text-slate-900 mb-6">Event performance</h2>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs font-semibold text-slate-500">
-                      <th className="pb-4 font-medium">Event Name</th>
-                      <th className="pb-4 font-medium">Total Guests</th>
-                      <th className="pb-4 font-medium">RSVP Rate</th>
-                      <th className="pb-4 font-medium">Open Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 text-sm">
-                    {data.eventsPerformance && data.eventsPerformance.length > 0 ? (
-                      data.eventsPerformance.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 font-medium text-slate-800">{item.name}</td>
-                          <td className="py-4 text-slate-600">{item.totalGuests}</td>
-                          <td className="py-4">
-                            <div className="flex items-center">
-                              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mr-3">
-                                <div
-                                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min(item.rsvpRate, 100)}%` }}
-                                />
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[600px] md:min-w-full">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="pb-3.5 pr-4 pl-0 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap w-[40%]">
+                          Event Name
+                        </th>
+                        <th className="pb-3.5 px-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap w-[15%]">
+                          Total Guests
+                        </th>
+                        <th className="pb-3.5 px-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap w-[25%]">
+                          RSVP Rate
+                        </th>
+                        <th className="pb-3.5 pl-4 pr-0 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap w-[20%]">
+                          Open Rate
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {data.eventsPerformance && data.eventsPerformance.length > 0 ? (
+                        data.eventsPerformance.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-4 pr-4 pl-0 font-medium text-slate-800 align-middle">
+                              <span
+                                className="line-clamp-2 leading-snug break-words"
+                                title={item.name}
+                              >
+                                {item.name}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-center text-slate-600 font-medium whitespace-nowrap align-middle">
+                              {item.totalGuests}
+                            </td>
+                            <td className="py-4 px-4 align-middle whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <div className="w-24 sm:w-28 h-2 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                                  <div
+                                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(item.rsvpRate, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="font-semibold text-slate-700 text-xs shrink-0">
+                                  {item.rsvpRate}%
+                                </span>
                               </div>
-                              <span className="font-semibold text-slate-700 text-xs">{item.rsvpRate}%</span>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                            <div className="flex items-center">
-                              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mr-3">
-                                <div
-                                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min(item.openRate, 100)}%` }}
-                                />
+                            </td>
+                            <td className="py-4 pl-4 pr-0 align-middle whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <div className="w-24 sm:w-28 h-2 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                                  <div
+                                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(item.openRate, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="font-semibold text-slate-700 text-xs shrink-0">
+                                  {item.openRate}%
+                                </span>
                               </div>
-                              <span className="font-semibold text-slate-700 text-xs">{item.openRate}%</span>
-                            </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-slate-400">
+                            No event performance data available yet.
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
-                          No event performance data available yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </motion.div>
           </div>

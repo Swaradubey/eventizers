@@ -227,12 +227,10 @@ function InvitationDesignerPageContent() {
   useEffect(() => {
     try {
       const pendingUpload = sessionStorage.getItem("pending_upload_invite");
-      if (pendingUpload) {
+      if (pendingUpload && invitation) {
         sessionStorage.removeItem("pending_upload_invite");
-        if (invitation) {
-          setInvitation((prev) => prev ? ({ ...prev, imageUrl: pendingUpload }) : prev);
-          setToast({ message: "Uploaded invitation loaded into designer! ✨", type: "success" });
-        }
+        setInvitation((prev) => (prev ? { ...prev, imageUrl: pendingUpload } : prev));
+        setToast({ message: "Uploaded invitation loaded into designer! ✨", type: "success" });
       }
     } catch (e) {
       console.error("Failed to load pending upload draft:", e);
@@ -249,9 +247,23 @@ function InvitationDesignerPageContent() {
 
   // Direct Cloud/Server Image Upload for Custom User Images
   const processImageFile = async (file: File) => {
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if (!validTypes.includes(file.type)) {
-      setToast({ message: "Only PNG, JPG, JPEG, and WEBP image formats are accepted.", type: "error" });
+    const validTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+      "image/avif",
+      "image/gif",
+      "image/svg+xml",
+    ];
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const validExts = ["png", "jpg", "jpeg", "webp", "heic", "heif", "avif", "gif", "svg"];
+    const isValid = file.type.startsWith("image/") || validTypes.includes(file.type) || (ext && validExts.includes(ext));
+
+    if (!isValid) {
+      setToast({ message: "Please upload a valid image file (PNG, JPG, WEBP, HEIC, etc.).", type: "error" });
       return;
     }
 

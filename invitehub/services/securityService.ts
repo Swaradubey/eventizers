@@ -4,6 +4,8 @@ import {
   SecuritySummaryResponse,
   SecurityAlertsResponse,
   SecurityAuditLogsResponse,
+  AttendanceGuaranteeResponse,
+  AttendanceGuaranteeSettings,
 } from "../types/securityTypes";
 
 /**
@@ -46,12 +48,33 @@ export const deleteAuditLog = async (id: string): Promise<{ success: boolean; me
   return response.data;
 };
 
+/**
+ * Fetch attendance guarantee settings
+ */
+export const getAttendanceGuarantee = async (): Promise<AttendanceGuaranteeResponse> => {
+  const response = await API.get<AttendanceGuaranteeResponse>("/security/attendance-guarantee");
+  return response.data;
+};
+
+/**
+ * Update attendance guarantee settings
+ */
+export const updateAttendanceGuarantee = async (
+  data: Partial<AttendanceGuaranteeSettings>
+): Promise<AttendanceGuaranteeResponse> => {
+  const response = await API.put<AttendanceGuaranteeResponse>("/security/attendance-guarantee", data);
+  return response.data;
+};
+
 const securityService = {
   getSecurityDashboard,
   getSecuritySummary,
   getSecurityAlerts,
   getSecurityAuditLogs,
   deleteAuditLog,
+  getAttendanceGuarantee,
+  updateAttendanceGuarantee,
 };
 
 export default securityService;
+

@@ -9,12 +9,12 @@ export function getImageUrl(url?: string | null): string {
     return "";
   }
 
-  // 1. Data URLs (legacy or preview)
-  if (trimmed.startsWith("data:")) {
+  // 1. Data URLs or local Blob preview URLs
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
     return trimmed;
   }
 
-  // 2. Full HTTPS / HTTP URLs (e.g. Cloudinary, S3, external or full backend URLs)
+  // 2. Full HTTPS / HTTP URLs (e.g. Cloudinary, S3, Supabase, external or full backend URLs)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }

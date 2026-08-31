@@ -13,6 +13,12 @@ export interface Event {
   eventDate: string;
   eventTime: string;
   coverImage?: string;
+  imageUrl?: string;
+  thumbnail?: string;
+  thumbnailUrl?: string;
+  uploadedFileUrl?: string;
+  previewUrl?: string;
+  designData?: any;
   selectedTemplateId?: string;
   status?: string;
   createdBy?: number;

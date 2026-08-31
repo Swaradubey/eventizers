@@ -442,27 +442,104 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
   };
 
-  const handleFileSelection = (file: File) => {
+  // Helper to safely downscale large mobile camera photos (< 800KB) so sessionStorage doesn't overflow
+  const createSafeDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = (e.target?.result as string) || "";
+        if (!result) return resolve("");
+        if (result.length < 750 * 1024) {
+          return resolve(result);
+        }
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const maxDim = 1200;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL("image/jpeg", 0.85);
+              return resolve(compressed);
+            }
+          } catch (scaleErr) {
+            console.warn("Canvas compression fallback:", scaleErr);
+          }
+          resolve(result);
+        };
+        img.onerror = () => resolve(result);
+        img.src = result;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const safeSetSessionStorage = (key: string, value: string) => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (err) {
+      console.warn(`sessionStorage write failed for ${key}:`, err);
+      try {
+        sessionStorage.removeItem("pending_upload_invite");
+        sessionStorage.setItem(key, value);
+      } catch (retryErr) {
+        console.warn("sessionStorage retry failed:", retryErr);
+      }
+    }
+  };
+
+  const handleFileSelection = async (file: File) => {
     setUploadError(null);
     setErrorMsg(null);
 
     if (!file) return;
 
-    // 1. Format validation
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+    // 1. Format validation (Supporting mobile formats: HEIC, HEIF, WEBP, PNG, JPG, JPEG, SVG, AVIF, and PDF)
+    const validTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+      "image/avif",
+      "image/gif",
+      "image/svg+xml",
+      "application/pdf",
+    ];
     const extension = file.name.split(".").pop()?.toLowerCase();
-    const validExtensions = ["png", "jpg", "jpeg", "pdf"];
+    const validExtensions = ["png", "jpg", "jpeg", "webp", "heic", "heif", "avif", "gif", "svg", "pdf"];
 
-    const isValidType = validTypes.includes(file.type) || (extension && validExtensions.includes(extension));
+    const isValidType =
+      file.type.startsWith("image/") ||
+      file.type === "application/pdf" ||
+      validTypes.includes(file.type) ||
+      (extension && validExtensions.includes(extension));
+
     if (!isValidType) {
-      setUploadError("Unsupported file format. Please upload a PNG, JPG, or PDF file.");
+      setUploadError("Unsupported file format. Please upload an image (PNG, JPG, WEBP, HEIC, etc.) or PDF file.");
       return;
     }
 
-    // 2. Size limit validation (10MB)
-    const maxBytes = 10 * 1024 * 1024;
+    // 2. Size limit validation (15MB)
+    const maxBytes = 15 * 1024 * 1024;
     if (file.size > maxBytes) {
-      setUploadError(`File size exceeds 10MB limit (File is ${formatFileSize(file.size)}). Please choose a smaller file.`);
+      setUploadError(`File size exceeds 15MB limit (File is ${formatFileSize(file.size)}). Please choose a smaller file.`);
       return;
     }
 
@@ -475,18 +552,23 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     const formattedTitle = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
     setUploadTitle(formattedTitle || "Celebration Invitation");
 
-    const isImage = file.type.startsWith("image/") || ["png", "jpg", "jpeg"].includes(extension || "");
+    const isImage =
+      file.type.startsWith("image/") ||
+      ["png", "jpg", "jpeg", "webp", "heic", "heif", "avif", "gif", "svg"].includes(extension || "");
+
     if (isImage) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPreviewUrl(reader.result as string);
+      try {
+        const safeDataUrl = await createSafeDataUrl(file);
+        if (safeDataUrl) {
+          setPreviewUrl(safeDataUrl);
+        } else {
+          setPreviewUrl(null);
+        }
+      } catch (e) {
+        console.warn("Failed to generate safe image preview:", e);
+      } finally {
         setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setUploadError("Failed to generate image preview. Please try again.");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     } else {
       // PDF file
       setPreviewUrl(null);
@@ -508,23 +590,40 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
   };
 
-  const handleOpenInDesigner = () => {
+  const handleOpenInDesigner = async () => {
     if (!uploadedFile) {
       setUploadError("Please select an invitation file first.");
       return;
     }
 
-    try {
-      if (previewUrl) {
-        sessionStorage.setItem("pending_upload_invite", previewUrl);
+    setIsUploading(true);
+    let resolvedPersistentUrl = previewUrl || "";
+
+    // If user is logged in, attempt to pre-upload image to get persistent server URL
+    if (user && uploadedFile) {
+      try {
+        const uploadRes = await templateService.uploadTemplateImage(uploadedFile, uploadedFile.name);
+        if (uploadRes && uploadRes.success && uploadRes.url) {
+          resolvedPersistentUrl = uploadRes.url;
+        }
+      } catch (upErr) {
+        console.warn("Pre-upload in designer handoff fallback to safe data URL:", upErr);
       }
-      sessionStorage.setItem("pending_upload_name", uploadedFile.name);
-      sessionStorage.setItem("pending_upload_type", uploadedFile.type);
+    }
+
+    try {
+      if (resolvedPersistentUrl) {
+        safeSetSessionStorage("pending_upload_invite", resolvedPersistentUrl);
+      }
+      safeSetSessionStorage("pending_upload_name", uploadedFile.name);
+      safeSetSessionStorage("pending_upload_type", uploadedFile.type);
       if (uploadTitle) {
-        sessionStorage.setItem("pending_upload_title", uploadTitle);
+        safeSetSessionStorage("pending_upload_title", uploadTitle);
       }
     } catch (e) {
       console.error("Failed to store pending upload:", e);
+    } finally {
+      setIsUploading(false);
     }
 
     if (!user) {
@@ -566,6 +665,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         formData.append("eventTime", uploadTime);
         formData.append("eventType", "Uploaded Invitation");
         formData.append("coverImage", uploadedFile);
+        formData.append("imageUrl", uploadedFile);
         res = await eventService.createEvent(formData);
       } else {
         res = await eventService.createEvent({
@@ -579,10 +679,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       }
 
       if (res && res.success) {
-        if (previewUrl) {
-          try {
-            sessionStorage.setItem("pending_upload_invite", previewUrl);
-          } catch (e) {}
+        const createdImage = res.event?.coverImage || res.event?.imageUrl || previewUrl;
+        if (createdImage) {
+          safeSetSessionStorage("pending_upload_invite", createdImage);
         }
         setSuccessMsg("🎉 Event created successfully with your uploaded invitation!");
         setTimeout(() => {
@@ -1396,7 +1495,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png, image/jpeg, application/pdf"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif,image/avif,image/gif,image/svg+xml,image/*,application/pdf,.heic,.heif,.webp,.pdf,.png,.jpg,.jpeg"
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
@@ -1445,7 +1544,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       {isDragging ? "Drop your file here to upload!" : "Drag & drop an existing invitation image or PDF"}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-1">
-                      Supports PNG, JPG, or PDF up to 10MB
+                      Supports PNG, JPG, WEBP, HEIC, or PDF up to 15MB
                     </p>
                     <div className="mt-3.5 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#6C5CE7] bg-white border border-[#DDD6FE] rounded-xl hover:bg-[#F0EEFF]/60 hover:border-[#6C5CE7] transition-all shadow-sm">
                       <Upload className="w-3.5 h-3.5" />
