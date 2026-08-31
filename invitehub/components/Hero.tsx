@@ -36,6 +36,7 @@ import templateService, { Template } from "../services/templateService";
 import eventService from "../services/eventService";
 import API from "../services/api";
 import { getImageUrl } from "../utils/imageUrl";
+import { compressAndNormalizeImage } from "../utils/imageCompressor";
 import { templateCards, matchesCategory } from "../lib/templateData";
 import { NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
 
@@ -544,7 +545,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
 
     setIsUploading(true);
-    setUploadedFile(file);
 
     // Default title from filename
     const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
@@ -558,19 +558,36 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
     if (isImage) {
       try {
-        const safeDataUrl = await createSafeDataUrl(file);
-        if (safeDataUrl) {
-          setPreviewUrl(safeDataUrl);
-        } else {
-          setPreviewUrl(null);
+        // Compress and format normalize mobile camera and high-res images to < 1.5MB
+        const { file: compressedFile, dataUrl } = await compressAndNormalizeImage(file, {
+          maxDimension: 1920,
+          quality: 0.85,
+          maxSizeBytes: 1.5 * 1024 * 1024,
+        });
+
+        setUploadedFile(compressedFile);
+        setPreviewUrl(dataUrl);
+
+        // If user is authenticated, immediately upload to cloud/server for permanent public HTTPS URL
+        if (user) {
+          try {
+            const uploadRes = await templateService.uploadTemplateImage(compressedFile, compressedFile.name);
+            if (uploadRes && uploadRes.success && uploadRes.url) {
+              setPreviewUrl(uploadRes.url);
+            }
+          } catch (uploadErr) {
+            console.warn("[Hero] Immediate cloud pre-upload fallback:", uploadErr);
+          }
         }
       } catch (e) {
-        console.warn("Failed to generate safe image preview:", e);
+        console.warn("Failed to generate compressed image preview:", e);
+        setUploadedFile(file);
       } finally {
         setIsUploading(false);
       }
     } else {
       // PDF file
+      setUploadedFile(file);
       setPreviewUrl(null);
       setIsUploading(false);
     }
@@ -591,7 +608,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleOpenInDesigner = async () => {
-    if (!uploadedFile) {
+    if (!uploadedFile && !previewUrl) {
       setUploadError("Please select an invitation file first.");
       return;
     }
@@ -599,15 +616,15 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     setIsUploading(true);
     let resolvedPersistentUrl = previewUrl || "";
 
-    // If user is logged in, attempt to pre-upload image to get persistent server URL
-    if (user && uploadedFile) {
+    // If user is logged in, ensure file is uploaded to get permanent server URL
+    if (user && uploadedFile && (!resolvedPersistentUrl || resolvedPersistentUrl.startsWith("data:") || resolvedPersistentUrl.startsWith("blob:"))) {
       try {
         const uploadRes = await templateService.uploadTemplateImage(uploadedFile, uploadedFile.name);
         if (uploadRes && uploadRes.success && uploadRes.url) {
           resolvedPersistentUrl = uploadRes.url;
         }
       } catch (upErr) {
-        console.warn("Pre-upload in designer handoff fallback to safe data URL:", upErr);
+        console.warn("Pre-upload in designer handoff fallback:", upErr);
       }
     }
 
@@ -615,8 +632,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       if (resolvedPersistentUrl) {
         safeSetSessionStorage("pending_upload_invite", resolvedPersistentUrl);
       }
-      safeSetSessionStorage("pending_upload_name", uploadedFile.name);
-      safeSetSessionStorage("pending_upload_type", uploadedFile.type);
+      if (uploadedFile) {
+        safeSetSessionStorage("pending_upload_name", uploadedFile.name);
+        safeSetSessionStorage("pending_upload_type", uploadedFile.type);
+      }
       if (uploadTitle) {
         safeSetSessionStorage("pending_upload_title", uploadTitle);
       }

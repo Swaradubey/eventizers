@@ -54,6 +54,7 @@ export const sendInvitation = async (
 
   const response = await API.post<SendInvitationResponse>(`/invitations/${id}/send`, {
     recipients,
+    snapshot: snapshotUrlOrBase64,
     snapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardSnapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardImageBase64: isBase64 ? snapshotUrlOrBase64 : undefined,
@@ -78,6 +79,7 @@ export const sendInvitationToGuests = async (
     invitationId,
     guestIds,
     recipients,
+    snapshot: snapshotUrlOrBase64,
     snapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardSnapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardImageBase64: isBase64 ? snapshotUrlOrBase64 : undefined,

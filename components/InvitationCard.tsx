@@ -78,6 +78,7 @@ export default function InvitationCard({
             <>
               <img
                 src={imgSrc}
+                crossOrigin="anonymous"
                 alt={title}
                 onError={() => setImageError(true)}
                 className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
@@ -139,6 +140,7 @@ export default function InvitationCard({
           <>
             <img 
               src={imgSrc} 
+              crossOrigin="anonymous"
               alt={title}
               onError={() => setImageError(true)}
               className="absolute inset-0 transition-all duration-500 ease-out group-hover:scale-105 group-hover:brightness-105" 

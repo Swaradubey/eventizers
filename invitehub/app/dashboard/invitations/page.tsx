@@ -42,7 +42,9 @@ import {
   Users,
   Share2,
   MessageCircle,
+  Loader2,
 } from "lucide-react";
+import { compressAndNormalizeImage } from "../../../utils/imageCompressor";
 import { motion, AnimatePresence } from "framer-motion";
 
 function InvitationDesignerPageContent() {
@@ -84,6 +86,7 @@ function InvitationDesignerPageContent() {
   // Preview Modal
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [coverImgError, setCoverImgError] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Reset cover image error state when the resolved image URL changes
@@ -248,7 +251,7 @@ function InvitationDesignerPageContent() {
     });
   };
 
-  // Direct Cloud/Server Image Upload for Custom User Images
+  // Direct Cloud/Server Image Upload for Custom User Images with Client-Side Compression
   const processImageFile = async (file: File) => {
     const validTypes = [
       "image/png",
@@ -270,18 +273,31 @@ function InvitationDesignerPageContent() {
       return;
     }
 
+    setIsImageUploading(true);
     try {
-      setToast({ message: "Uploading image...", type: "success" });
-      const uploadRes = await templateService.uploadTemplateImage(file, file.name);
+      setToast({ message: "Optimizing & uploading image...", type: "success" });
+
+      // 1. Client-side compression & format normalization (max 1.5MB, JPEG/WebP)
+      const { file: compressedFile } = await compressAndNormalizeImage(file, {
+        maxDimension: 1920,
+        quality: 0.85,
+        maxSizeBytes: 1.5 * 1024 * 1024,
+      });
+
+      // 2. Upload to public cloud/server storage
+      const uploadRes = await templateService.uploadTemplateImage(compressedFile, compressedFile.name);
       if (uploadRes.success && uploadRes.url) {
         handleInputChange("imageUrl", uploadRes.url);
-        setToast({ message: "Image uploaded successfully. Save to update.", type: "success" });
+        setCoverImgError(false);
+        setToast({ message: "Image uploaded and applied to invitation! ✨", type: "success" });
       } else {
         throw new Error(uploadRes.message || "Upload failed");
       }
     } catch (err: any) {
       console.error("Image upload error:", err);
       setToast({ message: "Failed to upload image. Please try again.", type: "error" });
+    } finally {
+      setIsImageUploading(false);
     }
   };
 
@@ -308,32 +324,92 @@ function InvitationDesignerPageContent() {
     }
   };
 
-  // Helper to capture exact canvas DOM view and upload as a clean public HTTPS URL
+  // Helper to capture exact canvas DOM view and upload as a clean public HTTPS URL or return high-quality Base64
   const captureAndUploadSnapshot = async (): Promise<string | null> => {
-    if (!cardPreviewRef.current) return null;
+    if (!cardPreviewRef.current) {
+      console.warn("[Canvas Snapshot] cardPreviewRef is not attached to DOM");
+      return null;
+    }
     try {
-      const dataUrl = await toPng(cardPreviewRef.current, {
+      console.log("[Canvas Snapshot] Starting high-fidelity DOM snapshot capture...");
+
+      // 1. Wait for web fonts to finish loading
+      if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+        try {
+          await (document as any).fonts.ready;
+        } catch (fontErr) {
+          console.warn("[Canvas Snapshot] Font loading check warning:", fontErr);
+        }
+      }
+
+      // 2. Ensure all images inside the preview card have crossOrigin and are fully decoded/loaded
+      const previewNode = cardPreviewRef.current;
+      const imgElements = Array.from(previewNode.querySelectorAll("img"));
+      
+      await Promise.all(
+        imgElements.map(async (img) => {
+          if (!img.crossOrigin) {
+            img.crossOrigin = "anonymous";
+          }
+          if (!img.complete) {
+            await new Promise<void>((resolve) => {
+              const handleDone = () => resolve();
+              img.addEventListener("load", handleDone, { once: true });
+              img.addEventListener("error", handleDone, { once: true });
+              setTimeout(resolve, 3000); // 3s safety fallback timeout
+            });
+          }
+          if (img.decode) {
+            try {
+              await img.decode();
+            } catch (decodeErr) {
+              console.warn("[Canvas Snapshot] Image decode skipped:", decodeErr);
+            }
+          }
+        })
+      );
+
+      // Brief animation frame pause to ensure DOM paint has settled
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60)));
+
+      // 3. Capture high-resolution PNG snapshot using html-to-image with CORS enabled
+      const dataUrl = await toPng(previewNode, {
         cacheBust: true,
         pixelRatio: 2,
         quality: 0.95,
+        skipAutoScale: true,
+        backgroundColor: invitation?.backgroundColor || "#ffffff",
+        fetchRequestInit: {
+          mode: "cors",
+          cache: "no-cache",
+        },
       });
-      if (!dataUrl) return null;
 
+      if (!dataUrl || !dataUrl.startsWith("data:")) {
+        console.warn("[Canvas Snapshot] html-to-image returned invalid or empty dataUrl");
+        return null;
+      }
+
+      console.log("[Canvas Snapshot] Snapshot dataUrl generated successfully (length:", dataUrl.length, ")");
+
+      // 4. Try uploading snapshot blob to backend storage for a clean URL
       try {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
         const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
         const uploadRes = await templateService.uploadTemplateImage(blob, filename);
-        if (uploadRes.success && uploadRes.url) {
+        if (uploadRes && uploadRes.success && uploadRes.url) {
+          console.log("[Canvas Snapshot] Cloud upload successful:", uploadRes.url);
           return uploadRes.url;
         }
       } catch (uploadErr) {
-        console.warn("[Canvas Snapshot] Upload failed, falling back to base64 dataUrl:", uploadErr);
+        console.warn("[Canvas Snapshot] Upload failed, falling back to direct Base64 Data URL:", uploadErr);
       }
 
+      // Fall back directly to the Base64 Data URL
       return dataUrl;
     } catch (snapshotErr) {
-      console.warn("[Canvas Snapshot] Could not capture invitation card snapshot:", snapshotErr);
+      console.error("[Canvas Snapshot] Error capturing invitation card snapshot:", snapshotErr);
     }
     return null;
   };
@@ -395,17 +471,36 @@ function InvitationDesignerPageContent() {
       return;
     }
 
-    // Capture & upload high-resolution image snapshot of the rendered card DOM ONLY for the outgoing email
-    const snapshotUrl = await captureAndUploadSnapshot();
+    setToast({
+      message: "Capturing card snapshot & dispatching invitations...",
+      type: "success",
+    });
 
-    // Auto-save any pending changes first preserving clean template artwork imageUrl
-    const payloadToSave = {
-      ...invitation,
-    };
-    const saved = await saveInvitation(payloadToSave);
-    const targetId = saved?.id || invitation.id;
-    if (targetId) {
-      await queueInvitation(combinedRecipients, targetId, snapshotUrl || undefined);
+    try {
+      // Capture & upload high-resolution image snapshot of the rendered card DOM ONLY for the outgoing email
+      const snapshotUrl = await captureAndUploadSnapshot();
+
+      // Auto-save any pending changes first preserving clean template artwork imageUrl
+      const payloadToSave = {
+        ...invitation,
+      };
+      const saved = await saveInvitation(payloadToSave);
+      const targetId = saved?.id || invitation.id;
+      if (targetId) {
+        const sendOk = await queueInvitation(combinedRecipients, targetId, snapshotUrl || undefined);
+        if (sendOk) {
+          setToast({
+            message: `Invitation successfully sent to ${combinedRecipients.length} recipient(s)! ✨`,
+            type: "success",
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("[Send Invitation Flow] Error occurred:", err);
+      setToast({
+        message: err.message || "Failed to send invitation. Please check guest emails and try again.",
+        type: "error",
+      });
     }
   };
 
@@ -1323,19 +1418,27 @@ function InvitationDesignerPageContent() {
                   style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                 >
                   {/* Image cover preview */}
-                  <div className="invitation-image-wrapper">
-                    {resolvedCoverImage && !coverImgError ? (
+                  <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
+                    {isImageUploading ? (
+                      <div className="w-full h-48 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-sky-500/10 flex flex-col items-center justify-center gap-2 p-6 text-center">
+                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                        <span className="text-xs font-semibold text-blue-800">Uploading & optimizing image...</span>
+                        <span className="text-[10px] text-slate-500">Normalizing mobile photo to cloud storage</span>
+                      </div>
+                    ) : resolvedCoverImage && !coverImgError ? (
                       <img
                         src={getImageUrl(resolvedCoverImage)}
+                        crossOrigin="anonymous"
                         alt="Invitation cover"
-                        className="invitation-image"
+                        className="w-full h-auto max-h-[420px] object-cover rounded-t-2xl block"
                         onError={() => setCoverImgError(true)}
                       />
                     ) : resolvedCoverImage && coverImgError ? (
-                      <div className="w-full h-36 bg-gradient-to-br from-blue-500/5 to-transparent flex items-center justify-center">
+                      <div className="w-full h-40 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 flex items-center justify-center p-4">
                         <div className="text-center">
                           <ImageIcon className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
-                          <p className="text-[10px] text-slate-400">Cover image failed to load</p>
+                          <p className="text-[11px] font-medium text-slate-400">Cover image could not be loaded</p>
+                          <span className="text-[10px] text-slate-400">Showing default layout</span>
                         </div>
                       </div>
                     ) : (
@@ -1511,23 +1614,29 @@ function InvitationDesignerPageContent() {
                     style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
                   >
                     {/* Cover Image */}
-                    <div className="invitation-image-wrapper">
-                      {resolvedCoverImage && !coverImgError ? (
+                    <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
+                      {isImageUploading ? (
+                        <div className="w-full h-56 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-sky-500/10 flex flex-col items-center justify-center gap-2 text-center p-6">
+                          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                          <span className="text-xs font-semibold text-blue-800">Uploading & optimizing image...</span>
+                        </div>
+                      ) : resolvedCoverImage && !coverImgError ? (
                         <img
                           src={getImageUrl(resolvedCoverImage)}
+                          crossOrigin="anonymous"
                           alt="Invitation cover"
-                          className="invitation-image"
+                          className="w-full h-auto max-h-[480px] object-cover rounded-t-2xl block"
                           onError={() => setCoverImgError(true)}
                         />
                       ) : resolvedCoverImage && coverImgError ? (
-                        <div className="w-full h-48 bg-gradient-to-br from-blue-500/5 to-transparent flex items-center justify-center">
+                        <div className="w-full h-48 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 flex items-center justify-center">
                           <div className="text-center">
-                            <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                            <ImageIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                             <p className="text-xs text-slate-400">Cover image failed to load</p>
                           </div>
                         </div>
                       ) : (
-                        <div className="w-full h-16 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
+                        <div className="w-full h-20 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
                       )}
                     </div>
 

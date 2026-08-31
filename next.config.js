@@ -2,16 +2,20 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '15mb',
     },
   },
   images: {
+    unoptimized: true,
     domains: [
       'localhost',
       '127.0.0.1',
       'res.cloudinary.com',
       'images.unsplash.com',
       'firebasestorage.googleapis.com',
+      's3.amazonaws.com',
+      'supabase.co',
+      'blob.vercel-storage.com',
     ],
     remotePatterns: [
       {
@@ -20,15 +24,7 @@ const nextConfig = {
       },
       {
         protocol: 'http',
-        hostname: 'localhost',
-        port: '5000',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-        port: '5000',
-        pathname: '/uploads/**',
+        hostname: '**',
       },
     ],
   },

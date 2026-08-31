@@ -251,6 +251,7 @@ export default function PublicInvitationPage() {
           <div className="relative w-full overflow-hidden bg-gray-50 flex items-center justify-center">
             <img
               src={coverImage}
+              crossOrigin="anonymous"
               alt="Invitation Cover"
               className="w-full h-auto object-contain block"
               onError={() => setCoverImgError(true)}

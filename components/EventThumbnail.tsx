@@ -137,6 +137,7 @@ export default function EventThumbnail({
   const imageElement = (
     <img
       src={resolvedUrl}
+      crossOrigin="anonymous"
       alt={finalAlt}
       loading="lazy"
       onError={() => setHasError(true)}

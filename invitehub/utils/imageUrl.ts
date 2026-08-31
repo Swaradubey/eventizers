@@ -1,4 +1,3 @@
-
 /**
  * Resolves the backend server origin from environment variables.
  * Strips any trailing path segments like `/api` so we get just the host origin
@@ -8,6 +7,8 @@ function getBackendOrigin(): string {
   const raw =
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
+    process.env.PUBLIC_BACKEND_URL ||
+    process.env.PUBLIC_APP_URL ||
     "http://localhost:5000";
 
   try {
@@ -23,7 +24,7 @@ function getBackendOrigin(): string {
 /**
  * If the stored image URL points at a localhost/127.0.0.1 backend but the
  * browser is running on a different host (e.g. mobile device accessing via
- * LAN IP), rewrite the origin so the image is reachable.
+ * LAN IP or public domain), rewrite the hostname/origin so the image is reachable.
  */
 function normalizeOriginForClient(fullUrl: string): string {
   if (typeof window === "undefined") return fullUrl;
@@ -56,7 +57,7 @@ export function getImageUrl(url?: string | null): string {
   }
 
   const trimmed = url.trim();
-  if (!trimmed) {
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
     return "";
   }
 
@@ -73,25 +74,32 @@ export function getImageUrl(url?: string | null): string {
   // 3. Remove accidental route prefixes like /dashboard/ or dashboard/
   let cleaned = trimmed.replace(/^(\/)?dashboard\//i, "/");
 
-  // 4. Ensure leading slash for relative paths
-  if (!cleaned.startsWith("/")) {
-    cleaned = "/" + cleaned;
-  }
-
-  // 5. Prepend backend origin for uploads served by backend server
-  if (cleaned.startsWith("/uploads/")) {
+  // 4. Relative uploads path (with or without leading slash)
+  if (cleaned.startsWith("/uploads/") || cleaned.startsWith("uploads/")) {
+    const relativePath = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
     const origin = getBackendOrigin();
-    const fullUrl = `${origin}${cleaned}`;
+    const fullUrl = `${origin}${relativePath}`;
     return normalizeOriginForClient(fullUrl);
   }
 
-  // 6. Static public Next.js assets starting with /assets/
-  if (cleaned.startsWith("/assets/")) {
-    return cleaned;
+  // 5. Static public Next.js assets starting with /assets/ or assets/
+  if (cleaned.startsWith("/assets/") || cleaned.startsWith("assets/")) {
+    return cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
+  }
+
+  // 6. Raw image filename e.g. "template_178239.png" or "photo.jpg"
+  if (/\.(png|jpe?g|webp|gif|svg|avif|heic)$/i.test(cleaned)) {
+    const origin = getBackendOrigin();
+    const fullUrl = `${origin}/uploads/${cleaned.replace(/^\/+/, "")}`;
+    return normalizeOriginForClient(fullUrl);
+  }
+
+  // 7. Fallback: ensure leading slash
+  if (!cleaned.startsWith("/")) {
+    cleaned = "/" + cleaned;
   }
 
   return cleaned;
 }
 
 export default getImageUrl;
-

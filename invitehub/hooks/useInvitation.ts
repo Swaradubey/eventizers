@@ -451,6 +451,7 @@ export const useInvitation = (eventId: string | null) => {
     setSuccessMessage(null);
 
     try {
+      console.log(`[useInvitation] Dispatching sendInvitation for invitation: ${invId}, snapshot provided: ${Boolean(snapshotUrlOrBase64)}`);
       const res = await invitationService.sendInvitation(invId, recipients, snapshotUrlOrBase64);
       if (res.success) {
         setSuccessMessage(res.message || "Invitation successfully sent!");
@@ -460,9 +461,10 @@ export const useInvitation = (eventId: string | null) => {
         throw new Error(res.message || "Failed to send invitation.");
       }
     } catch (err: any) {
-      console.error("Error sending invitation:", err);
-      setError(err.response?.data?.error || err.message || "Failed to send the invitation.");
-      return false;
+      console.error("[useInvitation] Error sending invitation:", err);
+      const errorMsg = err.response?.data?.error || err.message || "Failed to send the invitation.";
+      setError(errorMsg);
+      throw new Error(errorMsg);
     } finally {
       setSending(false);
     }
