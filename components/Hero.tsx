@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import AuthModal from "./AuthModal";
 import templateService, { Template } from "../services/templateService";
 import eventService from "../services/eventService";
 import API from "../services/api";
@@ -120,6 +121,7 @@ const tabs = [
 export default function Hero() {
   const { user } = useAuth();
   const router = useRouter();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
@@ -223,10 +225,52 @@ export default function Hero() {
     }
   }, [activeTab, templates.length]);
 
+  // Restore pending template selection on login
+  useEffect(() => {
+    if (user) {
+      try {
+        const pendingId = sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id");
+        const pendingName = sessionStorage.getItem("pending_template_name") || localStorage.getItem("pending_template_name");
+        if (pendingId) {
+          setSelectedTemplateId(pendingId);
+          if (pendingName) {
+            setTemplateTitle(pendingName);
+          }
+          sessionStorage.removeItem("pending_template_id");
+          sessionStorage.removeItem("pending_template_name");
+          localStorage.removeItem("pending_template_id");
+          localStorage.removeItem("pending_template_name");
+        }
+      } catch (e) {
+        console.warn("Error restoring pending template:", e);
+      }
+    }
+  }, [user]);
+
+  const handleSelectTemplate = (tpl: Template) => {
+    if (!user) {
+      try {
+        localStorage.setItem("pending_template_id", tpl.id);
+        localStorage.setItem("pending_template_name", tpl.name);
+        sessionStorage.setItem("pending_template_id", tpl.id);
+        sessionStorage.setItem("pending_template_name", tpl.name);
+      } catch (e) {
+        console.warn("Storage write error:", e);
+      }
+      setSelectedTemplateId(tpl.id);
+      setTemplateTitle(tpl.name);
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setSelectedTemplateId(tpl.id);
+    if (!templateTitle) {
+      setTemplateTitle(tpl.name);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!user) {
-      setErrorMsg("Please sign in first to generate an AI event.");
-      setTimeout(() => router.push("/login"), 2000);
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -288,7 +332,11 @@ export default function Hero() {
   };
 
   const handleSaveAiEvent = async () => {
-    if (!aiEventData || !user) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!aiEventData) return;
 
     // If already saved to database via the AI endpoint
     if (aiEventData.event?.id) {
@@ -361,8 +409,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
   const handleCreateFromTemplate = async () => {
     if (!user) {
-      setErrorMsg("Please sign in first to create an event.");
-      setTimeout(() => router.push("/login"), 2000);
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -412,12 +459,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) return;
     setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) return;
     setIsDragging(true);
   };
 
@@ -432,12 +481,20 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.target.files && e.target.files.length > 0) {
       handleFileSelection(e.target.files[0]);
     }
@@ -507,6 +564,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   const handleFileSelection = async (file: File) => {
     setUploadError(null);
     setErrorMsg(null);
+
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
 
     if (!file) return;
 
@@ -608,6 +670,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleOpenInDesigner = async () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     if (!uploadedFile && !previewUrl) {
       setUploadError("Please select an invitation file first.");
       return;
@@ -660,8 +727,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
   const handleUploadAndCreateEvent = async () => {
     if (!user) {
-      setErrorMsg("Please sign in first to create an event.");
-      setTimeout(() => router.push("/login"), 2000);
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -719,6 +785,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleExtractDetailsAI = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!uploadedFile) return;
     setIsExtractingAI(true);
     setUploadError(null);
@@ -917,6 +987,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   <button
                     key={tab.id}
                     onClick={() => {
+                      if (!user && (tab.id === 0 || tab.id === 2)) {
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
                       setActiveTab(tab.id);
                       setErrorMsg(null);
                       setSuccessMsg(null);
@@ -958,11 +1032,30 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 </div>
                 
                 {/* Input Area (Middle of Card) */}
-                <div className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <div 
+                  onClick={() => {
+                    if (!user) {
+                      setIsAuthModalOpen(true);
+                    }
+                  }}
+                  className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-text"
+                >
                   <textarea
                     rows={2}
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onFocus={(e) => {
+                      if (!user) {
+                        e.target.blur();
+                        setIsAuthModalOpen(true);
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (!user) {
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
+                      setPrompt(e.target.value);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -976,7 +1069,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {/* Circular Send Button on the right */}
                   <div className="absolute right-3 bottom-3">
                     <button
-                      onClick={handleGenerate}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleGenerate();
+                      }}
                       disabled={generating}
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-white flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
                       title="Generate Event"
@@ -996,7 +1092,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {quickPrompts.map((item, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setPrompt(item.promptText)}
+                      onClick={() => {
+                        if (!user) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        setPrompt(item.promptText);
+                      }}
                       className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-3.5 py-1.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
                       title={item.promptText}
                     >
@@ -1007,7 +1109,16 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 </div>
 
                 {/* Form Fields (Below the prompt box/suggestions) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-left">
+                <div 
+                  onClickCapture={(e) => {
+                    if (!user) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsAuthModalOpen(true);
+                    }
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-left"
+                >
                   {/* 1. EVENT TYPE */}
                   <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
                     <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
@@ -1397,12 +1508,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         return (
                           <div
                             key={tpl.id}
-                            onClick={() => {
-                              setSelectedTemplateId(tpl.id);
-                              if (!templateTitle) {
-                                setTemplateTitle(tpl.name);
-                              }
-                            }}
+                            onClick={() => handleSelectTemplate(tpl)}
                             className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-200 border bg-white ${
                               isSelected
                                 ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 shadow-md transform -translate-y-0.5"
@@ -1428,6 +1534,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                   <Sparkles className="w-5 h-5 text-indigo-400" />
                                 </div>
                               )}
+                              {/* Hover overlay with Use Template action indicator */}
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                                <span className="px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-xs text-[10px] font-bold text-[#6C5CE7] shadow-sm transform translate-y-1 group-hover:translate-y-0 transition-transform flex items-center gap-1">
+                                  <span>Use Template</span>
+                                  <ArrowRight className="w-2.5 h-2.5" />
+                                </span>
+                              </div>
                             </div>
                             <div className="p-2 sm:p-2.5">
                               <span className="text-[9px] font-bold text-[#6C5CE7] uppercase tracking-wider block mb-0.5 truncate">
@@ -1456,32 +1569,65 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 </div>
 
                 {/* Event Details Form */}
-                <div className="space-y-2.5 pt-3 border-t border-gray-100">
+                <div 
+                  onClickCapture={(e) => {
+                    if (!user) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsAuthModalOpen(true);
+                    }
+                  }}
+                  className="space-y-2.5 pt-3 border-t border-gray-100"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
                       value={templateTitle}
-                      onChange={(e) => setTemplateTitle(e.target.value)}
+                      onChange={(e) => {
+                        if (!user) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        setTemplateTitle(e.target.value);
+                      }}
                       placeholder="Event Title (e.g. Maya's 5th Birthday)"
                       className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
                     />
                     <input
                       type="text"
                       value={templateVenue}
-                      onChange={(e) => setTemplateVenue(e.target.value)}
+                      onChange={(e) => {
+                        if (!user) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        setTemplateVenue(e.target.value);
+                      }}
                       placeholder="Venue (e.g. Sweet Retreat Bakery)"
                       className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
                     />
                     <input
                       type="date"
                       value={templateDate}
-                      onChange={(e) => setTemplateDate(e.target.value)}
+                      onChange={(e) => {
+                        if (!user) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        setTemplateDate(e.target.value);
+                      }}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
                     />
                     <input
                       type="time"
                       value={templateTime}
-                      onChange={(e) => setTemplateTime(e.target.value)}
+                      onChange={(e) => {
+                        if (!user) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        setTemplateTime(e.target.value);
+                      }}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
                     />
                   </div>
@@ -1539,7 +1685,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 {/* Dropzone (When no file is selected) */}
                 {!uploadedFile && (
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (!user) {
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
+                      fileInputRef.current?.click();
+                    }}
                     onDragEnter={handleDragEnter}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -1749,6 +1901,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           </div>
         </div>
       </div>
+
+      {/* Sign-In / Register Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </section>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Cake, Heart, Briefcase, Wine, Baby, Gift, Music, Sparkles, ArrowRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "./AuthModal";
 
 interface ShowcaseCard {
   id: string;
@@ -114,11 +116,32 @@ const showcaseCards: ShowcaseCard[] = [
 ];
 
 export default function Templates() {
+  const { user } = useAuth();
   const router = useRouter();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
   const handleCardClick = (templateId: string) => {
+    if (!user) {
+      try {
+        localStorage.setItem("pending_template_id", templateId);
+        sessionStorage.setItem("pending_template_id", templateId);
+      } catch (e) {}
+      setPendingTemplateId(templateId);
+      setIsAuthModalOpen(true);
+      return;
+    }
     router.push(`/dashboard/invitations?templateId=${encodeURIComponent(templateId)}`);
+  };
+
+  const handleAuthSuccess = () => {
+    const tplId = pendingTemplateId || (typeof window !== "undefined" ? sessionStorage.getItem("pending_template_id") : null);
+    if (tplId) {
+      router.push(`/dashboard/invitations?templateId=${encodeURIComponent(tplId)}`);
+    } else {
+      router.push("/dashboard/invitations");
+    }
   };
 
   const containerVariants = {
@@ -275,6 +298,11 @@ export default function Templates() {
           })}
         </motion.div>
       </div>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </section>
   );
 }

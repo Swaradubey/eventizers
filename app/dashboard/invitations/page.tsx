@@ -428,11 +428,12 @@ function InvitationDesignerPageContent() {
           return uploadRes.url;
         }
       } catch (uploadErr) {
-        console.warn("[Canvas Snapshot] Cloud upload failed, falling back to direct Base64 Data URL:", uploadErr);
+        console.warn("[Canvas Snapshot] Cloud upload failed — snapshot will NOT be included in email (Base64 is blocked by email clients):", uploadErr);
       }
 
-      // Fall back directly to the Base64 Data URL
-      return dataUrl;
+      // Do NOT fall back to raw Base64 Data URL — email clients (Gmail, Outlook, Yahoo) strip/block inline Base64 images
+      console.warn("[Canvas Snapshot] No public URL available for snapshot. Email will use themed fallback banner.");
+      return null;
     } catch (snapshotErr) {
       console.error("[Canvas Snapshot] Error capturing invitation card snapshot:", snapshotErr);
     }

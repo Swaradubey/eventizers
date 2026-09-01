@@ -21,6 +21,7 @@ import {
   Settings,
   BarChart3,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -89,6 +90,11 @@ export default function Sidebar() {
           label: "Dashboard",
           href: "/dashboard",
           icon: LayoutDashboard,
+        },
+        {
+          label: "AI Assistant",
+          href: "/dashboard/ai-assistant",
+          icon: Sparkles,
         },
         {
           label: "Events",
