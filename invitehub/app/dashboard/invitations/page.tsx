@@ -418,7 +418,7 @@ function InvitationDesignerPageContent() {
       const payloadSizeBytes = dataUrl.length;
       console.log(`[Canvas Snapshot] Snapshot dataUrl generated successfully (Size: ${(payloadSizeBytes / 1024).toFixed(1)} KB)`);
 
-      // 4. Try uploading snapshot blob to backend storage for a clean permanent public URL
+      // 4. Upload snapshot blob to backend storage for a clean permanent public URL
       try {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -429,12 +429,11 @@ function InvitationDesignerPageContent() {
           return uploadRes.url;
         }
       } catch (uploadErr) {
-        console.warn("[Canvas Snapshot] Cloud upload failed — snapshot will NOT be included in email (Base64 is blocked by email clients):", uploadErr);
+        console.warn("[Canvas Snapshot] Client-side blob upload failed, passing dataUrl for backend storage resolution:", uploadErr);
       }
 
-      // Do NOT fall back to raw Base64 Data URL — email clients (Gmail, Outlook, Yahoo) strip/block inline Base64 images
-      console.warn("[Canvas Snapshot] No public URL available for snapshot. Email will use themed fallback banner.");
-      return null;
+      // Return dataUrl so backend saveBase64Image can persist it to disk and attach as CID inline attachment
+      return dataUrl;
     } catch (snapshotErr) {
       console.error("[Canvas Snapshot] Error capturing invitation card snapshot:", snapshotErr);
     }
