@@ -350,17 +350,31 @@ function InvitationDesignerPageContent() {
       
       await Promise.all(
         imgElements.map(async (img) => {
+          // Set crossOrigin before checking completion to avoid CORS tainting
           if (!img.crossOrigin) {
             img.crossOrigin = "anonymous";
           }
-          if (!img.complete) {
+          // Wait for the image to fully load (handles Upload Existing images still loading)
+          if (!img.complete || img.naturalWidth === 0) {
             await new Promise<void>((resolve) => {
-              const handleDone = () => resolve();
+              let settled = false;
+              const handleDone = () => {
+                if (!settled) {
+                  settled = true;
+                  resolve();
+                }
+              };
               img.addEventListener("load", handleDone, { once: true });
               img.addEventListener("error", handleDone, { once: true });
-              setTimeout(resolve, 3000); // 3s safety fallback timeout
+              // 5s timeout for slow mobile uploads or high-res images
+              setTimeout(handleDone, 5000);
             });
           }
+          // Verify image actually has pixel data (naturalWidth > 0 means it loaded successfully)
+          if (img.naturalWidth === 0) {
+            console.warn("[Canvas Snapshot] Image has naturalWidth=0 (may be CORS-blocked or broken):", img.src?.substring(0, 80));
+          }
+          // Decode bitmap for rendering pipeline
           if (img.decode) {
             try {
               await img.decode();
@@ -371,8 +385,13 @@ function InvitationDesignerPageContent() {
         })
       );
 
-      // Brief animation frame pause to ensure DOM paint has settled
-      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 80)));
+      // Verify the preview node itself is visible and has dimensions
+      if (previewNode.offsetWidth === 0 || previewNode.offsetHeight === 0) {
+        console.warn("[Canvas Snapshot] Preview node has zero dimensions — snapshot may be blank");
+      }
+
+      // Settle delay: wait for DOM paint + any CSS transitions to complete
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 200)));
 
       // Dynamic pixelRatio: downscale appropriately on mobile / high-DPI screens to prevent memory crashes
       const clientPixelRatio = typeof window !== "undefined" && window.devicePixelRatio
@@ -395,18 +414,37 @@ function InvitationDesignerPageContent() {
         });
       } catch (firstAttemptErr) {
         console.warn("[Canvas Snapshot] First capture attempt failed, retrying with pixelRatio 1.0:", firstAttemptErr);
-        // Fallback retry with safe 1.0 pixelRatio
-        dataUrl = await toPng(previewNode, {
-          cacheBust: true,
-          pixelRatio: 1.0,
-          quality: 0.8,
-          skipAutoScale: true,
-          backgroundColor: invitation?.backgroundColor || "#ffffff",
-          fetchRequestInit: {
-            mode: "cors",
-            cache: "no-cache",
-          },
-        });
+        try {
+          // Retry with safe 1.0 pixelRatio
+          dataUrl = await toPng(previewNode, {
+            cacheBust: true,
+            pixelRatio: 1.0,
+            quality: 0.8,
+            skipAutoScale: true,
+            backgroundColor: invitation?.backgroundColor || "#ffffff",
+            fetchRequestInit: {
+              mode: "cors",
+              cache: "no-cache",
+            },
+          });
+        } catch (secondAttemptErr) {
+          console.warn("[Canvas Snapshot] Second capture attempt failed, trying with CORS image filter:", secondAttemptErr);
+          // Final retry: skip any CORS-tainted images that block canvas export
+          dataUrl = await toPng(previewNode, {
+            cacheBust: true,
+            pixelRatio: 1.0,
+            quality: 0.75,
+            skipAutoScale: true,
+            backgroundColor: invitation?.backgroundColor || "#ffffff",
+            filter: (node: HTMLElement) => {
+              // Skip images that have crossOrigin issues (naturalWidth === 0)
+              if (node instanceof HTMLImageElement && node.naturalWidth === 0) {
+                return false;
+              }
+              return true;
+            },
+          });
+        }
       }
 
       if (!dataUrl || !dataUrl.startsWith("data:")) {
@@ -414,22 +452,14 @@ function InvitationDesignerPageContent() {
         return null;
       }
 
+      // Validate that the Base64 content has meaningful image data (not a tiny collapsed element)
+      const base64Part = dataUrl.split(",")[1] || "";
+      if (base64Part.length < 500) {
+        console.warn(`[Canvas Snapshot] Generated dataUrl is suspiciously small (${base64Part.length} chars) — may be a blank/collapsed DOM`);
+      }
+
       const payloadSizeBytes = dataUrl.length;
       console.log(`[Canvas Snapshot] Snapshot dataUrl generated successfully (Size: ${(payloadSizeBytes / 1024).toFixed(1)} KB)`);
-
-      // 4. Upload snapshot blob to backend storage for a clean permanent public URL
-      try {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const filename = `invitation_${selectedEventId || "snapshot"}_${Date.now()}.png`;
-        const uploadRes = await templateService.uploadTemplateImage(blob, filename);
-        if (uploadRes && uploadRes.success && uploadRes.url) {
-          console.log("[Canvas Snapshot] Cloud upload successful, public URL:", uploadRes.url);
-          return uploadRes.url;
-        }
-      } catch (uploadErr) {
-        console.warn("[Canvas Snapshot] Client-side blob upload failed, passing dataUrl for backend storage resolution:", uploadErr);
-      }
 
       // Return dataUrl so backend saveBase64Image can persist it to disk and attach as CID inline attachment
       return dataUrl;
