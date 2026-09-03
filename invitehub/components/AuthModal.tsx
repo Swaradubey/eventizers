@@ -28,6 +28,7 @@ export default function AuthModal({
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset errors and mode when modal opens/changes
@@ -35,6 +36,7 @@ export default function AuthModal({
     if (isOpen) {
       setError(null);
       setMode(initialMode);
+      setAgreedToTerms(false);
     }
   }, [isOpen, initialMode, setError]);
 
@@ -314,6 +316,46 @@ export default function AuthModal({
               </Link>
             </div>
           )}
+
+          {/* Terms & Agreement Checkbox */}
+          <div className="mt-3 mb-2 flex items-start gap-2">
+            <input
+              id="modalAgreeToTerms"
+              name="agreeToTerms"
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 accent-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <label
+              htmlFor="modalAgreeToTerms"
+              className="text-xs text-gray-500 cursor-pointer select-none leading-relaxed"
+            >
+              By signing in, you agree to our{" "}
+              <Link
+                href="/terms"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </label>
+          </div>
 
           {/* Submit Button */}
           <button

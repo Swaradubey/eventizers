@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // If user is already logged in, redirect to appropriate dashboard
@@ -156,11 +157,45 @@ export default function LoginPage() {
               <div className="text-sm">
                 <Link
                   href="/reset-password"
-                  className="font-medium text-[#C9A84C] hover:text-[#b08e3a] text-xs transition-colors"
+                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline text-xs transition-colors"
                 >
                   Forgot Password?
                 </Link>
               </div>
+            </div>
+
+            {/* Terms & Agreement Checkbox */}
+            <div className="mt-3 mb-2 flex items-start gap-2">
+              <input
+                id="agreeToTerms"
+                name="agreeToTerms"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 accent-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label
+                htmlFor="agreeToTerms"
+                className="text-xs text-gray-500 cursor-pointer select-none leading-relaxed"
+              >
+                By signing in, you agree to our{" "}
+                <Link
+                  href="/terms"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+                >
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </label>
             </div>
 
             {/* Divider: OR CONTINUE WITH */}
@@ -219,14 +254,14 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-[#2D1B3D] hover:bg-[#3d2a52] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2D1B3D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md shadow-blue-500/20 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? (
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 ) : (
                   <>
-                    Sign In
-                    <ArrowRight className="w-4 h-4 text-[#C9A84C]" />
+                    <span>Sign In</span>
+                    <ArrowRight className="w-4 h-4 text-white" />
                   </>
                 )}
               </button>
