@@ -130,6 +130,13 @@ function InvitationDesignerPageContent() {
     }
   }, [user, queryEventId]);
 
+  // Synchronize selectedEventId when queryEventId changes in the URL
+  useEffect(() => {
+    if (queryEventId) {
+      setSelectedEventId(queryEventId);
+    }
+  }, [queryEventId]);
+
   // Fetch guests for selected event
   useEffect(() => {
     if (user && selectedEventId) {

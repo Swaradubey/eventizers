@@ -6,8 +6,28 @@ export interface Guest {
   email: string;
   phone?: string | null;
   status: "invited" | "confirmed" | "declined" | "pending";
+  groups?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface GuestGroupsResponse {
+  success: boolean;
+  groups: string[];
+  counts?: Record<string, number>;
+}
+
+export interface CreateGuestGroupResponse {
+  success: boolean;
+  group?: { id?: string; name: string; createdAt?: string };
+  message?: string;
+}
+
+export interface UpdateGroupMembersResponse {
+  success: boolean;
+  message: string;
+  group: string;
+  count: number;
 }
 
 export interface PaginationMetadata {

@@ -272,7 +272,15 @@ export default function AIAssistantPage() {
 
       if (res.data) {
         setAiEventData(res.data);
-        setSuccessMsg("🎉 AI Event generated and saved to your Dashboard!");
+        const createdEventId = res.data.event?.id;
+        if (createdEventId) {
+          setSuccessMsg("🎉 AI Event generated! Redirecting to Invitation Designer...");
+          setTimeout(() => {
+            router.push(`/dashboard/invitations?eventId=${createdEventId}`);
+          }, 1200);
+        } else {
+          setSuccessMsg("🎉 AI Event generated and saved to your Dashboard!");
+        }
       }
     } catch (err: any) {
       console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
@@ -309,9 +317,10 @@ export default function AIAssistantPage() {
     if (!aiEventData || !user) return;
 
     if (aiEventData.event?.id) {
-      setSuccessMsg("🎉 Navigating to your event in Dashboard...");
+      setSavingEvent(true);
+      setSuccessMsg("🎉 Opening Invitation Designer...");
       setTimeout(() => {
-        router.push("/dashboard/events");
+        router.push(`/dashboard/invitations?eventId=${aiEventData.event.id}`);
       }, 500);
       return;
     }
@@ -353,7 +362,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       });
 
       if (res && res.success) {
-        setSuccessMsg("🎉 Event created successfully and saved to your dashboard!");
+        const eventId = res.event?.id;
+        setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setAiEventData(null);
         setPrompt("");
         setEventType("");
@@ -365,8 +375,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         setVenue("");
         setGuestList("");
         setTimeout(() => {
-          router.push("/dashboard/events");
-        }, 1200);
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
+        }, 800);
       }
     } catch (err: any) {
       console.error(err);
@@ -406,10 +416,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       });
 
       if (res && res.success) {
-        setSuccessMsg("🎉 Event created successfully from template!");
+        const eventId = res.event?.id;
+        setSuccessMsg("🎉 Event created successfully from template! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push("/dashboard/events");
-        }, 1200);
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
+        }, 800);
       }
     } catch (err: any) {
       console.error(err);
@@ -658,10 +669,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         if (createdImage) {
           safeSetSessionStorage("pending_upload_invite", createdImage);
         }
-        setSuccessMsg("🎉 Event created successfully with your uploaded invitation!");
+        const eventId = res.event?.id;
+        setSuccessMsg("🎉 Event created successfully with your uploaded invitation! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push("/dashboard/events");
-        }, 1200);
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
+        }, 800);
       } else {
         setUploadError(res?.message || "Failed to create event from uploaded invitation.");
       }
@@ -1193,11 +1205,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           {savingEvent ? (
                             <>
                               <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              <span>Opening Dashboard...</span>
+                              <span>Opening Designer...</span>
                             </>
                           ) : (
                             <>
-                              <span>View in Dashboard</span>
+                              <span>Open in Invitation Designer</span>
                               <ArrowRight className="w-4 h-4" />
                             </>
                           )}
