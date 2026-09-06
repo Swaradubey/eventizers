@@ -297,7 +297,9 @@ export const useInvitation = (eventId: string | null) => {
           const fetchedInvitation = inviteRes.invitation;
           const tplKey = eventRes.event.selectedTemplateId;
           const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
-          const cleanTemplateImg = tplConfig?.image || eventRes.event.coverImage || "";
+          // Comprehensive fallback: template image > event image fields
+          const evtImg = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
+          const cleanTemplateImg = tplConfig?.image || evtImg;
 
           // If imageUrl is a snapshot (e.g. contains snapshot/invitation_snapshot or data:) or missing,
           // restore clean template artwork so canvas renders only the raw artwork without baked text
@@ -316,6 +318,9 @@ export const useInvitation = (eventId: string | null) => {
           const tplKey = eventRes.event.selectedTemplateId;
           const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
 
+          // Comprehensive fallback: template image > event image fields
+          const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
+
           const defaultInvitation: Invitation = {
             id: "", // empty indicates it's unsaved/new
             eventId: eventId,
@@ -329,7 +334,7 @@ export const useInvitation = (eventId: string | null) => {
             fontWeight: tplConfig?.fontWeight || "700",
             fontFamily: tplConfig?.fontFamily || "Playfair Display",
             textAlignment: tplConfig?.textAlignment || "center",
-            imageUrl: tplConfig?.image || eventRes.event.coverImage || "",
+            imageUrl: tplConfig?.image || evtImgFallback,
             buttonText: "RSVP Now",
             buttonColor: tplConfig?.buttonColor || "#5B5FEF",
             buttonRadius: tplConfig?.buttonRadius || 12,
@@ -341,6 +346,9 @@ export const useInvitation = (eventId: string | null) => {
         // If API returns 404/error and no invitation exists, create a default local state
         const tplKey = eventRes.event.selectedTemplateId;
         const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+
+        // Comprehensive fallback: template image > event image fields
+        const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
 
         const defaultInvitation: Invitation = {
           id: "",
@@ -355,7 +363,7 @@ export const useInvitation = (eventId: string | null) => {
           fontWeight: tplConfig?.fontWeight || "700",
           fontFamily: tplConfig?.fontFamily || "Playfair Display",
           textAlignment: tplConfig?.textAlignment || "center",
-          imageUrl: tplConfig?.image || eventRes.event.coverImage || "",
+          imageUrl: tplConfig?.image || evtImgFallback,
           buttonText: "RSVP Now",
           buttonColor: tplConfig?.buttonColor || "#5B5FEF",
           buttonRadius: tplConfig?.buttonRadius || 12,

@@ -32,7 +32,7 @@ export interface AnalyticsOverview {
   averageResponseTimeDays: number;
   rsvpBreakdown: RSVPBreakdown;
   eventPerformance: EventPerformance;
-  eventsPerformance: EventPerformanceItem[];
+  eventsPerformance?: EventPerformanceItem[];
 }
 
 interface AnalyticsOverviewResponse {
@@ -43,7 +43,7 @@ interface AnalyticsOverviewResponse {
   averageResponseTimeDays: number;
   rsvpBreakdown: RSVPBreakdown;
   eventPerformance: EventPerformance;
-  eventsPerformance: EventPerformanceItem[];
+  eventsPerformance?: EventPerformanceItem[];
 }
 
 export const getAnalyticsOverview = async (): Promise<AnalyticsOverviewResponse> => {

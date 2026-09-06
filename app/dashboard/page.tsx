@@ -129,10 +129,9 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   };
 
-  // Open modal for editing
+  // Navigate to edit dashboard for event
   const handleEditClick = (event: Event) => {
-    setEditingEvent(event);
-    setIsModalOpen(true);
+    router.push(`/events/${event.id}/edit`);
   };
 
   // Handle Delete

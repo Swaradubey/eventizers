@@ -354,15 +354,25 @@ function InvitationDesignerPageContent() {
 
       // 2. Ensure all images inside the preview card have crossOrigin and are fully decoded/loaded
       const previewNode = cardPreviewRef.current;
+
+      // Ensure QR Code selector and base64 images are fully parsed before taking snapshot
+      const qrCodeImg = previewNode.querySelector('img[alt="QR Code"]');
+      if (qrCodeImg && !(qrCodeImg as HTMLImageElement).complete) {
+        await new Promise<void>((resolve) => {
+          (qrCodeImg as HTMLImageElement).onload = (qrCodeImg as HTMLImageElement).onerror = () => resolve();
+          setTimeout(resolve, 3000);
+        });
+      }
+
+      // Ensure all images inside the snapshot node are fully decoded and loaded
       const imgElements = Array.from(previewNode.querySelectorAll("img"));
-      
       await Promise.all(
         imgElements.map(async (img) => {
-          // Set crossOrigin before checking completion to avoid CORS tainting
-          if (!img.crossOrigin) {
+          // Set crossOrigin before checking completion to avoid CORS tainting (skip data: URLs)
+          if (!img.crossOrigin && !img.src.startsWith("data:")) {
             img.crossOrigin = "anonymous";
           }
-          // Wait for the image to fully load (handles Upload Existing images still loading)
+          // Wait for the image to fully load
           if (!img.complete || img.naturalWidth === 0) {
             await new Promise<void>((resolve) => {
               let settled = false;
@@ -379,7 +389,7 @@ function InvitationDesignerPageContent() {
             });
           }
           // Verify image actually has pixel data (naturalWidth > 0 means it loaded successfully)
-          if (img.naturalWidth === 0) {
+          if (img.naturalWidth === 0 && !img.src.startsWith("data:")) {
             console.warn("[Canvas Snapshot] Image has naturalWidth=0 (may be CORS-blocked or broken):", img.src?.substring(0, 80));
           }
           // Decode bitmap for rendering pipeline

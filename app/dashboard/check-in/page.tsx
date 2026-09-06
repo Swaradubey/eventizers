@@ -252,9 +252,13 @@ function CheckInPageContent() {
 
   const handleQrScanSuccess = async (qrCodeText: string) => {
     if (!selectedEventId) return;
-    
+
+    // Debug: log raw scanned data for tracing
+    console.log("[CheckIn Scanner] Scanned Raw QR Data:", qrCodeText);
+
     // Stop camera immediately on success to provide responsive feedback
     await stopScanner();
+    setScannerError(null); // Clear any stale scanner error banner
     setIsScanSubmitting(true);
 
     try {
@@ -272,8 +276,23 @@ function CheckInPageContent() {
         fetchCheckInData(selectedEventId, debouncedSearch, statusFilter, page);
       }
     } catch (err: any) {
-      console.error("QR Check-In Error:", err);
-      triggerToast(err.response?.data?.message || "Invalid ticket or QR code.", "error");
+      console.error("[CheckIn Scanner] QR Check-In Error:", err);
+      const errMsg: string =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Invalid ticket or QR code.";
+
+      // Surface contextual error messages
+      if (errMsg.toLowerCase().includes("different event")) {
+        triggerToast("Wrong event: This QR code is valid but belongs to a different event. Please select the correct event.", "error");
+      } else if (errMsg.toLowerCase().includes("already checked in")) {
+        triggerToast("Guest already checked in.", "error");
+      } else if (errMsg.toLowerCase().includes("unpaid") || errMsg.toLowerCase().includes("only paid")) {
+        triggerToast("Ticket payment not confirmed. Only paid tickets are valid.", "error");
+      } else {
+        triggerToast(errMsg, "error");
+      }
     } finally {
       setIsScanSubmitting(false);
     }
@@ -578,7 +597,7 @@ function CheckInPageContent() {
                     </button>
                   ) : (
                     <button
-                      onClick={startScanner}
+                      onClick={() => { setScannerError(null); startScanner(); }}
                       disabled={isScanSubmitting}
                       className="w-full flex items-center justify-center gap-2.5 py-4 px-6 text-sm font-bold text-white bg-gradient-to-r from-[#4F46E5] via-[#3B82F6] to-[#06B6D4] hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-blue-500/25 focus:outline-none cursor-pointer"
                     >
