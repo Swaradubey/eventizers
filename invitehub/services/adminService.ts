@@ -418,6 +418,86 @@ export const deleteAdminUser = async (userId: number): Promise<{ success: boolea
   return response.data;
 };
 
+// Admin Users & Roles Types
+export interface AdminManagedUser {
+  id: number;
+  name: string;
+  email: string;
+  phoneNumber?: string | null;
+  role: string;
+  plan: string;
+  subscriptionStatus: string;
+  billingStatus: string;
+  createdAt: string;
+  updatedAt?: string;
+  _count?: {
+    events: number;
+  };
+}
+
+export interface AdminUsersResponse {
+  success: boolean;
+  users: AdminManagedUser[];
+  counts?: {
+    users: number;
+    admins: number;
+    guests: number;
+    staff: number;
+  };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+// Admin Users API functions
+export const getAdminUsers = async (
+  params: { page?: number; limit?: number; search?: string; role?: string } = {},
+  signal?: AbortSignal
+): Promise<AdminUsersResponse> => {
+  const response = await API.get<AdminUsersResponse>("/admin/users", {
+    params,
+    signal
+  });
+  return response.data;
+};
+
+export const createAdminManagedUser = async (payload: {
+  name: string;
+  email: string;
+  password?: string;
+  phoneNumber?: string;
+  role: string;
+  eventId?: string;
+  sendInviteEmail?: boolean;
+}): Promise<{ success: boolean; user: AdminManagedUser; message: string }> => {
+  const response = await API.post<{ success: boolean; user: AdminManagedUser; message: string }>(
+    "/admin/users",
+    payload
+  );
+  return response.data;
+};
+
+export const updateAdminManagedUser = async (
+  userId: number,
+  payload: { name?: string; email?: string; role?: string; password?: string; phoneNumber?: string; eventId?: string }
+): Promise<{ success: boolean; user: AdminManagedUser; message: string }> => {
+  const response = await API.put<{ success: boolean; user: AdminManagedUser; message: string }>(
+    `/admin/users/${userId}`,
+    payload
+  );
+  return response.data;
+};
+
+export const deleteAdminManagedUser = async (userId: number): Promise<{ success: boolean; message: string }> => {
+  const response = await API.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`);
+  return response.data;
+};
+
 const adminService = {
   adminLogin,
   adminLogout,
@@ -454,6 +534,10 @@ const adminService = {
   updateAdminUserSubscriptionStatus,
   updateAdminUserBillingStatus,
   deleteAdminUser,
+  getAdminUsers,
+  createAdminManagedUser,
+  updateAdminManagedUser,
+  deleteAdminManagedUser,
 };
 
 export default adminService;

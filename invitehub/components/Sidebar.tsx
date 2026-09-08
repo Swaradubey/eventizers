@@ -22,16 +22,68 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
+  ShieldCheck,
+  UserCog,
+  ImageIcon,
+  MapPin,
+  KeyRound,
+  QrCode,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { isOpen, setIsOpen, isCollapsed, setIsCollapsed } = useSidebar();
 
   const isAdminPath = pathname?.startsWith("/admin");
+  const isGuestUser = user?.role === "GUEST";
+  const isStaffCoHost = user?.role === "STAFF_COHOST" || user?.role === "COHOST" || user?.role === "STAFF";
+
+  const guestMenuItems = [
+    {
+      label: "Guest Portal",
+      href: "/dashboard/guest",
+      icon: LayoutDashboard,
+    },
+    {
+      label: "My Invitation",
+      href: "/dashboard/guest?tab=invitation",
+      icon: Mail,
+    },
+    {
+      label: "RSVP Status",
+      href: "/dashboard/guest?tab=rsvp",
+      icon: UserCheck,
+    },
+    {
+      label: "QR Ticket & Badge",
+      href: "/dashboard/guest?tab=ticket",
+      icon: Ticket,
+    },
+    {
+      label: "Event Registry",
+      href: "/dashboard/guest?tab=registry",
+      icon: Gift,
+    },
+    {
+      label: "Event Gallery",
+      href: "/dashboard/guest?tab=gallery",
+      icon: ImageIcon,
+    },
+    {
+      label: "Venue Check-In",
+      href: "/dashboard/guest?tab=checkin",
+      icon: MapPin,
+    },
+    {
+      label: "Access Recovery",
+      href: "/dashboard/guest?tab=recovery",
+      icon: KeyRound,
+    },
+  ];
+
   const menuItems = isAdminPath
     ? [
         {
@@ -75,6 +127,11 @@ export default function Sidebar() {
           icon: MessageSquare,
         },
         {
+          label: "Users & Roles",
+          href: "/admin/users",
+          icon: UserCog,
+        },
+        {
           label: "Billing",
           href: "/admin/billing",
           icon: CreditCard,
@@ -83,6 +140,31 @@ export default function Sidebar() {
           label: "Settings",
           href: "/admin/settings",
           icon: Settings,
+        },
+      ]
+    : isGuestUser
+    ? guestMenuItems
+    : isStaffCoHost
+    ? [
+        {
+          label: "Check-in",
+          href: "/dashboard/check-in",
+          icon: QrCode,
+        },
+        {
+          label: "Guests",
+          href: "/dashboard/guests",
+          icon: Users,
+        },
+        {
+          label: "Messages",
+          href: "/dashboard/messages",
+          icon: MessageSquare,
+        },
+        {
+          label: "Reports",
+          href: "/dashboard/reports",
+          icon: BarChart3,
         },
       ]
     : [
@@ -130,6 +212,11 @@ export default function Sidebar() {
           label: "Messages",
           href: "/dashboard/messages",
           icon: MessageSquare,
+        },
+        {
+          label: "Attendance Commitment",
+          href: "/dashboard/attendance-commitment",
+          icon: ShieldCheck,
         },
         {
           label: "Analytics",

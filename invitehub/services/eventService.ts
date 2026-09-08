@@ -229,6 +229,96 @@ export const updateReminders = async (
   return response.data;
 };
 
+export interface AttendanceCommitmentMetrics {
+  totalConfirmed: number;
+  attendedSafe: number;
+  noShows: number;
+  waivedCount: number;
+  chargedCount: number;
+  pendingCount: number;
+}
+
+export interface NoShowGuest {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  guaranteeStatus: string;
+  guaranteeAmount: number;
+  rsvpAt?: string;
+  penaltyNoticeSentAt?: string | null;
+  guaranteeChargedAt?: string | null;
+  guaranteeWaivedAt?: string | null;
+  eventDate?: string;
+  eventTitle?: string;
+  reviewWindowDays?: number;
+}
+
+export interface AttendanceCommitmentResponse {
+  success: boolean;
+  metrics: AttendanceCommitmentMetrics;
+  noShows: NoShowGuest[];
+  error?: string;
+}
+
+export interface AttendanceGuaranteeSettings {
+  isEnabled: boolean;
+  guaranteeAmount: number;
+  reviewWindowDays: number;
+}
+
+export interface AttendanceGuaranteeSettingsResponse {
+  success: boolean;
+  data: AttendanceGuaranteeSettings;
+  message?: string;
+  error?: string;
+}
+
+export const getAttendanceCommitment = async (eventId: string): Promise<AttendanceCommitmentResponse> => {
+  const response = await API.get<AttendanceCommitmentResponse>(`/events/${eventId}/attendance-commitment`);
+  return response.data;
+};
+
+export const getAttendanceGuaranteeSettings = async (): Promise<AttendanceGuaranteeSettingsResponse> => {
+  const response = await API.get<AttendanceGuaranteeSettingsResponse>("/security/attendance-guarantee");
+  return response.data;
+};
+
+export const updateAttendanceGuaranteeSettings = async (
+  settings: Partial<AttendanceGuaranteeSettings>
+): Promise<AttendanceGuaranteeSettingsResponse> => {
+  const response = await API.put<AttendanceGuaranteeSettingsResponse>("/security/attendance-guarantee", settings);
+  return response.data;
+};
+
+export const waiveGuestGuarantee = async (guestId: string): Promise<{ success: boolean; message: string; guest?: any }> => {
+  const response = await API.post<{ success: boolean; message: string; guest?: any }>(`/guests/${guestId}/waive-guarantee`);
+  return response.data;
+};
+
+export const chargeGuestGuarantee = async (guestId: string): Promise<{ success: boolean; message: string; transactionId?: string; guest?: any }> => {
+  const response = await API.post<{ success: boolean; message: string; transactionId?: string; guest?: any }>(`/guests/${guestId}/charge-guarantee`);
+  return response.data;
+};
+
+export const processNoShowsCron = async (): Promise<{
+  success: boolean;
+  eventsProcessed: number;
+  noticesSent: number;
+  totalWaived: number;
+  timestamp: string;
+  error?: string;
+}> => {
+  const response = await API.post<{
+    success: boolean;
+    eventsProcessed: number;
+    noticesSent: number;
+    totalWaived: number;
+    timestamp: string;
+    error?: string;
+  }>("/cron/process-no-shows");
+  return response.data;
+};
 
 const eventService = {
   getEvents,
@@ -243,8 +333,16 @@ const eventService = {
   sendInvitations,
   getReminders,
   updateReminders,
+  getAttendanceCommitment,
+  getAttendanceGuaranteeSettings,
+  updateAttendanceGuaranteeSettings,
+  waiveGuestGuarantee,
+  chargeGuestGuarantee,
+  processNoShowsCron,
 };
 
 export default eventService;
+
+
 
 

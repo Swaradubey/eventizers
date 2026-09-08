@@ -49,7 +49,7 @@ export const createGuest = async (guest: Omit<Guest, "id">): Promise<GuestRespon
 
 export const updateGuest = async (
   id: string,
-  guest: Omit<Guest, "id" | "createdAt" | "updatedAt">
+  guest: Partial<Guest> | Omit<Guest, "id" | "createdAt" | "updatedAt">
 ): Promise<GuestResponse> => {
   const response = await API.put<GuestResponse>(`/guests/${id}`, guest);
   return response.data;
@@ -94,6 +94,41 @@ export const updateGroupMembers = async (
   return response.data;
 };
 
+// GUEST PORTAL API METHODS
+export const getMyGuestPortal = async (): Promise<any> => {
+  const response = await API.get("/guests/me/portal");
+  return response.data;
+};
+
+export const submitGuestRsvp = async (payload: {
+  guestId: string;
+  eventId?: string;
+  status: string;
+  plusOnes?: number;
+  dietaryRestrictions?: string;
+  notes?: string;
+}): Promise<{ success: boolean; message: string; guest?: any }> => {
+  const response = await API.post("/guests/me/rsvp", payload);
+  return response.data;
+};
+
+export const selfCheckInGuest = async (payload: {
+  guestId: string;
+  eventId?: string;
+}): Promise<{ success: boolean; message: string; checkIn?: any }> => {
+  const response = await API.post("/guests/me/check-in", payload);
+  return response.data;
+};
+
+export const uploadGuestGalleryPhoto = async (payload: {
+  eventId?: string;
+  photoUrl: string;
+  caption?: string;
+}): Promise<{ success: boolean; message: string; photo?: any }> => {
+  const response = await API.post("/guests/me/gallery", payload);
+  return response.data;
+};
+
 const guestService = {
   getGuests,
   getGuestById,
@@ -105,6 +140,11 @@ const guestService = {
   createGuestGroup,
   deleteGuestGroup,
   updateGroupMembers,
+  getMyGuestPortal,
+  submitGuestRsvp,
+  selfCheckInGuest,
+  uploadGuestGalleryPhoto,
 };
 
 export default guestService;
+

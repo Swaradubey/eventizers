@@ -58,8 +58,12 @@ export default function DashboardPage() {
 
   // Route protection
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
+    if (!authLoading) {
+      if (!user) {
+        router.push("/login");
+      } else if (user.role === "GUEST") {
+        router.push("/dashboard/guest");
+      }
     }
   }, [user, authLoading, router]);
 
