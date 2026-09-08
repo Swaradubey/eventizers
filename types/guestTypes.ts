@@ -6,6 +6,7 @@ export interface Guest {
   email: string;
   phone?: string | null;
   status: "invited" | "confirmed" | "declined" | "pending";
+  rsvpStatus?: string;
   groups?: string[];
   createdAt?: string;
   updatedAt?: string;
@@ -63,3 +64,58 @@ export interface ImportGuestsResponse {
   message: string;
   guests: Guest[];
 }
+
+export interface GuestPortalRegistry {
+  id: string;
+  type: string;
+  title: string;
+  description?: string | null;
+  goalAmount?: number | null;
+  currentAmount?: number | null;
+  currency?: string;
+  externalUrl?: string | null;
+  contributorCount?: number;
+}
+
+export interface GuestPortalEvent {
+  id: string;
+  title: string;
+  description?: string | null;
+  venue: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  eventDate: string;
+  eventTime: string;
+  coverImage?: string | null;
+  invitation?: any;
+  rsvpSettings?: any;
+  registries?: GuestPortalRegistry[];
+}
+
+export interface GuestPortalInvitationItem {
+  guestId: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  status: string;
+  rsvpStatus: string;
+  respondedAt?: string | null;
+  isCheckedIn: boolean;
+  event: GuestPortalEvent;
+}
+
+export interface GuestPortalResponse {
+  success: boolean;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    phoneNumber?: string | null;
+  };
+  invitations: GuestPortalInvitationItem[];
+  activeInvitation: GuestPortalInvitationItem | null;
+}
+

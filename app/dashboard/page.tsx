@@ -60,6 +60,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
+    } else if (!authLoading && user && user.role === "GUEST") {
+      router.push("/dashboard/guest");
     }
   }, [user, authLoading, router]);
 

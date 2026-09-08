@@ -9,10 +9,10 @@ export interface User {
   name: string;
   email: string;
   phoneNumber?: string;
-  role?: "USER" | "ADMIN";
+  role?: "USER" | "ADMIN" | "GUEST" | "COHOST" | string;
   plan?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {

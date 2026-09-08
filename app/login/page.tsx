@@ -22,6 +22,8 @@ export default function LoginPage() {
     if (user) {
       if (user.role === "ADMIN") {
         router.push("/admin/dashboard");
+      } else if (user.role === "GUEST") {
+        router.push("/dashboard/invitations");
       } else {
         router.push("/dashboard");
       }

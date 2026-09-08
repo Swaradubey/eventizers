@@ -20,6 +20,8 @@ export default function AdminLoginPage() {
   useEffect(() => {
     if (user && user.role === "ADMIN") {
       router.push("/admin/dashboard");
+    } else if (user && user.role === "GUEST") {
+      router.push("/dashboard/invitations");
     } else if (user) {
       // If regular user is logged in, redirect to user dashboard
       router.push("/dashboard");
