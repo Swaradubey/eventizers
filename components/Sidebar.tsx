@@ -153,6 +153,11 @@ export default function Sidebar() {
           icon: QrCode,
         },
         {
+          label: "GPS Check-In",
+          href: "/dashboard/gps-checkin",
+          icon: MapPin,
+        },
+        {
           label: "Guests",
           href: "/dashboard/guests",
           icon: Users,
@@ -203,6 +208,11 @@ export default function Sidebar() {
           label: "Check-In",
           href: "/dashboard/check-in",
           icon: UserCheck,
+        },
+        {
+          label: "GPS Check-In",
+          href: "/dashboard/gps-checkin",
+          icon: MapPin,
         },
         {
           label: "Registries",

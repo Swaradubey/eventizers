@@ -8,6 +8,7 @@ import eventService, {
   Event,
   AttendanceCommitmentMetrics,
   NoShowGuest,
+  EventReminder,
 } from "../services/eventService";
 import {
   Menu,
@@ -28,6 +29,9 @@ import {
   DollarSign,
   Mail,
   Send,
+  Bell,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 interface AttendanceCommitmentDashboardProps {
@@ -71,10 +75,29 @@ export default function AttendanceCommitmentDashboard({
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  // Guarantee Reminders State
+  const [guaranteeReminders, setGuaranteeReminders] = useState<EventReminder[]>([]);
+  const [isLoadingReminders, setIsLoadingReminders] = useState(false);
+
   // Action states
   const [isSaving, setIsSaving] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [isProcessingCron, setIsProcessingCron] = useState(false);
+
+  const showToast = (message: string, type: "success" | "error" = "success", durationMs: number = 3500) => {
+    setToastInfo({ message, type });
+    setTimeout(() => {
+      setToastInfo((current) => (current?.message === message ? null : current));
+    }, durationMs);
+  };
+
+  const setToastMessage = (msg: string | null) => {
+    if (!msg) {
+      setToastInfo(null);
+    } else {
+      showToast(msg, "success");
+    }
+  };
 
   const feeOptions = [10, 25, 50, 100];
   const reviewOptions = [3, 5, 7, 14, 30];
@@ -143,30 +166,131 @@ export default function AttendanceCommitmentDashboard({
     }
   };
 
+  // 3b. Fetch reminders for selectedEvent
+  const loadReminders = async (eventId: string) => {
+    try {
+      setIsLoadingReminders(true);
+      const res = await eventService.getReminders(eventId);
+      if (res?.success && Array.isArray(res.reminders)) {
+        const gReminders = res.reminders.filter(
+          (r: EventReminder) => r.targetAudience === "GUARANTEED"
+        );
+        setGuaranteeReminders(gReminders);
+      } else {
+        setGuaranteeReminders([]);
+      }
+    } catch (err) {
+      console.error("Failed to load event reminders:", err);
+      setGuaranteeReminders([]);
+    } finally {
+      setIsLoadingReminders(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedEvent?.id) {
       loadCommitmentData(selectedEvent.id);
+      loadReminders(selectedEvent.id);
     }
   }, [selectedEvent?.id]);
 
+  // Guarantee Reminders Handlers
+  const handleAddGuaranteeReminder = () => {
+    const newReminder: EventReminder = {
+      id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      eventId: selectedEvent?.id,
+      enabled: true,
+      daysBefore: 3,
+      sendVia: "Email",
+      targetAudience: "GUARANTEED",
+      message: "Reminder: Your guaranteed reservation is confirmed. We look forward to seeing you!",
+    };
+    setGuaranteeReminders((prev) => [...prev, newReminder]);
+  };
+
+  const handleUpdateGuaranteeReminder = (index: number, updates: Partial<EventReminder>) => {
+    setGuaranteeReminders((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...updates };
+      return next;
+    });
+  };
+
+  const handleRemoveGuaranteeReminder = (index: number) => {
+    setGuaranteeReminders((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // 4. Save Settings Handler
   const handleSaveSettings = async () => {
+    if (!selectedEvent?.id) {
+      showToast("Please select an active event before saving settings.", "error");
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await eventService.updateAttendanceGuaranteeSettings({
-        isEnabled: isGuaranteeEnabled,
-        guaranteeAmount: selectedFee,
-        reviewWindowDays: reviewWindowDays,
-      });
-      setToastMessage("Attendance guarantee settings saved successfully!");
-      setTimeout(() => setToastMessage(null), 3000);
-      if (selectedEvent?.id) {
-        loadCommitmentData(selectedEvent.id);
+
+      // Clean & sanitize inputs
+      const cleanFee =
+        typeof selectedFee === "string"
+          ? parseFloat(String(selectedFee).replace(/[^0-9.]/g, "")) || 25
+          : Number(selectedFee) || 25;
+
+      const cleanWindow =
+        typeof reviewWindowDays === "string"
+          ? parseInt(String(reviewWindowDays).replace(/[^0-9]/g, ""), 10) || 7
+          : Number(reviewWindowDays) || 7;
+
+      const sanitizedReminders = (guaranteeReminders || []).map((r) => ({
+        ...r,
+        daysBefore:
+          typeof r.daysBefore === "string"
+            ? parseInt(String(r.daysBefore).replace(/[^0-9]/g, ""), 10) || 0
+            : Number(r.daysBefore) || 0,
+        enabled: r.enabled !== undefined ? Boolean(r.enabled) : true,
+        targetAudience: "GUARANTEED" as const,
+        sendVia: ["Email", "SMS", "WhatsApp"].includes(r.sendVia) ? r.sendVia : "Email",
+        message: typeof r.message === "string" ? r.message : "",
+      }));
+
+      const payload = {
+        eventId: selectedEvent.id,
+        id: selectedEvent.id,
+        isEnabled: Boolean(isGuaranteeEnabled),
+        isGuaranteeEnabled: Boolean(isGuaranteeEnabled),
+        enabled: Boolean(isGuaranteeEnabled),
+        guaranteeAmount: cleanFee,
+        guaranteeFeeAmount: cleanFee,
+        amount: cleanFee,
+        reviewWindowDays: cleanWindow,
+        hostReviewWindow: cleanWindow,
+        reminders: sanitizedReminders,
+        guaranteeReminders: sanitizedReminders,
+      };
+
+      console.log("Saving payload:", payload);
+
+      const res = await eventService.updateAttendanceGuaranteeSettings(payload);
+
+      // Secondary sync to event reminders endpoint if needed
+      try {
+        await eventService.saveGuaranteeReminders(selectedEvent.id, sanitizedReminders);
+      } catch (remErr: any) {
+        console.warn("[Guarantee Settings] Non-critical reminders sync note:", remErr?.message);
       }
-    } catch (err) {
-      console.error("Failed to save settings:", err);
-      setToastMessage("Failed to save settings. Please try again.");
-      setTimeout(() => setToastMessage(null), 3000);
+
+      showToast(res?.message || "Settings saved successfully!", "success");
+
+      loadCommitmentData(selectedEvent.id);
+      loadReminders(selectedEvent.id);
+    } catch (err: any) {
+      console.error("Save Guarantee Error:", err.response?.data || err);
+      const serverMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to save settings. Please try again.";
+      showToast(serverMsg, "error", 4500);
     } finally {
       setIsSaving(false);
     }
@@ -297,10 +421,20 @@ export default function AttendanceCommitmentDashboard({
       <div className="fixed bottom-10 right-5 sm:right-10 w-72 sm:w-96 h-72 sm:h-96 bg-blue-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 bg-slate-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-xl flex items-center gap-2 sm:gap-2.5 animate-in fade-in slide-in-from-top-4 duration-200 max-w-[90vw]">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="truncate">{toastMessage}</span>
+      {toastInfo && (
+        <div
+          className={`fixed top-4 sm:top-6 right-4 sm:right-6 z-50 text-white text-xs sm:text-sm font-medium px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-xl flex items-center gap-2 sm:gap-2.5 animate-in fade-in slide-in-from-top-4 duration-200 max-w-[90vw] ${
+            toastInfo.type === "error"
+              ? "bg-rose-900/95 border border-rose-700/60 shadow-rose-950/30"
+              : "bg-slate-900 border border-slate-800"
+          }`}
+        >
+          {toastInfo.type === "error" ? (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">{toastInfo.message}</span>
         </div>
       )}
 
@@ -636,12 +770,165 @@ export default function AttendanceCommitmentDashboard({
                   </div>
                 </div>
 
+                {/* Reservation Guarantee Reminders Section */}
+                <div className="pt-3 border-t border-slate-200/70 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-[#5b45f4] flex items-center justify-center shrink-0">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs sm:text-sm font-bold text-slate-900">
+                            Guarantee Reminders
+                          </p>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
+                            Target: Guaranteed
+                          </span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-500">
+                          Synchronized with Edit Event Reminders
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddGuaranteeReminder}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl bg-indigo-50 hover:bg-indigo-100 text-[#5b45f4] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-200/50 shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Add Reminder</span>
+                    </button>
+                  </div>
+
+                  {isLoadingReminders ? (
+                    <div className="py-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2 bg-slate-50/60 rounded-xl border border-slate-200/50">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#5b45f4]" />
+                      <span>Loading guarantee reminders...</span>
+                    </div>
+                  ) : guaranteeReminders.length === 0 ? (
+                    <div className="p-3 sm:p-4 bg-slate-50/70 border border-dashed border-slate-200 rounded-xl sm:rounded-2xl text-center">
+                      <p className="text-xs text-slate-500">
+                        No guarantee-specific reminders configured for this event.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddGuaranteeReminder}
+                        className="mt-1 text-xs text-[#5b45f4] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" /> Add a 3-day reminder for guaranteed guests
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {guaranteeReminders.map((reminder, idx) => (
+                        <div
+                          key={reminder.id || `gr-${idx}`}
+                          className={`p-3 rounded-xl border transition-all ${
+                            reminder.enabled
+                              ? "bg-slate-50/90 border-slate-200"
+                              : "bg-slate-50/40 border-slate-200/50 opacity-60"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              {/* Enable/Disable Toggle */}
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={reminder.enabled}
+                                onClick={() =>
+                                  handleUpdateGuaranteeReminder(idx, { enabled: !reminder.enabled })
+                                }
+                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors shrink-0 cursor-pointer ${
+                                  reminder.enabled ? "bg-[#5b45f4]" : "bg-slate-300"
+                                }`}
+                                title={reminder.enabled ? "Disable reminder" : "Enable reminder"}
+                              >
+                                <div
+                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-sm transform transition-transform duration-200 ${
+                                    reminder.enabled ? "translate-x-3.5" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+
+                              <span className="text-xs font-bold text-slate-800">
+                                {reminder.daysBefore === 0
+                                  ? "Day of Event"
+                                  : `${reminder.daysBefore} Day${reminder.daysBefore > 1 ? "s" : ""} Before`}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {/* Timing Selector */}
+                              <select
+                                value={reminder.daysBefore}
+                                onChange={(e) =>
+                                  handleUpdateGuaranteeReminder(idx, {
+                                    daysBefore: parseInt(e.target.value, 10),
+                                  })
+                                }
+                                className="text-xs font-medium bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:border-[#5b45f4]"
+                              >
+                                <option value={14}>14 days before</option>
+                                <option value={7}>7 days before</option>
+                                <option value={5}>5 days before</option>
+                                <option value={3}>3 days before</option>
+                                <option value={2}>2 days before</option>
+                                <option value={1}>1 day before</option>
+                                <option value={0}>Day of event</option>
+                              </select>
+
+                              {/* Send Via Selector */}
+                              <select
+                                value={reminder.sendVia}
+                                onChange={(e) =>
+                                  handleUpdateGuaranteeReminder(idx, {
+                                    sendVia: e.target.value as "Email" | "SMS" | "WhatsApp",
+                                  })
+                                }
+                                className="text-xs font-medium bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:border-[#5b45f4]"
+                              >
+                                <option value="Email">Email</option>
+                                <option value="SMS">SMS</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                              </select>
+
+                              {/* Remove Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGuaranteeReminder(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Remove reminder"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Message Input */}
+                          <input
+                            type="text"
+                            value={reminder.message}
+                            onChange={(e) =>
+                              handleUpdateGuaranteeReminder(idx, { message: e.target.value })
+                            }
+                            placeholder="Reminder message to guests..."
+                            className="w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#5b45f4]"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Save Settings Button */}
                 <button
                   type="button"
                   onClick={handleSaveSettings}
-                  disabled={isSaving}
-                  className="w-full py-3 sm:py-3.5 md:py-4 bg-[#5b45f4] hover:bg-[#4d37e6] active:scale-[0.99] text-white rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm md:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-200/50 transition-all disabled:opacity-75 cursor-pointer"
+                  disabled={isSaving || !selectedEvent?.id}
+                  className="w-full py-3 sm:py-3.5 md:py-4 bg-[#5b45f4] hover:bg-[#4d37e6] active:scale-[0.99] text-white rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm md:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-200/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSaving ? (
                     <>

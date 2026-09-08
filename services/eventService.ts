@@ -204,6 +204,7 @@ export interface EventReminder {
   daysBefore: number; // e.g., 14, 7
   sendVia: "Email" | "SMS" | "WhatsApp";
   message: string;
+  targetAudience?: "ALL" | "RSVP_PENDING" | "GUARANTEED";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -226,6 +227,24 @@ export const updateReminders = async (
 ): Promise<RemindersResponse> => {
   const payload = Array.isArray(reminders) ? { reminders } : reminders;
   const response = await API.put<RemindersResponse>(`/events/${eventId}/reminders`, payload);
+  return response.data;
+};
+
+export const saveGuaranteeReminders = async (
+  eventId: string,
+  guaranteeReminders: EventReminder[]
+): Promise<RemindersResponse> => {
+  let existing: EventReminder[] = [];
+  try {
+    const res = await API.get<RemindersResponse>(`/events/${eventId}/reminders`);
+    if (res.data?.success && Array.isArray(res.data.reminders)) {
+      existing = res.data.reminders;
+    }
+  } catch (_) {}
+  const nonGuarantee = existing.filter((r) => r.targetAudience !== "GUARANTEED");
+  const taggedGuarantee = guaranteeReminders.map((r) => ({ ...r, targetAudience: "GUARANTEED" as const }));
+  const merged = [...nonGuarantee, ...taggedGuarantee];
+  const response = await API.put<RemindersResponse>(`/events/${eventId}/reminders`, { reminders: merged });
   return response.data;
 };
 
@@ -265,6 +284,15 @@ export interface AttendanceGuaranteeSettings {
   isEnabled: boolean;
   guaranteeAmount: number;
   reviewWindowDays: number;
+  eventId?: string;
+  id?: string;
+  isGuaranteeEnabled?: boolean;
+  enabled?: boolean;
+  guaranteeFeeAmount?: number;
+  amount?: number;
+  hostReviewWindow?: number;
+  reminders?: EventReminder[];
+  guaranteeReminders?: EventReminder[];
 }
 
 export interface AttendanceGuaranteeSettingsResponse {
@@ -333,6 +361,7 @@ const eventService = {
   sendInvitations,
   getReminders,
   updateReminders,
+  saveGuaranteeReminders,
   getAttendanceCommitment,
   getAttendanceGuaranteeSettings,
   updateAttendanceGuaranteeSettings,

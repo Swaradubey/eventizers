@@ -275,7 +275,7 @@ export default function Hero() {
     }
 
     if (!prompt.trim()) {
-      setErrorMsg("Please describe your event first.");
+      setErrorMsg("Please provide a description of your event.");
       return;
     }
 
@@ -287,23 +287,28 @@ export default function Hero() {
     try {
       const timeStr = isFullDay ? "Full Day" : (startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || undefined);
       const res = await API.post("/ai/generate-event", {
+        userPrompt: prompt.trim(),
         prompt: prompt.trim(),
         eventType: eventType || undefined,
         guestCount: guestCount || undefined,
         date: date || undefined,
         time: timeStr,
+        startTime: isFullDay ? undefined : startTime,
+        endTime: isFullDay ? undefined : endTime,
+        isFullDay,
         venue: venue || undefined,
         guestListName: guestList || undefined,
       });
 
       if (res.data) {
         setAiEventData(res.data);
-        const createdEventId = res.data.event?.id;
+        const createdEventId = res.data.eventId || res.data.event?.id;
+        const redirectUrl = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}` : "/dashboard/invitations");
         if (createdEventId) {
           setSuccessMsg("🎉 AI Event generated! Redirecting to Invitation Designer...");
           setTimeout(() => {
-            router.push(`/dashboard/invitations?eventId=${createdEventId}`);
-          }, 1200);
+            router.push(redirectUrl);
+          }, 800);
         } else {
           setSuccessMsg("🎉 AI Event generated and saved to your Dashboard!");
         }
@@ -1335,7 +1340,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {generating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Generating Event with AI...</span>
+                      <span>Building your event with AI...</span>
                     </>
                   ) : (
                     <>

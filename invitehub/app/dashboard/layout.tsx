@@ -21,6 +21,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Allowed operational routes for Staff / Co-Host
   const staffAllowedPrefixes = [
     "/dashboard/check-in",
+    "/dashboard/gps-checkin",
     "/dashboard/guests",
     "/dashboard/messages",
     "/dashboard/reports",
