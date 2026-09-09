@@ -445,9 +445,10 @@ export const useInvitation = (eventId: string | null) => {
   };
 
   const queueInvitation = async (
-    recipients?: string[] | string,
+    recipients?: string[] | string | Array<{ email: string; guestId?: string; name?: string }>,
     targetInvitationId?: string,
-    snapshotUrlOrBase64?: string
+    snapshotUrlOrBase64?: string,
+    guestIds?: string[]
   ) => {
     const invId = targetInvitationId || invitation?.id;
     if (!invId) {
@@ -461,7 +462,7 @@ export const useInvitation = (eventId: string | null) => {
 
     try {
       console.log(`[useInvitation] Dispatching sendInvitation for invitation: ${invId}, snapshot provided: ${Boolean(snapshotUrlOrBase64)}`);
-      const res = await invitationService.sendInvitation(invId, recipients, snapshotUrlOrBase64);
+      const res = await invitationService.sendInvitation(invId, recipients, snapshotUrlOrBase64, guestIds);
       if (res.success) {
         setSuccessMessage(res.message || "Invitation successfully sent!");
         if (invitation) {

@@ -80,7 +80,7 @@ export default function AIFeatures() {
               </div>
 
               {/* Main Heading */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#0F172A] tracking-tight leading-[1.2] mb-4">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold font-serif text-[#0F172A] tracking-tight leading-[1.2] mb-4" style={{ fontFamily: "Georgia, serif" }}>
                 Everything generated in seconds
               </h2>
 

@@ -42,8 +42,9 @@ export const deleteInvitation = async (id: string): Promise<{ success: boolean; 
 
 export const sendInvitation = async (
   id: string,
-  recipients?: string[] | string,
-  snapshotUrlOrBase64?: string
+  recipients?: string[] | string | Array<{ email: string; guestId?: string; name?: string }>,
+  snapshotUrlOrBase64?: string,
+  guestIds?: string[]
 ): Promise<SendInvitationResponse> => {
   const isBase64 = Boolean(
     snapshotUrlOrBase64 &&
@@ -54,6 +55,7 @@ export const sendInvitation = async (
 
   const response = await API.post<SendInvitationResponse>(`/invitations/${id}/send`, {
     recipients,
+    guestIds,
     snapshot: snapshotUrlOrBase64,
     snapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,
     cardSnapshotUrl: isUrl ? snapshotUrlOrBase64 : undefined,

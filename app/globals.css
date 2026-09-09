@@ -92,12 +92,51 @@ html {
 body {
   background-color: var(--ivory);
   color: var(--ink);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 .font-display {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, 'Playfair Display', serif;
+}
+
+.font-serif {
+  font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+}
+
+/* Home Page Typography: Headings in Georgia, Body in Inter */
+.home-page {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.home-page h1,
+.home-page h2,
+.home-page h3,
+.home-page h4,
+.home-page h5,
+.home-page h6,
+.home-page .home-heading,
+.home-page .font-display,
+.home-page .font-serif {
+  font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
+}
+
+.home-page p,
+.home-page a,
+.home-page button,
+.home-page input,
+.home-page label,
+.home-page li,
+.home-page blockquote {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* AI Assistant Page Typography: Titles/Headings in Georgia */
+.ai-assistant-page h1,
+.ai-assistant-page h2,
+.ai-assistant-page h3,
+.ai-assistant-page h4 {
+  font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
 }
 
 /* Gold shimmer effect */

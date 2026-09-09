@@ -125,10 +125,32 @@ export default function DashboardPage() {
   };
 
 
-  // Open modal for creation
+  // Route directly to AI Assistant for fresh event creation
   const handleCreateClick = () => {
-    setEditingEvent(null);
-    setIsModalOpen(true);
+    // Reset any stale event draft or previous conversation / template session context
+    if (typeof window !== "undefined") {
+      try {
+        const keysToRemove = [
+          "pending_template_id",
+          "pending_template_name",
+          "pending_upload_invite",
+          "pending_upload_name",
+          "pending_upload_type",
+          "pending_upload_title",
+          "ai_event_draft",
+          "event_draft",
+          "ai_chat_history",
+          "ai_conversation",
+        ];
+        keysToRemove.forEach((key) => {
+          sessionStorage.removeItem(key);
+          localStorage.removeItem(key);
+        });
+      } catch (err) {
+        console.warn("Could not reset event draft storage:", err);
+      }
+    }
+    router.push("/dashboard/ai-assistant");
   };
 
   // Navigate to edit dashboard for event

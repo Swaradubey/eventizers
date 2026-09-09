@@ -30,13 +30,16 @@ import {
   Pipette,
   Check,
   MapPin,
+  UserPlus,
+  Tag,
 } from "lucide-react";
 import { Event } from "../../services/eventService";
 import API from "../../services/api";
 import { Invitation } from "../../types/invitationTypes";
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
-import { NEW_TEMPLATES_CONFIG } from "../../lib/newTemplatesData";
+import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData } from "../../lib/newTemplatesData";
+import GuestSelectionModal from "./GuestSelectionModal";
 
 // --- Types & Interfaces ---
 
@@ -86,6 +89,7 @@ export interface StudioDesignState {
     time: string;
     venue: string;
     address: string;
+    description?: string;
   };
 }
 
@@ -178,78 +182,136 @@ export default function InvitationStudio({
 }: InvitationStudioProps) {
   const router = useRouter();
 
-  // --- Initial Design State Generation ---
-  const getInitialDesign = (): StudioDesignState => {
-    const tplConfig = templateIdQuery && NEW_TEMPLATES_CONFIG[templateIdQuery]
-      ? NEW_TEMPLATES_CONFIG[templateIdQuery]
-      : null;
+  // --- Template State Builder ---
+  const createDesignStateFromTemplate = (
+    tplId: string | null | undefined,
+    evt: Event | null,
+    invite: Invitation | null
+  ): StudioDesignState => {
+    const tplConfig = getTemplateConfig(tplId);
+
+    const isDark =
+      tplConfig?.textColor === "#FFFFFF" ||
+      tplConfig?.textColor?.toLowerCase() === "#f8fafc" ||
+      tplConfig?.backgroundColor?.toLowerCase() === "#0a0b10" ||
+      tplConfig?.backgroundColor?.toLowerCase() === "#14131a" ||
+      tplConfig?.id === "tpl-electric-outline" ||
+      tplConfig?.id === "tpl-hype-night";
 
     const titleText =
       tplConfig?.title ||
-      initialInvitation?.title ||
-      initialEvent?.title ||
+      invite?.eventTitle ||
+      invite?.title ||
+      evt?.title ||
       "IT'S AVERY'S BIRTHDAY!";
 
     const dateText =
       tplConfig?.date
         ? `${tplConfig.date}${tplConfig.time ? " AT " + tplConfig.time : ""}`
-        : initialInvitation?.eventDate
-        ? `${new Date(initialInvitation.eventDate).toLocaleDateString("en-US", {
+        : invite?.eventDate
+        ? `${new Date(invite.eventDate).toLocaleDateString("en-US", {
             weekday: "long",
             month: "short",
             day: "numeric",
-          }).toUpperCase()}${initialInvitation.eventTime ? " AT " + initialInvitation.eventTime : ""}`
-        : initialEvent?.eventDate
-        ? `${new Date(initialEvent.eventDate).toLocaleDateString("en-US", {
+          }).toUpperCase()}${invite.eventTime ? " AT " + invite.eventTime : ""}`
+        : evt?.eventDate
+        ? `${new Date(evt.eventDate).toLocaleDateString("en-US", {
             weekday: "long",
             month: "short",
             day: "numeric",
-          }).toUpperCase()}${initialEvent.eventTime ? " AT " + initialEvent.eventTime : ""}`
+          }).toUpperCase()}${evt.eventTime ? " AT " + evt.eventTime : ""}`
         : "SATURDAY, OCTOBER 14 AT 4:00 PM";
 
     const venueText =
       tplConfig?.venue ||
-      initialInvitation?.eventVenue ||
-      initialInvitation?.mainText ||
-      initialEvent?.venue ||
+      invite?.eventVenue ||
+      invite?.mainText ||
+      evt?.venue ||
       "123 CELEBRATION WAY, BROOKLYN, NY";
+
+    const descriptionText =
+      tplConfig?.description ||
+      (invite as any)?.description ||
+      (invite as any)?.message ||
+      (evt as any)?.description ||
+      "Join us for an unforgettable celebration filled with joy, music, and wonderful moments!";
 
     const hostText =
       tplConfig?.host ||
-      initialInvitation?.subtitle ||
-      (initialEvent ? `Hosted by ${initialEvent.title}` : "Hosted with love by the family");
+      invite?.subtitle ||
+      (evt ? `Hosted by ${evt.title}` : "Hosted with love by the family");
 
-    const defaultTitleFont = initialInvitation?.fontFamily || (tplConfig ? "'Londrina Solid', cursive" : "'Playfair Display', serif");
-    const defaultTitleColor = initialInvitation?.textColor || initialInvitation?.accentColor || tplConfig?.accentColor || "#51afff";
-    const defaultTitleSize = initialInvitation?.titleSize || tplConfig?.titleSize || 42;
-    const defaultTitleWeight = initialInvitation?.fontWeight || "900";
-    const defaultTitleAlign = (initialInvitation?.textAlignment as any) || "center";
+    // Resolve Typography
+    const titleFont = tplConfig?.fontFamily
+      ? (tplConfig.fontFamily.includes(",") || tplConfig.fontFamily.includes("'")
+          ? tplConfig.fontFamily
+          : `'${tplConfig.fontFamily}', sans-serif`)
+      : invite?.fontFamily
+      ? (invite.fontFamily.includes(",") || invite.fontFamily.includes("'")
+          ? invite.fontFamily
+          : `'${invite.fontFamily}', serif`)
+      : "'Playfair Display', serif";
+
+    const titleColor =
+      tplConfig?.accentColor ||
+      tplConfig?.textColor ||
+      invite?.accentColor ||
+      invite?.textColor ||
+      "#51afff";
+
+    const titleSize = tplConfig?.titleSize || invite?.titleSize || 42;
+    const titleWeight = tplConfig?.fontWeight || invite?.fontWeight || "800";
+    const titleAlign = (tplConfig?.textAlignment as any) || (invite?.textAlignment as any) || "center";
+
+    // Resolve Card Background
+    let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
+    let cardBgValue = "#faf8f5";
+
+    if (tplConfig?.image && typeof tplConfig.image === "string" && !tplConfig.image.startsWith("#")) {
+      cardBgType = "image";
+      cardBgValue = tplConfig.image;
+    } else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
+      cardBgType = "gradient";
+      cardBgValue = tplConfig.gradient;
+    } else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
+      cardBgType = "color";
+      cardBgValue = tplConfig.backgroundColor;
+    } else if (invite?.imageUrl && typeof invite.imageUrl === "string" && !invite.imageUrl.startsWith("#") && !invite.imageUrl.includes("snapshot")) {
+      cardBgType = "image";
+      cardBgValue = invite.imageUrl;
+    } else if (invite?.backgroundColor?.includes("gradient")) {
+      cardBgType = "gradient";
+      cardBgValue = invite.backgroundColor;
+    } else if (invite?.backgroundColor) {
+      cardBgType = "color";
+      cardBgValue = invite.backgroundColor;
+    }
 
     return {
-      activeTemplateId: templateIdQuery || null,
+      activeTemplateId: tplConfig?.id || tplId || null,
       textLayers: [
         {
           id: "layer-title",
           text: titleText.toUpperCase(),
           x: 50,
-          y: 36,
-          fontSize: defaultTitleSize,
-          fontFamily: defaultTitleFont,
-          color: defaultTitleColor,
+          y: 32,
+          fontSize: titleSize,
+          fontFamily: titleFont,
+          color: titleColor,
           casing: "uppercase",
-          align: defaultTitleAlign,
+          align: titleAlign,
           letterSpacing: 2,
           lineHeight: 1.1,
-          fontWeight: defaultTitleWeight,
+          fontWeight: titleWeight,
         },
         {
           id: "layer-datetime",
           text: dateText,
           x: 50,
-          y: 56,
+          y: 50,
           fontSize: 15,
           fontFamily: "'Inter', sans-serif",
-          color: "#1e293b",
+          color: isDark ? (tplConfig?.textColor || "#FFFFFF") : "#1e293b",
           casing: "uppercase",
           align: "center",
           letterSpacing: 1.5,
@@ -260,10 +322,10 @@ export default function InvitationStudio({
           id: "layer-venue",
           text: venueText,
           x: 50,
-          y: 66,
+          y: 60,
           fontSize: 14,
           fontFamily: "'Inter', sans-serif",
-          color: "#475569",
+          color: isDark ? "rgba(255, 255, 255, 0.85)" : "#475569",
           casing: "none",
           align: "center",
           letterSpacing: 0.5,
@@ -271,13 +333,27 @@ export default function InvitationStudio({
           fontWeight: "600",
         },
         {
+          id: "layer-description",
+          text: descriptionText,
+          x: 50,
+          y: 70,
+          fontSize: 12,
+          fontFamily: "'Inter', sans-serif",
+          color: isDark ? "rgba(255, 255, 255, 0.75)" : "#64748b",
+          casing: "none",
+          align: "center",
+          letterSpacing: 0.3,
+          lineHeight: 1.4,
+          fontWeight: "400",
+        },
+        {
           id: "layer-host",
           text: hostText,
           x: 50,
-          y: 75,
-          fontSize: 13,
+          y: 80,
+          fontSize: 12,
           fontFamily: "'Inter', sans-serif",
-          color: "#64748b",
+          color: isDark ? "rgba(255, 255, 255, 0.65)" : "#94a3b8",
           casing: "none",
           align: "center",
           letterSpacing: 0.5,
@@ -287,40 +363,77 @@ export default function InvitationStudio({
       ],
       selectedTextId: "layer-title",
       cardBg: {
-        type: initialInvitation?.backgroundColor?.includes("gradient")
-          ? "gradient"
-          : (initialInvitation?.imageUrl ? "image" : (tplConfig?.image ? "image" : "color")),
-        value: initialInvitation?.backgroundColor || tplConfig?.image || tplConfig?.backgroundColor || "#faf8f5",
+        type: cardBgType,
+        value: cardBgValue,
       },
       stageBackdrop: {
         type: "color",
-        value: "#253b75", // Rich deep paper blue from Evite/Paperless Post references
+        value: "#253b75",
       },
       envelope: {
-        color: tplConfig?.envelopeColor || initialInvitation?.accentColor || "#781d60",
+        color: tplConfig?.envelopeColor || invite?.accentColor || "#781d60",
         liner: tplConfig?.envelopeLiner || "gold-foil",
         stamp: "wax",
         sticker: null,
       },
       effects: {
         foil: null,
-        texture: "cotton-press",
+        texture: tplConfig?.isLandscape ? "matte" : "cotton-press",
         shadow: "floating",
       },
       eventDetails: {
-        title: initialInvitation?.eventTitle || initialInvitation?.title || initialEvent?.title || titleText,
-        host: initialInvitation?.subtitle || hostText,
-        date: initialInvitation?.eventDate || initialEvent?.eventDate || "2026-10-14",
-        time: initialInvitation?.eventTime || initialEvent?.eventTime || "16:00",
-        venue: initialInvitation?.eventVenue || initialInvitation?.mainText || initialEvent?.venue || venueText,
-        address: initialInvitation?.eventVenue || initialEvent?.address || venueText,
+        title: invite?.eventTitle || invite?.title || evt?.title || titleText,
+        host: invite?.subtitle || hostText,
+        date: invite?.eventDate || evt?.eventDate || tplConfig?.date || "2026-10-14",
+        time: invite?.eventTime || evt?.eventTime || tplConfig?.time || "16:00",
+        venue: invite?.eventVenue || invite?.mainText || evt?.venue || venueText,
+        address: invite?.eventVenue || evt?.address || venueText,
+        description: descriptionText,
       },
     };
   };
 
+  // --- Initial Design State Generation ---
+  const getInitialDesign = (): StudioDesignState => {
+    const effectiveTemplateId =
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+        : null);
+
+    const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, initialInvitation);
+
+    // If the user came from "Upload Existing", override the card background with the
+    // uploaded image URL — this has highest priority over any template background.
+    if (typeof window !== "undefined") {
+      const pendingUpload = sessionStorage.getItem("pending_upload_invite") ||
+        (initialInvitation?.imageUrl && !initialInvitation.imageUrl.includes("snapshot") && !initialInvitation.imageUrl.startsWith("#")
+          ? initialInvitation.imageUrl
+          : null);
+      if (pendingUpload) {
+        baseState.cardBg = { type: "image", value: pendingUpload };
+      }
+    }
+
+    return baseState;
+  };
+
   const [designState, setDesignState] = useState<StudioDesignState>(getInitialDesign);
-  const [activeTab, setActiveTab] = useState<"text" | "backgrounds" | "envelope" | "effects" | "details">("text");
+  const [activeTab, setActiveTab] = useState<"templates" | "text" | "backgrounds" | "envelope" | "effects" | "details">("text");
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
+  const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
+
+  // Template tracking for re-hydration
+  const loadedTemplateIdRef = useRef<string | null>(
+    templateIdQuery ||
+    initialInvitation?.templateId ||
+    initialEvent?.selectedTemplateId ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+      : null)
+  );
 
   // Progress Steps
   const STEPS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
@@ -358,12 +471,19 @@ export default function InvitationStudio({
   const cardCanvasRef = useRef<HTMLDivElement>(null);
   const envelopeStageRef = useRef<HTMLDivElement>(null);
   const [draggingLayerId, setDraggingLayerId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const dragStartPos = useRef<{ mouseX: number; mouseY: number; layerX: number; layerY: number } | null>(null);
 
   // Active selected text layer
   const activeLayer = designState.textLayers.find((l) => l.id === designState.selectedTextId) || designState.textLayers[0];
 
-  // Update active text layer properties
+  // Selection handler to activate any text layer and sync with toolbar
+  const handleSelectLayer = (layerId: string) => {
+    setDesignState((prev) => ({ ...prev, selectedTextId: layerId }));
+    setActiveTab("text");
+  };
+
+  // Update active text layer properties with two-way sync to eventDetails
   const updateActiveLayer = (updates: Partial<TextLayer>) => {
     if (!activeLayer) return;
     const newLayers = designState.textLayers.map((layer) => {
@@ -372,9 +492,24 @@ export default function InvitationStudio({
       }
       return layer;
     });
+
+    let updatedEventDetails = { ...designState.eventDetails };
+    if (updates.text !== undefined) {
+      if (activeLayer.id === "layer-title") {
+        updatedEventDetails.title = updates.text;
+      } else if (activeLayer.id === "layer-venue") {
+        updatedEventDetails.venue = updates.text;
+      } else if (activeLayer.id === "layer-host") {
+        updatedEventDetails.host = updates.text;
+      } else if (activeLayer.id === "layer-description") {
+        updatedEventDetails.description = updates.text;
+      }
+    }
+
     pushStateToHistory({
       ...designState,
       textLayers: newLayers,
+      eventDetails: updatedEventDetails,
     });
   };
 
@@ -382,6 +517,7 @@ export default function InvitationStudio({
   const handleLayerMouseDown = (e: React.MouseEvent, layer: TextLayer) => {
     e.stopPropagation();
     setDesignState((prev) => ({ ...prev, selectedTextId: layer.id }));
+    setActiveTab("text");
     setDraggingLayerId(layer.id);
     dragStartPos.current = {
       mouseX: e.clientX,
@@ -508,11 +644,99 @@ export default function InvitationStudio({
     }
   }, [initialEvent]);
 
+  // When initialInvitation.imageUrl arrives asynchronously (after mount), apply it as
+  // the card background if it looks like a real uploaded image URL and the current
+  // canvas is still showing a blank / default color background (not a user-chosen image).
+  const uploadAppliedToCanvasRef = useRef(false);
+  useEffect(() => {
+    if (uploadAppliedToCanvasRef.current) return;
+    // Check sessionStorage first (highest priority — set by Hero / AI-assistant upload flow)
+    const pendingFromSession = typeof window !== "undefined"
+      ? sessionStorage.getItem("pending_upload_invite")
+      : null;
+    const uploadedUrl =
+      pendingFromSession ||
+      (initialInvitation?.imageUrl &&
+        !initialInvitation.imageUrl.includes("snapshot") &&
+        !initialInvitation.imageUrl.startsWith("#") &&
+        !initialInvitation.imageUrl.startsWith("data:")
+        ? initialInvitation.imageUrl
+        : null);
+
+    if (!uploadedUrl) return;
+
+    uploadAppliedToCanvasRef.current = true;
+    if (pendingFromSession) {
+      try { sessionStorage.removeItem("pending_upload_invite"); } catch (e) {}
+    }
+    setDesignState((prev) => ({
+      ...prev,
+      cardBg: { type: "image", value: uploadedUrl },
+    }));
+  }, [initialInvitation?.imageUrl]);
+
+  // Canvas Re-hydration & Source Template Loading Logic
+  useEffect(() => {
+    const targetTplId =
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+        : null);
+
+    if (targetTplId && targetTplId !== loadedTemplateIdRef.current) {
+      const config = getTemplateConfig(targetTplId);
+      if (config) {
+        loadedTemplateIdRef.current = targetTplId;
+        const freshState = createDesignStateFromTemplate(
+          targetTplId,
+          currentEvent || initialEvent,
+          currentInvitation || initialInvitation
+        );
+        setDesignState(freshState);
+        setUndoStack([]);
+        setRedoStack([]);
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem("pending_template_id");
+            localStorage.removeItem("pending_template_id");
+          } catch (e) {}
+        }
+      }
+    }
+  }, [
+    templateIdQuery,
+    initialInvitation?.templateId,
+    initialEvent?.selectedTemplateId,
+    initialEvent,
+    initialInvitation,
+    currentEvent,
+    currentInvitation,
+  ]);
+
+  // Apply new template from in-studio template switcher
+  const handleSelectTemplate = (templateId: string) => {
+    const config = getTemplateConfig(templateId);
+    if (!config) return;
+    loadedTemplateIdRef.current = templateId;
+    const nextState = createDesignStateFromTemplate(
+      templateId,
+      currentEvent || initialEvent,
+      currentInvitation || initialInvitation
+    );
+    pushStateToHistory(nextState);
+    setToast({
+      message: `✨ Loaded ${config.title} template into canvas!`,
+      type: "success",
+    });
+  };
+
   // Fetch guests for selected event
   useEffect(() => {
     const targetEvtId = currentEvent?.id || initialEvent?.id;
     if (targetEvtId) {
-      guestService.getGuests(targetEvtId).then((res) => {
+      guestService.getGuests(undefined, targetEvtId).then((res) => {
         if (res && res.success && res.guests) {
           setEventGuests(res.guests);
           setSelectedGuestIds(res.guests.map((g: any) => g.id));
@@ -520,6 +744,25 @@ export default function InvitationStudio({
       }).catch(console.error);
     }
   }, [currentEvent?.id, initialEvent?.id]);
+
+  // Handle applying guest selection from GuestSelectionModal
+  const handleApplyGuestSelection = (appliedGuests: any[], appliedIds: string[]) => {
+    setEventGuests((prev) => {
+      const existingKeys = new Set(
+        prev.map((g) => (g.email ? g.email.trim().toLowerCase() : "") || g.id)
+      );
+      const toAdd = appliedGuests.filter((g) => {
+        const key = (g.email ? g.email.trim().toLowerCase() : "") || g.id;
+        return !existingKeys.has(key);
+      });
+      return [...prev, ...toAdd];
+    });
+    setSelectedGuestIds(appliedIds);
+    setToast({
+      message: `Selected ${appliedIds.length} guest(s) from contacts & groups! ✨`,
+      type: "success",
+    });
+  };
 
   // Upload base64 snapshot to server/cloud storage first to avoid large base64 body issues
   const uploadSnapshotBlob = async (dataUrl: string): Promise<string | null> => {
@@ -536,20 +779,27 @@ export default function InvitationStudio({
     return null;
   };
 
-  // Capture canvas snapshot with fallback
+  // Capture ONLY the rendered template card snapshot (excluding envelope stage, liners, stamps, and editor UI)
   const generateSnapshot = async (): Promise<{ dataUrl: string | null; uploadedUrl: string | null }> => {
-    if (!envelopeStageRef.current) return { dataUrl: null, uploadedUrl: null };
+    const targetNode = cardCanvasRef.current || document.getElementById("invitation-card-container");
+    if (!targetNode) {
+      console.warn("[Canvas Snapshot] Card container ref not found in DOM");
+      return { dataUrl: null, uploadedUrl: null };
+    }
     setIsGeneratingSnapshot(true);
     try {
-      // Temporarily deselect active border for pristine capture
+      // Temporarily deselect active text border & drag handles for pristine clean card capture
       const prevSelected = designState.selectedTextId;
       setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 100));
 
-      const dataUrl = await toPng(envelopeStageRef.current, {
-        quality: 0.85,
-        pixelRatio: 1.5,
+      const dataUrl = await toPng(targetNode, {
+        quality: 0.9,
+        pixelRatio: 2.0,
         skipFonts: false,
+        backgroundColor: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("gradient")
+          ? designState.cardBg.value
+          : undefined,
       });
 
       setDesignState((prev) => ({ ...prev, selectedTextId: prevSelected }));
@@ -563,7 +813,7 @@ export default function InvitationStudio({
 
       return { dataUrl, uploadedUrl };
     } catch (err) {
-      console.error("Failed to generate canvas snapshot:", err);
+      console.error("Failed to generate template card snapshot:", err);
       // Non-blocking snapshot failure — let user continue without blocking
       return { dataUrl: null, uploadedUrl: null };
     } finally {
@@ -576,6 +826,7 @@ export default function InvitationStudio({
     const titleLayer = designState.textLayers.find((l) => l.id === "layer-title");
     const dateLayer = designState.textLayers.find((l) => l.id === "layer-datetime");
     const venueLayer = designState.textLayers.find((l) => l.id === "layer-venue");
+    const descLayer = designState.textLayers.find((l) => l.id === "layer-description");
     const hostLayer = designState.textLayers.find((l) => l.id === "layer-host");
 
     const titleText =
@@ -587,7 +838,7 @@ export default function InvitationStudio({
 
     const subtitleText = hostLayer?.text?.trim() || designState.eventDetails.host?.trim() || "";
     const mainText = venueLayer?.text?.trim() || designState.eventDetails.venue?.trim() || "";
-    const message = hostLayer?.text?.trim() || designState.eventDetails.host?.trim() || "";
+    const message = descLayer?.text?.trim() || (designState.eventDetails as any)?.description?.trim() || hostLayer?.text?.trim() || designState.eventDetails.host?.trim() || "";
     const accentColor = titleLayer?.color || "#51afff";
     const textColor = titleLayer?.color || dateLayer?.color || "#1e293b";
     const titleSize = Math.max(16, Math.min(120, Math.round(titleLayer?.fontSize || 42)));
@@ -808,6 +1059,7 @@ export default function InvitationStudio({
           initialEvent?.title?.trim() ||
           "Party Invitation",
         recipients: allRecipients,
+        guestIds: selectedGuestIds,
         snapshot: snapshotDataUrl,
         snapshotUrl: snapshotDataUrl?.startsWith("http") ? snapshotDataUrl : undefined,
         cardImageBase64: snapshotDataUrl?.startsWith("data:") ? snapshotDataUrl : undefined,
@@ -1009,6 +1261,21 @@ export default function InvitationStudio({
         <div className="flex h-full z-20 shadow-xl flex-shrink-0 bg-white border-r border-slate-200/90 text-slate-800">
           {/* Vertical Icon Strip */}
           <div className="w-[76px] bg-white border-r border-slate-200/70 flex flex-col items-center py-4 gap-3 flex-shrink-0">
+            {/* 0. Templates Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("templates")}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                activeTab === "templates"
+                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+              title="Templates"
+            >
+              <Sparkles className="w-5 h-5 stroke-[1.8] text-amber-500" />
+              <span className="text-[10px] tracking-tight">Templates</span>
+            </button>
+
             {/* 1. Text Tab */}
             <button
               type="button"
@@ -1082,6 +1349,61 @@ export default function InvitationStudio({
 
           {/* Sub-Panel Content Area */}
           <div className="w-80 md:w-88 h-full overflow-y-auto p-5 space-y-6 flex flex-col text-slate-700 bg-white">
+            {/* -------------------- TAB 0: TEMPLATES -------------------- */}
+            {activeTab === "templates" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                      Curated Templates
+                    </span>
+                    <p className="text-xs text-slate-500 mt-0.5">Click any template to apply its design 1:1</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {NEW_TEMPLATES.length} Styles
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 max-h-[calc(100vh-180px)] overflow-y-auto pr-1">
+                  {NEW_TEMPLATES.map((tpl) => {
+                    const isSelected = designState.activeTemplateId === tpl.id;
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => handleSelectTemplate(tpl.id)}
+                        className={`group rounded-xl p-2 border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col ${
+                          isSelected
+                            ? "border-slate-900 ring-2 ring-slate-900 bg-slate-50 shadow-sm"
+                            : "border-slate-200 hover:border-slate-400 bg-white hover:shadow-xs"
+                        }`}
+                      >
+                        <div className="aspect-[3/4] rounded-lg overflow-hidden relative mb-2 bg-slate-100 border border-slate-100">
+                          <img
+                            src={tpl.image}
+                            alt={tpl.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          {tpl.badge && (
+                            <span className="absolute top-1.5 right-1.5 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 shadow-xs">
+                              {tpl.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 truncate">{tpl.title}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{tpl.category || tpl.type}</p>
+                        {isSelected && (
+                          <div className="absolute bottom-2 right-2 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* -------------------- TAB 1: TEXT -------------------- */}
             {activeTab === "text" && (
               <div className="space-y-6 animate-in fade-in duration-200">
@@ -1099,6 +1421,40 @@ export default function InvitationStudio({
                       Clear
                     </button>
                   </div>
+
+                  {/* Active Layer Quick Switcher Chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {designState.textLayers.map((l) => {
+                      const isSelected = activeLayer?.id === l.id;
+                      const label =
+                        l.id === "layer-title"
+                          ? "Title"
+                          : l.id === "layer-datetime"
+                          ? "Date & Time"
+                          : l.id === "layer-venue"
+                          ? "Venue"
+                          : l.id === "layer-description"
+                          ? "Description"
+                          : l.id === "layer-host"
+                          ? "Host"
+                          : l.text?.slice(0, 12) || "Layer";
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => handleSelectLayer(l.id)}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-slate-900 text-white shadow-xs"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   {/* Textarea */}
                   <textarea
                     rows={3}
@@ -1825,9 +2181,21 @@ export default function InvitationStudio({
                       value={designState.eventDetails.date}
                       onChange={(e) => {
                         const val = e.target.value;
+                        const dateFormatted = val
+                          ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
+                              weekday: "long",
+                              month: "short",
+                              day: "numeric",
+                            }).toUpperCase()
+                          : "";
+                        const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
+                        const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
                         setDesignState((prev) => ({
                           ...prev,
                           eventDetails: { ...prev.eventDetails, date: val },
+                          textLayers: prev.textLayers.map((l) =>
+                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                          ),
                         }));
                       }}
                       className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
@@ -1840,9 +2208,20 @@ export default function InvitationStudio({
                       value={designState.eventDetails.time}
                       onChange={(e) => {
                         const val = e.target.value;
+                        const dateFormatted = designState.eventDetails.date
+                          ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+                              weekday: "long",
+                              month: "short",
+                              day: "numeric",
+                            }).toUpperCase()
+                          : "";
+                        const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
                         setDesignState((prev) => ({
                           ...prev,
                           eventDetails: { ...prev.eventDetails, time: val },
+                          textLayers: prev.textLayers.map((l) =>
+                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                          ),
                         }));
                       }}
                       className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
@@ -1867,6 +2246,26 @@ export default function InvitationStudio({
                       }));
                     }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Description / Message</label>
+                  <textarea
+                    rows={2}
+                    value={designState.eventDetails.description || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDesignState((prev) => ({
+                        ...prev,
+                        eventDetails: { ...prev.eventDetails, description: val },
+                        textLayers: prev.textLayers.map((l) =>
+                          l.id === "layer-description" ? { ...l, text: val } : l
+                        ),
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
                   />
                 </div>
 
@@ -1902,7 +2301,12 @@ export default function InvitationStudio({
               "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.15) 1px, transparent 1px)",
             backgroundSize: "20px 20px",
           }}
-          onClick={() => setDesignState((prev) => ({ ...prev, selectedTextId: null }))}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+              setEditingTextId(null);
+            }
+          }}
         >
           {/* ENVELOPE + CARD CONTAINER (Captured for snapshot dispatch) */}
           <div
@@ -1941,6 +2345,13 @@ export default function InvitationStudio({
             {/* 2. THE INVITATION CARD (Mounted neatly in the pouch) */}
             <div
               ref={cardCanvasRef}
+              id="invitation-card-container"
+              data-testid="preview-card"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setEditingTextId(null);
+                }
+              }}
               className={`relative z-10 w-[84%] sm:w-[86%] aspect-[3/4.2] rounded-2xl overflow-hidden transition-all duration-300 ${
                 designState.effects.texture === "cotton-press"
                   ? "texture-cotton-press"
@@ -1952,11 +2363,13 @@ export default function InvitationStudio({
                 backgroundColor:
                   designState.cardBg.type === "color"
                     ? designState.cardBg.value
-                    : designState.cardBg.type === "preset"
-                    ? undefined
-                    : "#faf8f5",
+                    : designState.cardBg.type === "image"
+                    ? "#faf8f5"
+                    : undefined,
                 background:
-                  designState.cardBg.type === "preset" ? designState.cardBg.value : undefined,
+                  designState.cardBg.type === "preset" || designState.cardBg.type === "gradient"
+                    ? designState.cardBg.value
+                    : undefined,
                 boxShadow:
                   designState.effects.shadow === "deep"
                     ? "0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)"
@@ -1968,13 +2381,16 @@ export default function InvitationStudio({
               }}
             >
               {/* Background Image if uploaded or template image */}
-              {designState.cardBg.type === "image" && (
-                <img
-                  src={designState.cardBg.value}
-                  alt="Card Background"
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                />
-              )}
+              {designState.cardBg.type === "image" &&
+                designState.cardBg.value &&
+                !designState.cardBg.value.startsWith("#") && (
+                  <img
+                    src={designState.cardBg.value}
+                    alt="Card Background"
+                    crossOrigin="anonymous"
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  />
+                )}
 
               {/* Foil Shimmer Overlay if active */}
               {designState.effects.foil && (
@@ -1994,6 +2410,7 @@ export default function InvitationStudio({
               {/* Draggable & Selectable Text Layers */}
               {designState.textLayers.map((layer) => {
                 const isSelected = designState.selectedTextId === layer.id;
+                const isEditing = editingTextId === layer.id;
                 const isFoil = designState.effects.foil;
 
                 let foilClass = "";
@@ -2004,37 +2421,80 @@ export default function InvitationStudio({
                 return (
                   <div
                     key={layer.id}
-                    onMouseDown={(e) => handleLayerMouseDown(e, layer)}
-                    className={`absolute cursor-move transition-shadow ${
+                    id={`canvas-text-${layer.id}`}
+                    data-testid={`text-layer-${layer.id}`}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handleLayerMouseDown(e, layer);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectLayer(layer.id);
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setEditingTextId(layer.id);
+                      handleSelectLayer(layer.id);
+                    }}
+                    className={`absolute cursor-move transition-shadow select-none pointer-events-auto ${
                       isSelected
-                        ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white/80 rounded-lg"
-                        : "hover:ring-1 hover:ring-blue-300 rounded-lg"
+                        ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white/80 rounded-lg z-30"
+                        : "hover:ring-1 hover:ring-blue-300 rounded-lg z-15"
                     }`}
                     style={{
                       left: `${layer.x}%`,
                       top: `${layer.y}%`,
                       transform: "translate(-50%, -50%)",
                       maxWidth: "92%",
+                      pointerEvents: "auto",
+                      zIndex: isSelected ? 30 : 15,
                     }}
                   >
-                    <div
-                      className={`px-3 py-1 leading-tight whitespace-pre-wrap ${foilClass}`}
-                      style={{
-                        fontFamily: layer.fontFamily,
-                        fontSize: `${layer.fontSize}px`,
-                        color: isFoil ? undefined : layer.color,
-                        textAlign: layer.align,
-                        textTransform: layer.casing === "none" ? undefined : layer.casing,
-                        letterSpacing: `${layer.letterSpacing}px`,
-                        lineHeight: layer.lineHeight,
-                        fontWeight: layer.fontWeight,
-                      }}
-                    >
-                      {layer.text || "Type text here"}
-                    </div>
+                    {isEditing ? (
+                      <textarea
+                        autoFocus
+                        rows={layer.text.includes("\n") || layer.text.length > 30 ? 3 : 1}
+                        value={layer.text}
+                        onChange={(e) => updateActiveLayer({ text: e.target.value })}
+                        onBlur={() => setEditingTextId(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingTextId(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="bg-white/95 border-2 border-blue-500 rounded p-1.5 text-slate-900 resize-none outline-none shadow-xl cursor-text pointer-events-auto"
+                        style={{
+                          fontFamily: layer.fontFamily,
+                          fontSize: `${layer.fontSize}px`,
+                          color: layer.color,
+                          textAlign: layer.align,
+                          lineHeight: layer.lineHeight,
+                          fontWeight: layer.fontWeight,
+                          letterSpacing: `${layer.letterSpacing}px`,
+                          minWidth: "180px",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className={`px-3 py-1 leading-tight whitespace-pre-wrap pointer-events-auto ${foilClass}`}
+                        style={{
+                          fontFamily: layer.fontFamily,
+                          fontSize: `${layer.fontSize}px`,
+                          color: isFoil ? undefined : layer.color,
+                          textAlign: layer.align,
+                          textTransform: layer.casing === "none" ? undefined : layer.casing,
+                          letterSpacing: `${layer.letterSpacing}px`,
+                          lineHeight: layer.lineHeight,
+                          fontWeight: layer.fontWeight,
+                          pointerEvents: "auto",
+                        }}
+                      >
+                        {layer.text || "Type text here"}
+                      </div>
+                    )}
 
                     {/* Active Drag Boundary Handles */}
-                    {isSelected && (
+                    {isSelected && !isEditing && (
                       <>
                         <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
                         <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
@@ -2064,7 +2524,7 @@ export default function InvitationStudio({
 
               {/* Optional Sticker Seal on front flap */}
               {designState.envelope.sticker && (
-                <div className="absolute top-14 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white/90 shadow-lg border border-black/10 flex items-center justify-center text-2xl animate-bounce">
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white/90 shadow-lg border border-black/10 flex items-center justify-center text-2xl animate-bounce pointer-events-none">
                   {STICKERS.find((s) => s.id === designState.envelope.sticker)?.emoji}
                 </div>
               )}
@@ -2138,33 +2598,60 @@ export default function InvitationStudio({
                   </div>
                 </div>
 
-                {/* Guest List Selection (if event has existing guests) */}
-                {eventGuests.length > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-slate-700">
-                        Event Guests ({selectedGuestIds.length}/{eventGuests.length} selected)
-                      </span>
+                {/* Guest List Selection & Group Filtering */}
+                <div>
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      Event Guests ({selectedGuestIds.length}/{eventGuests.length} selected)
+                    </span>
+
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (selectedGuestIds.length === eventGuests.length) setSelectedGuestIds([]);
-                          else setSelectedGuestIds(eventGuests.map((g) => g.id));
-                        }}
-                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                        onClick={() => setIsGuestSelectionModalOpen(true)}
+                        className="text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-1 px-2.5 rounded-lg flex items-center gap-1 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                        title="Import or filter guests by guest groups (Family, Friends, VIP, etc.)"
                       >
-                        {selectedGuestIds.length === eventGuests.length ? "Deselect All" : "Select All"}
+                        <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Select from Contacts/Groups</span>
                       </button>
+
+                      {eventGuests.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedGuestIds.length === eventGuests.length) setSelectedGuestIds([]);
+                            else setSelectedGuestIds(eventGuests.map((g) => g.id));
+                          }}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                        >
+                          {selectedGuestIds.length === eventGuests.length ? "Deselect All" : "Select All"}
+                        </button>
+                      )}
                     </div>
-                    <div className="max-h-32 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+                  </div>
+
+                  {eventGuests.length > 0 ? (
+                    <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
                       {eventGuests.map((guest) => {
                         const isChecked = selectedGuestIds.includes(guest.id);
                         return (
                           <label
-                            key={guest.id}
+                            key={guest.id || guest.email}
                             className="flex items-center justify-between px-3 py-2 text-xs hover:bg-slate-50 cursor-pointer"
                           >
-                            <span className="font-medium text-slate-800">{guest.name || guest.email}</span>
+                            <div className="truncate">
+                              <span className="font-medium text-slate-800">{guest.name || guest.email}</span>
+                              {Array.isArray(guest.groups) && guest.groups.length > 0 && (
+                                <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                                  {guest.groups.map((grp: string) => (
+                                    <span key={grp} className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                      {grp}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -2172,14 +2659,25 @@ export default function InvitationStudio({
                                 if (e.target.checked) setSelectedGuestIds((prev) => [...prev, guest.id]);
                                 else setSelectedGuestIds((prev) => prev.filter((id) => id !== guest.id));
                               }}
-                              className="rounded accent-indigo-600"
+                              className="rounded accent-indigo-600 ml-2"
                             />
                           </label>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-3 border border-slate-200 rounded-xl bg-slate-50/60 text-center flex flex-col items-center gap-1.5">
+                      <p className="text-xs text-slate-600 font-medium">No guests added to this event yet.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsGuestSelectionModalOpen(true)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                      >
+                        + Add guests from contacts or groups
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {/* Additional / Direct Guest Emails */}
                 <div>
@@ -2229,6 +2727,16 @@ export default function InvitationStudio({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Guest Selection & Group Filtering Modal */}
+      <GuestSelectionModal
+        isOpen={isGuestSelectionModalOpen}
+        onClose={() => setIsGuestSelectionModalOpen(false)}
+        currentEventId={currentEvent?.id || initialEvent?.id}
+        currentGuests={eventGuests}
+        initiallySelectedGuestIds={selectedGuestIds}
+        onApply={handleApplyGuestSelection}
+      />
     </div>
   );
 }

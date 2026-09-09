@@ -312,7 +312,7 @@ export default function Templates() {
           <span className="text-[12px] tracking-[0.2em] uppercase text-neutral-500 font-medium font-sans">
             Curated Invitations
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3">
+          <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3" style={{ fontFamily: "Georgia, serif" }}>
             Invitations your guests will love
           </h2>
           <p className="mt-3.5 text-base sm:text-lg text-neutral-600 font-sans leading-relaxed">

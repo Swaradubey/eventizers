@@ -115,7 +115,7 @@ export default function Footer() {
           {/* Top-Right (Newsletter Subscription) */}
           <div className="lg:col-span-6 lg:flex lg:flex-col lg:items-end">
             <div className="w-full max-w-md">
-              <h3 className="text-base font-semibold text-slate-900 mb-1">
+              <h3 className="text-base font-semibold text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                 Join the celebration
               </h3>
               <p className="text-sm text-[#64748b] mb-4">
@@ -218,7 +218,7 @@ export default function Footer() {
           {/* Right CTA Card */}
           <div className="md:col-span-2 lg:col-span-5">
             <div className="rounded-2xl shadow-md p-6 sm:p-7 bg-white border border-slate-100/90 hover:shadow-lg transition-shadow">
-              <h4 className="text-xl font-bold text-slate-900 mb-1">
+              <h4 className="text-xl font-bold text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                 Ready to start?
               </h4>
               <p className="text-sm text-[#64748b] mb-6">

@@ -93,6 +93,31 @@ const fallbackTemplates: Template[] = templateCards.map((tc) => ({
   isPremium: tc.badge === "PREMIUM"
 }));
 
+const getDefaultEventDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().split("T")[0];
+};
+
+const getDefaultEventTime = () => "18:00";
+
+const getDefaultVenueForTemplate = (tpl?: Template | null) => {
+  if (!tpl) return "Celebration Hall";
+  try {
+    const parsed = typeof tpl.content === "string" ? JSON.parse(tpl.content) : tpl.content;
+    if (parsed && parsed.venue) return parsed.venue;
+  } catch (e) {}
+  const cat = (tpl.category || "").toLowerCase();
+  const name = (tpl.name || "").toLowerCase();
+  if (cat.includes("birthday") || name.includes("birthday")) return "Grand Celebration Hall";
+  if (cat.includes("wedding") || name.includes("wedding")) return "Sunset Garden & Ballroom";
+  if (cat.includes("baby") || name.includes("baby")) return "The Blossom Lounge";
+  if (cat.includes("corporate") || name.includes("corporate")) return "Executive Conference Center";
+  if (cat.includes("network") || name.includes("network")) return "The Innovation Hub & Rooftop";
+  if (cat.includes("party") || name.includes("gala")) return "Skyline Lounge";
+  return "Main Event Hall";
+};
+
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
   const card = templateCards.find(c => c.id === templateId);
@@ -249,6 +274,16 @@ export default function Hero() {
   }, [user]);
 
   const handleSelectTemplate = (tpl: Template) => {
+    setSelectedTemplateId(tpl.id);
+    setTemplateTitle(tpl.name);
+    setTemplateVenue(getDefaultVenueForTemplate(tpl));
+    if (!templateDate) {
+      setTemplateDate(getDefaultEventDate());
+    }
+    if (!templateTime) {
+      setTemplateTime(getDefaultEventTime());
+    }
+
     if (!user) {
       try {
         localStorage.setItem("pending_template_id", tpl.id);
@@ -258,14 +293,8 @@ export default function Hero() {
       } catch (e) {
         console.warn("Storage write error:", e);
       }
-      setSelectedTemplateId(tpl.id);
-      setTemplateTitle(tpl.name);
       setIsAuthModalOpen(true);
       return;
-    }
-    setSelectedTemplateId(tpl.id);
-    if (!templateTitle) {
-      setTemplateTitle(tpl.name);
     }
   };
 
@@ -423,14 +452,19 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
   };
 
-  const handleCreateFromTemplate = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
+  const handleCreateFromTemplate = async (tplToUse?: Template) => {
+    const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
+    const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
+    const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-birthday-maya";
 
-    if (!templateTitle.trim() || !templateVenue.trim() || !templateDate || !templateTime) {
-      setErrorMsg("Please fill in all fields (Title, Venue, Date, Time) to create the event.");
+    if (!user) {
+      try {
+        localStorage.setItem("pending_template_id", targetTplId);
+        localStorage.setItem("pending_template_name", targetTpl?.name || "Event");
+        sessionStorage.setItem("pending_template_id", targetTplId);
+        sessionStorage.setItem("pending_template_name", targetTpl?.name || "Event");
+      } catch (e) {}
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -439,24 +473,37 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     setSuccessMsg(null);
 
     try {
-      const selectedTpl = (templates.length > 0 ? templates : fallbackTemplates).find(t => t.id === selectedTemplateId);
+      const finalTitle = (templateTitle && templateTitle.trim()) || targetTpl?.name || "Special Celebration";
+      const finalVenue = (templateVenue && templateVenue.trim()) || getDefaultVenueForTemplate(targetTpl);
+      const finalDate = templateDate || getDefaultEventDate();
+      const finalTime = templateTime || getDefaultEventTime();
+
       const res = await eventService.createEvent({
-        title: templateTitle.trim(),
-        venue: templateVenue.trim(),
-        eventDate: templateDate,
-        eventTime: templateTime,
-        eventType: selectedTpl?.category || "Other",
+        title: finalTitle,
+        venue: finalVenue,
+        eventDate: finalDate,
+        eventTime: finalTime,
+        eventType: targetTpl?.category || "Other",
         // @ts-ignore
-        templateId: selectedTemplateId,
-        selectedTemplateId: selectedTemplateId
+        templateId: targetTplId,
+        selectedTemplateId: targetTplId,
       });
 
       if (res && res.success) {
         const eventId = res.event?.id;
         setSuccessMsg("🎉 Event created successfully from template! Opening Invitation Designer...");
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("pending_template_id", targetTplId);
+            localStorage.setItem("pending_template_id", targetTplId);
+          } catch (e) {}
+        }
         setTimeout(() => {
-          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
-        }, 800);
+          const targetUrl = eventId
+            ? `/dashboard/invitations?eventId=${eventId}&templateId=${encodeURIComponent(targetTplId)}&studio=true`
+            : `/dashboard/invitations?templateId=${encodeURIComponent(targetTplId)}&studio=true`;
+          router.push(targetUrl);
+        }, 600);
       }
     } catch (err: any) {
       console.error(err);
@@ -875,8 +922,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
         {/* Main Heading */}
         <h1
-          className="font-bold tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
-          style={{ fontSize: "clamp(1.9rem, 4vw, 3.75rem)" }}
+          className="font-bold font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
+          style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.9rem, 4vw, 3.75rem)" }}
         >
           Create Any Event in Under 60 Seconds
         </h1>
@@ -1573,10 +1620,18 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
                               {/* Hover overlay with Evite-style Customize pill button */}
                               <div className="absolute inset-0 bg-black/30 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-2">
-                                <span className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectTemplate(tpl);
+                                    handleCreateFromTemplate(tpl);
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
+                                >
                                   <span>Customize</span>
                                   <ArrowRight className="w-3 h-3 text-[#6C5CE7]" />
-                                </span>
+                                </button>
                               </div>
                             </div>
 
@@ -1607,6 +1662,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   }}
                   className="space-y-2.5 pt-3 border-t border-gray-100"
                 >
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-semibold text-gray-500">
+                      Event Details (Auto-filled · Optional to change)
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      Ready to create immediately
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
@@ -1661,7 +1724,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   </div>
 
                   <button
-                    onClick={handleCreateFromTemplate}
+                    onClick={() => handleCreateFromTemplate()}
                     disabled={creatingEvent}
                     className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-[#6C5CE7] hover:bg-[#5E35B1] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-60 cursor-pointer"
                   >

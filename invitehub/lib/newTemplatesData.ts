@@ -273,51 +273,35 @@ export const NEW_TEMPLATES_CARD_ITEMS = NEW_TEMPLATES.map((t) => ({
   envelopeLiner: t.envelopeLiner,
 }));
 
-export const NEW_TEMPLATES_CONFIG = NEW_TEMPLATES.reduce((acc, t) => {
+export const NEW_TEMPLATES_CONFIG: Record<string, NewTemplateData> = NEW_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = {
-    title: t.title,
-    subtitle: t.subtitle,
-    image: t.image,
-    accentColor: t.accentColor,
-    backgroundColor: t.backgroundColor,
-    textColor: t.textColor,
-    titleSize: t.titleSize,
-    fontWeight: t.fontWeight,
-    fontFamily: t.fontFamily,
-    buttonColor: t.buttonColor,
-    buttonRadius: t.buttonRadius,
-    textAlignment: t.textAlignment,
-    description: t.description,
+    ...t,
+  };
+  return acc;
+}, {} as Record<string, NewTemplateData>);
+
+export const NEW_TEMPLATE_DEFAULTS = NEW_TEMPLATES.reduce((acc, t) => {
+  acc[t.id] = {
+    ...t,
   };
   return acc;
 }, {} as Record<string, any>);
 
-export const NEW_TEMPLATE_DEFAULTS = NEW_TEMPLATES.reduce((acc, t) => {
-  acc[t.id] = {
-    title: t.title,
-    subtitle: t.subtitle,
-    category: t.category,
-    date: t.date,
-    time: t.time,
-    host: t.host,
-    venue: t.venue,
-    gradient: t.gradient,
-    accentColor: t.accentColor,
-    emoji: t.emoji,
-    image: t.image,
-    buttonText: t.buttonText,
-    backgroundColor: t.backgroundColor,
-    textColor: t.textColor,
-    titleSize: t.titleSize,
-    fontWeight: t.fontWeight,
-    fontFamily: t.fontFamily,
-    buttonColor: t.buttonColor,
-    buttonRadius: t.buttonRadius,
-    textAlignment: t.textAlignment,
-    description: t.description,
-  };
-  return acc;
-}, {} as Record<string, any>);
+export const getTemplateConfig = (templateId?: string | null): NewTemplateData | null => {
+  if (!templateId) return null;
+  if (NEW_TEMPLATES_CONFIG[templateId]) {
+    return NEW_TEMPLATES_CONFIG[templateId];
+  }
+  // Try case-insensitive or trim search
+  const cleanId = templateId.trim().toLowerCase();
+  const matchedKey = Object.keys(NEW_TEMPLATES_CONFIG).find(
+    (k) => k.toLowerCase() === cleanId
+  );
+  if (matchedKey) {
+    return NEW_TEMPLATES_CONFIG[matchedKey];
+  }
+  return null;
+};
 
 export const NEW_FALLBACK_TEMPLATES = NEW_TEMPLATES.map((t) => ({
   id: t.id,

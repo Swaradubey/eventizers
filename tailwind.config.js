@@ -14,8 +14,11 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["'Playfair Display'", "Georgia", "serif"],
-        body: ["'Inter'", "system-ui", "sans-serif"],
+        display: ["Georgia", "'Playfair Display'", "serif"],
+        serif: ["Georgia", "Cambria", "'Times New Roman'", "Times", "serif"],
+        heading: ["Georgia", "serif"],
+        body: ["'Inter'", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        sans: ["'Inter'", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       colors: {
         ivory: "#FAF8F5",

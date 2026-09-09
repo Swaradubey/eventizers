@@ -146,8 +146,8 @@ export default function Pricing() {
             Plans for everyone
           </p>
           <h2
-            className="font-display text-4xl md:text-5xl font-bold text-[#2D1B3D] mb-4"
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            className="font-display font-serif text-4xl md:text-5xl font-bold text-[#2D1B3D] mb-4"
+            style={{ fontFamily: "Georgia, serif" }}
           >
             Pricing that fits how you gather
           </h2>
@@ -185,9 +185,10 @@ export default function Pricing() {
                         </div>
                       )}
                       <h3
-                        className={`text-3xl font-bold font-body tracking-tight ${
+                        className={`text-3xl font-bold font-serif tracking-tight ${
                           isFeatured ? "text-white" : "text-[#0F1E36]"
                         }`}
+                        style={{ fontFamily: "Georgia, serif" }}
                       >
                         {plan.name}
                       </h3>

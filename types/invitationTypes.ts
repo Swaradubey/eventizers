@@ -1,6 +1,7 @@
 export interface Invitation {
   id: string;
   eventId: string;
+  templateId?: string;
   title: string;
   subtitle?: string;
   mainText?: string;
@@ -28,6 +29,7 @@ export interface Invitation {
 export interface InvitationPayload {
   id?: string;
   eventId: string;
+  templateId?: string;
   title: string;
   subtitle?: string;
   mainText?: string;

@@ -65,7 +65,7 @@ export default function UseCasesAndTestimonials() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight font-sans mt-2 md:mt-3">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight font-serif mt-2 md:mt-3" style={{ fontFamily: "Georgia, serif" }}>
             Loved by hosts everywhere
           </h2>
         </div>

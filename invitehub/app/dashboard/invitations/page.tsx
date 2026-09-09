@@ -45,9 +45,12 @@ import {
   Share2,
   MessageCircle,
   Loader2,
+  UserPlus,
+  Tag,
 } from "lucide-react";
 import { compressAndNormalizeImage } from "../../../utils/imageCompressor";
 import { motion, AnimatePresence } from "framer-motion";
+import GuestSelectionModal from "../../../components/designer/GuestSelectionModal";
 
 function InvitationDesignerPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -75,6 +78,11 @@ function InvitationDesignerPageContent() {
     saveInvitation,
     queueInvitation,
   } = useInvitation(selectedEventId);
+
+  // Pending uploaded image URL captured eagerly on mount before async invitation loads
+  const pendingUploadUrlRef = useRef<string | null>(
+    typeof window !== "undefined" ? sessionStorage.getItem("pending_upload_invite") || null : null
+  );
 
   // Accordion section states
   const [openSection, setOpenSection] = useState<string>("text");
@@ -104,6 +112,7 @@ function InvitationDesignerPageContent() {
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [loadingGuests, setLoadingGuests] = useState<boolean>(false);
   const [isGuestListVisible, setIsGuestListVisible] = useState<boolean>(true);
+  const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState<boolean>(false);
 
   // Interactive Evite / Paperless Post Studio mode
   const [isStudioMode, setIsStudioMode] = useState<boolean>(false);
@@ -249,33 +258,54 @@ function InvitationDesignerPageContent() {
     }
   }, [isPreviewOpen]);
 
-  // Load uploaded invitation from Hero "Upload Existing" tab if navigated from there
+  // Load uploaded invitation from Hero "Upload Existing" tab if navigated from there.
+  // The URL is captured eagerly in pendingUploadUrlRef on mount so template-loading
+  // effects cannot overwrite it before invitation becomes available.
+  const pendingUploadAppliedRef = useRef(false);
   useEffect(() => {
+    if (pendingUploadAppliedRef.current) return;
+    const pendingUpload = pendingUploadUrlRef.current ||
+      (typeof window !== "undefined" ? sessionStorage.getItem("pending_upload_invite") || null : null);
+    if (!pendingUpload || !invitation) return;
+    pendingUploadAppliedRef.current = true;
+    pendingUploadUrlRef.current = null;
     try {
-      const pendingUpload = sessionStorage.getItem("pending_upload_invite");
-      if (pendingUpload && invitation) {
-        sessionStorage.removeItem("pending_upload_invite");
-        setInvitation((prev) => (prev ? { ...prev, imageUrl: pendingUpload } : prev));
-        setToast({ message: "Uploaded invitation loaded into designer! ✨", type: "success" });
-      }
-    } catch (e) {
-      console.error("Failed to load pending upload draft:", e);
-    }
+      sessionStorage.removeItem("pending_upload_invite");
+    } catch (e) {}
+    // Apply with highest priority: override any template imageUrl that was set
+    setInvitation((prev) => (prev ? { ...prev, imageUrl: pendingUpload } : prev));
+    setToast({ message: "Uploaded invitation loaded into designer! ✨", type: "success" });
   }, [invitation, setInvitation]);
+
+  // Track which template was already loaded into the invitation state to prevent repeated resets
+  const appliedTemplateRef = useRef<string | null>(null);
 
   // Load selected template from Templates section if navigated with ?templateId=
   useEffect(() => {
     try {
-      const tplId = queryTemplateId || (typeof window !== "undefined" ? sessionStorage.getItem("pending_template_id") : null);
+      const tplId =
+        queryTemplateId ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+          : null) ||
+        invitation?.templateId ||
+        event?.selectedTemplateId;
+
       if (tplId && NEW_TEMPLATES_CONFIG[tplId] && invitation) {
+        if (appliedTemplateRef.current === tplId && invitation.templateId === tplId) {
+          return;
+        }
+        appliedTemplateRef.current = tplId;
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("pending_template_id");
+          localStorage.removeItem("pending_template_id");
         }
         const tpl = NEW_TEMPLATES_CONFIG[tplId];
         setInvitation((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
+            templateId: tpl.id,
             title: tpl.title ? `Invitation to ${tpl.title}` : prev.title,
             subtitle: tpl.subtitle || prev.subtitle,
             mainText: tpl.description || prev.mainText,
@@ -296,7 +326,7 @@ function InvitationDesignerPageContent() {
     } catch (e) {
       console.error("Failed to load selected template into designer:", e);
     }
-  }, [queryTemplateId, invitation, setInvitation]);
+  }, [queryTemplateId, invitation, event, setInvitation]);
 
   // Seed event-detail override fields from the loaded event the FIRST time event + invitation are both available.
   // Only sets fields that are still empty/null so that previously-saved edits are preserved.
@@ -590,6 +620,32 @@ function InvitationDesignerPageContent() {
     );
   };
 
+  // Handle applying guest and group selections from contacts modal
+  const handleApplyGuestSelection = (appliedGuests: any[], appliedIds: string[]) => {
+    // 1. Merge any new contacts into eventGuests without duplicates
+    setEventGuests((prev) => {
+      const existingKeys = new Set(
+        prev.map((g) => (g.email ? g.email.trim().toLowerCase() : "") || g.id)
+      );
+      const toAdd = appliedGuests.filter((g) => {
+        const key = (g.email ? g.email.trim().toLowerCase() : "") || g.id;
+        return !existingKeys.has(key);
+      });
+      return [...prev, ...toAdd];
+    });
+
+    // 2. Synchronize selected guest IDs
+    setSelectedGuestIds(appliedIds);
+
+    // 3. Ensure guest list is visible to user
+    setIsGuestListVisible(true);
+
+    setToast({
+      message: `Updated invitation list with ${appliedIds.length} guest(s) selected! ✨`,
+      type: "success",
+    });
+  };
+
   // Send Flow
   const handleSend = async () => {
     if (!invitation) return;
@@ -602,10 +658,18 @@ function InvitationDesignerPageContent() {
       return;
     }
 
-    // 1. Collect emails from selected guests from checkboxes
-    const selectedGuestEmails = eventGuests
-      .filter((g: any) => selectedGuestIds.includes(g.id) && g.email && g.email.trim())
-      .map((g: any) => g.email.trim().toLowerCase());
+    // 1. Collect selected guests objects & emails
+    const selectedGuestsList = eventGuests.filter((g: any) =>
+      selectedGuestIds.includes(g.id)
+    );
+
+    const guestListRecipients = selectedGuestsList
+      .filter((g: any) => g.email && g.email.trim())
+      .map((g: any) => ({
+        email: g.email.trim().toLowerCase(),
+        guestId: g.id,
+        name: g.name || "",
+      }));
 
     // 2. Collect custom emails from manual text field
     const manualCustomEmails = recipientEmails
@@ -613,8 +677,22 @@ function InvitationDesignerPageContent() {
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0 && e.includes("@") && e.includes("."));
 
+    const manualRecipients = manualCustomEmails.map((email) => ({
+      email,
+      guestId: undefined,
+      name: "",
+    }));
+
     // 3. Combine and deduplicate
-    const combinedRecipients = Array.from(new Set([...selectedGuestEmails, ...manualCustomEmails]));
+    const allRecipientsMap = new Map<string, { email: string; guestId?: string; name?: string }>();
+    guestListRecipients.forEach((r) => allRecipientsMap.set(r.email, r));
+    manualRecipients.forEach((r) => {
+      if (!allRecipientsMap.has(r.email)) {
+        allRecipientsMap.set(r.email, r);
+      }
+    });
+
+    const combinedRecipients = Array.from(allRecipientsMap.values());
 
     if (combinedRecipients.length === 0) {
       setToast({
@@ -642,7 +720,12 @@ function InvitationDesignerPageContent() {
       const saved = await saveInvitation(payloadToSave);
       const targetId = saved?.id || invitation.id;
       if (targetId) {
-        const sendOk = await queueInvitation(combinedRecipients, targetId, snapshotUrl || undefined);
+        const sendOk = await queueInvitation(
+          combinedRecipients,
+          targetId,
+          snapshotUrl || undefined,
+          selectedGuestIds
+        );
         if (sendOk) {
           setToast({
             message: `Invitation successfully sent to ${combinedRecipients.length} recipient(s)! ✨`,
@@ -764,11 +847,19 @@ function InvitationDesignerPageContent() {
   // Interactive Paperless Post / Evite Style Invitation Designer Studio
   if (isStudioMode) {
     const activeEvent = event || events.find((e) => e.id === selectedEventId) || events[0] || null;
+    const resolvedTemplateId =
+      queryTemplateId ||
+      invitation?.templateId ||
+      activeEvent?.selectedTemplateId ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+        : null);
+
     return (
       <InvitationStudio
         initialEvent={activeEvent}
         initialInvitation={invitation}
-        templateIdQuery={queryTemplateId}
+        templateIdQuery={resolvedTemplateId}
         onSave={async (payload) => {
           let targetEventId = payload.eventId || selectedEventId || activeEvent?.id;
           if (!targetEventId) {
@@ -1534,13 +1625,24 @@ function InvitationDesignerPageContent() {
 
                 {/* Event Guest List Section with Checkboxes */}
                 <div className="pt-3 border-t border-blue-100 flex flex-col gap-3">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-xs flex-wrap gap-2">
                     <span className="text-slate-800 font-bold flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-blue-600" />
                       Event Guests ({selectedGuestIds.length}/{eventGuests.length} selected)
                     </span>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {/* Add Guests / Select from Contacts & Groups */}
+                      <button
+                        type="button"
+                        onClick={() => setIsGuestSelectionModalOpen(true)}
+                        className="text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-1 px-2.5 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                        title="Import or filter guests by guest groups (Family, Friends, VIP, etc.)"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Select from Contacts/Groups</span>
+                      </button>
+
                       {eventGuests.length > 0 && (
                         <button
                           type="button"
@@ -1585,12 +1687,12 @@ function InvitationDesignerPageContent() {
                         <span>Loading guest list...</span>
                       </div>
                     ) : eventGuests.length > 0 ? (
-                      <div className="max-h-44 overflow-y-auto border border-blue-100 rounded-xl p-2 bg-blue-50/30 divide-y divide-blue-100/60 space-y-1">
+                      <div className="max-h-48 overflow-y-auto border border-blue-100 rounded-xl p-2 bg-blue-50/30 divide-y divide-blue-100/60 space-y-1">
                         {eventGuests.map((guest) => {
                           const isSelected = selectedGuestIds.includes(guest.id);
                           return (
                             <label
-                              key={guest.id}
+                              key={guest.id || guest.email}
                               className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
                                 isSelected ? "bg-white shadow-xs border border-blue-200" : "hover:bg-white/60"
                               }`}
@@ -1607,6 +1709,19 @@ function InvitationDesignerPageContent() {
                                   <p className="text-[10px] text-slate-500 truncate">
                                     {guest.email || "No email"} {guest.phone ? `• 📞 ${guest.phone}` : ""}
                                   </p>
+                                  {Array.isArray(guest.groups) && guest.groups.length > 0 && (
+                                    <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                                      {guest.groups.map((grp: string) => (
+                                        <span
+                                          key={grp}
+                                          className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60"
+                                        >
+                                          <Tag className="w-2 h-2" />
+                                          <span>{grp}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               {guest.rsvpStatus && (
@@ -1625,9 +1740,17 @@ function InvitationDesignerPageContent() {
                         })}
                       </div>
                     ) : (
-                      <div className="p-3 bg-blue-50/40 border border-blue-100 rounded-xl text-center">
-                        <p className="text-xs text-slate-600 italic">No guests registered for this event yet.</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Use the custom fields below to send or share invitations directly.</p>
+                      <div className="p-4 bg-blue-50/40 border border-blue-100 rounded-xl text-center flex flex-col items-center gap-2">
+                        <p className="text-xs text-slate-600 font-medium">No guests added to this event yet.</p>
+                        <p className="text-[11px] text-slate-400">Quickly add guests from your saved contacts or groups.</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsGuestSelectionModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>Select from Contacts / Groups</span>
+                        </button>
                       </div>
                     )
                   )}
@@ -1658,6 +1781,8 @@ function InvitationDesignerPageContent() {
                 {/* Device Screen frame */}
                 <div
                   ref={cardPreviewRef}
+                  id="preview-card"
+                  data-testid="invitation-card-container"
                   className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-blue-100 transition-all duration-300"
                   style={{
                     background: invitation.backgroundColor?.includes("gradient")
@@ -2032,6 +2157,16 @@ function InvitationDesignerPageContent() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Guest Selection & Group Filtering Modal */}
+      <GuestSelectionModal
+        isOpen={isGuestSelectionModalOpen}
+        onClose={() => setIsGuestSelectionModalOpen(false)}
+        currentEventId={selectedEventId}
+        currentGuests={eventGuests}
+        initiallySelectedGuestIds={selectedGuestIds}
+        onApply={handleApplyGuestSelection}
+      />
     </div>
   );
 }

@@ -220,7 +220,13 @@ export default function EventModal({
       }
       onClose();
       if (openDesignerAfterSave && createdEventId) {
-        router.push(`/dashboard/invitations?eventId=${createdEventId}&templateId=${encodeURIComponent(selectedTemplateId)}`);
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("pending_template_id", selectedTemplateId);
+            localStorage.setItem("pending_template_id", selectedTemplateId);
+          } catch (e) {}
+        }
+        router.push(`/dashboard/invitations?eventId=${createdEventId}&templateId=${encodeURIComponent(selectedTemplateId)}&studio=true`);
       }
     } catch (err: any) {
       console.error(err);

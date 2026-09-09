@@ -69,7 +69,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header & Typography */}
         <div className="text-center max-w-3xl mx-auto mb-14 md:mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0f172a] tracking-tight font-sans mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0f172a] tracking-tight font-serif mb-4" style={{ fontFamily: "Georgia, serif" }}>
             How Eventizers Works
           </h2>
           <p className="text-[#475569] text-base sm:text-lg leading-relaxed">
@@ -94,7 +94,7 @@ export default function HowItWorks() {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-bold text-[#0f172a] mb-3 font-sans">
+                <h3 className="text-xl font-bold text-[#0f172a] mb-3 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                   {step.title}
                 </h3>
 

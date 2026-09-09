@@ -93,7 +93,7 @@ export default function AttendanceGuarantee() {
           </div>
 
           {/* Heading */}
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-4 tracking-tight font-sans">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-4 tracking-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
             Reduce no-shows with confidence
           </h2>
 
@@ -120,7 +120,7 @@ export default function AttendanceGuarantee() {
                 </div>
 
                 {/* Step Title */}
-                <h3 className="font-semibold text-slate-900 mt-4 text-center text-base">
+                <h3 className="font-semibold text-slate-900 mt-4 text-center text-base font-serif" style={{ fontFamily: "Georgia, serif" }}>
                   {item.title}
                 </h3>
 
@@ -137,7 +137,7 @@ export default function AttendanceGuarantee() {
         <div className="mt-16 md:mt-20 pt-4">
           {/* Section Header (Centered) */}
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 text-center font-sans tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 text-center font-serif tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
               Built for every kind of event
             </h2>
           </div>
@@ -157,7 +157,7 @@ export default function AttendanceGuarantee() {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-slate-900 font-semibold text-lg mt-3">
+                  <h3 className="text-slate-900 font-semibold text-lg mt-3 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                     {item.title}
                   </h3>
 
