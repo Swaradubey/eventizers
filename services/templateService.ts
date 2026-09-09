@@ -5,6 +5,7 @@ export interface Template {
   id: string;
   name: string;
   category: string;
+  badge?: "FREE" | "PREMIUM" | "Trending" | string;
   content: string; // JSON string containing styling design (gradient, accentColor, emoji, description)
   isPremium: boolean;
   createdAt?: string;
@@ -23,6 +24,7 @@ export const getTemplates = async (): Promise<Template[]> => {
         id: tc.id,
         name: tc.title,
         category: tc.category || tc.type,
+        badge: tc.badge || "FREE",
         content: JSON.stringify({
           gradient: tc.gradient,
           accentColor: tc.accentColor,
@@ -32,7 +34,7 @@ export const getTemplates = async (): Promise<Template[]> => {
           description: tc.description,
           image: tc.image
         }),
-        isPremium: false
+        isPremium: tc.badge === "PREMIUM"
       });
     });
 
@@ -47,6 +49,7 @@ export const getTemplates = async (): Promise<Template[]> => {
       id: tc.id,
       name: tc.title,
       category: tc.category || tc.type,
+      badge: tc.badge || "FREE",
       content: JSON.stringify({
         gradient: tc.gradient,
         accentColor: tc.accentColor,
@@ -56,7 +59,7 @@ export const getTemplates = async (): Promise<Template[]> => {
         description: tc.description,
         image: tc.image
       }),
-      isPremium: false
+      isPremium: tc.badge === "PREMIUM"
     }));
   }
 };

@@ -385,30 +385,34 @@ export const useInvitation = (eventId: string | null) => {
 
   // Save / Update Invitation
   const saveInvitation = async (formData: InvitationPayload) => {
-    if (!eventId || !invitation) return null;
+    const targetEventId = formData.eventId || eventId;
+    if (!targetEventId) {
+      setError("Event is required to save the invitation.");
+      return null;
+    }
     setSaving(true);
     setError(null);
     setSuccessMessage(null);
 
-    // Validate Title String Length / Font Size range locally
-    if (!formData.title || formData.title.trim() === "") {
-      setError("Title is required.");
-      setSaving(false);
-      return null;
-    }
-    if (formData.titleSize !== undefined && (formData.titleSize < 20 || formData.titleSize > 80)) {
-      setError("Title size must be between 20 and 80.");
-      setSaving(false);
-      return null;
-    }
+    const titleVal = formData.title && formData.title.trim() !== ""
+      ? formData.title.trim()
+      : (event?.title ? `Invitation to ${event.title}` : "Party Invitation");
 
+    const cleanTitleSize = formData.titleSize !== undefined
+      ? Math.max(16, Math.min(120, formData.titleSize))
+      : 48;
+
+    let payload: any = null;
     try {
       let savedInvite: Invitation;
-      if (!invitation.id || invitation.id === "") {
+      const currentId = formData.id || invitation?.id;
+      if (!currentId || currentId === "") {
         // Create new invitation
-        const payload: InvitationPayload = {
+        payload = {
           ...formData,
-          eventId,
+          title: titleVal,
+          titleSize: cleanTitleSize,
+          eventId: targetEventId,
           status: formData.status || "draft",
         };
         const res = await invitationService.createInvitation(payload);
@@ -416,19 +420,24 @@ export const useInvitation = (eventId: string | null) => {
         setSuccessMessage("Invitation draft saved successfully!");
       } else {
         // Update existing invitation
-        const payload = {
+        payload = {
           ...formData,
-          status: formData.status || invitation.status,
+          title: titleVal,
+          titleSize: cleanTitleSize,
+          eventId: targetEventId,
+          status: formData.status || invitation?.status || "draft",
         };
-        const res = await invitationService.updateInvitation(invitation.id, payload);
+        const res = await invitationService.updateInvitation(currentId, payload);
         savedInvite = res.invitation;
         setSuccessMessage("Invitation saved successfully!");
       }
       setInvitation(savedInvite);
       return savedInvite;
     } catch (err: any) {
-      console.error("Error saving invitation:", err);
-      setError(err.response?.data?.error || "Failed to save the invitation.");
+      console.error("Payload sent:", payload || formData);
+      console.error("400 Response details:", err.response?.data);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to save the invitation.";
+      setError(errorMsg);
       return null;
     } finally {
       setSaving(false);
@@ -455,16 +464,19 @@ export const useInvitation = (eventId: string | null) => {
       const res = await invitationService.sendInvitation(invId, recipients, snapshotUrlOrBase64);
       if (res.success) {
         setSuccessMessage(res.message || "Invitation successfully sent!");
-        setInvitation(prev => prev ? { ...prev, status: "published" } : null);
+        if (invitation) {
+          setInvitation({ ...invitation, status: "published" });
+        }
         return true;
       } else {
         throw new Error(res.message || "Failed to send invitation.");
       }
     } catch (err: any) {
-      console.error("[useInvitation] Error sending invitation:", err);
-      const errorMsg = err.response?.data?.error || err.message || "Failed to send the invitation.";
+      console.error("Payload sent:", { recipients, targetInvitationId: invId, snapshotUrlOrBase64: snapshotUrlOrBase64 ? `${(snapshotUrlOrBase64.length / 1024).toFixed(1)} KB` : "none" });
+      console.error("400 Response details:", err.response?.data);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to send invitation.";
       setError(errorMsg);
-      throw new Error(errorMsg);
+      return false;
     } finally {
       setSending(false);
     }

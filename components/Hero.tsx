@@ -80,6 +80,7 @@ const fallbackTemplates: Template[] = templateCards.map((tc) => ({
   id: tc.id,
   name: tc.title,
   category: tc.category || tc.type,
+  badge: tc.badge || "FREE",
   content: JSON.stringify({
     gradient: tc.gradient,
     accentColor: tc.accentColor,
@@ -89,7 +90,7 @@ const fallbackTemplates: Template[] = templateCards.map((tc) => ({
     description: tc.description,
     image: tc.image
   }),
-  isPremium: false
+  isPremium: tc.badge === "PREMIUM"
 }));
 
 const getTemplateImage = (templateId?: string | null) => {
@@ -140,15 +141,15 @@ export default function Hero() {
 
   // Tab 1: Template states
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-corporate-annual-launch");
   const [templateTitle, setTemplateTitle] = useState("");
   const [templateVenue, setTemplateVenue] = useState("");
   const [templateDate, setTemplateDate] = useState("");
   const [templateTime, setTemplateTime] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(18);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Tab 2: Upload Existing states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -169,8 +170,8 @@ export default function Hero() {
   }, [templates, selectedCategory]);
 
   const displayedTemplates = useMemo(() => {
-    return filteredTemplates.slice(0, visibleCount);
-  }, [filteredTemplates, visibleCount]);
+    return filteredTemplates;
+  }, [filteredTemplates]);
 
   const handleTemplateScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -1461,8 +1462,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       <h3 className="text-xs sm:text-sm font-bold text-gray-900">
                         Choose from editable templates
                       </h3>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
-                        200+ available
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
+                        10 available
                       </span>
                     </div>
 
@@ -1479,7 +1480,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       }}
                       className="text-[11px] font-semibold text-[#6C5CE7] hover:text-[#5E35B1] hover:underline whitespace-nowrap flex items-center gap-1 transition-colors cursor-pointer group"
                     >
-                      <span>View All 200+ Templates</span>
+                      <span>View All Templates</span>
                       <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                     </a>
                   </div>
@@ -1494,7 +1495,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           type="button"
                           onClick={() => {
                             setSelectedCategory(cat);
-                            setVisibleCount(18);
+                            setVisibleCount(10);
                           }}
                           className={`px-3 py-1 text-xs font-medium rounded-full transition-all border cursor-pointer ${
                             isSelected
@@ -1508,7 +1509,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     })}
                   </div>
 
-                  {/* Templates Scrollable Grid Container */}
+                  {/* Templates Grid Container (Evite Style) */}
                   {loadingTemplates ? (
                     <div className="flex items-center justify-center py-10">
                       <div className="w-5 h-5 border-2 border-[#6C5CE7]/30 border-t-[#6C5CE7] rounded-full animate-spin" />
@@ -1517,27 +1518,45 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   ) : (
                     <div 
                       onScroll={handleTemplateScroll}
-                      className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1.5 pb-2 custom-scrollbar scrollbar-thin scrollbar-thumb-gray-300"
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 max-h-[380px] sm:max-h-[440px] overflow-y-auto pr-1.5 pb-2 custom-scrollbar scrollbar-thin scrollbar-thumb-gray-300"
                     >
                       {displayedTemplates.map((tpl) => {
                         const isSelected = selectedTemplateId === tpl.id;
                         const imgUrl = getCardImageUrl(tpl);
+                        const badgeText = tpl.badge || ((tpl as any).isPremium ? "PREMIUM" : "FREE");
+                        const isPremium = badgeText === "PREMIUM";
+
                         return (
                           <div
                             key={tpl.id}
                             onClick={() => handleSelectTemplate(tpl)}
-                            className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-200 border bg-white ${
+                            className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white shadow-sm hover:shadow-xl ${
                               isSelected
-                                ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 shadow-md transform -translate-y-0.5"
-                                : "border-gray-200 hover:border-[#6C5CE7]/50 hover:shadow-sm"
+                                ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 -translate-y-0.5"
+                                : "border-gray-200/90 hover:border-[#6C5CE7]/40 hover:-translate-y-0.5"
                             }`}
                           >
-                            {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 z-10 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
-                                <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3" strokeWidth={3} />
+                            {/* Card Image Container: Portrait invitation ratio aspect-[3/4] */}
+                            <div className="aspect-[3/4] w-full bg-gray-100 relative overflow-hidden">
+                              {/* Pill Badge in Top-Left (Evite style) */}
+                              <div className="absolute top-2 left-2 z-10">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
+                                  isPremium
+                                    ? "bg-amber-500/95 text-white border-amber-400/90"
+                                    : "bg-white/90 text-gray-800 border-white/70"
+                                }`}>
+                                  {badgeText}
+                                </span>
                               </div>
-                            )}
-                            <div className="aspect-[4/3] w-full bg-gray-100 relative overflow-hidden">
+
+                              {/* Selected Checkmark Badge */}
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
+                                  <Check className="w-3 h-3" strokeWidth={3} />
+                                </div>
+                              )}
+
+                              {/* Card Image with smooth zoom-in */}
                               {imgUrl ? (
                                 <img
                                   src={imgUrl}
@@ -1551,36 +1570,28 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                   <Sparkles className="w-5 h-5 text-indigo-400" />
                                 </div>
                               )}
-                              {/* Hover overlay with Use Template action indicator */}
-                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                                <span className="px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-xs text-[10px] font-bold text-[#6C5CE7] shadow-sm transform translate-y-1 group-hover:translate-y-0 transition-transform flex items-center gap-1">
-                                  <span>Use Template</span>
-                                  <ArrowRight className="w-2.5 h-2.5" />
+
+                              {/* Hover overlay with Evite-style Customize pill button */}
+                              <div className="absolute inset-0 bg-black/30 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-2">
+                                <span className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50">
+                                  <span>Customize</span>
+                                  <ArrowRight className="w-3 h-3 text-[#6C5CE7]" />
                                 </span>
                               </div>
                             </div>
-                            <div className="p-2 sm:p-2.5">
-                              <span className="text-[9px] font-bold text-[#6C5CE7] uppercase tracking-wider block mb-0.5 truncate">
+
+                            {/* Card Footer: Clean typography */}
+                            <div className="p-2.5 sm:p-3 bg-white">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-[#6C5CE7] uppercase tracking-wider block mb-0.5 truncate">
                                 {tpl.category}
                               </span>
-                              <h4 className="text-[11px] font-semibold text-gray-900 truncate" title={tpl.name}>
+                              <h4 className="text-xs sm:text-[13px] font-bold text-gray-900 truncate leading-snug group-hover:text-[#6C5CE7] transition-colors" title={tpl.name}>
                                 {tpl.name}
                               </h4>
                             </div>
                           </div>
                         );
                       })}
-
-                      {/* Infinite Scroll / Lazy Load & CTA Trigger */}
-                      {visibleCount < filteredTemplates.length && (
-                        <div
-                          onClick={() => setVisibleCount((prev) => Math.min(prev + 18, filteredTemplates.length))}
-                          className="col-span-2 sm:col-span-3 py-2.5 px-4 rounded-xl border border-dashed border-[#6C5CE7]/40 bg-[#F0EEFF]/30 hover:bg-[#F0EEFF]/70 text-[#6C5CE7] text-xs font-semibold text-center cursor-pointer transition-all flex items-center justify-center gap-2 hover:border-[#6C5CE7]"
-                        >
-                          <span>Load More Templates ({filteredTemplates.length - visibleCount} remaining)</span>
-                          <span>↓</span>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

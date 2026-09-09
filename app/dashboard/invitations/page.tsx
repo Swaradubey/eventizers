@@ -10,6 +10,8 @@ import { useInvitation } from "../../../hooks/useInvitation";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
 import templateService from "../../../services/templateService";
+import { NEW_TEMPLATES_CONFIG } from "../../../lib/newTemplatesData";
+import InvitationStudio from "../../../components/designer/InvitationStudio";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {
   Calendar,
@@ -53,6 +55,7 @@ function InvitationDesignerPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryEventId = searchParams?.get("eventId") || null;
+  const queryTemplateId = searchParams?.get("templateId") || null;
 
   // Events list for dropdown if eventId is not provided
   const [events, setEvents] = useState<Event[]>([]);
@@ -101,6 +104,16 @@ function InvitationDesignerPageContent() {
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [loadingGuests, setLoadingGuests] = useState<boolean>(false);
   const [isGuestListVisible, setIsGuestListVisible] = useState<boolean>(true);
+
+  // Interactive Evite / Paperless Post Studio mode
+  const [isStudioMode, setIsStudioMode] = useState<boolean>(false);
+
+  // If URL explicitly requests studio mode (?studio=true)
+  useEffect(() => {
+    if (searchParams?.get("studio") === "true") {
+      setIsStudioMode(true);
+    }
+  }, [searchParams]);
 
   // Protected route check
   useEffect(() => {
@@ -249,6 +262,65 @@ function InvitationDesignerPageContent() {
       console.error("Failed to load pending upload draft:", e);
     }
   }, [invitation, setInvitation]);
+
+  // Load selected template from Templates section if navigated with ?templateId=
+  useEffect(() => {
+    try {
+      const tplId = queryTemplateId || (typeof window !== "undefined" ? sessionStorage.getItem("pending_template_id") : null);
+      if (tplId && NEW_TEMPLATES_CONFIG[tplId] && invitation) {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("pending_template_id");
+        }
+        const tpl = NEW_TEMPLATES_CONFIG[tplId];
+        setInvitation((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            title: tpl.title ? `Invitation to ${tpl.title}` : prev.title,
+            subtitle: tpl.subtitle || prev.subtitle,
+            mainText: tpl.description || prev.mainText,
+            imageUrl: tpl.image || prev.imageUrl,
+            accentColor: tpl.accentColor || prev.accentColor,
+            backgroundColor: tpl.backgroundColor || prev.backgroundColor,
+            textColor: tpl.textColor || prev.textColor,
+            titleSize: tpl.titleSize || prev.titleSize,
+            fontWeight: tpl.fontWeight || prev.fontWeight,
+            fontFamily: tpl.fontFamily || prev.fontFamily,
+            buttonColor: tpl.buttonColor || prev.buttonColor,
+            buttonRadius: tpl.buttonRadius || prev.buttonRadius,
+            textAlignment: tpl.textAlignment || prev.textAlignment,
+          };
+        });
+        setToast({ message: `Loaded ${tpl.title || "template"} into designer! ✨`, type: "success" });
+      }
+    } catch (e) {
+      console.error("Failed to load selected template into designer:", e);
+    }
+  }, [queryTemplateId, invitation, setInvitation]);
+
+  // Seed event-detail override fields from the loaded event the FIRST time event + invitation are both available.
+  // Only sets fields that are still empty/null so that previously-saved edits are preserved.
+  useEffect(() => {
+    if (!event || !invitation) return;
+    const needsSeed =
+      !invitation.eventTitle &&
+      !invitation.eventDate &&
+      !invitation.eventTime &&
+      !invitation.eventVenue;
+    if (!needsSeed) return;
+    setInvitation((prev) =>
+      prev
+        ? {
+            ...prev,
+            eventTitle: prev.eventTitle || event.title || "",
+            eventDate: prev.eventDate || (event.eventDate ? event.eventDate.substring(0, 10) : ""),
+            eventTime: prev.eventTime || event.eventTime || "",
+            eventVenue: prev.eventVenue || event.venue || "",
+          }
+        : prev
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event]);
 
   const handleInputChange = (field: string, value: any) => {
     if (!invitation) return;
@@ -689,6 +761,48 @@ function InvitationDesignerPageContent() {
     );
   }
 
+  // Interactive Paperless Post / Evite Style Invitation Designer Studio
+  if (isStudioMode) {
+    const activeEvent = event || events.find((e) => e.id === selectedEventId) || events[0] || null;
+    return (
+      <InvitationStudio
+        initialEvent={activeEvent}
+        initialInvitation={invitation}
+        templateIdQuery={queryTemplateId}
+        onSave={async (payload) => {
+          let targetEventId = payload.eventId || selectedEventId || activeEvent?.id;
+          if (!targetEventId) {
+            try {
+              const newEvtRes = await eventService.createEvent({
+                title: payload.title || "My Celebration",
+                venue: payload.mainText || payload.eventVenue || "Venue TBD",
+                eventDate: new Date(Date.now() + 14 * 86400000).toISOString(),
+                eventTime: "18:00:00",
+                status: "draft",
+              });
+              if (newEvtRes.success && newEvtRes.event) {
+                targetEventId = newEvtRes.event.id;
+                setSelectedEventId(targetEventId);
+                setEvents((prev) => [newEvtRes.event, ...prev]);
+                payload.eventId = targetEventId;
+              }
+            } catch (createEvtErr: any) {
+              console.error("Failed to auto-create event for invitation:", createEvtErr);
+            }
+          }
+          const saved = await saveInvitation(payload);
+          if (saved) {
+            setInvitation(saved);
+          }
+          return saved;
+        }}
+        onBack={() => {
+          setIsStudioMode(false);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/80 via-sky-50/40 to-indigo-50/60 flex flex-col font-body text-slate-800 relative overflow-hidden">
       {/* Decorative ambient background glows */}
@@ -710,13 +824,29 @@ function InvitationDesignerPageContent() {
               <Menu className="w-5 h-5 text-[#2D1B3D]" />
             </button>
             <div>
-              <h1
-                className="text-3xl md:text-4xl font-semibold text-[#2D1B3D] font-display"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Invitation Designer
-              </h1>
-              <p className="text-xs text-[#2D1B3D]/60 mt-1">Design and publish invitation web pages for your guests</p>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1
+                  className="text-3xl md:text-4xl font-semibold text-[#2D1B3D] font-display"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  Invitation Designer
+                </h1>
+                <span className="text-2xl md:text-3xl text-slate-300 font-light select-none">/</span>
+                <button
+                  type="button"
+                  id="btn-open-canvas"
+                  onClick={() => setIsStudioMode(true)}
+                  className="group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 text-white font-bold text-sm shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+                  title="Open Canvas in Invitation Studio"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
+                  <span>Canvas</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-white/20 text-white/90">
+                    Studio
+                  </span>
+                </button>
+              </div>
+              <p className="text-xs text-[#2D1B3D]/60 mt-1">Design and publish invitation web pages for your guests &bull; Click <strong>Canvas</strong> to customize in interactive studio</p>
             </div>
           </div>
 
@@ -953,6 +1083,12 @@ function InvitationDesignerPageContent() {
                                 <option value="Inter">Inter (Sans)</option>
                                 <option value="Georgia">Georgia (Serif)</option>
                                 <option value="monospace">Monospace</option>
+                                <option value="'Londrina Solid', cursive">Londrina Solid</option>
+                                <option value="'Permanent Marker', cursive">Permanent Marker</option>
+                                <option value="'Caveat', cursive">Caveat</option>
+                                <option value="'Cinzel', serif">Cinzel</option>
+                                <option value="'Dancing Script', cursive">Dancing Script</option>
+                                <option value="'Montserrat', sans-serif">Montserrat</option>
                               </select>
                             </div>
 
@@ -1278,7 +1414,7 @@ function InvitationDesignerPageContent() {
                   >
                     <div className="flex items-center gap-3">
                       <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-bold text-slate-900">5. Event Details (Read-only)</span>
+                      <span className="text-sm font-bold text-slate-900">5. Event Details</span>
                     </div>
                     {openSection === "event" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
@@ -1291,35 +1427,60 @@ function InvitationDesignerPageContent() {
                         exit={{ height: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-6 pb-6 pt-2 space-y-3 text-xs">
-                          <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2.5 text-slate-800">
-                            <div className="flex items-start gap-2">
-                              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                              <p className="text-[10px] text-slate-600">These details are synced automatically from the event parameters. Edit these in the Events module.</p>
-                            </div>
+                        <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
+                          <div className="flex items-start gap-2 p-3 bg-blue-50/60 border border-blue-100 rounded-xl">
+                            <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-slate-600">Edit these details to customise what appears on your invitation card and in the email sent to guests.</p>
+                          </div>
 
-                            {event ? (
-                              <div className="space-y-2 mt-2 pt-2 border-t border-blue-100">
-                                <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Name</span>
-                                  <span className="font-bold text-xs text-slate-900">{event.title}</span>
-                                </div>
-                                <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Date</span>
-                                  <span className="font-bold text-xs text-slate-900">{formatEventDate(event.eventDate)}</span>
-                                </div>
-                                <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Time</span>
-                                  <span className="font-bold text-xs text-slate-900">{event.eventTime}</span>
-                                </div>
-                                <div>
-                                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block">Venue</span>
-                                  <span className="font-bold text-xs text-slate-900">{event.venue}</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-slate-400 py-2">No event sync details found.</p>
-                            )}
+                          {/* Name / Event Title */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Event Name / Title</label>
+                            <input
+                              type="text"
+                              id="inv-event-title"
+                              value={invitation.eventTitle || ""}
+                              onChange={(e) => handleInputChange("eventTitle", e.target.value)}
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
+                              placeholder="e.g. Annual Gala Night"
+                            />
+                          </div>
+
+                          {/* Date */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Date</label>
+                            <input
+                              type="date"
+                              id="inv-event-date"
+                              value={invitation.eventDate || ""}
+                              onChange={(e) => handleInputChange("eventDate", e.target.value)}
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
+                            />
+                          </div>
+
+                          {/* Time */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Time</label>
+                            <input
+                              type="time"
+                              id="inv-event-time"
+                              value={invitation.eventTime || ""}
+                              onChange={(e) => handleInputChange("eventTime", e.target.value)}
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
+                            />
+                          </div>
+
+                          {/* Venue */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Venue / Location</label>
+                            <input
+                              type="text"
+                              id="inv-event-venue"
+                              value={invitation.eventVenue || ""}
+                              onChange={(e) => handleInputChange("eventVenue", e.target.value)}
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
+                              placeholder="e.g. Grand Ballroom, The Ritz"
+                            />
                           </div>
                         </div>
                       </motion.div>
@@ -1498,7 +1659,14 @@ function InvitationDesignerPageContent() {
                 <div
                   ref={cardPreviewRef}
                   className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-blue-100 transition-all duration-300"
-                  style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
+                  style={{
+                    background: invitation.backgroundColor?.includes("gradient")
+                      ? invitation.backgroundColor
+                      : undefined,
+                    backgroundColor: !invitation.backgroundColor?.includes("gradient")
+                      ? (invitation.backgroundColor || "#ffffff")
+                      : undefined,
+                  }}
                 >
                   {/* Image cover preview */}
                   <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
@@ -1537,7 +1705,7 @@ function InvitationDesignerPageContent() {
                     style={{
                       textAlign: (invitation.textAlignment || "center") as any,
                       color: invitation.textColor,
-                      backgroundColor: invitation.backgroundColor || "#ffffff"
+                      background: "transparent"
                     }}
                   >
 
@@ -1596,7 +1764,7 @@ function InvitationDesignerPageContent() {
                     </div>
 
                     {/* 4. [Date, Time, Location & Event Details Card] */}
-                    {event ? (
+                    {(invitation.eventDate || invitation.eventTime || invitation.eventVenue || event) ? (
                       <div
                         className="w-full max-w-sm p-4 rounded-xl space-y-3.5 text-left border border-opacity-10 backdrop-blur-sm"
                         style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.45)" }}
@@ -1608,7 +1776,11 @@ function InvitationDesignerPageContent() {
                           />
                           <div>
                             <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
-                            <span className="text-xs font-bold font-body">{formatEventDate(event.eventDate)}</span>
+                            <span className="text-xs font-bold font-body">
+                              {invitation.eventDate
+                                ? formatEventDate(invitation.eventDate)
+                                : formatEventDate(event?.eventDate)}
+                            </span>
                           </div>
                         </div>
 
@@ -1619,7 +1791,9 @@ function InvitationDesignerPageContent() {
                           />
                           <div>
                             <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
-                            <span className="text-xs font-bold font-body">{event.eventTime}</span>
+                            <span className="text-xs font-bold font-body">
+                              {invitation.eventTime || event?.eventTime}
+                            </span>
                           </div>
                         </div>
 
@@ -1630,7 +1804,9 @@ function InvitationDesignerPageContent() {
                           />
                           <div>
                             <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
-                            <span className="text-xs font-bold font-body">{event.venue}</span>
+                            <span className="text-xs font-bold font-body">
+                              {invitation.eventVenue || event?.venue}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1694,7 +1870,14 @@ function InvitationDesignerPageContent() {
 
                   <div
                     className="invitation-preview w-full"
-                    style={{ backgroundColor: invitation.backgroundColor || "#ffffff" }}
+                    style={{
+                      background: invitation.backgroundColor?.includes("gradient")
+                        ? invitation.backgroundColor
+                        : undefined,
+                      backgroundColor: !invitation.backgroundColor?.includes("gradient")
+                        ? (invitation.backgroundColor || "#ffffff")
+                        : undefined,
+                    }}
                   >
                     {/* Cover Image */}
                     <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
@@ -1729,7 +1912,7 @@ function InvitationDesignerPageContent() {
                       style={{
                         textAlign: (invitation.textAlignment || "center") as any,
                         color: invitation.textColor,
-                        backgroundColor: invitation.backgroundColor || "#ffffff"
+                        background: "transparent"
                       }}
                     >
 
@@ -1789,7 +1972,7 @@ function InvitationDesignerPageContent() {
                       </div>
 
                       {/* 4. [Date, Time, Location & Event Details Card] */}
-                      {event ? (
+                      {(invitation.eventDate || invitation.eventTime || invitation.eventVenue || event) ? (
                         <div
                           className="w-full max-w-md p-5 rounded-xl space-y-4 text-left border border-opacity-10 backdrop-blur-md"
                           style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.4)" }}
@@ -1801,7 +1984,11 @@ function InvitationDesignerPageContent() {
                             />
                             <div>
                               <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
-                              <span className="text-xs font-bold font-body">{formatEventDate(event.eventDate)}</span>
+                              <span className="text-xs font-bold font-body">
+                                {invitation.eventDate
+                                  ? formatEventDate(invitation.eventDate)
+                                  : formatEventDate(event?.eventDate)}
+                              </span>
                             </div>
                           </div>
 
@@ -1812,7 +1999,9 @@ function InvitationDesignerPageContent() {
                             />
                             <div>
                               <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
-                              <span className="text-xs font-bold font-body">{event.eventTime}</span>
+                              <span className="text-xs font-bold font-body">
+                                {invitation.eventTime || event?.eventTime}
+                              </span>
                             </div>
                           </div>
 
@@ -1823,7 +2012,9 @@ function InvitationDesignerPageContent() {
                             />
                             <div>
                               <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
-                              <span className="text-xs font-bold font-body">{event.venue}</span>
+                              <span className="text-xs font-bold font-body">
+                                {invitation.eventVenue || event?.venue}
+                              </span>
                             </div>
                           </div>
                         </div>

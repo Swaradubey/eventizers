@@ -1,7 +1,6 @@
 export interface Invitation {
   id: string;
   eventId: string;
-  eventTitle?: string;
   title: string;
   subtitle?: string;
   mainText?: string;
@@ -17,6 +16,11 @@ export interface Invitation {
   buttonColor: string;
   buttonRadius: number;
   status: "draft" | "published";
+  // User-editable event detail overrides
+  eventTitle?: string;
+  eventDate?: string;
+  eventTime?: string;
+  eventVenue?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,6 +43,11 @@ export interface InvitationPayload {
   buttonColor?: string;
   buttonRadius?: number;
   status?: "draft" | "published";
+  // User-editable event detail overrides
+  eventTitle?: string;
+  eventDate?: string;
+  eventTime?: string;
+  eventVenue?: string;
 }
 
 export interface InvitationResponse {

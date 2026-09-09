@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { X, Calendar, Clock, MapPin, Tag, Info, Sparkles, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import eventService, { Event } from "../services/eventService";
 import adminService from "../services/adminService";
 import templateService from "../services/templateService";
+import { NEW_TEMPLATES } from "../lib/newTemplatesData";
 import { getImageUrl } from "../utils/imageUrl";
 import { compressAndNormalizeImage } from "../utils/imageCompressor";
 
@@ -54,6 +56,9 @@ export default function EventModal({
     coverImage: "",
   });
 
+  const router = useRouter();
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("tpl-electric-outline");
+  const [openDesignerAfterSave, setOpenDesignerAfterSave] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,12 +198,14 @@ export default function EventModal({
         coverImage: formData.coverImage.trim() || undefined,
       };
 
+      let createdEventId: string | null = null;
       if (isAdmin) {
         if (eventToEdit && eventToEdit.id) {
           await adminService.updateAdminEvent(eventToEdit.id, payload);
           onSuccess("Event updated successfully!");
         } else {
-          await adminService.createAdminEvent(payload);
+          const res = await adminService.createAdminEvent(payload);
+          createdEventId = res?.event?.id || null;
           onSuccess("Event created successfully!");
         }
       } else {
@@ -206,11 +213,15 @@ export default function EventModal({
           await eventService.updateEvent(eventToEdit.id, payload);
           onSuccess("Event updated successfully!");
         } else {
-          await eventService.createEvent(payload);
+          const res = await eventService.createEvent(payload);
+          createdEventId = res?.event?.id || null;
           onSuccess("Event created successfully!");
         }
       }
       onClose();
+      if (openDesignerAfterSave && createdEventId) {
+        router.push(`/dashboard/invitations?eventId=${createdEventId}&templateId=${encodeURIComponent(selectedTemplateId)}`);
+      }
     } catch (err: any) {
       console.error(err);
       setError(
@@ -344,6 +355,45 @@ export default function EventModal({
                   </select>
                 </div>
               </div>
+
+              {/* Invitation Template Selection Carousel */}
+              {!eventToEdit && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#2D1B3D]/70 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
+                      <span>Choose Invitation Template</span>
+                    </span>
+                    <span className="text-[11px] text-[#C9A84C] font-normal">opens in studio</span>
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {NEW_TEMPLATES.slice(0, 6).map((tpl) => {
+                      const isSelected = selectedTemplateId === tpl.id;
+                      return (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => setSelectedTemplateId(tpl.id)}
+                          className={`group rounded-xl p-1.5 border text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-[#2D1B3D] ring-2 ring-[#2D1B3D] bg-white shadow-xs"
+                              : "border-[#E8C4B8]/40 hover:border-slate-400 bg-white/50"
+                          }`}
+                        >
+                          <div className="aspect-[3/4] rounded-lg overflow-hidden relative mb-1 bg-slate-100">
+                            <img
+                              src={tpl.image}
+                              alt={tpl.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </div>
+                          <p className="text-[10px] font-bold text-[#2D1B3D] truncate">{tpl.title}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Date & Time Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -529,7 +579,7 @@ export default function EventModal({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#E8C4B8]/30">
+              <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-[#E8C4B8]/30">
                 <button
                   type="button"
                   onClick={onClose}
@@ -540,14 +590,27 @@ export default function EventModal({
                 </button>
                 <button
                   type="submit"
+                  onClick={() => setOpenDesignerAfterSave(false)}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-[#FAF8F5] bg-[#2D1B3D] rounded-xl hover:bg-[#3d2a52] active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold text-[#2D1B3D] bg-white border border-[#2D1B3D]/30 rounded-xl hover:bg-slate-100 active:scale-95 transition-all focus:outline-none disabled:opacity-50"
                 >
-                  {loading ? (
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                  ) : null}
-                  {eventToEdit ? "Update Event" : "Create Event"}
+                  {eventToEdit ? "Update Event" : "Create Event Only"}
                 </button>
+                {!eventToEdit && (
+                  <button
+                    type="submit"
+                    onClick={() => setOpenDesignerAfterSave(true)}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-[#FAF8F5] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl active:scale-95 transition-all shadow-md focus:outline-none disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    )}
+                    Create & Design in Studio →
+                  </button>
+                )}
               </div>
             </form>
           </motion.div>
