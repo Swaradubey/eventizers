@@ -23,7 +23,13 @@ export default function LoginPage() {
       if (user.role === "ADMIN") {
         router.push("/admin/dashboard");
       } else {
-        router.push("/dashboard");
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const redirectUrl = params?.get("redirect");
+        if (redirectUrl && redirectUrl.startsWith("/")) {
+          router.push(redirectUrl);
+        } else {
+          router.push("/dashboard");
+        }
       }
     }
   }, [user, router]);

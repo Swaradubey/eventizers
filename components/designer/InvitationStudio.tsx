@@ -40,24 +40,62 @@ import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
+import InvitationCanvasStage from "./InvitationCanvasStage";
 
 // --- Types & Interfaces ---
 
 export interface TextLayer {
   id: string;
+  key?: string;
   text: string;
   x: number; // percentage: 0 to 100
   y: number; // percentage: 0 to 100
+  top?: number;
+  left?: number;
   fontSize: number; // px
   fontFamily: string;
   color: string;
-  casing: "uppercase" | "lowercase" | "capitalize" | "none";
-  align: "left" | "center" | "right";
-  letterSpacing: number; // px
-  lineHeight: number; // multiplier e.g. 1.2
-  fontWeight: string;
+  casing?: "uppercase" | "lowercase" | "capitalize" | "none";
+  align?: "left" | "center" | "right";
+  textAlign?: "left" | "center" | "right";
+  letterSpacing?: number; // px
+  lineHeight?: number; // multiplier e.g. 1.2
+  fontWeight: string | number;
   isFoil?: "gold" | "rose-gold" | "silver" | null;
 }
+
+export const isUserUploadedImage = (url?: string | null): boolean => {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (
+    trimmed === "" ||
+    trimmed.startsWith("#") ||
+    trimmed.includes("snapshot") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return false;
+  }
+  // Any asset under /assets/templates/ is a template asset, NOT a user upload
+  if (trimmed.includes("/assets/templates/")) {
+    return false;
+  }
+  // Base64 user uploads, /uploads/ directory, or external upload URLs
+  return (
+    trimmed.startsWith("data:") ||
+    trimmed.includes("/uploads/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  );
+};
+
+export const getCleanTemplateSvg = (url?: string | null): string | null => {
+  if (!url || typeof url !== "string") return null;
+  if (url.includes("/assets/templates/") && url.endsWith(".svg")) {
+    if (url.endsWith("-bg.svg")) return url;
+    return url.replace(/\.svg$/, "-bg.svg");
+  }
+  return url;
+};
 
 export interface StudioDesignState {
   activeTemplateId: string | null;
@@ -220,18 +258,18 @@ export default function InvitationStudio({
       tplConfig?.date
         ? `${tplConfig.date}${tplConfig.time ? " AT " + tplConfig.time : ""}`
         : invite?.eventDate
-        ? `${new Date(invite.eventDate).toLocaleDateString("en-US", {
+          ? `${new Date(invite.eventDate).toLocaleDateString("en-US", {
             weekday: "long",
             month: "short",
             day: "numeric",
           }).toUpperCase()}${invite.eventTime ? " AT " + invite.eventTime : ""}`
-        : evt?.eventDate
-        ? `${new Date(evt.eventDate).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-          }).toUpperCase()}${evt.eventTime ? " AT " + evt.eventTime : ""}`
-        : "SATURDAY, OCTOBER 14 AT 4:00 PM";
+          : evt?.eventDate
+            ? `${new Date(evt.eventDate).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            }).toUpperCase()}${evt.eventTime ? " AT " + evt.eventTime : ""}`
+            : "SATURDAY, OCTOBER 14 AT 4:00 PM";
 
     const venueText =
       tplConfig?.venue ||
@@ -255,13 +293,13 @@ export default function InvitationStudio({
     // Resolve Typography
     const titleFont = tplConfig?.fontFamily
       ? (tplConfig.fontFamily.includes(",") || tplConfig.fontFamily.includes("'")
-          ? tplConfig.fontFamily
-          : `'${tplConfig.fontFamily}', sans-serif`)
+        ? tplConfig.fontFamily
+        : `'${tplConfig.fontFamily}', sans-serif`)
       : invite?.fontFamily
-      ? (invite.fontFamily.includes(",") || invite.fontFamily.includes("'")
+        ? (invite.fontFamily.includes(",") || invite.fontFamily.includes("'")
           ? invite.fontFamily
           : `'${invite.fontFamily}', serif`)
-      : "'Playfair Display', serif";
+        : "'Playfair Display', serif";
 
     const titleColor =
       tplConfig?.accentColor ||
@@ -271,52 +309,98 @@ export default function InvitationStudio({
       "#51afff";
 
     const titleSize = tplConfig?.titleSize || invite?.titleSize || 42;
-    const titleWeight = tplConfig?.fontWeight || invite?.fontWeight || "800";
+    const titleWeight = String(tplConfig?.fontWeight || invite?.fontWeight || "800");
     const titleAlign = (tplConfig?.textAlignment as any) || (invite?.textAlignment as any) || "center";
 
-    // Resolve Card Background
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
     let cardBgValue = "#faf8f5";
 
-    if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
+    // Priority 0: Preserved 4-Layer state from invite
+    if (invite?.cardBg) {
+      cardBgType = invite.cardBg.type;
+      cardBgValue = invite.cardBg.value;
+    } else if (invite?.background) {
+      cardBgType = invite.background.type;
+      cardBgValue = invite.background.value;
+    }
+    // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
+    else if ((tplConfig as any)?.card?.artworkUrl) {
+      cardBgType = "image";
+      cardBgValue = (tplConfig as any).card.artworkUrl;
+    }
+    // Priority 2: Clean Template Decoration Image (never with baked-in text)
+    else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
       cardBgType = "image";
       cardBgValue = tplConfig.decorationImage;
-    } else if (tplConfig?.image && typeof tplConfig.image === "string" && !tplConfig.image.startsWith("#")) {
-      cardBgType = "image";
-      cardBgValue = tplConfig.image;
-    } else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
+    }
+    // Priority 3: Template gradient (clean — no text, just colors)
+    else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
       cardBgType = "gradient";
       cardBgValue = tplConfig.gradient;
-    } else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
+    }
+    // Priority 4: Template solid background color
+    else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
-    } else if (invite?.imageUrl && typeof invite.imageUrl === "string" && !invite.imageUrl.startsWith("#") && !invite.imageUrl.includes("snapshot")) {
+    }
+    // Priority 5: User-uploaded invitation image (user-chosen, no template text overlap risk)
+    else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
-    } else if (invite?.backgroundColor?.includes("gradient")) {
-      cardBgType = "gradient";
-      cardBgValue = invite.backgroundColor;
-    } else if (invite?.backgroundColor) {
+    }
+    // Priority 6: Clean template SVG fallback if invitation has a template image URL
+    else if (invite?.imageUrl && invite.imageUrl.includes("/assets/templates/")) {
+      cardBgType = "image";
+      cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
+    }
+    // Fallback: clean warm white
+    else {
       cardBgType = "color";
-      cardBgValue = invite.backgroundColor;
+      cardBgValue = "#faf8f5";
     }
 
-    // Resolve Text Layers: Use structured layout data from template schema if defined
+    // Resolve Text Layers: Use saved textElements if present, otherwise structured layout from template
     let resolvedTextLayers: TextLayer[] = [];
-    if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
-      resolvedTextLayers = tplConfig.textLayers.map((tl) => ({
+    if (invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0) {
+      resolvedTextLayers = invite.textElements.map((tl) => ({ ...tl }));
+    } else if ((tplConfig as any)?.defaultTextLayers && Array.isArray((tplConfig as any).defaultTextLayers) && (tplConfig as any).defaultTextLayers.length > 0) {
+      resolvedTextLayers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
         id: tl.id,
+        key: tl.key,
         text: tl.text,
-        x: tl.x,
-        y: tl.y,
+        x: tl.left,
+        y: tl.top,
+        top: tl.top,
+        left: tl.left,
         fontSize: tl.fontSize,
         fontFamily: tl.fontFamily,
         color: tl.color,
-        casing: tl.casing,
-        align: tl.align,
-        letterSpacing: tl.letterSpacing,
-        lineHeight: tl.lineHeight,
-        fontWeight: tl.fontWeight,
+        casing: "none" as const,
+        align: tl.textAlign || "center",
+        textAlign: tl.textAlign || "center",
+        letterSpacing: 0.5,
+        lineHeight: 1.2,
+        fontWeight: String(tl.fontWeight),
+        isFoil: null,
+      }));
+    } else if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
+      resolvedTextLayers = tplConfig.textLayers.map((tl) => ({
+        id: tl.id,
+        key: tl.key,
+        text: tl.text,
+        x: tl.x !== undefined ? tl.x : (tl.left || 50),
+        y: tl.y !== undefined ? tl.y : (tl.top || 50),
+        top: tl.top !== undefined ? tl.top : tl.y,
+        left: tl.left !== undefined ? tl.left : tl.x,
+        fontSize: tl.fontSize,
+        fontFamily: tl.fontFamily,
+        color: tl.color,
+        casing: tl.casing || "none",
+        align: tl.align || tl.textAlign || "center",
+        textAlign: tl.textAlign || tl.align || "center",
+        letterSpacing: tl.letterSpacing || 0.5,
+        lineHeight: tl.lineHeight || 1.2,
+        fontWeight: String(tl.fontWeight),
         isFoil: tl.isFoil || null,
       }));
     } else {
@@ -384,7 +468,7 @@ export default function InvitationStudio({
           y: 80,
           fontSize: 12,
           fontFamily: "'Inter', sans-serif",
-          color: isDark ? "rgba(255, 255, 255, 0.65)" : "#94a3b8",
+          color: isDark ? "rgba(255, 255, 0.65)" : "#94a3b8",
           casing: "none",
           align: "center",
           letterSpacing: 0.5,
@@ -399,9 +483,27 @@ export default function InvitationStudio({
       resolvedTextLayers[0]?.id ||
       "layer-title";
 
+    const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || {
+      type: "color",
+      value: isDark ? "#0d1117" : "#1e293b",
+    };
+
+    const savedEnvelope = invite?.envelope || {
+      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || invite?.accentColor || (isDark ? "#18181b" : "#781d60"),
+      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "gold-foil",
+      stamp: "wax",
+      sticker: null,
+    };
+
+    const savedEffects = invite?.effects || {
+      foil: (tplConfig as any)?.foil === "gold" ? "gold" : null,
+      texture: tplConfig?.isLandscape ? "matte" : "cotton-press",
+      shadow: "floating",
+    };
+
     return {
       activeTemplateId: tplConfig?.id || tplId || null,
-      isLandscape: !!tplConfig?.isLandscape,
+      isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
       photoSlot: tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null,
       textLayers: resolvedTextLayers,
       selectedTextId: defaultSelectedId,
@@ -409,21 +511,9 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
-      stageBackdrop: {
-        type: "color",
-        value: "#253b75",
-      },
-      envelope: {
-        color: tplConfig?.envelopeColor || invite?.accentColor || "#781d60",
-        liner: tplConfig?.envelopeLiner || "gold-foil",
-        stamp: "wax",
-        sticker: null,
-      },
-      effects: {
-        foil: null,
-        texture: tplConfig?.isLandscape ? "matte" : "cotton-press",
-        shadow: "floating",
-      },
+      stageBackdrop: savedBackdrop,
+      envelope: savedEnvelope,
+      effects: savedEffects,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
@@ -451,12 +541,11 @@ export default function InvitationStudio({
     // If the user came from "Upload Existing", override the card background with the
     // uploaded image URL — this has highest priority over any template background.
     if (typeof window !== "undefined") {
-      const pendingUpload = sessionStorage.getItem("pending_upload_invite") ||
-        (initialInvitation?.imageUrl && !initialInvitation.imageUrl.includes("snapshot") && !initialInvitation.imageUrl.startsWith("#")
-          ? initialInvitation.imageUrl
-          : null);
+      const pendingUpload = sessionStorage.getItem("pending_upload_invite");
       if (pendingUpload) {
         baseState.cardBg = { type: "image", value: pendingUpload };
+      } else if (initialInvitation?.imageUrl && isUserUploadedImage(initialInvitation.imageUrl)) {
+        baseState.cardBg = { type: "image", value: initialInvitation.imageUrl };
       }
     }
 
@@ -467,6 +556,31 @@ export default function InvitationStudio({
   const [activeTab, setActiveTab] = useState<"templates" | "text" | "backgrounds" | "envelope" | "effects" | "details">("text");
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
+
+  // --- Canvas Zoom & Aspect Ratio Controls ---
+  const [canvasZoom, setCanvasZoom] = useState(100); // 50-150%
+  type CanvasPreset = "portrait-5x7" | "square-5x5" | "story-9x16" | "landscape-4x3";
+  const [canvasPreset, setCanvasPreset] = useState<CanvasPreset>(
+    designState.isLandscape ? "landscape-4x3" : "portrait-5x7"
+  );
+
+  const CANVAS_PRESETS: { id: CanvasPreset; label: string; aspect: string; maxW: number; isLandscape: boolean }[] = [
+    { id: "portrait-5x7", label: "5×7 Portrait", aspect: "3/4.2", maxW: 480, isLandscape: false },
+    { id: "square-5x5", label: "5×5 Square", aspect: "1/1", maxW: 460, isLandscape: false },
+    { id: "story-9x16", label: "9:16 Story", aspect: "9/16", maxW: 340, isLandscape: false },
+    { id: "landscape-4x3", label: "4×3 Landscape", aspect: "4/3", maxW: 580, isLandscape: true },
+  ];
+
+  const activePreset = CANVAS_PRESETS.find((p) => p.id === canvasPreset) || CANVAS_PRESETS[0];
+
+  const handleSelectPreset = (preset: CanvasPreset) => {
+    const cfg = CANVAS_PRESETS.find((p) => p.id === preset)!;
+    setCanvasPreset(preset);
+    setDesignState((prev) => ({ ...prev, isLandscape: cfg.isLandscape }));
+  };
+
+  const handleZoomIn = () => setCanvasZoom((z) => Math.min(150, z + 10));
+  const handleZoomOut = () => setCanvasZoom((z) => Math.max(50, z - 10));
 
   // Template tracking for re-hydration
   const loadedTemplateIdRef = useRef<string | null>(
@@ -745,10 +859,7 @@ export default function InvitationStudio({
       : null;
     const uploadedUrl =
       pendingFromSession ||
-      (initialInvitation?.imageUrl &&
-        !initialInvitation.imageUrl.includes("snapshot") &&
-        !initialInvitation.imageUrl.startsWith("#") &&
-        !initialInvitation.imageUrl.startsWith("data:")
+      (initialInvitation?.imageUrl && isUserUploadedImage(initialInvitation.imageUrl)
         ? initialInvitation.imageUrl
         : null);
 
@@ -756,7 +867,7 @@ export default function InvitationStudio({
 
     uploadAppliedToCanvasRef.current = true;
     if (pendingFromSession) {
-      try { sessionStorage.removeItem("pending_upload_invite"); } catch (e) {}
+      try { sessionStorage.removeItem("pending_upload_invite"); } catch (e) { }
     }
     setDesignState((prev) => ({
       ...prev,
@@ -790,7 +901,7 @@ export default function InvitationStudio({
           try {
             sessionStorage.removeItem("pending_template_id");
             localStorage.removeItem("pending_template_id");
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
@@ -970,8 +1081,11 @@ export default function InvitationStudio({
       eventVenue: designState.eventDetails.venue || currentEvent?.venue || initialEvent?.venue || null,
       textElements: designState.textLayers,
       background: designState.cardBg,
+      cardBg: designState.cardBg,
+      stageBackdrop: designState.stageBackdrop,
       envelope: designState.envelope,
       effects: designState.effects,
+      isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
     };
   };
@@ -1201,11 +1315,10 @@ export default function InvitationStudio({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-16 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium ${
-              toast.type === "success"
-                ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-200"
-                : "bg-red-950/90 border-red-500/30 text-red-200"
-            }`}
+            className={`fixed top-16 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium ${toast.type === "success"
+              ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-200"
+              : "bg-red-950/90 border-red-500/30 text-red-200"
+              }`}
           >
             {toast.type === "success" ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
@@ -1292,13 +1405,12 @@ export default function InvitationStudio({
                   if (idx === 1) setActiveTab("details");
                   if (idx === 0) setActiveTab("text");
                 }}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isActive
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : isCompleted
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${isActive
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : isCompleted
                     ? "text-slate-700 hover:bg-slate-100"
                     : "text-slate-400 hover:text-slate-600"
-                }`}
+                  }`}
               >
                 <span>{step}</span>
               </button>
@@ -1341,7 +1453,70 @@ export default function InvitationStudio({
       </header>
 
       {/* ========================================================================= */}
-      {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVO/STAGE                              */}
+      {/* CANVAS CONTROLS BAR: Preset Size Selector + Zoom Controls                */}
+      {/* ========================================================================= */}
+      <div className="h-10 bg-white border-b border-slate-200/80 px-4 flex items-center gap-3 z-20 flex-shrink-0 shadow-2xs">
+        {/* Aspect Ratio / Size Presets */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
+          {CANVAS_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleSelectPreset(p.id)}
+              className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${canvasPreset === p.id
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                }`}
+              title={p.label}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-4 w-px bg-slate-200 mx-1" />
+
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={canvasZoom <= 50}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <div className="min-w-[48px] h-6 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700 select-none px-1.5">
+            {canvasZoom}%
+          </div>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={canvasZoom >= 150}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => setCanvasZoom(100)}
+            className={`ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${canvasZoom !== 100
+              ? "text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+              : "text-slate-400 border border-transparent"
+              }`}
+            title="Reset Zoom to 100%"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
       {/* ========================================================================= */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* ------------------------------------------------------------- */}
@@ -1354,11 +1529,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("templates")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "templates"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "templates"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
               title="Templates"
             >
               <Sparkles className="w-5 h-5 stroke-[1.8] text-amber-500" />
@@ -1369,11 +1543,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("text")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "text"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "text"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <span className="text-lg font-bold font-serif leading-none">T</span>
               <span className="text-[10px] tracking-tight">Text</span>
@@ -1383,11 +1556,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("backgrounds")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "backgrounds"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Layers className="w-5 h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Backgrounds</span>
@@ -1397,11 +1569,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("effects")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "effects"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "effects"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Sparkles className="w-5 h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Effects</span>
@@ -1411,11 +1582,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("envelope")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "envelope"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "envelope"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Mail className="w-5 h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Envelope</span>
@@ -1425,11 +1595,10 @@ export default function InvitationStudio({
             <button
               type="button"
               onClick={() => setActiveTab("details")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "details"
-                  ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "details"
+                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Calendar className="w-5 h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Details</span>
@@ -1461,11 +1630,10 @@ export default function InvitationStudio({
                         key={tpl.id}
                         type="button"
                         onClick={() => handleSelectTemplate(tpl.id)}
-                        className={`group rounded-xl p-2 border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col ${
-                          isSelected
-                            ? "border-slate-900 ring-2 ring-slate-900 bg-slate-50 shadow-sm"
-                            : "border-slate-200 hover:border-slate-400 bg-white hover:shadow-xs"
-                        }`}
+                        className={`group rounded-xl p-2 border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col ${isSelected
+                          ? "border-slate-900 ring-2 ring-slate-900 bg-slate-50 shadow-sm"
+                          : "border-slate-200 hover:border-slate-400 bg-white hover:shadow-xs"
+                          }`}
                       >
                         <div className="aspect-[3/4] rounded-lg overflow-hidden relative mb-2 bg-slate-100 border border-slate-100">
                           <img
@@ -1519,24 +1687,23 @@ export default function InvitationStudio({
                         l.id === "layer-title"
                           ? "Title"
                           : l.id === "layer-datetime"
-                          ? "Date & Time"
-                          : l.id === "layer-venue"
-                          ? "Venue"
-                          : l.id === "layer-description"
-                          ? "Description"
-                          : l.id === "layer-host"
-                          ? "Host"
-                          : l.text?.slice(0, 12) || "Layer";
+                            ? "Date & Time"
+                            : l.id === "layer-venue"
+                              ? "Venue"
+                              : l.id === "layer-description"
+                                ? "Description"
+                                : l.id === "layer-host"
+                                  ? "Host"
+                                  : l.text?.slice(0, 12) || "Layer";
                       return (
                         <button
                           key={l.id}
                           type="button"
                           onClick={() => handleSelectLayer(l.id)}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-slate-900 text-white shadow-xs"
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSelected
+                            ? "bg-slate-900 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
                         >
                           {label}
                         </button>
@@ -1653,11 +1820,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ casing: "uppercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                          activeLayer?.casing === "uppercase"
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "uppercase"
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                       >
                         A
                       </button>
@@ -1665,11 +1831,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ casing: "lowercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                          activeLayer?.casing === "lowercase"
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "lowercase"
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                       >
                         a
                       </button>
@@ -1677,11 +1842,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ casing: "capitalize" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                          activeLayer?.casing === "capitalize"
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "capitalize"
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                       >
                         Aa
                       </button>
@@ -1697,11 +1861,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ align: "left" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                          activeLayer?.align === "left"
-                            ? "bg-[#d9f99d] text-slate-900"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "left"
+                          ? "bg-[#d9f99d] text-slate-900"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                         title="Align Left"
                       >
                         <AlignLeft className="w-4 h-4" />
@@ -1710,11 +1873,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ align: "center" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                          activeLayer?.align === "center"
-                            ? "bg-[#d9f99d] text-slate-900"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "center"
+                          ? "bg-[#d9f99d] text-slate-900"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                         title="Align Center"
                       >
                         <AlignCenter className="w-4 h-4" />
@@ -1723,11 +1885,10 @@ export default function InvitationStudio({
                       <button
                         type="button"
                         onClick={() => updateActiveLayer({ align: "right" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                          activeLayer?.align === "right"
-                            ? "bg-[#d9f99d] text-slate-900"
-                            : "text-slate-700 hover:bg-slate-50"
-                        }`}
+                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "right"
+                          ? "bg-[#d9f99d] text-slate-900"
+                          : "text-slate-700 hover:bg-slate-50"
+                          }`}
                         title="Align Right"
                       >
                         <AlignRight className="w-4 h-4" />
@@ -1853,9 +2014,9 @@ export default function InvitationStudio({
                               ...designState,
                               photoSlot: designState.photoSlot
                                 ? {
-                                    ...designState.photoSlot,
-                                    imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
-                                  }
+                                  ...designState.photoSlot,
+                                  imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
+                                }
                                 : null,
                             };
                             setDesignState(nextState);
@@ -1966,11 +2127,10 @@ export default function InvitationStudio({
                               cardBg: { type: "preset", value: bg.style },
                             })
                           }
-                          className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${
-                            isSelected
-                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                          }`}
+                          className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
+                            ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                            : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                            }`}
                           style={{ background: bg.style }}
                           title={bg.label}
                         >
@@ -2002,11 +2162,10 @@ export default function InvitationStudio({
                         key={sub}
                         type="button"
                         onClick={() => setEnvelopeSubTab(sub)}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-white text-slate-900 shadow-xs font-bold"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${isActive
+                          ? "bg-white text-slate-900 shadow-xs font-bold"
+                          : "text-slate-500 hover:text-slate-800"
+                          }`}
                       >
                         {sub}
                       </button>
@@ -2033,11 +2192,10 @@ export default function InvitationStudio({
                                 envelope: { ...designState.envelope, color: env.hex },
                               })
                             }
-                            className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${
-                              isSelected
-                                ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                                : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                            }`}
+                            className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
+                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                              }`}
                             style={{ background: env.hex }}
                             title={env.name}
                           >
@@ -2076,11 +2234,10 @@ export default function InvitationStudio({
                                 envelope: { ...designState.envelope, liner: liner.id },
                               })
                             }
-                            className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
-                              isSelected
-                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                : "border-slate-200 hover:border-slate-300"
-                            }`}
+                            className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
+                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                              : "border-slate-200 hover:border-slate-300"
+                              }`}
                           >
                             <div
                               className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
@@ -2116,11 +2273,10 @@ export default function InvitationStudio({
                                 },
                               })
                             }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
-                              isSelected
-                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                : "border-slate-200 hover:border-slate-300"
-                            }`}
+                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                              : "border-slate-200 hover:border-slate-300"
+                              }`}
                           >
                             <span className="text-2xl">{stamp.emoji}</span>
                             <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
@@ -2153,11 +2309,10 @@ export default function InvitationStudio({
                                 },
                               })
                             }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
-                              isSelected
-                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                : "border-slate-200 hover:border-slate-300"
-                            }`}
+                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                              : "border-slate-200 hover:border-slate-300"
+                              }`}
                           >
                             <span className="text-2xl">{sticker.emoji}</span>
                             <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
@@ -2196,11 +2351,10 @@ export default function InvitationStudio({
                               effects: { ...designState.effects, foil: foil.id as any },
                             });
                           }}
-                          className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
-                              : "border-slate-200 text-slate-700 hover:border-slate-300"
-                          }`}
+                          className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isSelected
+                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
+                            : "border-slate-200 text-slate-700 hover:border-slate-300"
+                            }`}
                         >
                           <span className={foil.class || ""}>{foil.label}</span>
                         </button>
@@ -2232,11 +2386,10 @@ export default function InvitationStudio({
                               effects: { ...designState.effects, texture: tex.id as any },
                             })
                           }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                              : "border-slate-200 text-slate-700 hover:border-slate-300"
-                          }`}
+                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                            : "border-slate-200 text-slate-700 hover:border-slate-300"
+                            }`}
                         >
                           {tex.label}
                         </button>
@@ -2268,11 +2421,10 @@ export default function InvitationStudio({
                               effects: { ...designState.effects, shadow: sh.id as any },
                             })
                           }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                              : "border-slate-200 text-slate-700 hover:border-slate-300"
-                          }`}
+                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                            : "border-slate-200 text-slate-700 hover:border-slate-300"
+                            }`}
                         >
                           {sh.label}
                         </button>
@@ -2341,10 +2493,10 @@ export default function InvitationStudio({
                         const val = e.target.value;
                         const dateFormatted = val
                           ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
-                              weekday: "long",
-                              month: "short",
-                              day: "numeric",
-                            }).toUpperCase()
+                            weekday: "long",
+                            month: "short",
+                            day: "numeric",
+                          }).toUpperCase()
                           : "";
                         const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
                         const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
@@ -2368,10 +2520,10 @@ export default function InvitationStudio({
                         const val = e.target.value;
                         const dateFormatted = designState.eventDetails.date
                           ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
-                              weekday: "long",
-                              month: "short",
-                              day: "numeric",
-                            }).toUpperCase()
+                            weekday: "long",
+                            month: "short",
+                            day: "numeric",
+                          }).toUpperCase()
                           : "";
                         const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
                         setDesignState((prev) => ({
@@ -2449,327 +2601,53 @@ export default function InvitationStudio({
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* CENTER CANVAS STAGE: Open Envelope with Card Mounted          */}
+        {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
         {/* ------------------------------------------------------------- */}
-        <div
-          className="flex-1 h-full overflow-auto flex items-center justify-center p-6 md:p-12 relative"
-          style={{
-            backgroundColor: designState.stageBackdrop.value,
-            backgroundImage:
-              "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.15) 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
+        <InvitationCanvasStage
+          config={designState}
+          readOnly={false}
+          selectedTextId={designState.selectedTextId}
+          onSelectLayer={(id) => {
+            if (id) {
+              handleSelectLayer(id);
+            } else {
               setDesignState((prev) => ({ ...prev, selectedTextId: null }));
               setEditingTextId(null);
             }
           }}
-        >
-          {/* ENVELOPE + CARD CONTAINER (Captured for snapshot dispatch) */}
-          <div
-            ref={envelopeStageRef}
-            className={`relative w-full flex flex-col items-center justify-center select-none transition-all duration-300 ${
-              designState.isLandscape
-                ? "max-w-[580px] sm:max-w-[640px] md:max-w-[680px]"
-                : "max-w-[480px] sm:max-w-[540px] md:max-w-[580px]"
-            }`}
-            style={{ minHeight: designState.isLandscape ? "600px" : "680px" }}
-          >
-            {/* 1. Open Envelope Back & Liner Flap (Behind Card) */}
-            <div
-              className={`absolute rounded-t-3xl transition-all duration-300 pointer-events-none ${
-                designState.isLandscape
-                  ? "top-6 w-[96%] sm:w-[98%] h-[310px]"
-                  : "top-4 w-[92%] sm:w-[94%] h-[340px]"
-              }`}
-              style={{
-                background:
-                  ENVELOPE_LINERS.find((l) => l.id === designState.envelope.liner)?.style || "rgba(0,0,0,0.02)",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-                clipPath: "polygon(0 0, 100% 0, 85% 100%, 15% 100%)",
-              }}
-            />
+          onUpdateLayer={(id, updates) => {
+            setDesignState((prev) => ({
+              ...prev,
+              textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+            }));
+          }}
+          editingTextId={editingTextId}
+          setEditingTextId={setEditingTextId}
+          stageRef={envelopeStageRef}
+          cardRef={cardCanvasRef}
+          zoom={canvasZoom}
+          maxW={activePreset.maxW}
+          aspectRatio={activePreset.aspect}
+          onPhotoClick={() => photoInputRef.current?.click()}
+          photoInputRef={photoInputRef}
+          onBackdropClick={() => {
+            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+            setEditingTextId(null);
+          }}
+          onCardClick={() => {
+            setEditingTextId(null);
+          }}
+          className="flex-1"
+        />
 
-            {/* Realistic Triangular Open Envelope Flap */}
-            <div
-              className={`absolute transition-all duration-300 pointer-events-none z-0 ${
-                designState.isLandscape
-                  ? "-top-14 w-[100%] sm:w-[102%] h-[150px]"
-                  : "-top-12 w-[98%] sm:w-[100%] h-[160px]"
-              }`}
-              style={{
-                background: designState.envelope.color,
-                clipPath: "polygon(0 100%, 50% 0%, 100% 100%)",
-                filter: "drop-shadow(0 -4px 12px rgba(0,0,0,0.25))",
-              }}
-            >
-              {/* Optional Stamp on Flap */}
-              {designState.envelope.stamp && (
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-amber-500/20 border border-amber-300/40 flex items-center justify-center text-xl shadow-xs">
-                  {STAMPS.find((s) => s.id === designState.envelope.stamp)?.emoji}
-                </div>
-              )}
-            </div>
-
-            {/* 2. THE INVITATION CARD (Mounted neatly in the pouch) */}
-            <div
-              ref={cardCanvasRef}
-              id="invitation-card-container"
-              data-testid="preview-card"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setEditingTextId(null);
-                }
-              }}
-              className={`relative z-10 rounded-2xl overflow-hidden transition-all duration-300 ${
-                designState.isLandscape
-                  ? "w-[92%] sm:w-[94%] aspect-[4/3]"
-                  : "w-[84%] sm:w-[86%] aspect-[3/4.2]"
-              } ${
-                designState.effects.texture === "cotton-press"
-                  ? "texture-cotton-press"
-                  : designState.effects.texture === "linen"
-                  ? "texture-linen"
-                  : ""
-              }`}
-              style={{
-                backgroundColor:
-                  designState.cardBg.type === "color"
-                    ? designState.cardBg.value
-                    : designState.cardBg.type === "image"
-                    ? "#faf8f5"
-                    : undefined,
-                background:
-                  designState.cardBg.type === "preset" || designState.cardBg.type === "gradient"
-                    ? designState.cardBg.value
-                    : undefined,
-                boxShadow:
-                  designState.effects.shadow === "deep"
-                    ? "0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)"
-                    : designState.effects.shadow === "floating"
-                    ? "0 18px 36px -8px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)"
-                    : designState.effects.shadow === "subtle"
-                    ? "0 6px 16px rgba(0,0,0,0.12)"
-                    : "none",
-              }}
-            >
-              {/* Background Image if uploaded or template image */}
-              {designState.cardBg.type === "image" &&
-                designState.cardBg.value &&
-                !designState.cardBg.value.startsWith("#") && (
-                  <img
-                    src={designState.cardBg.value}
-                    alt="Card Background"
-                    crossOrigin="anonymous"
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  />
-                )}
-
-              {/* Foil Shimmer Overlay if active */}
-              {designState.effects.foil && (
-                <div
-                  className="absolute inset-0 pointer-events-none opacity-20"
-                  style={{
-                    background:
-                      designState.effects.foil === "gold"
-                        ? "linear-gradient(135deg, transparent 40%, #ffd700 50%, transparent 60%)"
-                        : designState.effects.foil === "rose-gold"
-                        ? "linear-gradient(135deg, transparent 40%, #f7cac9 50%, transparent 60%)"
-                        : "linear-gradient(135deg, transparent 40%, #ffffff 50%, transparent 60%)",
-                  }}
-                />
-              )}
-
-              {/* Interactive Photo Slot (e.g. Disney Winnie the Pooh circular baby photo slot) */}
-              {designState.photoSlot && (
-                <div
-                  id="canvas-photo-slot"
-                  data-testid="canvas-photo-slot"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    photoInputRef.current?.click();
-                  }}
-                  className="absolute cursor-pointer group select-none transition-transform hover:scale-[1.02]"
-                  style={{
-                    left: `${designState.photoSlot.x}%`,
-                    top: `${designState.photoSlot.y}%`,
-                    width: `${designState.photoSlot.width}px`,
-                    height: `${designState.photoSlot.height}px`,
-                    transform: "translate(-50%, -50%)",
-                    zIndex: 22,
-                    pointerEvents: "auto",
-                  }}
-                  title="Click to replace photo"
-                >
-                  <div
-                    className="w-full h-full overflow-hidden relative shadow-md border-2 border-amber-400/90 hover:border-amber-500 bg-amber-50/80 transition-all"
-                    style={{
-                      borderRadius: designState.photoSlot.borderRadius || "9999px",
-                    }}
-                  >
-                    {designState.photoSlot.imageUrl ? (
-                      <img
-                        src={designState.photoSlot.imageUrl}
-                        alt="Photo Frame"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50/90 text-amber-800 p-2 text-center">
-                        <Upload className="w-6 h-6 mb-1 text-amber-600" />
-                        <span className="text-[10px] font-bold">Add Photo</span>
-                      </div>
-                    )}
-
-                    {/* Interactive hover overlay */}
-                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-2 text-center cursor-pointer">
-                      <Upload className="w-5 h-5 mb-1 text-white drop-shadow" />
-                      <span className="text-[11px] font-bold drop-shadow leading-tight">
-                        Change Photo
-                      </span>
-                      <span className="text-[9px] text-white/80 drop-shadow">
-                        Upload baby photo
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Hidden file input for photo slot replacement */}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoSlotUpload}
-              />
-
-              {/* Draggable & Selectable Text Layers */}
-              {designState.textLayers.map((layer) => {
-                const isSelected = designState.selectedTextId === layer.id;
-                const isEditing = editingTextId === layer.id;
-                const isFoil = designState.effects.foil;
-
-                let foilClass = "";
-                if (isFoil === "gold") foilClass = "foil-gold";
-                else if (isFoil === "rose-gold") foilClass = "foil-rose-gold";
-                else if (isFoil === "silver") foilClass = "foil-silver";
-
-                return (
-                  <div
-                    key={layer.id}
-                    id={`canvas-text-${layer.id}`}
-                    data-testid={`text-layer-${layer.id}`}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      handleLayerMouseDown(e, layer);
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectLayer(layer.id);
-                    }}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      setEditingTextId(layer.id);
-                      handleSelectLayer(layer.id);
-                    }}
-                    className={`absolute cursor-move transition-shadow select-none pointer-events-auto ${
-                      isSelected
-                        ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white/80 rounded-lg z-30"
-                        : "hover:ring-1 hover:ring-blue-300 rounded-lg z-15"
-                    }`}
-                    style={{
-                      left: `${layer.x}%`,
-                      top: `${layer.y}%`,
-                      transform: "translate(-50%, -50%)",
-                      maxWidth: "92%",
-                      pointerEvents: "auto",
-                      zIndex: isSelected ? 30 : 15,
-                    }}
-                  >
-                    {isEditing ? (
-                      <textarea
-                        autoFocus
-                        rows={layer.text.includes("\n") || layer.text.length > 30 ? 3 : 1}
-                        value={layer.text}
-                        onChange={(e) => updateActiveLayer({ text: e.target.value })}
-                        onBlur={() => setEditingTextId(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") setEditingTextId(null);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="bg-white/95 border-2 border-blue-500 rounded p-1.5 text-slate-900 resize-none outline-none shadow-xl cursor-text pointer-events-auto"
-                        style={{
-                          fontFamily: layer.fontFamily,
-                          fontSize: `${layer.fontSize}px`,
-                          color: layer.color,
-                          textAlign: layer.align,
-                          lineHeight: layer.lineHeight,
-                          fontWeight: layer.fontWeight,
-                          letterSpacing: `${layer.letterSpacing}px`,
-                          minWidth: "180px",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className={`px-3 py-1 leading-tight whitespace-pre-wrap pointer-events-auto ${foilClass}`}
-                        style={{
-                          fontFamily: layer.fontFamily,
-                          fontSize: `${layer.fontSize}px`,
-                          color: isFoil ? undefined : layer.color,
-                          textAlign: layer.align,
-                          textTransform: layer.casing === "none" ? undefined : layer.casing,
-                          letterSpacing: `${layer.letterSpacing}px`,
-                          lineHeight: layer.lineHeight,
-                          fontWeight: layer.fontWeight,
-                          pointerEvents: "auto",
-                        }}
-                      >
-                        {layer.text || "Type text here"}
-                      </div>
-                    )}
-
-                    {/* Active Drag Boundary Handles */}
-                    {isSelected && !isEditing && (
-                      <>
-                        <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                        <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                        <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                        <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 3. Envelope Front Pocket (Lower half holding the card) */}
-            <div
-              className={`relative w-full rounded-b-3xl pointer-events-none z-20 shadow-2xl transition-all duration-300 ${
-                designState.isLandscape ? "-mt-24 h-[210px]" : "-mt-16 h-[220px]"
-              }`}
-              style={{
-                background: designState.envelope.color,
-                clipPath: "polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)",
-                filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
-              }}
-            >
-              {/* Envelope Flap Crease & Texture Line */}
-              <svg className="w-full h-full opacity-20 pointer-events-none" viewBox="0 0 100 70">
-                <polygon points="0,0 50,35 100,0" fill="none" stroke="#000" strokeWidth="1.5" />
-                <polygon points="0,70 50,35 100,70" fill="none" stroke="#fff" strokeWidth="1.5" />
-              </svg>
-
-              {/* Optional Sticker Seal on front flap */}
-              {designState.envelope.sticker && (
-                <div className="absolute top-14 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white/90 shadow-lg border border-black/10 flex items-center justify-center text-2xl animate-bounce pointer-events-none">
-                  {STICKERS.find((s) => s.id === designState.envelope.sticker)?.emoji}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Hidden file input for photo slot replacement */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoSlotUpload}
+        />
       </div>
 
       {/* ========================================================================= */}

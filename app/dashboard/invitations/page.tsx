@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toPng } from "html-to-image";
 import { useAuth } from "../../../context/AuthContext";
@@ -12,6 +12,8 @@ import guestService from "../../../services/guestService";
 import templateService from "../../../services/templateService";
 import { NEW_TEMPLATES_CONFIG } from "../../../lib/newTemplatesData";
 import InvitationStudio from "../../../components/designer/InvitationStudio";
+import InvitationCanvasStage from "../../../components/designer/InvitationCanvasStage";
+import { CanvasStageConfig, TextLayer } from "../../../types/invitationTypes";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {
   Calendar,
@@ -309,12 +311,12 @@ function InvitationDesignerPageContent() {
             title: tpl.title ? `Invitation to ${tpl.title}` : prev.title,
             subtitle: tpl.subtitle || prev.subtitle,
             mainText: tpl.description || prev.mainText,
-            imageUrl: tpl.image || prev.imageUrl,
+            imageUrl: tpl.decorationImage || tpl.image || prev.imageUrl,
             accentColor: tpl.accentColor || prev.accentColor,
             backgroundColor: tpl.backgroundColor || prev.backgroundColor,
             textColor: tpl.textColor || prev.textColor,
             titleSize: tpl.titleSize || prev.titleSize,
-            fontWeight: tpl.fontWeight || prev.fontWeight,
+            fontWeight: String(tpl.fontWeight || prev.fontWeight),
             fontFamily: tpl.fontFamily || prev.fontFamily,
             buttonColor: tpl.buttonColor || prev.buttonColor,
             buttonRadius: tpl.buttonRadius || prev.buttonRadius,
@@ -354,9 +356,46 @@ function InvitationDesignerPageContent() {
 
   const handleInputChange = (field: string, value: any) => {
     if (!invitation) return;
-    setInvitation({
-      ...invitation,
-      [field]: value,
+    setInvitation((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, [field]: value };
+      // Synchronize text elements in real time if present
+      if (updated.textElements && updated.textElements.length > 0) {
+        updated.textElements = updated.textElements.map((layer) => {
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "title") {
+            return { ...layer, text: value };
+          }
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "eventTitle" && !prev.title) {
+            return { ...layer, text: value };
+          }
+          if (layer.id === "layer-subtitle" && field === "subtitle") {
+            return { ...layer, text: value };
+          }
+          if (layer.id === "layer-description" && field === "mainText") {
+            return { ...layer, text: value };
+          }
+          if (layer.id === "layer-venue" && field === "eventVenue") {
+            return { ...layer, text: value };
+          }
+          if (layer.id === "layer-rsvp" && field === "buttonText") {
+            return { ...layer, text: value };
+          }
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "textColor") {
+            return { ...layer, color: value };
+          }
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "fontFamily") {
+            return { ...layer, fontFamily: value };
+          }
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "titleSize") {
+            return { ...layer, fontSize: Number(value) };
+          }
+          if ((layer.id === "layer-title" || layer.id === "layer-names") && field === "textAlignment") {
+            return { ...layer, align: value };
+          }
+          return layer;
+        });
+      }
+      return updated;
     });
   };
 
@@ -835,6 +874,255 @@ function InvitationDesignerPageContent() {
     resolvedCoverImageRef.current = resolvedCoverImage;
     if (coverImgError) setCoverImgError(false);
   }
+
+  // Derive 4-Layer Evite-style Decoupled Canvas Configuration
+  const canvasConfig: CanvasStageConfig = useMemo(() => {
+    const tplConfig = invitation?.templateId ? NEW_TEMPLATES_CONFIG[invitation.templateId] : null;
+
+    const titleText =
+      invitation?.title ||
+      invitation?.eventTitle ||
+      event?.title ||
+      tplConfig?.title ||
+      "You're Invited";
+
+    const dateText = invitation?.eventDate
+      ? `${new Date(invitation.eventDate).toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        }).toUpperCase()}${invitation.eventTime ? " AT " + invitation.eventTime : ""}`
+      : event?.eventDate
+      ? `${new Date(event.eventDate).toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        }).toUpperCase()}${event.eventTime ? " AT " + event.eventTime : ""}`
+      : "SATURDAY, OCTOBER 14 AT 4:00 PM";
+
+    const venueText =
+      invitation?.eventVenue ||
+      event?.venue ||
+      tplConfig?.venue ||
+      "123 Celebration Way, Brooklyn, NY";
+
+    const descText =
+      invitation?.mainText ||
+      tplConfig?.description ||
+      "Join us for an unforgettable celebration filled with joy and wonderful moments!";
+
+    const hostText =
+      invitation?.subtitle ||
+      (event?.title ? `Hosted by ${event.title}` : "Hosted with love by the family");
+
+    // Live Text Layers: Use saved textElements or generate synchronized 4-layer elements
+    let layers: TextLayer[] = [];
+    if (invitation?.textElements && invitation.textElements.length > 0) {
+      layers = invitation.textElements.map((l) => {
+        if (l.id === "layer-title" || l.id === "layer-names") {
+          return {
+            ...l,
+            text: invitation.title || l.text,
+            fontFamily: invitation.fontFamily
+              ? invitation.fontFamily === "Playfair Display"
+                ? "'Playfair Display', serif"
+                : invitation.fontFamily
+              : l.fontFamily,
+            fontSize: invitation.titleSize || l.fontSize,
+            color: invitation.textColor || l.color,
+            align: (invitation.textAlignment as any) || l.align,
+            fontWeight: invitation.fontWeight || l.fontWeight,
+          };
+        }
+        if (l.id === "layer-subtitle") {
+          return { ...l, text: invitation.subtitle || l.text };
+        }
+        if (l.id === "layer-datetime") {
+          return { ...l, text: dateText };
+        }
+        if (l.id === "layer-venue") {
+          return { ...l, text: venueText };
+        }
+        if (l.id === "layer-description") {
+          return { ...l, text: descText };
+        }
+        if (l.id === "layer-rsvp") {
+          return {
+            ...l,
+            text: (invitation.buttonText || l.text).toUpperCase(),
+            color: invitation.buttonColor || l.color,
+          };
+        }
+        return l;
+      });
+    } else if ((tplConfig as any)?.defaultTextLayers && (tplConfig as any).defaultTextLayers.length > 0) {
+      layers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
+        id: tl.id,
+        key: tl.key,
+        text: tl.key === "title" ? titleText : tl.text,
+        x: tl.left,
+        y: tl.top,
+        top: tl.top,
+        left: tl.left,
+        fontSize: tl.fontSize,
+        fontFamily: tl.fontFamily,
+        color: tl.color,
+        casing: "none" as const,
+        align: tl.textAlign || "center",
+        textAlign: tl.textAlign || "center",
+        letterSpacing: 0.5,
+        lineHeight: 1.2,
+        fontWeight: String(tl.fontWeight),
+        isFoil: null,
+      }));
+    } else if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
+      layers = tplConfig.textLayers.map((tl) => ({
+        id: tl.id,
+        key: tl.key,
+        text: tl.id.includes("title") || tl.id.includes("names") ? titleText : tl.text,
+        x: tl.x,
+        y: tl.y,
+        top: tl.y,
+        left: tl.x,
+        fontSize: tl.fontSize,
+        fontFamily: tl.fontFamily,
+        color: tl.color,
+        casing: tl.casing || ("none" as const),
+        align: tl.align || tl.textAlign || "center",
+        textAlign: tl.textAlign || tl.align || "center",
+        letterSpacing: tl.letterSpacing || 0.5,
+        lineHeight: tl.lineHeight || 1.2,
+        fontWeight: String(tl.fontWeight),
+        isFoil: tl.isFoil || null,
+      }));
+    } else {
+      layers = [
+        {
+          id: "layer-title",
+          text: titleText.toUpperCase(),
+          x: 50,
+          y: 32,
+          fontSize: invitation?.titleSize || 36,
+          fontFamily:
+            invitation?.fontFamily === "Playfair Display"
+              ? "'Playfair Display', serif"
+              : invitation?.fontFamily || "'Playfair Display', serif",
+          color: invitation?.textColor || "#1e293b",
+          casing: "uppercase",
+          align: (invitation?.textAlignment as any) || "center",
+          letterSpacing: 2,
+          lineHeight: 1.15,
+          fontWeight: invitation?.fontWeight || "700",
+        },
+        {
+          id: "layer-subtitle",
+          text: hostText,
+          x: 50,
+          y: 44,
+          fontSize: 14,
+          fontFamily: "'Inter', sans-serif",
+          color: invitation?.accentColor || "#5B5FEF",
+          casing: "none",
+          align: "center",
+          letterSpacing: 1,
+          lineHeight: 1.2,
+          fontWeight: "600",
+        },
+        {
+          id: "layer-datetime",
+          text: dateText,
+          x: 50,
+          y: 56,
+          fontSize: 13,
+          fontFamily: "'Inter', sans-serif",
+          color: "#1e293b",
+          casing: "uppercase",
+          align: "center",
+          letterSpacing: 1.2,
+          lineHeight: 1.3,
+          fontWeight: "700",
+        },
+        {
+          id: "layer-venue",
+          text: venueText,
+          x: 50,
+          y: 66,
+          fontSize: 13,
+          fontFamily: "'Inter', sans-serif",
+          color: "#475569",
+          casing: "none",
+          align: "center",
+          letterSpacing: 0.5,
+          lineHeight: 1.3,
+          fontWeight: "500",
+        },
+        {
+          id: "layer-description",
+          text: descText,
+          x: 50,
+          y: 78,
+          fontSize: 11,
+          fontFamily: "'Inter', sans-serif",
+          color: "#64748b",
+          casing: "none",
+          align: "center",
+          letterSpacing: 0.3,
+          lineHeight: 1.4,
+          fontWeight: "400",
+        },
+        {
+          id: "layer-rsvp",
+          text: (invitation?.buttonText || "RSVP NOW").toUpperCase(),
+          x: 50,
+          y: 89,
+          fontSize: 11,
+          fontFamily: "'Inter', sans-serif",
+          color: invitation?.buttonColor || "#5B5FEF",
+          casing: "uppercase",
+          align: "center",
+          letterSpacing: 1.5,
+          lineHeight: 1.2,
+          fontWeight: "800",
+        },
+      ];
+    }
+
+    // Resolve Card Background (Clean decorative artwork)
+    const cardImg =
+      resolvedCoverImage && !coverImgError ? resolvedCoverImage : tplConfig?.decorationImage || null;
+    const cardBgType = cardImg
+      ? "image"
+      : invitation?.backgroundColor?.includes("gradient")
+      ? "gradient"
+      : "color";
+    const cardBgValue = cardImg || invitation?.backgroundColor || "#FAF8F5";
+
+    return {
+      activeTemplateId: invitation?.templateId || null,
+      isLandscape: !!invitation?.isLandscape || !!tplConfig?.isLandscape,
+      textLayers: layers,
+      selectedTextId: null,
+      cardBg: invitation?.cardBg || invitation?.background || {
+        type: cardBgType as any,
+        value: cardBgValue,
+      },
+      stageBackdrop: invitation?.stageBackdrop || {
+        type: "color",
+        value: "#1e293b",
+      },
+      envelope: invitation?.envelope || {
+        color: invitation?.accentColor || "#781d60",
+        liner: "gold-foil",
+        stamp: "wax",
+        sticker: null,
+      },
+      effects: invitation?.effects || {
+        foil: null,
+        texture: "cotton-press",
+        shadow: "floating",
+      },
+    };
+  }, [invitation, event, resolvedCoverImage, coverImgError]);
 
   if (authLoading || !user) {
     return (
@@ -1578,6 +1866,146 @@ function InvitationDesignerPageContent() {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Accordion 6: Envelope & Presentation */}
+                <div>
+                  <button
+                    onClick={() => toggleSection("envelope")}
+                    className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-blue-50/50 transition-colors focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-bold text-slate-900">6. Envelope & Presentation</span>
+                    </div>
+                    {openSection === "envelope" ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSection === "envelope" && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        exit={{ height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 pb-6 pt-2 space-y-4 text-xs">
+                          {/* Envelope Color */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Envelope Color</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={invitation.envelope?.color || invitation.accentColor || "#781d60"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setInvitation((prev) => prev ? {
+                                    ...prev,
+                                    envelope: {
+                                      ...(prev.envelope || { liner: "gold-foil", stamp: "wax", sticker: null }),
+                                      color: val,
+                                    },
+                                  } : prev);
+                                }}
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={invitation.envelope?.color || invitation.accentColor || "#781d60"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setInvitation((prev) => prev ? {
+                                    ...prev,
+                                    envelope: {
+                                      ...(prev.envelope || { liner: "gold-foil", stamp: "wax", sticker: null }),
+                                      color: val,
+                                    },
+                                  } : prev);
+                                }}
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm font-mono uppercase text-slate-900"
+                                placeholder="#781D60"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Envelope Liner Pattern */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Inner Liner Pattern</label>
+                            <select
+                              value={invitation.envelope?.liner || "gold-foil"}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setInvitation((prev) => prev ? {
+                                  ...prev,
+                                  envelope: {
+                                    ...(prev.envelope || { color: prev.accentColor || "#781d60", stamp: "wax", sticker: null }),
+                                    liner: val,
+                                  },
+                                } : prev);
+                              }}
+                              className="w-full px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-xs focus:outline-none focus:bg-white text-slate-900"
+                            >
+                              <option value="none">Plain Solid</option>
+                              <option value="gold-foil">Gold Leaf Foil</option>
+                              <option value="silver-foil">Silver Leaf Foil</option>
+                              <option value="pink-gingham">Pink Gingham</option>
+                              <option value="sage-mist">Sage Mist</option>
+                              <option value="ivory-linen">Ivory Cotton</option>
+                              <option value="pink-glitter">Pink Glitter</option>
+                              <option value="sprinkles">Cake Sprinkles</option>
+                              <option value="electric-gradient">Electric Rainbow</option>
+                              <option value="marble">Carrara Marble</option>
+                              <option value="botanical">Botanical Florals</option>
+                            </select>
+                          </div>
+
+                          {/* Stage Backdrop Color */}
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Canvas Stage Backdrop</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={invitation.stageBackdrop?.value || "#1e293b"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setInvitation((prev) => prev ? {
+                                    ...prev,
+                                    stageBackdrop: { type: "color", value: val },
+                                  } : prev);
+                                }}
+                                className="w-10 h-10 border border-blue-200 rounded-xl cursor-pointer bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={invitation.stageBackdrop?.value || "#1e293b"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setInvitation((prev) => prev ? {
+                                    ...prev,
+                                    stageBackdrop: { type: "color", value: val },
+                                  } : prev);
+                                }}
+                                className="flex-1 px-3 py-2 bg-blue-50/30 border border-blue-200/70 rounded-xl text-sm font-mono uppercase text-slate-900"
+                                placeholder="#1E293B"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Open in Canvas Studio Shortcut */}
+                          <div className="pt-2 border-t border-blue-100">
+                            <button
+                              type="button"
+                              onClick={() => setIsStudioMode(true)}
+                              className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-98 transition-all"
+                            >
+                              <Sparkles className="w-4 h-4 text-amber-300" />
+                              <span>Open Canvas Studio for Drag & Stamps</span>
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
 
@@ -1776,171 +2204,33 @@ function InvitationDesignerPageContent() {
 
               {/* Mockup Container */}
               <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-3xl p-6 shadow-sm flex flex-col items-center w-full">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Live Preview Screen</span>
+                <div className="flex items-center justify-between w-full mb-4 px-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    4-Layer Evite Live Preview
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(true)}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors cursor-pointer py-1 px-2.5 rounded-lg hover:bg-indigo-50"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Expand</span>
+                  </button>
+                </div>
 
-                {/* Device Screen frame */}
+                {/* 4-Layer Decoupled Stage */}
                 <div
-                  ref={cardPreviewRef}
                   id="preview-card"
                   data-testid="invitation-card-container"
-                  className="invitation-preview w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-blue-100 transition-all duration-300"
-                  style={{
-                    background: invitation.backgroundColor?.includes("gradient")
-                      ? invitation.backgroundColor
-                      : undefined,
-                    backgroundColor: !invitation.backgroundColor?.includes("gradient")
-                      ? (invitation.backgroundColor || "#ffffff")
-                      : undefined,
-                  }}
+                  className="w-full flex items-center justify-center rounded-2xl overflow-hidden shadow-xl border border-slate-200/80 bg-slate-900/5 transition-all duration-300"
                 >
-                  {/* Image cover preview */}
-                  <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
-                    {isImageUploading ? (
-                      <div className="w-full h-48 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-sky-500/10 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                        <span className="text-xs font-semibold text-blue-800">Uploading & optimizing image...</span>
-                        <span className="text-[10px] text-slate-500">Normalizing mobile photo to cloud storage</span>
-                      </div>
-                    ) : resolvedCoverImage && !coverImgError ? (
-                      <img
-                        src={getImageUrl(resolvedCoverImage)}
-                        crossOrigin="anonymous"
-                        alt="Invitation cover"
-                        className="w-full h-auto max-h-[420px] object-cover rounded-t-2xl block"
-                        onError={() => setCoverImgError(true)}
-                      />
-                    ) : resolvedCoverImage && coverImgError ? (
-                      <div className="w-full h-40 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 flex items-center justify-center p-4">
-                        <div className="text-center">
-                          <ImageIcon className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
-                          <p className="text-[11px] font-medium text-slate-400">Cover image could not be loaded</p>
-                          <span className="text-[10px] text-slate-400">Showing default layout</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-32 bg-gradient-to-b from-blue-500/5 to-transparent flex items-center justify-center">
-                        <span className="text-xs text-slate-400 italic">No cover image uploaded</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Body Text preview */}
-                  <div
-                    className="invitation-content flex flex-col justify-between items-center space-y-6"
-                    style={{
-                      textAlign: (invitation.textAlignment || "center") as any,
-                      color: invitation.textColor,
-                      background: "transparent"
-                    }}
-                  >
-
-                    {/* 1. [Event Title & Subtitle] */}
-                    <div className="w-full">
-                      <h1
-                        className="invitation-title text-balance"
-                        style={{
-                          fontSize: `${invitation.titleSize}px`,
-                          fontWeight: invitation.fontWeight,
-                          fontFamily: invitation.fontFamily === "Playfair Display" ? "'Playfair Display', Georgia, serif" : invitation.fontFamily,
-                          lineHeight: 1.15,
-                          color: invitation.textColor,
-                          textAlign: (invitation.textAlignment || "center") as any
-                        }}
-                      >
-                        {invitation.title || "You're Invited"}
-                      </h1>
-
-                      {invitation.subtitle && (
-                        <p
-                          className="invitation-subtitle opacity-80 font-medium font-body leading-relaxed"
-                          style={{
-                            textAlign: (invitation.textAlignment || "center") as any
-                          }}
-                        >
-                          {invitation.subtitle}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* 2. [Event Description] */}
-                    {invitation.mainText && (
-                      <p
-                        className="invitation-description opacity-70 leading-relaxed font-body"
-                        style={{
-                          textAlign: (invitation.textAlignment || "center") as any
-                        }}
-                      >
-                        {invitation.mainText}
-                      </p>
-                    )}
-
-                    {/* 3. [RSVP Button / Action Card] */}
-                    <div className="w-full max-w-xs mx-auto">
-                      <button
-                        type="button"
-                        className="w-full py-3 px-6 text-xs font-bold text-white shadow-md active:scale-97 transition-all focus:outline-none"
-                        style={{
-                          backgroundColor: invitation.buttonColor,
-                          borderRadius: `${invitation.buttonRadius}px`,
-                        }}
-                      >
-                        {invitation.buttonText}
-                      </button>
-                    </div>
-
-                    {/* 4. [Date, Time, Location & Event Details Card] */}
-                    {(invitation.eventDate || invitation.eventTime || invitation.eventVenue || event) ? (
-                      <div
-                        className="w-full max-w-sm p-4 rounded-xl space-y-3.5 text-left border border-opacity-10 backdrop-blur-sm"
-                        style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.45)" }}
-                      >
-                        <div className="flex gap-2.5 items-start">
-                          <Calendar
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
-                            <span className="text-xs font-bold font-body">
-                              {invitation.eventDate
-                                ? formatEventDate(invitation.eventDate)
-                                : formatEventDate(event?.eventDate)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2.5 items-start">
-                          <Clock
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
-                            <span className="text-xs font-bold font-body">
-                              {invitation.eventTime || event?.eventTime}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2.5 items-start">
-                          <MapPin
-                            className="w-4 h-4 flex-shrink-0 mt-0.5"
-                            style={{ color: invitation.accentColor }}
-                          />
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
-                            <span className="text-xs font-bold font-body">
-                              {invitation.eventVenue || event?.venue}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full max-w-sm p-4 border border-dashed rounded-xl flex items-center justify-center">
-                        <span className="text-xs opacity-40 italic">Syncing event metadata...</span>
-                      </div>
-                    )}
-                  </div>
+                  <InvitationCanvasStage
+                    config={canvasConfig}
+                    readOnly={true}
+                    stageRef={cardPreviewRef}
+                    maxW={460}
+                    onPhotoClick={() => fileInputRef.current?.click()}
+                  />
                 </div>
               </div>
             </div>
@@ -1993,163 +2283,12 @@ function InvitationDesignerPageContent() {
                     </button>
                   </div>
 
-                  <div
-                    className="invitation-preview w-full"
-                    style={{
-                      background: invitation.backgroundColor?.includes("gradient")
-                        ? invitation.backgroundColor
-                        : undefined,
-                      backgroundColor: !invitation.backgroundColor?.includes("gradient")
-                        ? (invitation.backgroundColor || "#ffffff")
-                        : undefined,
-                    }}
-                  >
-                    {/* Cover Image */}
-                    <div className="relative w-full overflow-hidden rounded-t-2xl bg-slate-100 min-h-[160px] flex items-center justify-center border-b border-slate-100">
-                      {isImageUploading ? (
-                        <div className="w-full h-56 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-sky-500/10 flex flex-col items-center justify-center gap-2 text-center p-6">
-                          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                          <span className="text-xs font-semibold text-blue-800">Uploading & optimizing image...</span>
-                        </div>
-                      ) : resolvedCoverImage && !coverImgError ? (
-                        <img
-                          src={getImageUrl(resolvedCoverImage)}
-                          crossOrigin="anonymous"
-                          alt="Invitation cover"
-                          className="w-full h-auto max-h-[480px] object-cover rounded-t-2xl block"
-                          onError={() => setCoverImgError(true)}
-                        />
-                      ) : resolvedCoverImage && coverImgError ? (
-                        <div className="w-full h-48 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 flex items-center justify-center">
-                          <div className="text-center">
-                            <ImageIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                            <p className="text-xs text-slate-400">Cover image failed to load</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-20 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
-                      )}
-                    </div>
-
-                    {/* Invitation typography contents */}
-                    <div
-                      className="invitation-content flex flex-col justify-between items-center space-y-8"
-                      style={{
-                        textAlign: (invitation.textAlignment || "center") as any,
-                        color: invitation.textColor,
-                        background: "transparent"
-                      }}
-                    >
-
-                      {/* 1. [Event Title & Subtitle] */}
-                      <div className="w-full max-w-2xl">
-                        <h1
-                          className="invitation-title text-balance"
-                          style={{
-                            fontSize: `${invitation.titleSize}px`,
-                            fontWeight: invitation.fontWeight,
-                            fontFamily: invitation.fontFamily === "Playfair Display" ? "'Playfair Display', Georgia, serif" : invitation.fontFamily,
-                            lineHeight: 1.1,
-                            color: invitation.textColor,
-                            textAlign: (invitation.textAlignment || "center") as any
-                          }}
-                        >
-                          {invitation.title || "You're Invited!"}
-                        </h1>
-
-                        {invitation.subtitle && (
-                          <p
-                            className="invitation-subtitle opacity-80 font-medium font-body leading-relaxed"
-                            style={{
-                              textAlign: (invitation.textAlignment || "center") as any
-                            }}
-                          >
-                            {invitation.subtitle}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 2. [Event Description] */}
-                      {invitation.mainText && (
-                        <p
-                          className="invitation-description opacity-70 leading-relaxed font-body"
-                          style={{
-                            textAlign: (invitation.textAlignment || "center") as any
-                          }}
-                        >
-                          {invitation.mainText}
-                        </p>
-                      )}
-
-                      {/* 3. [RSVP Button / Action Card] */}
-                      <div className="w-full max-w-sm">
-                        <button
-                          type="button"
-                          className="w-full py-4 px-6 text-sm font-bold text-white shadow-lg active:scale-98 transition-all hover:opacity-95 focus:outline-none"
-                          style={{
-                            backgroundColor: invitation.buttonColor,
-                            borderRadius: `${invitation.buttonRadius}px`,
-                          }}
-                        >
-                          {invitation.buttonText}
-                        </button>
-                        <p className="text-[10px] opacity-45 mt-2.5 font-semibold text-center">Brought to you by InviteHub</p>
-                      </div>
-
-                      {/* 4. [Date, Time, Location & Event Details Card] */}
-                      {(invitation.eventDate || invitation.eventTime || invitation.eventVenue || event) ? (
-                        <div
-                          className="w-full max-w-md p-5 rounded-xl space-y-4 text-left border border-opacity-10 backdrop-blur-md"
-                          style={{ borderColor: invitation.accentColor, backgroundColor: "rgba(255, 255, 255, 0.4)" }}
-                        >
-                          <div className="flex gap-3 items-start">
-                            <Calendar
-                              className="w-4 h-4 flex-shrink-0 mt-0.5"
-                              style={{ color: invitation.accentColor }}
-                            />
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Date</span>
-                              <span className="text-xs font-bold font-body">
-                                {invitation.eventDate
-                                  ? formatEventDate(invitation.eventDate)
-                                  : formatEventDate(event?.eventDate)}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-3 items-start">
-                            <Clock
-                              className="w-4 h-4 flex-shrink-0 mt-0.5"
-                              style={{ color: invitation.accentColor }}
-                            />
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Time</span>
-                              <span className="text-xs font-bold font-body">
-                                {invitation.eventTime || event?.eventTime}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-3 items-start">
-                            <MapPin
-                              className="w-4 h-4 flex-shrink-0 mt-0.5"
-                              style={{ color: invitation.accentColor }}
-                            />
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider opacity-60 font-bold block">Location</span>
-                              <span className="text-xs font-bold font-body">
-                                {invitation.eventVenue || event?.venue}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full max-w-md p-4 border border-dashed rounded-xl text-center text-xs opacity-50">
-                          No active event parameters synced.
-                        </div>
-                      )}
-
-                    </div>
+                  <div className="p-6 sm:p-10 flex flex-col items-center justify-center bg-slate-900/5">
+                    <InvitationCanvasStage
+                      config={canvasConfig}
+                      readOnly={true}
+                      maxW={520}
+                    />
                   </div>
                 </div>
               </motion.div>

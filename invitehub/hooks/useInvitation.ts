@@ -247,7 +247,7 @@ const TEMPLATES_CONFIG: Record<string, {
   backgroundColor: string;
   textColor: string;
   titleSize: number;
-  fontWeight: string;
+  fontWeight: string | number;
   fontFamily: string;
   buttonColor: string;
   buttonRadius: number;
@@ -297,9 +297,9 @@ export const useInvitation = (eventId: string | null) => {
           const fetchedInvitation = inviteRes.invitation;
           const tplKey = eventRes.event.selectedTemplateId;
           const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
-          // Comprehensive fallback: template image > event image fields
+          // Comprehensive fallback: clean template decoration image > event image fields
           const evtImg = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
-          const cleanTemplateImg = tplConfig?.image || evtImg;
+          const cleanTemplateImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImg;
 
           // If imageUrl is a snapshot (e.g. contains snapshot/invitation_snapshot or data:) or missing,
           // restore clean template artwork so canvas renders only the raw artwork without baked text
@@ -312,14 +312,41 @@ export const useInvitation = (eventId: string | null) => {
               fetchedInvitation.imageUrl = cleanTemplateImg;
             }
           }
+          if (
+            fetchedInvitation.imageUrl &&
+            fetchedInvitation.imageUrl.includes("/assets/templates/") &&
+            fetchedInvitation.imageUrl.endsWith(".svg") &&
+            !fetchedInvitation.imageUrl.endsWith("-bg.svg")
+          ) {
+            // Automatically upgrade legacy template preview URL to clean background artwork without text
+            fetchedInvitation.imageUrl = fetchedInvitation.imageUrl.replace(/\.svg$/, "-bg.svg");
+          }
+
+          // Restore cached 4-layer Evite-style state if available
+          if (typeof window !== "undefined") {
+            try {
+              const rawCache = localStorage.getItem(`invitation_4layer_${eventId}`);
+              if (rawCache) {
+                const parsed = JSON.parse(rawCache);
+                if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
+                if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
+                if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
+                if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
+                if (parsed.background) fetchedInvitation.background = parsed.background;
+                if (parsed.effects) fetchedInvitation.effects = parsed.effects;
+                if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
+              }
+            } catch (e) {}
+          }
           setInvitation(fetchedInvitation);
         } else {
           // Initialize a default draft using selectedTemplateId if present
           const tplKey = eventRes.event.selectedTemplateId;
           const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
 
-          // Comprehensive fallback: template image > event image fields
+          // Comprehensive fallback: clean template image > event image fields
           const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
+          const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
 
           const defaultInvitation: Invitation = {
             id: "", // empty indicates it's unsaved/new
@@ -334,7 +361,7 @@ export const useInvitation = (eventId: string | null) => {
             fontWeight: tplConfig?.fontWeight || "700",
             fontFamily: tplConfig?.fontFamily || "Playfair Display",
             textAlignment: tplConfig?.textAlignment || "center",
-            imageUrl: tplConfig?.image || evtImgFallback,
+            imageUrl: cleanDefaultImg,
             buttonText: "RSVP Now",
             buttonColor: tplConfig?.buttonColor || "#5B5FEF",
             buttonRadius: tplConfig?.buttonRadius || 12,
@@ -347,8 +374,9 @@ export const useInvitation = (eventId: string | null) => {
         const tplKey = eventRes.event.selectedTemplateId;
         const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
 
-        // Comprehensive fallback: template image > event image fields
+        // Comprehensive fallback: clean template image > event image fields
         const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
+        const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
 
         const defaultInvitation: Invitation = {
           id: "",
@@ -363,7 +391,7 @@ export const useInvitation = (eventId: string | null) => {
           fontWeight: tplConfig?.fontWeight || "700",
           fontFamily: tplConfig?.fontFamily || "Playfair Display",
           textAlignment: tplConfig?.textAlignment || "center",
-          imageUrl: tplConfig?.image || evtImgFallback,
+          imageUrl: cleanDefaultImg,
           buttonText: "RSVP Now",
           buttonColor: tplConfig?.buttonColor || "#5B5FEF",
           buttonRadius: tplConfig?.buttonRadius || 12,
@@ -431,8 +459,36 @@ export const useInvitation = (eventId: string | null) => {
         savedInvite = res.invitation;
         setSuccessMessage("Invitation saved successfully!");
       }
-      setInvitation(savedInvite);
-      return savedInvite;
+      // Cache 4-layer state in localStorage for persistent parity across studio & designer
+      if (typeof window !== "undefined" && targetEventId) {
+        try {
+          const cachePayload = {
+            textElements: formData.textElements || invitation?.textElements,
+            envelope: formData.envelope || invitation?.envelope,
+            stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
+            cardBg: formData.cardBg || formData.background || invitation?.cardBg,
+            background: formData.background || formData.cardBg || invitation?.background,
+            effects: formData.effects || invitation?.effects,
+            isLandscape: formData.isLandscape !== undefined ? formData.isLandscape : invitation?.isLandscape,
+          };
+          localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(cachePayload));
+        } catch (e) {}
+      }
+
+      // Merge rich 4-layer state back into savedInvite
+      const fullSavedInvite: Invitation = {
+        ...savedInvite,
+        textElements: formData.textElements || invitation?.textElements,
+        envelope: formData.envelope || invitation?.envelope,
+        stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
+        cardBg: formData.cardBg || formData.background || invitation?.cardBg,
+        background: formData.background || formData.cardBg || invitation?.background,
+        effects: formData.effects || invitation?.effects,
+        isLandscape: formData.isLandscape !== undefined ? formData.isLandscape : invitation?.isLandscape,
+      };
+
+      setInvitation(fullSavedInvite);
+      return fullSavedInvite;
     } catch (err: any) {
       console.error("Payload sent:", payload || formData);
       console.error("400 Response details:", err.response?.data);
