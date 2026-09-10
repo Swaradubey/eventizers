@@ -1510,7 +1510,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         Choose from editable templates
                       </h3>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
-                        10 available
+                        {filteredTemplates.length} available
                       </span>
                     </div>
 

@@ -38,7 +38,7 @@ import API from "../../services/api";
 import { Invitation } from "../../types/invitationTypes";
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
-import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData } from "../../lib/newTemplatesData";
+import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
 
 // --- Types & Interfaces ---
@@ -63,6 +63,8 @@ export interface StudioDesignState {
   activeTemplateId: string | null;
   textLayers: TextLayer[];
   selectedTextId: string | null;
+  photoSlot?: PhotoSlot | null;
+  isLandscape?: boolean;
   cardBg: {
     type: "color" | "gradient" | "image" | "preset";
     value: string;
@@ -147,11 +149,20 @@ const ENVELOPE_COLORS = [
   { id: "navy", hex: "#1d2c4d", name: "Classic Navy" },
   { id: "yellow", hex: "#facc15", name: "Electric Gold" },
   { id: "pink", hex: "#f472b6", name: "Bubblegum" },
+  { id: "sagegreen", hex: "#A8C3B0", name: "Pastel Sage" },
+  { id: "warmkraft", hex: "#C4A482", name: "Rustic Kraft" },
+  { id: "powderblue", hex: "#9BB4CE", name: "Powder Blue" },
+  { id: "warmlinen", hex: "#ECE8E1", name: "Warm Linen" },
+  { id: "midnightnavy", hex: "#102A54", name: "Midnight Navy" },
 ];
 
 const ENVELOPE_LINERS = [
   { id: "none", name: "Plain Solid", style: "rgba(0,0,0,0.02)" },
   { id: "gold-foil", name: "Gold Leaf Foil", style: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)" },
+  { id: "silver-foil", name: "Silver Leaf Foil", style: "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)" },
+  { id: "pink-gingham", name: "Pink Gingham", style: "repeating-linear-gradient(0deg, #fcdde3, #fcdde3 14px, #ffffff 14px, #ffffff 28px), repeating-linear-gradient(90deg, rgba(244,114,182,0.3), rgba(244,114,182,0.3) 14px, transparent 14px, transparent 28px)" },
+  { id: "sage-mist", name: "Sage Mist", style: "linear-gradient(135deg, #a3b899 0%, #8ea383 100%)" },
+  { id: "ivory-linen", name: "Ivory Cotton", style: "linear-gradient(135deg, #fdfbf7 0%, #f4f0e8 100%)" },
   { id: "pink-glitter", name: "Pink Glitter", style: "radial-gradient(circle at 50% 50%, #f472b6, #db2777)" },
   { id: "sprinkles", name: "Cake Sprinkles", style: "repeating-linear-gradient(45deg, #fbcfe8, #fbcfe8 10px, #fef08a 10px, #fef08a 20px, #67e8f9 20px, #67e8f9 30px)" },
   { id: "electric-gradient", name: "Electric Rainbow", style: "conic-gradient(at top left, #f43f5e, #eab308, #06b6d4, #8b5cf6, #f43f5e)" },
@@ -267,7 +278,10 @@ export default function InvitationStudio({
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
     let cardBgValue = "#faf8f5";
 
-    if (tplConfig?.image && typeof tplConfig.image === "string" && !tplConfig.image.startsWith("#")) {
+    if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
+      cardBgType = "image";
+      cardBgValue = tplConfig.decorationImage;
+    } else if (tplConfig?.image && typeof tplConfig.image === "string" && !tplConfig.image.startsWith("#")) {
       cardBgType = "image";
       cardBgValue = tplConfig.image;
     } else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
@@ -287,9 +301,26 @@ export default function InvitationStudio({
       cardBgValue = invite.backgroundColor;
     }
 
-    return {
-      activeTemplateId: tplConfig?.id || tplId || null,
-      textLayers: [
+    // Resolve Text Layers: Use structured layout data from template schema if defined
+    let resolvedTextLayers: TextLayer[] = [];
+    if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
+      resolvedTextLayers = tplConfig.textLayers.map((tl) => ({
+        id: tl.id,
+        text: tl.text,
+        x: tl.x,
+        y: tl.y,
+        fontSize: tl.fontSize,
+        fontFamily: tl.fontFamily,
+        color: tl.color,
+        casing: tl.casing,
+        align: tl.align,
+        letterSpacing: tl.letterSpacing,
+        lineHeight: tl.lineHeight,
+        fontWeight: tl.fontWeight,
+        isFoil: tl.isFoil || null,
+      }));
+    } else {
+      resolvedTextLayers = [
         {
           id: "layer-title",
           text: titleText.toUpperCase(),
@@ -360,8 +391,20 @@ export default function InvitationStudio({
           lineHeight: 1.2,
           fontWeight: "500",
         },
-      ],
-      selectedTextId: "layer-title",
+      ];
+    }
+
+    const defaultSelectedId =
+      resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
+      resolvedTextLayers[0]?.id ||
+      "layer-title";
+
+    return {
+      activeTemplateId: tplConfig?.id || tplId || null,
+      isLandscape: !!tplConfig?.isLandscape,
+      photoSlot: tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null,
+      textLayers: resolvedTextLayers,
+      selectedTextId: defaultSelectedId,
       cardBg: {
         type: cardBgType,
         value: cardBgValue,
@@ -382,13 +425,13 @@ export default function InvitationStudio({
         shadow: "floating",
       },
       eventDetails: {
-        title: invite?.eventTitle || invite?.title || evt?.title || titleText,
-        host: invite?.subtitle || hostText,
+        title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
+        host: invite?.subtitle || tplConfig?.host || hostText,
         date: invite?.eventDate || evt?.eventDate || tplConfig?.date || "2026-10-14",
         time: invite?.eventTime || evt?.eventTime || tplConfig?.time || "16:00",
-        venue: invite?.eventVenue || invite?.mainText || evt?.venue || venueText,
-        address: invite?.eventVenue || evt?.address || venueText,
-        description: descriptionText,
+        venue: invite?.eventVenue || invite?.mainText || evt?.venue || tplConfig?.venue || venueText,
+        address: invite?.eventVenue || evt?.address || tplConfig?.venue || venueText,
+        description: tplConfig?.description || descriptionText,
       },
     };
   };
@@ -495,13 +538,13 @@ export default function InvitationStudio({
 
     let updatedEventDetails = { ...designState.eventDetails };
     if (updates.text !== undefined) {
-      if (activeLayer.id === "layer-title") {
-        updatedEventDetails.title = updates.text;
+      if (activeLayer.id === "layer-title" || activeLayer.id === "layer-names") {
+        updatedEventDetails.title = updates.text.replace(/\n/g, " ");
       } else if (activeLayer.id === "layer-venue") {
         updatedEventDetails.venue = updates.text;
       } else if (activeLayer.id === "layer-host") {
         updatedEventDetails.host = updates.text;
-      } else if (activeLayer.id === "layer-description") {
+      } else if (activeLayer.id === "layer-description" || activeLayer.id === "layer-rsvp") {
         updatedEventDetails.description = updates.text;
       }
     }
@@ -615,6 +658,52 @@ export default function InvitationStudio({
       console.error("Image upload failed:", err);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Photo slot image upload & replacement
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSlotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = (loadEvt) => {
+        const result = loadEvt.target?.result as string;
+        if (result) {
+          const nextState: StudioDesignState = {
+            ...designState,
+            photoSlot: designState.photoSlot
+              ? { ...designState.photoSlot, imageUrl: result }
+              : null,
+          };
+          setDesignState(nextState);
+          pushStateToHistory(nextState);
+          setToast({
+            message: "📸 Photo updated successfully!",
+            type: "success",
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+
+      // Attempt background upload to cloud/server
+      templateService
+        .uploadTemplateImage(file, `photo_slot_${Date.now()}_${file.name}`)
+        .then((res) => {
+          if (res && res.url) {
+            setDesignState((prev) => ({
+              ...prev,
+              photoSlot: prev.photoSlot ? { ...prev.photoSlot, imageUrl: res.url } : null,
+            }));
+          }
+        })
+        .catch((err) => {
+          console.warn("Background photo slot upload fallback to data URL:", err);
+        });
+    } catch (err) {
+      console.error("Failed to read photo file:", err);
     }
   };
 
@@ -823,11 +912,11 @@ export default function InvitationStudio({
 
   // Helper to construct normalized designer payload
   const constructPayload = (snapshotUrl?: string | null) => {
-    const titleLayer = designState.textLayers.find((l) => l.id === "layer-title");
-    const dateLayer = designState.textLayers.find((l) => l.id === "layer-datetime");
+    const titleLayer = designState.textLayers.find((l) => l.id === "layer-title" || l.id === "layer-names");
+    const dateLayer = designState.textLayers.find((l) => l.id === "layer-datetime" || l.id === "layer-date");
     const venueLayer = designState.textLayers.find((l) => l.id === "layer-venue");
-    const descLayer = designState.textLayers.find((l) => l.id === "layer-description");
-    const hostLayer = designState.textLayers.find((l) => l.id === "layer-host");
+    const descLayer = designState.textLayers.find((l) => l.id === "layer-description" || l.id === "layer-rsvp" || l.id === "layer-subtitle");
+    const hostLayer = designState.textLayers.find((l) => l.id === "layer-host" || l.id === "layer-names");
 
     const titleText =
       titleLayer?.text?.trim() ||
@@ -1712,6 +1801,75 @@ export default function InvitationStudio({
             {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
             {activeTab === "backgrounds" && (
               <div className="space-y-6 animate-in fade-in duration-200">
+                {/* Interactive Photo Slot Manager (for templates with a photo frame) */}
+                {designState.photoSlot && (
+                  <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl shadow-2xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <span>📸</span>
+                        <span>Photo Placeholder</span>
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 uppercase tracking-wider">
+                        Editable Slot
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 leading-relaxed mb-3">
+                      This template includes an interactive circular photo slot. Click below or directly click the photo frame on the canvas to upload your baby photo.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div
+                        onClick={() => photoInputRef.current?.click()}
+                        className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
+                        title="Click to change photo"
+                      >
+                        {designState.photoSlot.imageUrl ? (
+                          <img
+                            src={designState.photoSlot.imageUrl}
+                            alt="Photo preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-amber-600 bg-amber-100">
+                            <Upload className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Upload className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Replace Photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextState: StudioDesignState = {
+                              ...designState,
+                              photoSlot: designState.photoSlot
+                                ? {
+                                    ...designState.photoSlot,
+                                    imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
+                                  }
+                                : null,
+                            };
+                            setDesignState(nextState);
+                            pushStateToHistory(nextState);
+                          }}
+                          className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline transition-colors"
+                        >
+                          Reset to placeholder
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Custom Background Upload Area */}
                 <div>
                   <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
@@ -2311,12 +2469,20 @@ export default function InvitationStudio({
           {/* ENVELOPE + CARD CONTAINER (Captured for snapshot dispatch) */}
           <div
             ref={envelopeStageRef}
-            className="relative w-full max-w-[480px] sm:max-w-[540px] md:max-w-[580px] flex flex-col items-center justify-center select-none"
-            style={{ minHeight: "680px" }}
+            className={`relative w-full flex flex-col items-center justify-center select-none transition-all duration-300 ${
+              designState.isLandscape
+                ? "max-w-[580px] sm:max-w-[640px] md:max-w-[680px]"
+                : "max-w-[480px] sm:max-w-[540px] md:max-w-[580px]"
+            }`}
+            style={{ minHeight: designState.isLandscape ? "600px" : "680px" }}
           >
             {/* 1. Open Envelope Back & Liner Flap (Behind Card) */}
             <div
-              className="absolute top-4 w-[92%] sm:w-[94%] h-[340px] rounded-t-3xl transition-all duration-300 pointer-events-none"
+              className={`absolute rounded-t-3xl transition-all duration-300 pointer-events-none ${
+                designState.isLandscape
+                  ? "top-6 w-[96%] sm:w-[98%] h-[310px]"
+                  : "top-4 w-[92%] sm:w-[94%] h-[340px]"
+              }`}
               style={{
                 background:
                   ENVELOPE_LINERS.find((l) => l.id === designState.envelope.liner)?.style || "rgba(0,0,0,0.02)",
@@ -2327,7 +2493,11 @@ export default function InvitationStudio({
 
             {/* Realistic Triangular Open Envelope Flap */}
             <div
-              className="absolute -top-12 w-[98%] sm:w-[100%] h-[160px] transition-all duration-300 pointer-events-none z-0"
+              className={`absolute transition-all duration-300 pointer-events-none z-0 ${
+                designState.isLandscape
+                  ? "-top-14 w-[100%] sm:w-[102%] h-[150px]"
+                  : "-top-12 w-[98%] sm:w-[100%] h-[160px]"
+              }`}
               style={{
                 background: designState.envelope.color,
                 clipPath: "polygon(0 100%, 50% 0%, 100% 100%)",
@@ -2352,7 +2522,11 @@ export default function InvitationStudio({
                   setEditingTextId(null);
                 }
               }}
-              className={`relative z-10 w-[84%] sm:w-[86%] aspect-[3/4.2] rounded-2xl overflow-hidden transition-all duration-300 ${
+              className={`relative z-10 rounded-2xl overflow-hidden transition-all duration-300 ${
+                designState.isLandscape
+                  ? "w-[92%] sm:w-[94%] aspect-[4/3]"
+                  : "w-[84%] sm:w-[86%] aspect-[3/4.2]"
+              } ${
                 designState.effects.texture === "cotton-press"
                   ? "texture-cotton-press"
                   : designState.effects.texture === "linen"
@@ -2406,6 +2580,69 @@ export default function InvitationStudio({
                   }}
                 />
               )}
+
+              {/* Interactive Photo Slot (e.g. Disney Winnie the Pooh circular baby photo slot) */}
+              {designState.photoSlot && (
+                <div
+                  id="canvas-photo-slot"
+                  data-testid="canvas-photo-slot"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    photoInputRef.current?.click();
+                  }}
+                  className="absolute cursor-pointer group select-none transition-transform hover:scale-[1.02]"
+                  style={{
+                    left: `${designState.photoSlot.x}%`,
+                    top: `${designState.photoSlot.y}%`,
+                    width: `${designState.photoSlot.width}px`,
+                    height: `${designState.photoSlot.height}px`,
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 22,
+                    pointerEvents: "auto",
+                  }}
+                  title="Click to replace photo"
+                >
+                  <div
+                    className="w-full h-full overflow-hidden relative shadow-md border-2 border-amber-400/90 hover:border-amber-500 bg-amber-50/80 transition-all"
+                    style={{
+                      borderRadius: designState.photoSlot.borderRadius || "9999px",
+                    }}
+                  >
+                    {designState.photoSlot.imageUrl ? (
+                      <img
+                        src={designState.photoSlot.imageUrl}
+                        alt="Photo Frame"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50/90 text-amber-800 p-2 text-center">
+                        <Upload className="w-6 h-6 mb-1 text-amber-600" />
+                        <span className="text-[10px] font-bold">Add Photo</span>
+                      </div>
+                    )}
+
+                    {/* Interactive hover overlay */}
+                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-2 text-center cursor-pointer">
+                      <Upload className="w-5 h-5 mb-1 text-white drop-shadow" />
+                      <span className="text-[11px] font-bold drop-shadow leading-tight">
+                        Change Photo
+                      </span>
+                      <span className="text-[9px] text-white/80 drop-shadow">
+                        Upload baby photo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Hidden file input for photo slot replacement */}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoSlotUpload}
+              />
 
               {/* Draggable & Selectable Text Layers */}
               {designState.textLayers.map((layer) => {
@@ -2509,7 +2746,9 @@ export default function InvitationStudio({
 
             {/* 3. Envelope Front Pocket (Lower half holding the card) */}
             <div
-              className="relative -mt-16 w-full h-[220px] rounded-b-3xl pointer-events-none z-20 shadow-2xl"
+              className={`relative w-full rounded-b-3xl pointer-events-none z-20 shadow-2xl transition-all duration-300 ${
+                designState.isLandscape ? "-mt-24 h-[210px]" : "-mt-16 h-[220px]"
+              }`}
               style={{
                 background: designState.envelope.color,
                 clipPath: "polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)",

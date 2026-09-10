@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="botanical-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FBFDFE"/>
+    </linearGradient>
+
+    <!-- 5-Petal Blue Blossom Symbol -->
+    <g id="blue-blossom">
+      <circle cx="0" cy="-6" r="4.5" fill="#3B82F6"/>
+      <circle cx="6" cy="-2" r="4.5" fill="#2563EB"/>
+      <circle cx="4" cy="5" r="4.5" fill="#3B82F6"/>
+      <circle cx="-4" cy="5" r="4.5" fill="#1D4ED8"/>
+      <circle cx="-6" cy="-2" r="4.5" fill="#2563EB"/>
+      <circle cx="0" cy="0" r="2.5" fill="#EFF6FF"/>
+      <circle cx="0" cy="0" r="1.2" fill="#FACC15"/>
+    </g>
+    <g id="blue-blossom-small">
+      <circle cx="0" cy="-4" r="3" fill="#60A5FA"/>
+      <circle cx="4" cy="-1.5" r="3" fill="#3B82F6"/>
+      <circle cx="2.5" cy="3.5" r="3" fill="#60A5FA"/>
+      <circle cx="-2.5" cy="3.5" r="3" fill="#2563EB"/>
+      <circle cx="-4" cy="-1.5" r="3" fill="#3B82F6"/>
+      <circle cx="0" cy="0" r="1.5" fill="#EFF6FF"/>
+    </g>
+  </defs>
+
+  <!-- Clean white card base -->
+  <rect width="600" height="800" rx="16" fill="url(#botanical-bg)"/>
+  <rect x="18" y="18" width="564" height="764" rx="10" fill="none" stroke="#E6ECF2" stroke-width="1.2"/>
+
+  <!-- TOP-LEFT BOTANICAL SPRAY -->
+  <g id="top-left-spray">
+    <!-- Main curving stems -->
+    <path d="M 0 0 Q 60 70 85 160 Q 95 200 70 260" fill="none" stroke="#526E55" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 40 40 Q 110 50 160 85 Q 190 110 210 160" fill="none" stroke="#607F63" stroke-width="1.4" stroke-linecap="round"/>
+    
+    <!-- Leaves along stems -->
+    <path d="M 45 60 Q 25 80 20 100 Q 40 85 45 60" fill="#658569"/>
+    <path d="M 70 120 Q 95 110 115 125 Q 90 135 70 120" fill="#719375"/>
+    <path d="M 85 170 Q 65 190 60 210 Q 80 195 85 170" fill="#658569"/>
+    <path d="M 110 60 Q 130 45 150 55 Q 135 75 110 60" fill="#719375"/>
+    <path d="M 160 90 Q 185 85 195 105 Q 175 115 160 90" fill="#5D7A60"/>
+
+    <!-- Blue Blossom Clusters -->
+    <use href="#blue-blossom" x="35" y="35"/>
+    <use href="#blue-blossom" x="65" y="65"/>
+    <use href="#blue-blossom-small" x="90" y="45"/>
+    <use href="#blue-blossom" x="125" y="70"/>
+    <use href="#blue-blossom-small" x="155" y="95"/>
+    <use href="#blue-blossom" x="185" y="130"/>
+    <use href="#blue-blossom-small" x="205" y="160"/>
+    
+    <use href="#blue-blossom" x="50" y="110"/>
+    <use href="#blue-blossom-small" x="80" y="150"/>
+    <use href="#blue-blossom" x="95" y="195"/>
+    <use href="#blue-blossom-small" x="70" y="240"/>
+    <use href="#blue-blossom-small" x="35" y="165"/>
+  </g>
+
+  <!-- BOTTOM-RIGHT BOTANICAL SPRAY (Mirrored / Inverted) -->
+  <g id="bottom-right-spray" transform="translate(600, 800) rotate(180)">
+    <!-- Main curving stems -->
+    <path d="M 0 0 Q 60 70 85 160 Q 95 200 70 260" fill="none" stroke="#526E55" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 40 40 Q 110 50 160 85 Q 190 110 210 160" fill="none" stroke="#607F63" stroke-width="1.4" stroke-linecap="round"/>
+    
+    <!-- Leaves -->
+    <path d="M 45 60 Q 25 80 20 100 Q 40 85 45 60" fill="#658569"/>
+    <path d="M 70 120 Q 95 110 115 125 Q 90 135 70 120" fill="#719375"/>
+    <path d="M 85 170 Q 65 190 60 210 Q 80 195 85 170" fill="#658569"/>
+    <path d="M 110 60 Q 130 45 150 55 Q 135 75 110 60" fill="#719375"/>
+    <path d="M 160 90 Q 185 85 195 105 Q 175 115 160 90" fill="#5D7A60"/>
+
+    <!-- Blue Blossom Clusters -->
+    <use href="#blue-blossom" x="35" y="35"/>
+    <use href="#blue-blossom" x="65" y="65"/>
+    <use href="#blue-blossom-small" x="90" y="45"/>
+    <use href="#blue-blossom" x="125" y="70"/>
+    <use href="#blue-blossom-small" x="155" y="95"/>
+    <use href="#blue-blossom" x="185" y="130"/>
+    <use href="#blue-blossom-small" x="205" y="160"/>
+    
+    <use href="#blue-blossom" x="50" y="110"/>
+    <use href="#blue-blossom-small" x="80" y="150"/>
+    <use href="#blue-blossom" x="95" y="195"/>
+    <use href="#blue-blossom-small" x="70" y="240"/>
+    <use href="#blue-blossom-small" x="35" y="165"/>
+  </g>
+</svg>

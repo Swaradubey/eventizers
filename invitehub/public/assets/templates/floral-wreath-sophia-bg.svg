@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="wreath-card-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FCFCF9"/>
+      <stop offset="100%" stop-color="#F6F5F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Clean textured white card -->
+  <rect width="600" height="800" rx="16" fill="url(#wreath-card-bg)" />
+  <rect x="18" y="18" width="564" height="764" rx="10" fill="none" stroke="#EAE6DC" stroke-width="1.2" />
+
+  <!-- Botanical Floral Wreath (Centered around 300, 400) -->
+  <g id="botanical-wreath">
+    <!-- Base Vine Ring Oval -->
+    <path d="M 300 130 C 440 130 500 240 500 400 C 500 560 440 670 300 670 C 160 670 100 560 100 400 C 100 240 160 130 300 130 Z" 
+          fill="none" stroke="#6E7F66" stroke-width="1.8" stroke-dasharray="8,4" opacity="0.4" />
+
+    <!-- Top & Upper Wreath Elements -->
+    <!-- Top Center Cluster: Peach Daisy with Eucalyptus Leaves -->
+    <g transform="translate(300, 130)">
+      <!-- Olive leaves spreading left & right -->
+      <path d="M 0 0 Q -25 -15 -45 -10 Q -30 5 0 0" fill="#7D9372" opacity="0.85"/>
+      <path d="M 0 0 Q -40 -3 -60 12 Q -45 18 0 0" fill="#8EA383" opacity="0.8"/>
+      <path d="M 0 0 Q 25 -15 45 -10 Q 30 5 0 0" fill="#7D9372" opacity="0.85"/>
+      <path d="M 0 0 Q 40 -3 60 12 Q 45 18 0 0" fill="#8EA383" opacity="0.8"/>
+      <!-- Peach Daisy Blossom -->
+      <ellipse cx="0" cy="-16" rx="6" ry="14" fill="#F6D2C4"/>
+      <ellipse cx="11" cy="-11" rx="6" ry="14" fill="#F3C3B2" transform="rotate(45, 11, -11)"/>
+      <ellipse cx="16" cy="0" rx="6" ry="14" fill="#F6D2C4" transform="rotate(90, 16, 0)"/>
+      <ellipse cx="11" cy="11" rx="6" ry="14" fill="#EBB4A2" transform="rotate(135, 11, 11)"/>
+      <ellipse cx="0" cy="16" rx="6" ry="14" fill="#EBB4A2"/>
+      <ellipse cx="-11" cy="11" rx="6" ry="14" fill="#EBB4A2" transform="rotate(-135, -11, 11)"/>
+      <ellipse cx="-16" cy="0" rx="6" ry="14" fill="#F6D2C4" transform="rotate(-90, -16, 0)"/>
+      <ellipse cx="-11" cy="-11" rx="6" ry="14" fill="#F3C3B2" transform="rotate(-45, -11, -11)"/>
+      <circle cx="0" cy="0" r="7" fill="#E8A854" stroke="#D39239" stroke-width="1"/>
+    </g>
+
+    <!-- Top Left Arch: Leaves & Yellow Wildflower Buds -->
+    <g transform="translate(200, 160)">
+      <path d="M 0 0 Q -30 -10 -50 15 Q -30 20 0 0" fill="#6B8062" opacity="0.9"/>
+      <path d="M -10 10 Q -25 35 -15 55 Q 0 40 -10 10" fill="#84997A" opacity="0.85"/>
+      <path d="M -20 -5 Q -40 -15 -55 -25 Q -40 -5 -20 -5" fill="#718667"/>
+      <!-- Yellow flower -->
+      <circle cx="-35" cy="5" r="7" fill="#F5CF65"/>
+      <circle cx="-35" cy="5" r="4" fill="#E39832"/>
+    </g>
+
+    <!-- Upper Left: Eucalyptus Leaf Spray & Bluebells -->
+    <g transform="translate(130, 250)">
+      <path d="M 0 0 Q -20 -25 -15 -50 Q 5 -35 0 0" fill="#7D9372" opacity="0.85"/>
+      <path d="M -5 10 Q -35 15 -45 -10 Q -25 -15 -5 10" fill="#6B8062" opacity="0.9"/>
+      <path d="M 0 20 Q -25 35 -35 60 Q -15 50 0 20" fill="#8EA383" opacity="0.8"/>
+      <!-- Bluebell cluster -->
+      <path d="M -25 -10 C -40 -5 -45 5 -38 12 C -32 8 -28 5 -25 -10 Z" fill="#8CAAD6"/>
+      <path d="M -20 15 C -35 20 -40 30 -33 37 C -27 33 -23 30 -20 15 Z" fill="#7796C4"/>
+    </g>
+
+    <!-- Middle Left: Lush Eucalyptus & Peach Anemone Blossom -->
+    <g transform="translate(95, 380)">
+      <!-- Branch -->
+      <path d="M 15 -60 Q -5 -10 5 60" fill="none" stroke="#5F7256" stroke-width="1.6"/>
+      <path d="M 5 -35 Q -25 -45 -35 -25 Q -15 -20 5 -35" fill="#7D9372"/>
+      <path d="M 5 25 Q -25 35 -35 15 Q -15 15 5 25" fill="#6B8062"/>
+      <!-- Peach Daisy Blossom -->
+      <g transform="translate(-10, 0)">
+        <ellipse cx="0" cy="-14" rx="5" ry="12" fill="#F6D2C4"/>
+        <ellipse cx="10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(45, 10, -10)"/>
+        <ellipse cx="14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(90, 14, 0)"/>
+        <ellipse cx="10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(135, 10, 10)"/>
+        <ellipse cx="0" cy="14" rx="5" ry="12" fill="#EBB4A2"/>
+        <ellipse cx="-10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(-135, -10, 10)"/>
+        <ellipse cx="-14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(-90, -14, 0)"/>
+        <ellipse cx="-10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(-45, -10, -10)"/>
+        <circle cx="0" cy="0" r="6" fill="#E8A854" stroke="#D39239" stroke-width="1"/>
+      </g>
+    </g>
+
+    <!-- Lower Left: Sage Leaves & Blue Bellflower -->
+    <g transform="translate(125, 520)">
+      <path d="M 0 0 Q -30 -10 -40 -35 Q -20 -30 0 0" fill="#7D9372"/>
+      <path d="M 5 15 Q -25 25 -30 50 Q -10 40 5 15" fill="#6B8062"/>
+      <path d="M 10 35 Q 0 65 15 85 Q 25 60 10 35" fill="#8EA383"/>
+      <!-- Hanging bluebell -->
+      <path d="M -15 25 C -28 32 -32 44 -24 50 C -18 45 -16 38 -15 25 Z" fill="#8CAAD6"/>
+    </g>
+
+    <!-- Bottom Left Arch: Yellow Blooms & Olive Spray -->
+    <g transform="translate(200, 640)">
+      <path d="M 0 0 Q -35 15 -60 10 Q -40 -5 0 0" fill="#6B8062"/>
+      <path d="M 15 10 Q -10 35 -35 40 Q -20 20 15 10" fill="#7D9372"/>
+      <!-- Soft Yellow Blossom -->
+      <circle cx="-25" cy="15" r="7" fill="#F5CF65"/>
+      <circle cx="-25" cy="15" r="4" fill="#E39832"/>
+    </g>
+
+    <!-- Bottom Center Cluster: Peach Daisy with Sage Sprays -->
+    <g transform="translate(300, 670)">
+      <path d="M 0 0 Q -35 15 -55 5 Q -35 -5 0 0" fill="#7D9372"/>
+      <path d="M 0 0 Q 35 15 55 5 Q 35 -5 0 0" fill="#7D9372"/>
+      <g transform="translate(0, 5)">
+        <ellipse cx="0" cy="-14" rx="5" ry="12" fill="#F6D2C4"/>
+        <ellipse cx="10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(45, 10, -10)"/>
+        <ellipse cx="14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(90, 14, 0)"/>
+        <ellipse cx="10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(135, 10, 10)"/>
+        <ellipse cx="0" cy="14" rx="5" ry="12" fill="#EBB4A2"/>
+        <ellipse cx="-10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(-135, -10, 10)"/>
+        <ellipse cx="-14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(-90, -14, 0)"/>
+        <ellipse cx="-10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(-45, -10, -10)"/>
+        <circle cx="0" cy="0" r="6" fill="#E8A854" stroke="#D39239" stroke-width="1"/>
+      </g>
+    </g>
+
+    <!-- Bottom Right Arch: Sage Leaves & Yellow Wildflower -->
+    <g transform="translate(400, 640)">
+      <path d="M 0 0 Q 35 15 60 10 Q 40 -5 0 0" fill="#6B8062"/>
+      <path d="M -15 10 Q 10 35 35 40 Q 20 20 -15 10" fill="#7D9372"/>
+      <circle cx="25" cy="15" r="7" fill="#F5CF65"/>
+      <circle cx="25" cy="15" r="4" fill="#E39832"/>
+    </g>
+
+    <!-- Lower Right: Eucalyptus & Bluebell -->
+    <g transform="translate(475, 520)">
+      <path d="M 0 0 Q 30 -10 40 -35 Q 20 -30 0 0" fill="#7D9372"/>
+      <path d="M -5 15 Q 25 25 30 50 Q 10 40 -5 15" fill="#6B8062"/>
+      <path d="M -10 35 Q 0 65 -15 85 Q -25 60 -10 35" fill="#8EA383"/>
+      <path d="M 15 25 C 28 32 32 44 24 50 C 18 45 16 38 15 25 Z" fill="#8CAAD6"/>
+    </g>
+
+    <!-- Middle Right: Peach Daisy & Leaves -->
+    <g transform="translate(505, 380)">
+      <path d="M -15 -60 Q 5 -10 -5 60" fill="none" stroke="#5F7256" stroke-width="1.6"/>
+      <path d="M -5 -35 Q 25 -45 35 -25 Q 15 -20 -5 -35" fill="#7D9372"/>
+      <path d="M -5 25 Q 25 35 35 15 Q 15 15 -5 25" fill="#6B8062"/>
+      <g transform="translate(10, 0)">
+        <ellipse cx="0" cy="-14" rx="5" ry="12" fill="#F6D2C4"/>
+        <ellipse cx="10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(45, 10, -10)"/>
+        <ellipse cx="14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(90, 14, 0)"/>
+        <ellipse cx="10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(135, 10, 10)"/>
+        <ellipse cx="0" cy="14" rx="5" ry="12" fill="#EBB4A2"/>
+        <ellipse cx="-10" cy="10" rx="5" ry="12" fill="#EBB4A2" transform="rotate(-135, -10, 10)"/>
+        <ellipse cx="-14" cy="0" rx="5" ry="12" fill="#F6D2C4" transform="rotate(-90, -14, 0)"/>
+        <ellipse cx="-10" cy="-10" rx="5" ry="12" fill="#F3C3B2" transform="rotate(-45, -10, -10)"/>
+        <circle cx="0" cy="0" r="6" fill="#E8A854" stroke="#D39239" stroke-width="1"/>
+      </g>
+    </g>
+
+    <!-- Upper Right: Eucalyptus Spray & Bluebells -->
+    <g transform="translate(470, 250)">
+      <path d="M 0 0 Q 20 -25 15 -50 Q -5 -35 0 0" fill="#7D9372" opacity="0.85"/>
+      <path d="M 5 10 Q 35 15 45 -10 Q 25 -15 5 10" fill="#6B8062" opacity="0.9"/>
+      <path d="M 0 20 Q 25 35 35 60 Q 15 50 0 20" fill="#8EA383" opacity="0.8"/>
+      <path d="M 25 -10 C 40 -5 45 5 38 12 C 32 8 28 5 25 -10 Z" fill="#8CAAD6"/>
+      <path d="M 20 15 C 35 20 40 30 33 37 C 27 33 23 30 20 15 Z" fill="#7796C4"/>
+    </g>
+
+    <!-- Top Right Arch: Yellow Wildflower & Leaves -->
+    <g transform="translate(400, 160)">
+      <path d="M 0 0 Q 30 -10 50 15 Q 30 20 0 0" fill="#6B8062" opacity="0.9"/>
+      <path d="M 10 10 Q 25 35 15 55 Q 0 40 10 10" fill="#84997A" opacity="0.85"/>
+      <path d="M 20 -5 Q 40 -15 55 -25 Q 40 -5 20 -5" fill="#718667"/>
+      <circle cx="35" cy="5" r="7" fill="#F5CF65"/>
+      <circle cx="35" cy="5" r="4" fill="#E39832"/>
+    </g>
+  </g>
+</svg>

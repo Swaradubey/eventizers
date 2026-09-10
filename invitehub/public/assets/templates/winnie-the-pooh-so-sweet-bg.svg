@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pooh-ochre-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FCF8EE"/>
+      <stop offset="50%" stop-color="#F7EFDA"/>
+      <stop offset="100%" stop-color="#EFE1BF"/>
+    </linearGradient>
+    <linearGradient id="pooh-honey" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFDE6A"/>
+      <stop offset="50%" stop-color="#F5B82E"/>
+      <stop offset="100%" stop-color="#D98A19"/>
+    </linearGradient>
+    <linearGradient id="pooh-pot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6DA8BB"/>
+      <stop offset="50%" stop-color="#4B8699"/>
+      <stop offset="100%" stop-color="#326778"/>
+    </linearGradient>
+    <filter id="pooh-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Warm Ochre / Honey Cream Background -->
+  <rect width="600" height="800" rx="16" fill="url(#pooh-ochre-bg)" />
+
+  <!-- Storybook Warm Wood/Brown Border -->
+  <rect x="22" y="22" width="556" height="756" rx="12" fill="none" stroke="#C8A56E" stroke-width="1.4" />
+  <rect x="28" y="28" width="544" height="744" rx="8" fill="none" stroke="#A87834" stroke-width="0.8" stroke-dasharray="6,4" opacity="0.6" />
+
+  <!-- Corner Storybook Floral & Honey Accents -->
+  <!-- Top Left Buttercups & Honeycomb Sprigs -->
+  <g transform="translate(45, 45)" opacity="0.85">
+    <path d="M 0 0 Q 30 5 45 35" fill="none" stroke="#889C62" stroke-width="1.6" stroke-linecap="round" />
+    <circle cx="20" cy="8" r="6" fill="#F4C430" />
+    <circle cx="20" cy="8" r="2.5" fill="#C98B1B" />
+    <circle cx="45" cy="35" r="7" fill="#F7D050" />
+    <circle cx="45" cy="35" r="3" fill="#C98B1B" />
+    <ellipse cx="12" cy="18" rx="6" ry="3" transform="rotate(-30 12 18)" fill="#7E9659" />
+  </g>
+
+  <!-- Top Right Honeycomb & Flowers -->
+  <g transform="translate(555, 45) scale(-1, 1)" opacity="0.85">
+    <path d="M 0 0 Q 30 5 45 35" fill="none" stroke="#889C62" stroke-width="1.6" stroke-linecap="round" />
+    <circle cx="20" cy="8" r="6" fill="#F4C430" />
+    <circle cx="20" cy="8" r="2.5" fill="#C98B1B" />
+    <circle cx="45" cy="35" r="7" fill="#F7D050" />
+    <circle cx="45" cy="35" r="3" fill="#C98B1B" />
+    <ellipse cx="12" cy="18" rx="6" ry="3" transform="rotate(-30 12 18)" fill="#7E9659" />
+  </g>
+
+  <!-- Circular Photo Placeholder Decorative Outer Frame (Center: 300, 215, r: 72) -->
+  <g id="photo-frame-border" filter="url(#pooh-shadow)">
+    <!-- Golden Honeycomb Decorative Ring Background -->
+    <circle cx="300" cy="215" r="79" fill="#FFFBF2" stroke="#E5B96A" stroke-width="2.5" />
+    <circle cx="300" cy="215" r="75" fill="none" stroke="#A87834" stroke-width="1" stroke-dasharray="5,3" />
+    <circle cx="300" cy="215" r="72" fill="#F9F2E2" />
+
+    <!-- Cute Honeycomb Accents on the Frame Edge (Right side of ring: ~ 365, 175) -->
+    <g transform="translate(362, 165)">
+      <!-- Little Honey Bee -->
+      <!-- Flight Trail -->
+      <path d="M -30 25 Q -10 35 5 15 Q 15 -5 -2 -15 Q -15 -18 -8 5" fill="none" stroke="#9E7843" stroke-width="1" stroke-dasharray="2,2" />
+      <!-- Bee Body -->
+      <ellipse cx="10" cy="5" rx="7" ry="5" fill="#F4C430" transform="rotate(-20 10 5)" />
+      <!-- Stripes -->
+      <path d="M 8 1 L 7 9 M 11 2 L 10 10" stroke="#3D2608" stroke-width="1.5" stroke-linecap="round" />
+      <!-- Wings -->
+      <ellipse cx="7" cy="-2" rx="4.5" ry="3" fill="#FFFFFF" opacity="0.85" transform="rotate(-45 7 -2)" stroke="#CCD6DE" stroke-width="0.6" />
+      <ellipse cx="13" cy="-1" rx="4" ry="2.5" fill="#FFFFFF" opacity="0.85" transform="rotate(-20 13 -1)" stroke="#CCD6DE" stroke-width="0.6" />
+    </g>
+
+    <!-- Little Bee on Left Edge of Ring -->
+    <g transform="translate(225, 235)">
+      <path d="M 30 10 Q 15 25 0 10 Q -10 -5 5 -12" fill="none" stroke="#9E7843" stroke-width="1" stroke-dasharray="2,2" />
+      <ellipse cx="-4" cy="-5" rx="6" ry="4.5" fill="#F4C430" transform="rotate(25 -4 -5)" />
+      <path d="M -6 -8 L -5 0 M -2 -9 L -1 -1" stroke="#3D2608" stroke-width="1.3" stroke-linecap="round" />
+      <ellipse cx="-7" cy="-10" rx="4" ry="2.5" fill="#FFFFFF" opacity="0.85" transform="rotate(10 -7 -10)" stroke="#CCD6DE" stroke-width="0.5" />
+    </g>
+  </g>
+
+  <!-- Bottom Right Classic Ceramic "HUNNY" Pot Illustration -->
+  <g id="hunny-pot" transform="translate(480, 690)" filter="url(#pooh-shadow)">
+    <!-- Clay Pot Body -->
+    <path d="M -30 25 C -35 5 -32 -15 -20 -22 L 20 -22 C 32 -15 35 5 30 25 C 22 35 -22 35 -30 25 Z" fill="url(#pooh-pot)" stroke="#224552" stroke-width="1.5" />
+    <!-- Pot Rim -->
+    <ellipse cx="0" cy="-22" rx="22" ry="6" fill="#5896A9" stroke="#224552" stroke-width="1.4" />
+    <!-- Pot Opening Inner -->
+    <ellipse cx="0" cy="-22" rx="17" ry="4" fill="#1C3842" />
+    <!-- Golden Dripping Honey -->
+    <path d="M -12 -22 Q 0 -18 12 -22 Q 15 -14 10 -10 Q 8 -2 5 -2 Q 2 -8 0 -15 Q -4 -10 -8 -10 Q -12 -12 -12 -22 Z" fill="url(#pooh-honey)" stroke="#B87711" stroke-width="0.8" />
+    <circle cx="6" cy="4" r="2.5" fill="#F5B82E" />
+    <!-- "HUNNY" Text Label -->
+    <rect x="-18" y="-5" width="36" height="15" rx="2" fill="#E8D5B0" opacity="0.9" />
+    <text x="0" y="6" text-anchor="middle" font-family="'Caveat', cursive, sans-serif" font-size="11" font-weight="700" fill="#2C1A06" letter-spacing="1">HUNNY</text>
+  </g>
+
+  <!-- Bottom Left Wild Daisies & Foliage -->
+  <g transform="translate(60, 715)">
+    <path d="M 0 35 Q 25 15 55 25" fill="none" stroke="#7A8E58" stroke-width="1.8" stroke-linecap="round" />
+    <path d="M 20 28 Q 35 5 45 10" fill="none" stroke="#7A8E58" stroke-width="1.4" stroke-linecap="round" />
+    <!-- Wild Daisy Flowers -->
+    <circle cx="25" cy="20" r="5" fill="#F7D050" stroke="#C98B1B" stroke-width="0.7" />
+    <circle cx="48" cy="14" r="6" fill="#FFF8E7" stroke="#D8BD7D" stroke-width="0.8" />
+    <circle cx="48" cy="14" r="2.5" fill="#F5B82E" />
+    <ellipse cx="12" cy="28" rx="7" ry="3.5" transform="rotate(-15 12 28)" fill="#687C49" />
+    <ellipse cx="38" cy="22" rx="6" ry="3" transform="rotate(10 38 22)" fill="#687C49" />
+  </g>
+</svg>

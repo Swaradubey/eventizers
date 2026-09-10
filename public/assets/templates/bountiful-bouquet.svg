@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,600;1,400&amp;display=swap');
+      .font-cinzel { font-family: 'Cinzel', serif; text-anchor: middle; }
+      .font-sans { font-family: 'Inter', -apple-system, sans-serif; text-anchor: middle; }
+      .font-serif { font-family: 'Playfair Display', Georgia, serif; text-anchor: middle; }
+    </style>
+    <linearGradient id="bb-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FCFCFA"/>
+      <stop offset="60%" stop-color="#F9F9F6"/>
+      <stop offset="100%" stop-color="#F4F4EE"/>
+    </linearGradient>
+    <linearGradient id="bb-petal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FCEEE6"/>
+      <stop offset="50%" stop-color="#F5CEBC"/>
+      <stop offset="100%" stop-color="#DE987C"/>
+    </linearGradient>
+    <linearGradient id="bb-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0DFB0"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#A8811A"/>
+    </linearGradient>
+    <filter id="bb-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Card Background -->
+  <rect width="600" height="800" rx="16" fill="url(#bb-bg)" />
+
+  <!-- Ultra Clean Minimalist Inner Border -->
+  <rect x="24" y="24" width="552" height="752" rx="10" fill="none" stroke="#E5E4DC" stroke-width="1.2" />
+  <rect x="30" y="30" width="540" height="740" rx="8" fill="none" stroke="#CECDBF" stroke-width="0.6" opacity="0.6" />
+
+  <!-- 4-Corner Minimalist Botanical Accents -->
+  <g id="corner-tl" transform="translate(30, 30)" filter="url(#bb-shadow)">
+    <path d="M 5 5 Q 45 15 85 45" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 Q 15 45 45 85" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 L 60 60" fill="none" stroke="#4F644E" stroke-width="1.5" stroke-linecap="round" />
+    <ellipse cx="25" cy="40" rx="11" ry="6" transform="rotate(35 25 40)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="40" cy="25" rx="11" ry="6" transform="rotate(55 40 25)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="48" cy="70" rx="13" ry="7" transform="rotate(25 48 70)" fill="#789677" opacity="0.9" />
+    <ellipse cx="70" cy="48" rx="13" ry="7" transform="rotate(65 70 48)" fill="#789677" opacity="0.9" />
+    <g transform="translate(32, 32)">
+      <circle cx="0" cy="0" r="18" fill="url(#bb-petal)" />
+      <circle cx="-3" cy="-2" r="13" fill="#FFF2EB" opacity="0.9" />
+      <circle cx="2" cy="1" r="10" fill="url(#bb-petal)" opacity="0.85" />
+      <circle cx="0" cy="0" r="5" fill="#E8A68B" />
+      <circle cx="0" cy="0" r="2" fill="#D4AF37" />
+    </g>
+    <g transform="translate(68, 30)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+    <g transform="translate(30, 68)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+  </g>
+
+  <g id="corner-tr" transform="translate(570, 30) scale(-1, 1)" filter="url(#bb-shadow)">
+    <path d="M 5 5 Q 45 15 85 45" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 Q 15 45 45 85" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 L 60 60" fill="none" stroke="#4F644E" stroke-width="1.5" stroke-linecap="round" />
+    <ellipse cx="25" cy="40" rx="11" ry="6" transform="rotate(35 25 40)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="40" cy="25" rx="11" ry="6" transform="rotate(55 40 25)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="48" cy="70" rx="13" ry="7" transform="rotate(25 48 70)" fill="#789677" opacity="0.9" />
+    <ellipse cx="70" cy="48" rx="13" ry="7" transform="rotate(65 70 48)" fill="#789677" opacity="0.9" />
+    <g transform="translate(32, 32)">
+      <circle cx="0" cy="0" r="18" fill="url(#bb-petal)" />
+      <circle cx="-3" cy="-2" r="13" fill="#FFF2EB" opacity="0.9" />
+      <circle cx="2" cy="1" r="10" fill="url(#bb-petal)" opacity="0.85" />
+      <circle cx="0" cy="0" r="5" fill="#E8A68B" />
+      <circle cx="0" cy="0" r="2" fill="#D4AF37" />
+    </g>
+    <g transform="translate(68, 30)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+    <g transform="translate(30, 68)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+  </g>
+
+  <g id="corner-bl" transform="translate(30, 770) scale(1, -1)" filter="url(#bb-shadow)">
+    <path d="M 5 5 Q 45 15 85 45" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 Q 15 45 45 85" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 L 60 60" fill="none" stroke="#4F644E" stroke-width="1.5" stroke-linecap="round" />
+    <ellipse cx="25" cy="40" rx="11" ry="6" transform="rotate(35 25 40)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="40" cy="25" rx="11" ry="6" transform="rotate(55 40 25)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="48" cy="70" rx="13" ry="7" transform="rotate(25 48 70)" fill="#789677" opacity="0.9" />
+    <ellipse cx="70" cy="48" rx="13" ry="7" transform="rotate(65 70 48)" fill="#789677" opacity="0.9" />
+    <g transform="translate(32, 32)">
+      <circle cx="0" cy="0" r="18" fill="url(#bb-petal)" />
+      <circle cx="-3" cy="-2" r="13" fill="#FFF2EB" opacity="0.9" />
+      <circle cx="2" cy="1" r="10" fill="url(#bb-petal)" opacity="0.85" />
+      <circle cx="0" cy="0" r="5" fill="#E8A68B" />
+      <circle cx="0" cy="0" r="2" fill="#D4AF37" />
+    </g>
+    <g transform="translate(68, 30)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+    <g transform="translate(30, 68)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+  </g>
+
+  <g id="corner-br" transform="translate(570, 770) scale(-1, -1)" filter="url(#bb-shadow)">
+    <path d="M 5 5 Q 45 15 85 45" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 Q 15 45 45 85" fill="none" stroke="#667C65" stroke-width="1.3" stroke-linecap="round" />
+    <path d="M 5 5 L 60 60" fill="none" stroke="#4F644E" stroke-width="1.5" stroke-linecap="round" />
+    <ellipse cx="25" cy="40" rx="11" ry="6" transform="rotate(35 25 40)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="40" cy="25" rx="11" ry="6" transform="rotate(55 40 25)" fill="#8EA88D" opacity="0.85" />
+    <ellipse cx="48" cy="70" rx="13" ry="7" transform="rotate(25 48 70)" fill="#789677" opacity="0.9" />
+    <ellipse cx="70" cy="48" rx="13" ry="7" transform="rotate(65 70 48)" fill="#789677" opacity="0.9" />
+    <g transform="translate(32, 32)">
+      <circle cx="0" cy="0" r="18" fill="url(#bb-petal)" />
+      <circle cx="-3" cy="-2" r="13" fill="#FFF2EB" opacity="0.9" />
+      <circle cx="2" cy="1" r="10" fill="url(#bb-petal)" opacity="0.85" />
+      <circle cx="0" cy="0" r="5" fill="#E8A68B" />
+      <circle cx="0" cy="0" r="2" fill="#D4AF37" />
+    </g>
+    <g transform="translate(68, 30)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+    <g transform="translate(30, 68)">
+      <circle cx="0" cy="0" r="8" fill="#FCEEE6" stroke="#E0A792" stroke-width="0.8" />
+      <circle cx="0" cy="0" r="3" fill="#D4AF37" />
+    </g>
+  </g>
+
+  <!-- Typography Content -->
+  <g>
+    <!-- Intro Greeting -->
+    <text x="300" y="210" class="font-sans" font-size="11" font-weight="600" fill="#7A8778" letter-spacing="3.5">JOIN US FOR A BABY SHOWER HONORING</text>
+
+    <!-- Celebrants AMBER & TAYLOR -->
+    <text x="300" y="285" class="font-cinzel" font-size="34" font-weight="700" fill="#1C241E" letter-spacing="5">AMBER &amp; TAYLOR</text>
+
+    <!-- Subtitle -->
+    <text x="300" y="335" class="font-serif" font-size="14.5" font-style="italic" fill="#586957" letter-spacing="0.5">as they prepare to welcome their little one</text>
+
+    <!-- Divider Line -->
+    <line x1="260" y1="380" x2="340" y2="380" stroke="#C9D1C7" stroke-width="1" />
+
+    <!-- Date & Time -->
+    <text x="300" y="440" class="font-sans" font-size="14" font-weight="700" fill="#2D3B2E" letter-spacing="2">SUNDAY, AUGUST 16TH</text>
+    <text x="300" y="470" class="font-sans" font-size="12.5" font-weight="500" fill="#607261" letter-spacing="1">2:00 TO 5:00 IN THE AFTERNOON</text>
+
+    <!-- Venue & Address -->
+    <text x="300" y="550" class="font-cinzel" font-size="16" font-weight="700" fill="#1C241E" letter-spacing="2">The Glasshouse Loft</text>
+    <text x="300" y="578" class="font-sans" font-size="12" font-weight="400" fill="#6A7A6B" letter-spacing="0.8">89 Mercer Street, New York, NY</text>
+
+    <!-- RSVP -->
+    <text x="300" y="650" class="font-sans" font-size="11" font-weight="500" fill="#4B5E4D" letter-spacing="0.6">RSVP by August 1st to taylor.amber@example.com</text>
+  </g>
+</svg>
