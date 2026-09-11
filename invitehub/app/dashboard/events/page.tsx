@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventThumbnail, { getTemplateImage } from "../../../components/EventThumbnail";
+import EviteCardPreview from "../../../components/designer/EviteCardPreview";
 
 type FilterStatus = "all" | "active" | "draft" | "completed";
 
@@ -742,13 +743,16 @@ function EventsPageContent() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                <EventThumbnail
-                  event={viewingEvent}
-                  size="full"
-                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0"
-                  imageClassName="w-full h-full"
-                  clickable={false}
-                />
+                <div className="w-full flex justify-center py-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="w-48 sm:w-56 aspect-[5/7] rounded-xl overflow-hidden shadow-md">
+                    <EviteCardPreview
+                      event={viewingEvent}
+                      templateId={viewingEvent.selectedTemplateId}
+                      aspectRatio="5x7"
+                      cardOnly={false}
+                    />
+                  </div>
+                </div>
 
                 {/* RSVP Stats Grid in Preview */}
                 <div className="grid grid-cols-4 gap-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-center">

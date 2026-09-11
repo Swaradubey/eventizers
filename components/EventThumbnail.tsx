@@ -53,7 +53,7 @@ export interface EventThumbnailProps {
   imageClassName?: string;
   fallbackClassName?: string;
   roundedClassName?: string;
-  onPreview?: (url: string, title?: string) => void;
+  onPreview?: (url: string, title?: string, event?: EventThumbnailEvent) => void;
   alt?: string;
   clickable?: boolean;
 }
@@ -107,9 +107,9 @@ export default function EventThumbnail({
   const currentSizeClass = sizeClasses[size] || sizeClasses.md;
 
   const handleImageClick = (e: React.MouseEvent) => {
-    if (onPreview && resolvedUrl && !hasError) {
+    if (onPreview && (resolvedUrl || event.selectedTemplateId) && !hasError) {
       e.stopPropagation();
-      onPreview(resolvedUrl, eventTitle);
+      onPreview(resolvedUrl, eventTitle, event);
     }
   };
 

@@ -29,6 +29,7 @@ import {
 import { useSidebar } from "../../context/SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 import EventThumbnail, { getTemplateImage } from "../../components/EventThumbnail";
+import EviteCardPreview from "../../components/designer/EviteCardPreview";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -46,8 +47,8 @@ export default function DashboardPage() {
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Image preview modal state
-  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  // Image / Card preview modal state
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string; event?: any } | null>(null);
 
   // Dashboard stats
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -464,7 +465,7 @@ export default function DashboardPage() {
                           <EventThumbnail
                             event={event}
                             size="md"
-                            onPreview={(url, title) => setPreviewImage({ url, title: title || event.title })}
+                            onPreview={(url, title, ev) => setPreviewImage({ url, title: title || event.title, event: ev || event })}
                           />
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors truncate">
@@ -587,13 +588,16 @@ export default function DashboardPage() {
 
               {/* Scrollable Content Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-                <EventThumbnail
-                  event={viewingEvent}
-                  size="full"
-                  className="w-full h-44 sm:h-48 rounded-xl overflow-hidden border border-blue-100/40 bg-blue-50/30 flex-shrink-0"
-                  imageClassName="w-full h-full"
-                  clickable={false}
-                />
+                <div className="w-full flex justify-center py-2 bg-blue-50/20 rounded-xl border border-blue-100/40">
+                  <div className="w-48 sm:w-56 aspect-[5/7] rounded-xl overflow-hidden shadow-md">
+                    <EviteCardPreview
+                      event={viewingEvent}
+                      templateId={viewingEvent.selectedTemplateId}
+                      aspectRatio="5x7"
+                      cardOnly={false}
+                    />
+                  </div>
+                </div>
 
                 {viewingEvent.description && (
                   <div className="p-3.5 sm:p-4 bg-blue-50/40 rounded-xl border border-blue-100/40 max-w-full">
@@ -717,66 +721,105 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* IMAGE PREVIEW MODAL */}
+      {/* IMAGE / CARD PREVIEW MODAL */}
       <AnimatePresence>
-        {previewImage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setPreviewImage(null)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative z-10 max-w-2xl w-full bg-white rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-blue-100/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                    <ImageIcon className="w-4 h-4 text-white" />
+        {previewImage && (() => {
+          const ev = previewImage.event;
+          const candidateUrl = previewImage.url || ev?.imageUrl || ev?.coverImage || ev?.previewUrl || "";
+          const isRasterSnapshot = Boolean(
+            candidateUrl &&
+            (candidateUrl.startsWith("data:image/") ||
+              candidateUrl.includes("/uploads/") ||
+              (/\.(png|jpe?g|webp)($|\?)/i.test(candidateUrl) && !candidateUrl.endsWith("-bg.svg")))
+          );
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setPreviewImage(null)}
+                className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative z-10 max-w-lg w-full bg-white rounded-2xl shadow-2xl border border-blue-100/60 overflow-hidden my-auto flex flex-col max-h-[92vh]"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-blue-100/40 bg-gradient-to-r from-blue-50/70 to-indigo-50/70 flex-shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate max-w-[220px] sm:max-w-[280px]">{previewImage.title}</p>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Card Preview</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 truncate max-w-[280px]">{previewImage.title}</p>
-                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Card Preview</p>
+                  <div className="flex items-center gap-2">
+                    {ev?.id && (
+                      <button
+                        onClick={() => {
+                          const id = ev.id;
+                          setPreviewImage(null);
+                          router.push(`/dashboard/invitations?eventId=${id}&studio=true`);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition-all shadow-xs cursor-pointer"
+                        title="Edit invitation in designer studio"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Edit Studio</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setPreviewImage(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/80 transition-colors cursor-pointer"
+                      aria-label="Close preview"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => setPreviewImage(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/80 transition-colors"
-                  aria-label="Close preview"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {/* Image */}
-              <div className="p-4 bg-slate-50/50">
-                <img
-                  src={previewImage.url}
-                  alt={previewImage.title}
-                  className="w-full max-h-[65vh] object-contain rounded-xl shadow-sm"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    if (target.parentElement) {
-                      target.parentElement.innerHTML = `
-                        <div class="flex flex-col items-center justify-center py-16 text-slate-400">
-                          <svg class="w-12 h-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                          <p class="text-sm font-medium">Image could not be loaded</p>
-                        </div>
-                      `;
-                    }
-                  }}
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
+
+                {/* Card Body with Portrait 5x7 Aspect Ratio */}
+                <div className="p-4 sm:p-6 bg-slate-900/5 flex-1 overflow-y-auto flex items-center justify-center">
+                  <div className="w-full max-w-[340px] sm:max-w-[380px] shadow-2xl rounded-xl overflow-hidden bg-white">
+                    {isRasterSnapshot ? (
+                      <div className="w-full aspect-[5/7] relative bg-white flex items-center justify-center overflow-hidden">
+                        <img
+                          src={candidateUrl}
+                          alt={previewImage.title}
+                          className="w-full h-full object-contain select-none"
+                        />
+                      </div>
+                    ) : (
+                      <EviteCardPreview
+                        event={ev}
+                        templateId={ev?.selectedTemplateId}
+                        aspectRatio="5x7"
+                        cardOnly={false}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer with Details Summary */}
+                {ev && (
+                  <div className="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
+                    <span className="truncate max-w-[200px]">
+                      {ev.venue || ev.address || "Location TBD"}
+                    </span>
+                    <span>{formatDate(ev.eventDate)}</span>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
     </div>
   );

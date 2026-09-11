@@ -1020,27 +1020,71 @@ export default function InvitationStudio({
       // Temporarily deselect active text border & drag handles for pristine clean card capture
       const prevSelected = designState.selectedTextId;
       setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
 
-      const dataUrl = await toPng(targetNode, {
-        quality: 0.9,
-        pixelRatio: 2.0,
-        skipFonts: false,
-        backgroundColor: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("gradient")
-          ? designState.cardBg.value
-          : undefined,
-      });
+      // Multi-stage capture with graceful fallbacks
+      let dataUrl: string | null = null;
+      const bgColor = typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("gradient")
+        ? designState.cardBg.value
+        : undefined;
 
-      setDesignState((prev) => ({ ...prev, selectedTextId: prevSelected }));
-      setSnapshotDataUrl(dataUrl);
-
-      // Upload to file storage so the payload sends a lightweight URL instead of raw base64
-      let uploadedUrl: string | null = null;
-      if (dataUrl && dataUrl.startsWith("data:")) {
-        uploadedUrl = await uploadSnapshotBlob(dataUrl);
+      // Stage 1: High-res 2x capture
+      try {
+        dataUrl = await toPng(targetNode, {
+          quality: 0.95,
+          pixelRatio: 2.0,
+          cacheBust: true,
+          backgroundColor: bgColor,
+          filter: (node: HTMLElement) => {
+            if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
+            return true;
+          },
+        });
+      } catch (e1) {
+        console.warn("[Canvas Snapshot] Stage 1 capture failed, retrying with skipFonts: true and 1.5x pixelRatio:", e1);
+        try {
+          // Stage 2: Fallback with skipFonts: true (avoids CORS issues on Google fonts stylesheets)
+          dataUrl = await toPng(targetNode, {
+            quality: 0.9,
+            pixelRatio: 1.5,
+            skipFonts: true,
+            cacheBust: true,
+            backgroundColor: bgColor,
+            filter: (node: HTMLElement) => {
+              if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
+              return true;
+            },
+          });
+        } catch (e2) {
+          console.warn("[Canvas Snapshot] Stage 2 capture failed, retrying with safe 1.0x pixelRatio:", e2);
+          // Stage 3: Safe 1.0x fallback
+          dataUrl = await toPng(targetNode, {
+            quality: 0.85,
+            pixelRatio: 1.0,
+            skipFonts: true,
+            cacheBust: true,
+            backgroundColor: bgColor,
+          });
+        }
       }
 
-      return { dataUrl, uploadedUrl };
+      setDesignState((prev) => ({ ...prev, selectedTextId: prevSelected }));
+
+      if (dataUrl && dataUrl.startsWith("data:")) {
+        setSnapshotDataUrl(dataUrl);
+
+        // Upload to file storage so the payload sends a lightweight URL instead of raw base64
+        let uploadedUrl: string | null = null;
+        try {
+          uploadedUrl = await uploadSnapshotBlob(dataUrl);
+        } catch (uploadErr) {
+          console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+        }
+
+        return { dataUrl, uploadedUrl };
+      }
+
+      return { dataUrl: null, uploadedUrl: null };
     } catch (err) {
       console.error("Failed to generate template card snapshot:", err);
       // Non-blocking snapshot failure — let user continue without blocking
@@ -1148,7 +1192,19 @@ export default function InvitationStudio({
 
   // Save current design state to backend with diagnostics
   const saveDesign = async (uploadedSnapshotUrl?: string | null): Promise<Invitation | null> => {
-    const payload = constructPayload(uploadedSnapshotUrl);
+    let finalSnapshotUrl = uploadedSnapshotUrl;
+    // Auto-capture live card canvas snapshot if not explicitly provided
+    if (!finalSnapshotUrl) {
+      try {
+        const snap = await generateSnapshot();
+        finalSnapshotUrl = snap.uploadedUrl || snap.dataUrl || snapshotDataUrl;
+      } catch (snapErr) {
+        console.warn("[saveDesign] Auto-snapshot generation fallback:", snapErr);
+        finalSnapshotUrl = snapshotDataUrl;
+      }
+    }
+
+    const payload = constructPayload(finalSnapshotUrl);
 
     if (!payload.eventId) {
       console.error("Payload sent:", payload);
@@ -1239,7 +1295,7 @@ export default function InvitationStudio({
 
     // When on "Details" step (step 1): save details and advance to step 2 ("Gifting")
     if (currentStepIndex === 1) {
-      const saved = await saveDesign(null);
+      const saved = await saveDesign();
       if (saved) {
         setToast({ message: "Details saved! ✨", type: "success" });
         setCurrentStepIndex(2);
@@ -1297,10 +1353,19 @@ export default function InvitationStudio({
         return;
       }
 
+      // Ensure we have a fresh, high-resolution snapshot before dispatching
+      let activeSnapshotDataUrl = snapshotDataUrl;
+      let activeUploadedUrl: string | null = null;
+      if (!activeSnapshotDataUrl) {
+        const snap = await generateSnapshot();
+        activeSnapshotDataUrl = snap.dataUrl;
+        activeUploadedUrl = snap.uploadedUrl;
+      }
+
       // Ensure invitation is saved before sending if id is missing
       let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
       if (!activeInvitationId) {
-        const saved = await saveDesign(null);
+        const saved = await saveDesign(activeUploadedUrl || activeSnapshotDataUrl);
         if (saved && saved.id) {
           activeInvitationId = saved.id;
         }
@@ -1319,10 +1384,10 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: selectedGuestIds,
-        snapshot: snapshotDataUrl,
-        snapshotUrl: snapshotDataUrl?.startsWith("http") ? snapshotDataUrl : undefined,
-        cardImageBase64: snapshotDataUrl?.startsWith("data:") ? snapshotDataUrl : undefined,
-        cardSnapshotUrl: snapshotDataUrl,
+        snapshot: activeSnapshotDataUrl,
+        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
+        cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
+        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
         eventDetails: designState.eventDetails,
       };
 
@@ -1399,7 +1464,7 @@ export default function InvitationStudio({
             type="button"
             onClick={async () => {
               try {
-                await saveDesign(null);
+                await saveDesign();
               } catch (e) {
                 console.warn("Auto-saving on return to designer:", e);
               }
@@ -1478,7 +1543,7 @@ export default function InvitationStudio({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => saveDesign(null)}
+            onClick={() => saveDesign()}
             disabled={isGeneratingSnapshot || isSavingDraft}
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
             title="Save draft"
