@@ -17,7 +17,7 @@ function LoginSuccessHandler() {
         sessionStorage.setItem("showSparkle", "true");
       }
       // Direct assignment forces a fresh page reload so that AuthContext parses the token
-      window.location.href = "/dashboard";
+      window.location.href = "/dashboard/ai-assistant";
     } else {
       router.push("/login?error=Google authentication failed");
     }

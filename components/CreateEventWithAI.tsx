@@ -141,9 +141,19 @@ export default function CreateEventWithAI({ onSuccess, className = "" }: CreateE
 
       if (res.data && res.data.success) {
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const redirectDestination = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}` : "/dashboard/invitations");
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-cake-and-confetti";
 
-        setSuccessMsg("🎉 Event created successfully with AI! Redirecting to Invitation Designer...");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("pending_template_id", targetTplId);
+          localStorage.setItem("pending_template_id", targetTplId);
+          if (res.data.stationeryDesign) {
+            sessionStorage.setItem("pending_stationery_design", JSON.stringify(res.data.stationeryDesign));
+          }
+        }
+
+        const redirectDestination = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}&studio=true&templateId=${targetTplId}` : "/dashboard/invitations?studio=true");
+
+        setSuccessMsg("🎉 Event created successfully with AI! Redirecting to Evite Invitation Studio...");
 
         if (onSuccess && createdEventId) {
           onSuccess(createdEventId, redirectDestination);

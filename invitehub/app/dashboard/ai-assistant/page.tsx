@@ -182,6 +182,10 @@ export default function AIAssistantPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cleanedPreviewUrl, setCleanedPreviewUrl] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<"cleaned" | "original">("cleaned");
+  const [detectedTextLayers, setDetectedTextLayers] = useState<any[]>([]);
+  const [extractedCardBgColor, setExtractedCardBgColor] = useState<string>("#FAF4E8");
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -330,9 +334,19 @@ export default function AIAssistantPage() {
       if (res.data) {
         setAiEventData(res.data);
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const redirectUrl = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}` : "/dashboard/invitations");
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-cake-and-confetti";
+
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("pending_template_id", targetTplId);
+          localStorage.setItem("pending_template_id", targetTplId);
+          if (res.data.stationeryDesign) {
+            sessionStorage.setItem("pending_stationery_design", JSON.stringify(res.data.stationeryDesign));
+          }
+        }
+
+        const redirectUrl = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}&studio=true&templateId=${targetTplId}` : "/dashboard/invitations?studio=true");
         if (createdEventId) {
-          setSuccessMsg("🎉 AI Event generated! Redirecting to Invitation Designer...");
+          setSuccessMsg("🎉 AI Event generated! Redirecting to Evite Invitation Studio...");
           setTimeout(() => {
             router.push(redirectUrl);
           }, 800);
@@ -627,6 +641,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         setUploadedFile(compressedFile);
         setPreviewUrl(dataUrl);
 
+        // Automatically trigger Replicate inpainting & OCR scanning
+        scanInvitationWithAI(dataUrl);
+
         if (user) {
           try {
             const uploadRes = await templateService.uploadTemplateImage(compressedFile, compressedFile.name);
@@ -654,6 +671,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     if (e) e.stopPropagation();
     setUploadedFile(null);
     setPreviewUrl(null);
+    setCleanedPreviewUrl(null);
+    setPreviewMode("cleaned");
+    setDetectedTextLayers([]);
     setUploadError(null);
     setUploadTitle("");
     setUploadVenue("");
@@ -664,16 +684,54 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
   };
 
+  const scanInvitationWithAI = async (imageDataUri: string) => {
+    if (!imageDataUri) return;
+    setIsExtractingAI(true);
+    setUploadError(null);
+    try {
+      const res = await API.post("/ai/scan-invitation", { imageBase64: imageDataUri });
+      const data = res.data;
+      if (data) {
+        if (data.title) setUploadTitle(data.title);
+        if (data.venue) setUploadVenue(data.venue);
+        if (data.date) setUploadDate(data.date);
+        if (data.time) setUploadTime(data.time);
+        if (data.cardBgColor) setExtractedCardBgColor(data.cardBgColor);
+
+        if (Array.isArray(data.textBlocks) && data.textBlocks.length > 0) {
+          setDetectedTextLayers(data.textBlocks);
+        }
+
+        if (data.cleanedImageBase64) {
+          setCleanedPreviewUrl(data.cleanedImageBase64);
+          setPreviewMode("cleaned");
+          setSuccessMsg("✨ Replicate AI erased invitation text & extracted editable typography layers!");
+        } else {
+          setSuccessMsg("✨ Extracted invitation details and typography!");
+        }
+      }
+    } catch (err: any) {
+      console.warn("AI invitation scan warning:", err);
+      // Non-blocking
+    } finally {
+      setIsExtractingAI(false);
+    }
+  };
+
   const handleOpenInDesigner = async () => {
-    if (!uploadedFile && !previewUrl) {
+    if (!uploadedFile && !previewUrl && !cleanedPreviewUrl) {
       setUploadError("Please select an invitation file first.");
       return;
     }
 
     setIsUploading(true);
-    let resolvedPersistentUrl = previewUrl || "";
+    const bgToUse = (previewMode === "cleaned" && cleanedPreviewUrl)
+      ? cleanedPreviewUrl
+      : (cleanedPreviewUrl || previewUrl || "");
 
-    if (user && uploadedFile && (!resolvedPersistentUrl || resolvedPersistentUrl.startsWith("data:") || resolvedPersistentUrl.startsWith("blob:"))) {
+    let resolvedPersistentUrl = bgToUse;
+
+    if (user && uploadedFile && !cleanedPreviewUrl && (!resolvedPersistentUrl || resolvedPersistentUrl.startsWith("data:") || resolvedPersistentUrl.startsWith("blob:"))) {
       try {
         const uploadRes = await templateService.uploadTemplateImage(uploadedFile, uploadedFile.name);
         if (uploadRes && uploadRes.success && uploadRes.url) {
@@ -695,6 +753,23 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       if (uploadTitle) {
         safeSetSessionStorage("pending_upload_title", uploadTitle);
       }
+
+      if (detectedTextLayers && detectedTextLayers.length > 0) {
+        const stationeryPayload = {
+          cardBgColor: extractedCardBgColor || "#FAF4E8",
+          textElements: detectedTextLayers.map((block: any, idx: number) => ({
+            id: `replicate-layer-${idx}`,
+            role: block.role || "other",
+            text: block.text || "",
+            x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
+            y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
+            fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
+            fontFamily: block.fontFamily || "Inter",
+            color: block.color || "#1E293B",
+          })),
+        };
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+      }
     } catch (e) {
       console.error("Failed to store pending upload:", e);
     } finally {
@@ -703,7 +778,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
     setSuccessMsg("Opening invitation designer...");
     setTimeout(() => {
-      router.push("/dashboard/invitations");
+      router.push("/dashboard/invitations?studio=true");
     }, 500);
   };
 
@@ -714,7 +789,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       return;
     }
 
-    if (!uploadedFile && !previewUrl) {
+    if (!uploadedFile && !previewUrl && !cleanedPreviewUrl) {
       setUploadError("Please select an invitation file first.");
       return;
     }
@@ -723,6 +798,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     setUploadError(null);
     setSuccessMsg(null);
 
+    const bgToUse = (previewMode === "cleaned" && cleanedPreviewUrl)
+      ? cleanedPreviewUrl
+      : (cleanedPreviewUrl || previewUrl || "");
+
     const titleToUse = uploadTitle?.trim() || "Uploaded Invitation";
     const venueToUse = uploadVenue?.trim() || "Celebration Venue";
     const dateToUse = uploadDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -730,7 +809,16 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
     try {
       let res;
-      if (uploadedFile) {
+      if (cleanedPreviewUrl) {
+        res = await eventService.createEvent({
+          title: titleToUse,
+          venue: venueToUse,
+          eventDate: dateToUse,
+          eventTime: timeToUse,
+          eventType: "Uploaded Invitation",
+          coverImage: cleanedPreviewUrl,
+        });
+      } else if (uploadedFile) {
         const formData = new FormData();
         formData.append("title", titleToUse);
         formData.append("venue", venueToUse);
@@ -752,14 +840,31 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       }
 
       if (res && res.success) {
-        const createdImage = res.event?.coverImage || res.event?.imageUrl || previewUrl;
+        const createdImage = res.event?.coverImage || res.event?.imageUrl || bgToUse;
         if (createdImage) {
           safeSetSessionStorage("pending_upload_invite", createdImage);
         }
+        if (detectedTextLayers && detectedTextLayers.length > 0) {
+          const stationeryPayload = {
+            cardBgColor: extractedCardBgColor || "#FAF4E8",
+            textElements: detectedTextLayers.map((block: any, idx: number) => ({
+              id: `replicate-layer-${idx}`,
+              role: block.role || "other",
+              text: block.text || "",
+              x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
+              y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
+              fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
+              fontFamily: block.fontFamily || "Inter",
+              color: block.color || "#1E293B",
+            })),
+          };
+          safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        }
+
         const eventId = res.event?.id;
-        setSuccessMsg("🎉 Event created successfully with your uploaded invitation! Opening Invitation Designer...");
+        setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true` : "/dashboard/invitations?studio=true");
         }, 800);
       } else {
         setUploadError(res?.message || "Failed to create event from uploaded invitation.");
@@ -774,34 +879,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleExtractDetailsAI = () => {
-    if (!uploadedFile) return;
-    setIsExtractingAI(true);
-    setUploadError(null);
-
-    setTimeout(() => {
-      const cleanName = uploadedFile.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-      const words = cleanName.split(" ").filter(Boolean);
-      const candidate = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
-
-      if (!uploadTitle || uploadTitle === cleanName) {
-        setUploadTitle(candidate || "Special Celebration");
-      }
-      if (!uploadVenue) {
-        setUploadVenue("Grand Celebration Ballroom");
-      }
-      if (!uploadDate) {
-        const now = new Date();
-        const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
-        const nextSat = new Date(now.getTime() + daysUntilSaturday * 24 * 60 * 60 * 1000);
-        setUploadDate(nextSat.toISOString().split("T")[0]);
-      }
-      if (!uploadTime) {
-        setUploadTime("18:30");
-      }
-
-      setIsExtractingAI(false);
-      setSuccessMsg("✨ Extracted invitation details with AI!");
-    }, 850);
+    const targetUrl = previewUrl || (uploadedFile ? URL.createObjectURL(uploadedFile) : "");
+    if (!targetUrl) return;
+    scanInvitationWithAI(targetUrl);
   };
 
   if (authLoading || !user) {
@@ -1649,18 +1729,58 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         </div>
                       </div>
 
+                      {/* Replicate AI Inpainting / OCR Status Banner */}
+                      {isExtractingAI && (
+                        <div className="flex items-center gap-2.5 p-3 bg-gradient-to-r from-[#F0EEFF] to-[#FAF5FF] border border-[#DDD6FE] text-[#6C5CE7] rounded-xl text-xs font-semibold shadow-xs animate-pulse">
+                          <Loader2 className="w-4 h-4 animate-spin text-[#6C5CE7] shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold">✨ Replicate AI is erasing card text & separating layers...</p>
+                            <p className="text-[11px] text-[#7C3AED]/80 font-normal">Replicate inpainting removes printed text so you get a spotless background with editable typography.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Preview Mode Toggle (Cleaned by Replicate vs Original) */}
+                      {cleanedPreviewUrl && (
+                        <div className="flex items-center justify-between p-1 bg-gray-100/90 rounded-xl border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewMode("cleaned")}
+                            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                              previewMode === "cleaned"
+                                ? "bg-white text-[#6C5CE7] shadow-xs"
+                                : "text-gray-600 hover:text-gray-900"
+                            }`}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#6C5CE7]" />
+                            <span>✨ Clean Background (Replicate)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewMode("original")}
+                            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                              previewMode === "original"
+                                ? "bg-white text-gray-900 shadow-xs"
+                                : "text-gray-600 hover:text-gray-900"
+                            }`}
+                          >
+                            <span>Original Card</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* Preview Area */}
                       <div className="rounded-xl overflow-hidden border border-gray-100 bg-[#F9FAFB] p-3 flex flex-col sm:flex-row items-center gap-3.5">
-                        {previewUrl ? (
+                        {(previewMode === "cleaned" && cleanedPreviewUrl) || previewUrl ? (
                           <div className="relative w-full sm:w-28 h-32 sm:h-28 rounded-lg overflow-hidden border border-gray-200 bg-white shrink-0 shadow-inner group">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={previewUrl}
+                              src={(previewMode === "cleaned" && cleanedPreviewUrl) ? cleanedPreviewUrl : (previewUrl || "")}
                               alt={uploadedFile.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-bold text-white uppercase">
-                              {uploadedFile.type.includes("png") ? "PNG" : "JPG"}
+                              {previewMode === "cleaned" && cleanedPreviewUrl ? "Cleaned" : (uploadedFile.type.includes("png") ? "PNG" : "JPG")}
                             </div>
                           </div>
                         ) : (
@@ -1682,13 +1802,74 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                             <span className="inline-flex items-center text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
                               {formatFileSize(uploadedFile.size)}
                             </span>
-                            <span className="inline-flex items-center text-[10px] font-semibold text-[#6C5CE7] bg-[#F0EEFF] px-2 py-0.5 rounded-md">
-                              Ready to Import
-                            </span>
+                            {detectedTextLayers.length > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                {detectedTextLayers.length} text layers ready
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-semibold text-[#6C5CE7] bg-[#F0EEFF] px-2 py-0.5 rounded-md">
+                                Ready to Import
+                              </span>
+                            )}
+                            {!isExtractingAI && (
+                              <button
+                                type="button"
+                                onClick={handleExtractDetailsAI}
+                                className="text-[10px] font-bold text-[#6C5CE7] hover:underline flex items-center gap-1 ml-auto cursor-pointer"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                Re-scan with AI
+                              </button>
+                            )}
                           </div>
                           <p className="text-[11px] text-gray-500 mt-1.5 line-clamp-2">
-                            Customize this invitation directly in the designer or create your event right away.
+                            {cleanedPreviewUrl
+                              ? "✨ Replicate erased printed text from background. Separated typography will open as editable layers in designer."
+                              : "Customize this invitation directly in the designer or create your event right away."}
                           </p>
+                        </div>
+                      </div>
+
+                      {/* Extracted Details Editable Fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2 border-t border-gray-100">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Event Title</label>
+                          <input
+                            type="text"
+                            value={uploadTitle}
+                            onChange={(e) => setUploadTitle(e.target.value)}
+                            placeholder="e.g. Annual Gala 2026"
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Venue / Location</label>
+                          <input
+                            type="text"
+                            value={uploadVenue}
+                            onChange={(e) => setUploadVenue(e.target.value)}
+                            placeholder="e.g. Grand Ballroom"
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={uploadDate}
+                            onChange={(e) => setUploadDate(e.target.value)}
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Time</label>
+                          <input
+                            type="time"
+                            value={uploadTime}
+                            onChange={(e) => setUploadTime(e.target.value)}
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
+                          />
                         </div>
                       </div>
 

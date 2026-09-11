@@ -1386,13 +1386,8 @@ function InvitationDesignerPageContent() {
             {/* LEFT CONTROL PANEL (lg:col-span-5) */}
             <div className="lg:col-span-5 flex flex-col gap-6">
 
-              {/* Toolbar Actions Bar (Publish, Save Draft, Preview) */}
-              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-4 shadow-sm flex flex-wrap gap-2 items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></span>
-                  {invitation.status} mode
-                </span>
-
+              {/* Toolbar Actions Bar (Save Draft, Preview) */}
+              <div className="bg-white/90 backdrop-blur-sm border border-blue-200/60 rounded-2xl p-4 shadow-sm flex flex-wrap gap-2 items-center justify-end">
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setIsPreviewOpen(true); setCoverImgError(false); }}
@@ -1413,13 +1408,6 @@ function InvitationDesignerPageContent() {
                       <Save className="w-3.5 h-3.5 text-blue-600" />
                     )}
                     Save Draft
-                  </button>
-                  <button
-                    onClick={() => handleSave("published")}
-                    disabled={inviteSaving}
-                    className="flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50"
-                  >
-                    Publish
                   </button>
                 </div>
               </div>

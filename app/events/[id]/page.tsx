@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-export default function EventDesignRedirectPage() {
+export default function EventRedirectPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();

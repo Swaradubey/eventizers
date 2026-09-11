@@ -229,7 +229,7 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard/ai-assistant") : "/dashboard/ai-assistant"}
                   className={`text-base font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
                   }`}
@@ -361,7 +361,7 @@ export default function Navbar() {
               return (
                 <Link
                   key={link.label}
-                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard") : "/dashboard"}
+                  href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard/ai-assistant") : "/dashboard/ai-assistant"}
                   className={`text-base font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
                   }`}

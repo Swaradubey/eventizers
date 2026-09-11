@@ -28,7 +28,7 @@ export default function LoginPage() {
         if (redirectUrl && redirectUrl.startsWith("/")) {
           router.push(redirectUrl);
         } else {
-          router.push("/dashboard");
+          router.push("/dashboard/ai-assistant");
         }
       }
     }

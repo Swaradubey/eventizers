@@ -19,10 +19,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, redirect to dashboard page
+  // If user is already logged in, redirect to ai-assistant page
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      router.push("/dashboard/ai-assistant");
     }
   }, [user, router]);
 

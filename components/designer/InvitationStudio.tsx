@@ -575,6 +575,47 @@ export default function InvitationStudio({
       } else if (initialInvitation?.imageUrl && isUserUploadedImage(initialInvitation.imageUrl)) {
         baseState.cardBg = { type: "image", value: initialInvitation.imageUrl };
       }
+
+      // If AI generated dynamic 4-layer stationery design, seamlessly inject all layers
+      const pendingStationery = sessionStorage.getItem("pending_stationery_design");
+      if (pendingStationery) {
+        try {
+          const sd = JSON.parse(pendingStationery);
+          if (sd.envelopeColor) baseState.envelope.color = sd.envelopeColor;
+          if (sd.envelopeLiner) {
+            baseState.envelope.liner = sd.envelopeLiner;
+            baseState.envelope.linerCss = sd.envelopeLiner;
+          }
+          if (sd.backdropColor) {
+            baseState.stageBackdrop = { type: "color", value: sd.backdropColor };
+          }
+          if (sd.cardBgColor && (!baseState.cardBg || baseState.cardBg.type !== "image")) {
+            baseState.cardBg = { type: "color", value: sd.cardBgColor };
+          }
+          if (Array.isArray(sd.textElements) && sd.textElements.length > 0) {
+            baseState.textLayers = sd.textElements.map((el: any, idx: number) => ({
+              id: el.id || `ai-layer-${idx}`,
+              key: el.role || el.id || `layer-${idx}`,
+              text: el.text || "",
+              x: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : 50,
+              y: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (22 + idx * 12),
+              top: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (22 + idx * 12),
+              left: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : 50,
+              fontSize: el.fontSize || (el.role === "title" ? 36 : 14),
+              fontFamily: el.fontFamily?.includes("'") ? el.fontFamily : `'${el.fontFamily || "Inter"}', sans-serif`,
+              color: el.color || "#1E293B",
+              fontWeight: el.role === "title" ? "800" : "600",
+              align: "center",
+              textAlign: "center",
+              letterSpacing: 0.5,
+              lineHeight: 1.2,
+              casing: "none" as const,
+            }));
+          }
+        } catch (e) {
+          console.warn("Could not apply pending_stationery_design:", e);
+        }
+      }
     }
 
     return baseState;

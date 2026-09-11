@@ -14,7 +14,6 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
-  Gift,
   MessageSquare,
   Shield,
   CreditCard,
@@ -63,11 +62,6 @@ export default function Sidebar() {
       icon: Ticket,
     },
     {
-      label: "Event Registry",
-      href: "/dashboard/guest?tab=registry",
-      icon: Gift,
-    },
-    {
       label: "Event Gallery",
       href: "/dashboard/guest?tab=gallery",
       icon: ImageIcon,
@@ -87,11 +81,6 @@ export default function Sidebar() {
   const menuItems = isAdminPath
     ? [
         {
-          label: "Dashboard",
-          href: "/admin/dashboard",
-          icon: LayoutDashboard,
-        },
-        {
           label: "Events",
           href: "/admin/events",
           icon: Calendar,
@@ -102,7 +91,7 @@ export default function Sidebar() {
           icon: Users,
         },
         {
-          label: "Invitations",
+          label: "Canvas",
           href: "/admin/invitations",
           icon: Mail,
         },
@@ -115,11 +104,6 @@ export default function Sidebar() {
           label: "Check-In",
           href: "/admin/check-in",
           icon: UserCheck,
-        },
-        {
-          label: "Registries",
-          href: "/admin/registries",
-          icon: Gift,
         },
         {
           label: "Messages",
@@ -174,11 +158,6 @@ export default function Sidebar() {
       ]
     : [
         {
-          label: "Dashboard",
-          href: "/dashboard",
-          icon: LayoutDashboard,
-        },
-        {
           label: "AI Assistant",
           href: "/dashboard/ai-assistant",
           icon: Sparkles,
@@ -194,7 +173,7 @@ export default function Sidebar() {
           icon: Users,
         },
         {
-          label: "Invitations",
+          label: "Canvas",
           href: "/dashboard/invitations",
           icon: Mail,
         },
@@ -212,11 +191,6 @@ export default function Sidebar() {
           label: "GPS Check-In",
           href: "/dashboard/gps-checkin",
           icon: MapPin,
-        },
-        {
-          label: "Registries",
-          href: "/dashboard/registries",
-          icon: Gift,
         },
         {
           label: "Messages",

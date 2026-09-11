@@ -34,14 +34,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       pathname?.startsWith(prefix + "?")
   );
 
-  // Clean redirect from root /dashboard to /dashboard/check-in for Staff
+  // Clean redirect from root /dashboard
   useEffect(() => {
-    if (!authLoading && isStaffCoHost) {
+    if (!authLoading) {
       if (pathname === "/dashboard" || pathname === "/dashboard/") {
-        router.replace("/dashboard/check-in");
+        if (isStaffCoHost) {
+          router.replace("/dashboard/check-in");
+        } else if (user?.role === "GUEST") {
+          router.replace("/dashboard/guest");
+        } else {
+          router.replace("/dashboard/ai-assistant");
+        }
       }
     }
-  }, [authLoading, isStaffCoHost, pathname, router]);
+  }, [authLoading, isStaffCoHost, user, pathname, router]);
 
   const isStaffRootRedirecting =
     !authLoading && isStaffCoHost && (pathname === "/dashboard" || pathname === "/dashboard/");
