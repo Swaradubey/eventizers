@@ -10,6 +10,7 @@ import templateService from "../services/templateService";
 import { NEW_TEMPLATES } from "../lib/newTemplatesData";
 import { getImageUrl } from "../utils/imageUrl";
 import { compressAndNormalizeImage } from "../utils/imageCompressor";
+import EviteCardPreview from "./designer/EviteCardPreview";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export default function EventModal({
   });
 
   const router = useRouter();
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("tpl-electric-outline");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("tpl-golden-milestone");
   const [openDesignerAfterSave, setOpenDesignerAfterSave] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -372,8 +373,8 @@ export default function EventModal({
                     </span>
                     <span className="text-[11px] text-[#C9A84C] font-normal">opens in studio</span>
                   </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {NEW_TEMPLATES.slice(0, 6).map((tpl) => {
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                    {NEW_TEMPLATES.filter((t) => t.isPureCss || t.id.startsWith("tpl-golden") || t.id.startsWith("tpl-modern") || t.id.startsWith("tpl-classic") || t.id.startsWith("tpl-retro") || t.id.startsWith("tpl-midnight") || t.id.startsWith("tpl-emerald") || t.id.startsWith("tpl-champagne") || t.id.startsWith("tpl-noir") || t.id.startsWith("tpl-rustic") || t.id.startsWith("tpl-lavender")).slice(0, 10).map((tpl) => {
                       const isSelected = selectedTemplateId === tpl.id;
                       return (
                         <button
@@ -386,11 +387,10 @@ export default function EventModal({
                               : "border-[#E8C4B8]/40 hover:border-slate-400 bg-white/50"
                           }`}
                         >
-                          <div className="aspect-[3/4] rounded-lg overflow-hidden relative mb-1 bg-slate-100">
-                            <img
-                              src={tpl.image}
-                              alt={tpl.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          <div className="w-full rounded-lg overflow-hidden relative mb-1">
+                            <EviteCardPreview
+                              template={tpl}
+                              hoverScale={true}
                             />
                           </div>
                           <p className="text-[10px] font-bold text-[#2D1B3D] truncate">{tpl.title}</p>

@@ -48,6 +48,9 @@ export interface TextLayer {
   lineHeight?: number; // multiplier e.g. 1.2
   fontWeight: string | number;
   isFoil?: "gold" | "rose-gold" | "silver" | null;
+  width?: number; // percentage or px width
+  height?: number; // computed height
+  cardWidth?: number; // base container width when designed
 }
 
 export interface EnvelopeConfig {
@@ -60,6 +63,7 @@ export interface EnvelopeConfig {
 export interface StageBackdropConfig {
   type: "color" | "pattern";
   value: string;
+  gradient?: string;
 }
 
 export interface CardBgConfig {
@@ -96,7 +100,10 @@ export interface CanvasStageConfig {
   backdrop?: {
     type: 'color' | 'texture';
     value: string;
+    gradient?: string;
   };
+  canvasWorkspaceBg?: string;
+  backdropBackground?: string;
   envelope: EnvelopeConfig;
   effects: EffectsConfig;
   eventDetails?: {

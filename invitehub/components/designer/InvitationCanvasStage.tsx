@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg } from "./InvitationStudio";
+import EvitePureCssStage from "./EvitePureCssStage";
+import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   none: "rgba(0,0,0,0.02)",
@@ -77,6 +79,34 @@ export default function InvitationCanvasStage({
   const localCardRef = useRef<HTMLDivElement>(null);
   const effectiveCardRef: any = cardRef || localCardRef;
 
+  const [cardDimensions, setCardDimensions] = useState<ContainerDimensions>({
+    width: maxW || 500,
+    height: Math.round((maxW || 500) * 1.4),
+  });
+
+  useEffect(() => {
+    const el = effectiveCardRef.current;
+    if (!el) return;
+    const updateDims = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setCardDimensions({
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        });
+      }
+    };
+    updateDims();
+    const ro = new ResizeObserver(updateDims);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [effectiveCardRef]);
+
+  // Compute container-proportional typography and anti-collision layer positions
+  const computedLayers = useMemo(() => {
+    return computeAntiCollisionLayout(config.textLayers || [], cardDimensions);
+  }, [config.textLayers, cardDimensions]);
+
   const dragSessionRef = useRef<{
     layerId: string;
     startX: number;
@@ -87,38 +117,61 @@ export default function InvitationCanvasStage({
     cardH: number;
   } | null>(null);
 
-  // Mouse drag handler on canvas text layers
+  // Mouse and touch drag handler on canvas text layers
   const handleLayerMouseDown = useCallback(
-    (e: React.MouseEvent, layer: TextLayer) => {
+    (e: React.MouseEvent | React.TouchEvent, layer: TextLayer) => {
       if (readOnly) return;
+      if (editingTextId === layer.id) return;
+
       e.stopPropagation();
+      if ("preventDefault" in e) {
+        e.preventDefault();
+      }
 
       if (onSelectLayer) onSelectLayer(layer.id);
       if (editingTextId && editingTextId !== layer.id && setEditingTextId) {
         setEditingTextId(null);
       }
 
-      const card = effectiveCardRef.current;
+      const card =
+        (effectiveCardRef.current as HTMLDivElement | null) ||
+        (document.getElementById("invitation-card-container") as HTMLDivElement | null);
       if (!card) return;
 
       const rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+      const initialX = layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50);
+      const initialY = layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50);
+
       dragSessionRef.current = {
         layerId: layer.id,
-        startX: e.clientX,
-        startY: e.clientY,
-        initPercentX: layer.x,
-        initPercentY: layer.y,
+        startX: clientX,
+        startY: clientY,
+        initPercentX: initialX,
+        initPercentY: initialY,
         cardW: rect.width,
         cardH: rect.height,
       };
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
+      const originalUserSelect = document.body.style.userSelect;
+      const originalCursor = document.body.style.cursor;
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "move";
+
+      const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
         if (!dragSessionRef.current) return;
         const { layerId, startX, startY, initPercentX, initPercentY, cardW, cardH } =
           dragSessionRef.current;
 
-        const deltaX = moveEvent.clientX - startX;
-        const deltaY = moveEvent.clientY - startY;
+        const currentX = "touches" in moveEvent ? moveEvent.touches[0].clientX : (moveEvent as MouseEvent).clientX;
+        const currentY = "touches" in moveEvent ? moveEvent.touches[0].clientY : (moveEvent as MouseEvent).clientY;
+
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
 
         const deltaPercentX = (deltaX / cardW) * 100;
         const deltaPercentY = (deltaY / cardH) * 100;
@@ -127,18 +180,24 @@ export default function InvitationCanvasStage({
         const newY = Math.round(Math.max(5, Math.min(95, initPercentY + deltaPercentY)));
 
         if (onUpdateLayer) {
-          onUpdateLayer(layerId, { x: newX, y: newY });
+          onUpdateLayer(layerId, { x: newX, y: newY, left: newX, top: newY });
         }
       };
 
-      const handleMouseUp = () => {
+      const handleEnd = () => {
         dragSessionRef.current = null;
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
+        document.body.style.userSelect = originalUserSelect;
+        document.body.style.cursor = originalCursor;
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleEnd);
+        window.removeEventListener("touchmove", handleMove);
+        window.removeEventListener("touchend", handleEnd);
       };
 
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleEnd);
+      window.addEventListener("touchmove", handleMove, { passive: true });
+      window.addEventListener("touchend", handleEnd);
     },
     [readOnly, onSelectLayer, editingTextId, setEditingTextId, onUpdateLayer, effectiveCardRef]
   );
@@ -148,8 +207,10 @@ export default function InvitationCanvasStage({
     (config.envelope as any)?.outerColor || config.envelope?.color || "#781d60";
   const linerRaw =
     (config.envelope as any)?.linerPatternUrl || config.envelope?.liner || "";
+  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner
+  const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
   const linerStyle =
-    ENVELOPE_LINERS_DATA[linerRaw] || linerRaw || "rgba(0,0,0,0.02)";
+    envelopeLinerCss || ENVELOPE_LINERS_DATA[linerRaw] || linerRaw || "rgba(0,0,0,0.02)";
 
   // Resolve Stamp & Sticker
   const stampEmoji = config.envelope?.stamp
@@ -182,7 +243,21 @@ export default function InvitationCanvasStage({
       : aspectRatio;
 
   const backdropValue =
-    config.backdrop?.value || config.stageBackdrop?.value || "#1e293b";
+    (config as any)?.canvasWorkspaceBg ||
+    (config as any)?.backdropBackground ||
+    config.backdrop?.value ||
+    config.stageBackdrop?.value ||
+    "#0f172a";
+
+  const backdropGradient =
+    (config as any)?.canvasWorkspaceBg ||
+    (config as any)?.backdropBackground ||
+    config.stageBackdrop?.gradient ||
+    (config.stageBackdrop?.value?.includes("gradient") ? config.stageBackdrop.value : undefined) ||
+    (config.backdrop as any)?.gradient ||
+    (backdropValue.includes("gradient") ? backdropValue : undefined);
+
+  const isBackdropGradient = Boolean(backdropGradient && backdropGradient.includes("gradient"));
 
   // Foil class helper
   const getFoilClass = (foil?: string | null) => {
@@ -210,6 +285,70 @@ export default function InvitationCanvasStage({
 
   const isLandscape = Boolean(config.isLandscape);
 
+  // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
+  // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
+  // to render a pure-CSS zero-image card. The config object is adapted below.
+  const cssConfig = (config.card as any)?.cssConfig || null;
+  if (cssConfig || (config as any).isPureCss) {
+    // Build a minimal template-like object from the config for EvitePureCssStage
+    const pureCssTpl = {
+      id: (config as any).templateId || config.activeTemplateId || "unknown",
+      isPureCss: true,
+      canvasWorkspaceBg: backdropGradient || backdropValue,
+      backdropBackground: backdropGradient || backdropValue,
+      backdrop: {
+        gradient: backdropGradient || backdropValue,
+        value: backdropValue,
+        type: "color" as const,
+      },
+      envelope: {
+        outerColor: envelopeOuterColor,
+        linerCss: linerStyle,
+        linerPatternUrl: linerRaw,
+        isOpen: true,
+      },
+      card: {
+        backgroundColor: cardBgColor,
+        cssConfig,
+        artworkUrl: "",
+        decorativeBorderSvgUrl: "",
+        aspectRatio: config.card?.aspectRatio || "portrait",
+      },
+      textLayers: config.textLayers,
+      defaultTextLayers: config.textLayers,
+    };
+
+    return (
+      <EvitePureCssStage
+        template={pureCssTpl}
+        overrideTextLayers={config.textLayers as any}
+        mode={readOnly ? "preview" : "interactive"}
+        selectedTextId={selectedTextId}
+        editingTextId={editingTextId}
+        stageRef={stageRef}
+        cardRef={cardRef}
+        zoom={zoom}
+        maxW={maxW}
+        className={className}
+        onTextClick={onSelectLayer}
+        onTextDoubleClick={(id) => { if (setEditingTextId) setEditingTextId(id || null); }}
+        onTextUpdate={(id, text) => { if (onUpdateLayer) onUpdateLayer(id, { text }); }}
+        onTextDrag={(id, top, left) => {
+          if (onUpdateLayer) onUpdateLayer(id, { top, left, x: left, y: top } as any);
+        }}
+        onBackdropClick={() => {
+          if (onBackdropClick) onBackdropClick();
+          if (onSelectLayer) onSelectLayer("");
+          if (setEditingTextId) setEditingTextId(null);
+        }}
+        onCardClick={() => {
+          if (onCardClick) onCardClick();
+          if (setEditingTextId) setEditingTextId(null);
+        }}
+      />
+    );
+  }
+
   return (
     /* ========================================================================= */
     /* LAYER 1: Canvas Backdrop (z-index: 1)                                     */
@@ -220,9 +359,11 @@ export default function InvitationCanvasStage({
       className={`relative w-full h-full flex items-center justify-center p-4 sm:p-8 md:p-12 overflow-auto select-none ${className}`}
       style={{
         zIndex: 1,
-        backgroundColor: backdropValue,
-        backgroundImage:
-          "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.15) 1px, transparent 1px)",
+        background: isBackdropGradient ? backdropGradient : undefined,
+        backgroundColor: isBackdropGradient ? undefined : backdropValue,
+        backgroundImage: isBackdropGradient
+          ? undefined
+          : "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.15) 1px, transparent 1px)",
         backgroundSize: "20px 20px",
       }}
       onClick={(e) => {
@@ -401,7 +542,7 @@ export default function InvitationCanvasStage({
           {/* LAYER 4: Live Interactive Text Elements (z-index: 30)                     */}
           {/* Positioned inside Layer 3's coordinate space with relative % coordinates  */}
           {/* ========================================================================= */}
-          {config.textLayers.map((layer) => {
+          {computedLayers.map((layer) => {
             const isSelected = selectedTextId === layer.id;
             const isEditing = editingTextId === layer.id && !readOnly;
             const foilClass = getFoilClass(layer.isFoil || config.effects?.foil);
@@ -413,6 +554,7 @@ export default function InvitationCanvasStage({
                 data-layer="4-live-text-element"
                 data-testid={`text-layer-${layer.id}`}
                 onMouseDown={(e) => handleLayerMouseDown(e, layer)}
+                onTouchStart={(e) => handleLayerMouseDown(e, layer)}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onSelectLayer) onSelectLayer(layer.id);
@@ -435,10 +577,12 @@ export default function InvitationCanvasStage({
                 }`}
                 style={{
                   position: "absolute",
-                  left: `${layer.left !== undefined ? layer.left : layer.x}%`,
-                  top: `${layer.top !== undefined ? layer.top : layer.y}%`,
+                  left: `${layer.computedLeft}%`,
+                  top: `${layer.computedTop}%`,
                   transform: "translate(-50%, -50%)",
                   maxWidth: "92%",
+                  width: "max-content",
+                  height: "auto",
                   pointerEvents: "auto",
                   zIndex: isSelected ? 35 : 30,
                 }}
@@ -463,26 +607,26 @@ export default function InvitationCanvasStage({
                     className="bg-white/95 border-2 border-blue-500 rounded p-1.5 text-slate-900 resize-none outline-none shadow-xl cursor-text pointer-events-auto"
                     style={{
                       fontFamily: layer.fontFamily,
-                      fontSize: `${layer.fontSize}px`,
+                      fontSize: `${layer.scaledFontSize}px`,
                       color: layer.color,
                       textAlign: layer.textAlign || layer.align,
-                      lineHeight: layer.lineHeight,
+                      lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
-                      letterSpacing: `${layer.letterSpacing}px`,
+                      letterSpacing: `${layer.letterSpacing || 0}px`,
                       minWidth: "180px",
                     }}
                   />
                 ) : (
                   <div
-                    className={`px-3 py-1 leading-tight whitespace-pre-wrap pointer-events-auto ${foilClass}`}
+                    className={`px-2.5 py-0.5 whitespace-pre-wrap pointer-events-auto select-none ${foilClass}`}
                     style={{
                       fontFamily: layer.fontFamily,
-                      fontSize: `${layer.fontSize}px`,
+                      fontSize: `${layer.scaledFontSize}px`,
                       color: foilClass ? undefined : layer.color,
                       textAlign: layer.textAlign || layer.align,
                       textTransform: layer.casing === "none" ? undefined : layer.casing,
-                      letterSpacing: `${layer.letterSpacing}px`,
-                      lineHeight: layer.lineHeight,
+                      letterSpacing: `${layer.letterSpacing || 0}px`,
+                      lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
                       pointerEvents: "auto",
                     }}

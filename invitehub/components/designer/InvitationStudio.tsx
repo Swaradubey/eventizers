@@ -41,6 +41,7 @@ import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
 import InvitationCanvasStage from "./InvitationCanvasStage";
+import EviteCardPreview from "./EviteCardPreview";
 
 // --- Types & Interfaces ---
 
@@ -99,6 +100,9 @@ export const getCleanTemplateSvg = (url?: string | null): string | null => {
 
 export interface StudioDesignState {
   activeTemplateId: string | null;
+  templateId?: string | null;
+  isPureCss?: boolean;
+  card?: any;
   textLayers: TextLayer[];
   selectedTextId: string | null;
   photoSlot?: PhotoSlot | null;
@@ -110,10 +114,14 @@ export interface StudioDesignState {
   stageBackdrop: {
     type: "color" | "pattern";
     value: string;
+    gradient?: string;
   };
+  canvasWorkspaceBg?: string;
+  backdropBackground?: string;
   envelope: {
     color: string;
     liner: string;
+    linerCss?: string;
     stamp: string | null;
     sticker: string | null;
   };
@@ -235,7 +243,8 @@ export default function InvitationStudio({
   const createDesignStateFromTemplate = (
     tplId: string | null | undefined,
     evt: Event | null,
-    invite: Invitation | null
+    invite: Invitation | null,
+    isExplicitSwitch?: boolean
   ): StudioDesignState => {
     const tplConfig = getTemplateConfig(tplId);
 
@@ -359,25 +368,26 @@ export default function InvitationStudio({
       cardBgValue = "#faf8f5";
     }
 
-    // Resolve Text Layers: Use saved textElements if present, otherwise structured layout from template
+    // Resolve Text Layers: Use saved textElements if present and same template, otherwise structured layout from template
     let resolvedTextLayers: TextLayer[] = [];
-    if (invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0) {
+    const isSameTemplate = invite?.templateId === tplId;
+    if (!isExplicitSwitch && isSameTemplate && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0) {
       resolvedTextLayers = invite.textElements.map((tl) => ({ ...tl }));
     } else if ((tplConfig as any)?.defaultTextLayers && Array.isArray((tplConfig as any).defaultTextLayers) && (tplConfig as any).defaultTextLayers.length > 0) {
       resolvedTextLayers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
         id: tl.id,
         key: tl.key,
         text: tl.text,
-        x: tl.left,
-        y: tl.top,
-        top: tl.top,
-        left: tl.left,
+        x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
+        y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
+        top: tl.top !== undefined ? tl.top : tl.y,
+        left: tl.left !== undefined ? tl.left : tl.x,
         fontSize: tl.fontSize,
         fontFamily: tl.fontFamily,
         color: tl.color,
         casing: "none" as const,
-        align: tl.textAlign || "center",
-        textAlign: tl.textAlign || "center",
+        align: tl.textAlign || tl.align || "center",
+        textAlign: tl.textAlign || tl.align || "center",
         letterSpacing: 0.5,
         lineHeight: 1.2,
         fontWeight: String(tl.fontWeight),
@@ -485,8 +495,14 @@ export default function InvitationStudio({
 
     const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || {
       type: "color",
-      value: isDark ? "#0d1117" : "#1e293b",
+      value: isDark ? "#0d1117" : "#0f172a",
     };
+
+    const initialBackdropValue =
+      (invite as any)?.canvasWorkspaceBg ||
+      (invite as any)?.backdropBackground ||
+      savedBackdrop.value ||
+      (isDark ? "#0d1117" : "#0f172a");
 
     const savedEnvelope = invite?.envelope || {
       color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || invite?.accentColor || (isDark ? "#18181b" : "#781d60"),
@@ -503,6 +519,9 @@ export default function InvitationStudio({
 
     return {
       activeTemplateId: tplConfig?.id || tplId || null,
+      templateId: tplConfig?.id || tplId || null,
+      isPureCss: (tplConfig as any)?.isPureCss || false,
+      card: (tplConfig as any)?.card,
       isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
       photoSlot: tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null,
       textLayers: resolvedTextLayers,
@@ -511,8 +530,17 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
-      stageBackdrop: savedBackdrop,
-      envelope: savedEnvelope,
+      stageBackdrop: {
+        ...savedBackdrop,
+        value: initialBackdropValue,
+        gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient,
+      },
+      canvasWorkspaceBg: initialBackdropValue,
+      backdropBackground: initialBackdropValue,
+      envelope: {
+        ...savedEnvelope,
+        linerCss: (tplConfig?.envelope as any)?.linerCss || (savedEnvelope as any)?.linerCss,
+      },
       effects: savedEffects,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
@@ -679,8 +707,8 @@ export default function InvitationStudio({
     dragStartPos.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
-      layerX: layer.x,
-      layerY: layer.y,
+      layerX: layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50),
+      layerY: layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50),
     };
   };
 
@@ -691,13 +719,13 @@ export default function InvitationStudio({
       const deltaX = ((e.clientX - dragStartPos.current.mouseX) / rect.width) * 100;
       const deltaY = ((e.clientY - dragStartPos.current.mouseY) / rect.height) * 100;
 
-      const newX = Math.max(5, Math.min(95, dragStartPos.current.layerX + deltaX));
-      const newY = Math.max(5, Math.min(95, dragStartPos.current.layerY + deltaY));
+      const newX = Math.round(Math.max(5, Math.min(95, dragStartPos.current.layerX + deltaX)));
+      const newY = Math.round(Math.max(5, Math.min(95, dragStartPos.current.layerY + deltaY)));
 
       setDesignState((prev) => ({
         ...prev,
         textLayers: prev.textLayers.map((layer) =>
-          layer.id === draggingLayerId ? { ...layer, x: Math.round(newX), y: Math.round(newY) } : layer
+          layer.id === draggingLayerId ? { ...layer, x: newX, y: newY, left: newX, top: newY } : layer
         ),
       }));
     };
@@ -923,7 +951,8 @@ export default function InvitationStudio({
     const nextState = createDesignStateFromTemplate(
       templateId,
       currentEvent || initialEvent,
-      currentInvitation || initialInvitation
+      currentInvitation || initialInvitation,
+      true
     );
     pushStateToHistory(nextState);
     setToast({
@@ -1055,6 +1084,29 @@ export default function InvitationStudio({
       || initialEvent?.coverImage
       || null;
 
+    const rsvpLayer = designState.textLayers.find((l) => l.id === "layer-rsvp" || l.key === "rsvp");
+    const buttonText = rsvpLayer?.text?.trim() || currentInvitation?.buttonText || "RSVP Now";
+
+    const normalizedTextLayers = designState.textLayers.map((l) => ({
+      id: l.id,
+      key: l.key,
+      text: l.text,
+      x: l.x !== undefined ? l.x : (l.left !== undefined ? l.left : 50),
+      y: l.y !== undefined ? l.y : (l.top !== undefined ? l.top : 50),
+      top: l.top !== undefined ? l.top : (l.y !== undefined ? l.y : 50),
+      left: l.left !== undefined ? l.left : (l.x !== undefined ? l.x : 50),
+      fontSize: l.fontSize,
+      fontFamily: l.fontFamily,
+      color: l.color,
+      casing: l.casing || "none",
+      align: l.align || l.textAlign || "center",
+      textAlign: l.textAlign || l.align || "center",
+      letterSpacing: l.letterSpacing !== undefined ? l.letterSpacing : 0,
+      lineHeight: l.lineHeight || 1.25,
+      fontWeight: String(l.fontWeight),
+      isFoil: l.isFoil || null,
+    }));
+
     return {
       id: currentInvitation?.id || undefined,
       eventId: targetEventId,
@@ -1071,18 +1123,22 @@ export default function InvitationStudio({
       fontFamily: titleLayer?.fontFamily || "'Londrina Solid', cursive",
       textAlignment: titleLayer?.align || "center",
       imageUrl: resolvedImageUrl,
-      buttonText: "RSVP Now",
+      buttonText,
       buttonColor: accentColor,
       buttonRadius: 12,
       status: "draft",
       eventTitle: designState.eventDetails.title || currentEvent?.title || initialEvent?.title || titleText,
       eventDate: designState.eventDetails.date || currentEvent?.eventDate || initialEvent?.eventDate || null,
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
-      eventVenue: designState.eventDetails.venue || currentEvent?.venue || initialEvent?.venue || null,
-      textElements: designState.textLayers,
+      eventVenue: designState.eventDetails.venue || venueLayer?.text?.trim() || currentEvent?.venue || initialEvent?.venue || null,
+      textElements: normalizedTextLayers,
+      containerDimensions: { width: 540, height: 756, aspectRatio: designState.isLandscape ? "landscape" : "5x7" },
       background: designState.cardBg,
       cardBg: designState.cardBg,
       stageBackdrop: designState.stageBackdrop,
+      backdrop: designState.stageBackdrop,
+      canvasWorkspaceBg: designState.stageBackdrop.value,
+      backdropBackground: designState.stageBackdrop.value,
       envelope: designState.envelope,
       effects: designState.effects,
       isLandscape: designState.isLandscape,
@@ -1635,14 +1691,13 @@ export default function InvitationStudio({
                           : "border-slate-200 hover:border-slate-400 bg-white hover:shadow-xs"
                           }`}
                       >
-                        <div className="aspect-[3/4] rounded-lg overflow-hidden relative mb-2 bg-slate-100 border border-slate-100">
-                          <img
-                            src={tpl.image}
-                            alt={tpl.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        <div className="w-full rounded-lg overflow-hidden relative mb-2 bg-slate-100 border border-slate-100">
+                          <EviteCardPreview
+                            template={tpl}
+                            hoverScale={true}
                           />
                           {tpl.badge && (
-                            <span className="absolute top-1.5 right-1.5 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 shadow-xs">
+                            <span className="absolute top-1.5 right-1.5 z-20 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 shadow-xs pointer-events-none">
                               {tpl.badge}
                             </span>
                           )}
@@ -2067,19 +2122,23 @@ export default function InvitationStudio({
                 {/* Colors Picker Input */}
                 <div>
                   <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                    Colors
+                    Backdrop Color
                   </span>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
                       <span
                         className="w-5 h-5 rounded-full border border-black/10 flex-shrink-0"
                         style={{
-                          backgroundColor:
-                            designState.cardBg.type === "color" ? designState.cardBg.value : "#8c93ca",
+                          background: designState.stageBackdrop.value || "#0f172a",
+                          backgroundColor: designState.stageBackdrop.value?.includes("gradient")
+                            ? undefined
+                            : designState.stageBackdrop.value || "#0f172a",
                         }}
                       />
-                      <span className="text-xs font-mono font-semibold text-slate-700 uppercase">
-                        {designState.cardBg.type === "color" ? designState.cardBg.value : "#8c93ca"}
+                      <span className="text-xs font-mono font-semibold text-slate-700 uppercase truncate">
+                        {designState.stageBackdrop.value?.includes("gradient")
+                          ? "Preset Gradient"
+                          : designState.stageBackdrop.value || "#0f172a"}
                       </span>
                     </div>
                     {/* Rainbow color wheel */}
@@ -2093,12 +2152,22 @@ export default function InvitationStudio({
                       />
                       <input
                         type="color"
-                        value={designState.cardBg.type === "color" ? designState.cardBg.value : "#8c93ca"}
+                        value={
+                          designState.stageBackdrop.value?.startsWith("#")
+                            ? designState.stageBackdrop.value
+                            : "#0f172a"
+                        }
                         onChange={(e) =>
                           pushStateToHistory({
                             ...designState,
-                            cardBg: { type: "color", value: e.target.value },
-                          })
+                            stageBackdrop: {
+                              type: "color",
+                              value: e.target.value,
+                              gradient: undefined,
+                            },
+                            canvasWorkspaceBg: e.target.value,
+                            backdropBackground: e.target.value,
+                          } as any)
                         }
                         className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                       />
@@ -2112,11 +2181,13 @@ export default function InvitationStudio({
                 {/* 3-Column Scrollable Grid of Background Presets */}
                 <div>
                   <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Backgrounds
+                    Backdrop Presets
                   </span>
                   <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
                     {PRESET_BACKGROUNDS.map((bg) => {
-                      const isSelected = designState.cardBg.value === bg.style;
+                      const isSelected =
+                        designState.stageBackdrop.value === bg.style ||
+                        designState.stageBackdrop.gradient === bg.style;
                       return (
                         <button
                           key={bg.id}
@@ -2124,8 +2195,14 @@ export default function InvitationStudio({
                           onClick={() =>
                             pushStateToHistory({
                               ...designState,
-                              cardBg: { type: "preset", value: bg.style },
-                            })
+                              stageBackdrop: {
+                                type: "pattern",
+                                value: bg.style,
+                                gradient: bg.style,
+                              },
+                              canvasWorkspaceBg: bg.style,
+                              backdropBackground: bg.style,
+                            } as any)
                           }
                           className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
                             ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"

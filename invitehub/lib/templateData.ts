@@ -34,19 +34,19 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
   const cat = (itemCategory || "").toLowerCase();
 
   if (target === "baby shower") {
-    return cat.includes("baby shower") || cat.includes("baby");
+    return cat.includes("baby shower") || cat.includes("baby") || cat.includes("bridal shower") || cat.includes("bridal");
   }
   if (target === "corporate") {
-    return cat.includes("corporate") || cat.includes("conference") || cat.includes("business") || cat.includes("summit");
+    return cat.includes("corporate") || cat.includes("conference") || cat.includes("business") || cat.includes("summit") || cat.includes("enterprise");
   }
   if (target === "networking") {
-    return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup");
+    return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup") || cat.includes("founders") || cat.includes("connect");
   }
   if (target === "birthday") {
-    return cat.includes("birthday") || cat.includes("bday");
+    return cat.includes("birthday") || cat.includes("bday") || cat.includes("milestone") || cat.includes("celebration");
   }
   if (target === "wedding") {
-    return cat.includes("wedding");
+    return cat.includes("wedding") || cat.includes("bridal") || cat.includes("anniversary");
   }
 
   return cat.includes(target) || target.includes(cat);

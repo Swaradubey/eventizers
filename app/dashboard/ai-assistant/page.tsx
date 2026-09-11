@@ -37,7 +37,8 @@ import API from "@/services/api";
 import { getImageUrl } from "@/utils/imageUrl";
 import { compressAndNormalizeImage } from "@/utils/imageCompressor";
 import { templateCards, matchesCategory } from "@/lib/templateData";
-import { NEW_TEMPLATE_IMAGES } from "@/lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "@/lib/newTemplatesData";
+import EviteCardPreview from "@/components/designer/EviteCardPreview";
 
 const eventTypes = [
   "Birthday",
@@ -1363,8 +1364,35 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         {displayedTemplates.map((tpl) => {
                           const isSelected = selectedTemplateId === tpl.id;
                           const imgUrl = getCardImageUrl(tpl);
-                          const badgeText = tpl.badge || ((tpl as any).isPremium ? "PREMIUM" : "FREE");
+                          const tplConfig = getTemplateConfig(tpl.id);
+                          const badgeText = tplConfig?.badge || tpl.badge || ((tpl as any).isPremium ? "PREMIUM" : "FREE");
                           const isPremium = badgeText === "PREMIUM";
+
+                          // Build comprehensive template design configuration to match Home page
+                          const resolvedTemplate = tplConfig || {
+                            id: tpl.id,
+                            title: tpl.name,
+                            category: tpl.category,
+                            image: imgUrl,
+                            card: {
+                              artworkUrl: imgUrl,
+                              backgroundColor: "#FFFFFF",
+                            },
+                            defaultTextLayers: [
+                              {
+                                id: "title",
+                                key: "title",
+                                text: tpl.name,
+                                fontFamily: "'Playfair Display', serif",
+                                fontSize: 24,
+                                fontWeight: "700",
+                                color: "#111827",
+                                textAlign: "center",
+                                top: 40,
+                                left: 50,
+                              },
+                            ],
+                          };
 
                           return (
                             <div
@@ -1379,9 +1407,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                               {/* Card Image Container: Portrait invitation ratio aspect-[3/4] */}
                               <div className="aspect-[3/4] w-full bg-gray-100 relative overflow-hidden">
                                 {/* Pill Badge in Top-Left (Evite style) */}
-                                <div className="absolute top-2 left-2 z-10">
+                                <div className="absolute top-2 left-2 z-20">
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
-                                    isPremium
+                                    badgeText.toUpperCase() === "TRENDING"
+                                      ? "bg-rose-500/90 text-white border-rose-400/90"
+                                      : badgeText.toUpperCase() === "POPULAR"
+                                      ? "bg-indigo-500/90 text-white border-indigo-400/90"
+                                      : isPremium || badgeText.toUpperCase() === "FEATURED"
                                       ? "bg-amber-500/95 text-white border-amber-400/90"
                                       : "bg-white/90 text-gray-800 border-white/70"
                                   }`}>
@@ -1391,29 +1423,23 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
                                 {/* Selected Checkmark Badge */}
                                 {isSelected && (
-                                  <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
+                                  <div className="absolute top-2 right-2 z-20 w-5 h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
                                     <Check className="w-3 h-3" strokeWidth={3} />
                                   </div>
                                 )}
 
-                                {/* Card Image with smooth zoom-in */}
-                                {imgUrl ? (
-                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                  <img
-                                    src={imgUrl}
-                                    alt={tpl.name}
-                                    loading="lazy"
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                {/* Invitation Card Visual Preview (Full vector styling, envelope, and artwork) */}
+                                <div className="absolute inset-0 w-full h-full overflow-hidden bg-gray-50 flex items-center justify-center">
+                                  <EviteCardPreview
+                                    template={resolvedTemplate}
+                                    hoverScale={false}
+                                    aspectRatio="full"
+                                    className="w-full h-full"
                                   />
-                                ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
-                                    <Sparkles className="w-5 h-5 text-indigo-400" />
-                                  </div>
-                                )}
+                                </div>
 
                                 {/* Hover overlay with Evite-style Customize pill button */}
-                                <div className="absolute inset-0 bg-black/30 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-2">
+                                <div className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-2">
                                   <button
                                     type="button"
                                     onClick={(e) => {

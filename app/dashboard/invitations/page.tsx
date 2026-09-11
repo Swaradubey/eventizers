@@ -285,33 +285,72 @@ function InvitationDesignerPageContent() {
   // Load selected template from Templates section if navigated with ?templateId=
   useEffect(() => {
     try {
-      const tplId =
+      const hasExplicitTemplateIntent =
         queryTemplateId ||
         (typeof window !== "undefined"
           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
-          : null) ||
+          : null);
+
+      const tplId =
+        hasExplicitTemplateIntent ||
         invitation?.templateId ||
         event?.selectedTemplateId;
 
       if (tplId && NEW_TEMPLATES_CONFIG[tplId] && invitation) {
-        if (appliedTemplateRef.current === tplId && invitation.templateId === tplId) {
+        if (appliedTemplateRef.current === tplId) {
           return;
         }
+
+        // If the invitation already has this template and has saved text elements, don't clobber it
+        if (invitation.templateId === tplId && invitation.textElements && invitation.textElements.length > 0) {
+          appliedTemplateRef.current = tplId;
+          return;
+        }
+
+        // If there is no explicit intent to change the template (e.g. initial load of existing invitation), do not overwrite
+        if (!hasExplicitTemplateIntent && invitation.templateId) {
+          appliedTemplateRef.current = invitation.templateId;
+          return;
+        }
+
         appliedTemplateRef.current = tplId;
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("pending_template_id");
           localStorage.removeItem("pending_template_id");
         }
         const tpl = NEW_TEMPLATES_CONFIG[tplId];
+        const titleLayer = (tpl.defaultTextLayers || tpl.textLayers || []).find((l: any) => l.key === "title") || (tpl.defaultTextLayers || tpl.textLayers || [])[0];
+        const primaryTitle = titleLayer?.text || tpl.title || "You're Invited";
+
+        const tplLayers = (tpl.defaultTextLayers || tpl.textLayers || []).map((tl: any) => ({
+          id: tl.id,
+          key: tl.key,
+          text: tl.text,
+          x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
+          y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
+          top: tl.top !== undefined ? tl.top : tl.y,
+          left: tl.left !== undefined ? tl.left : tl.x,
+          fontSize: tl.fontSize,
+          fontFamily: tl.fontFamily,
+          color: tl.color,
+          casing: "none" as const,
+          align: tl.textAlign || tl.align || "center",
+          textAlign: tl.textAlign || tl.align || "center",
+          letterSpacing: 0.5,
+          lineHeight: 1.2,
+          fontWeight: String(tl.fontWeight),
+          isFoil: null,
+        }));
+
         setInvitation((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
             templateId: tpl.id,
-            title: tpl.title ? `Invitation to ${tpl.title}` : prev.title,
+            title: primaryTitle,
             subtitle: tpl.subtitle || prev.subtitle,
             mainText: tpl.description || prev.mainText,
-            imageUrl: tpl.decorationImage || tpl.image || prev.imageUrl,
+            imageUrl: (tpl.card as any)?.decorativeBorderSvgUrl || (tpl.card as any)?.artworkUrl || tpl.decorationImage || tpl.image || prev.imageUrl,
             accentColor: tpl.accentColor || prev.accentColor,
             backgroundColor: tpl.backgroundColor || prev.backgroundColor,
             textColor: tpl.textColor || prev.textColor,
@@ -321,6 +360,17 @@ function InvitationDesignerPageContent() {
             buttonColor: tpl.buttonColor || prev.buttonColor,
             buttonRadius: tpl.buttonRadius || prev.buttonRadius,
             textAlignment: tpl.textAlignment || prev.textAlignment,
+            textElements: tplLayers,
+            envelope: {
+              color: tpl.envelopeColor || prev.envelope?.color || "#781d60",
+              liner: tpl.envelopeLiner || prev.envelope?.liner || "gold-foil",
+              stamp: prev.envelope?.stamp || "wax",
+              sticker: prev.envelope?.sticker || null,
+            },
+            stageBackdrop: {
+              type: "color",
+              value: (tpl.backdrop as any)?.value || (tpl.backdrop as any)?.color || prev.stageBackdrop?.value || "#1e293b",
+            },
           };
         });
         setToast({ message: `Loaded ${tpl.title || "template"} into designer! ✨`, type: "success" });
@@ -919,57 +969,57 @@ function InvitationDesignerPageContent() {
     let layers: TextLayer[] = [];
     if (invitation?.textElements && invitation.textElements.length > 0) {
       layers = invitation.textElements.map((l) => {
-        if (l.id === "layer-title" || l.id === "layer-names") {
+        if (l.id === "layer-title" || l.id === "layer-names" || l.key === "title") {
           return {
             ...l,
-            text: invitation.title || l.text,
-            fontFamily: invitation.fontFamily
+            text: l.text || invitation.title || "You're Invited",
+            fontFamily: l.fontFamily || (invitation.fontFamily
               ? invitation.fontFamily === "Playfair Display"
                 ? "'Playfair Display', serif"
                 : invitation.fontFamily
-              : l.fontFamily,
-            fontSize: invitation.titleSize || l.fontSize,
-            color: invitation.textColor || l.color,
-            align: (invitation.textAlignment as any) || l.align,
-            fontWeight: invitation.fontWeight || l.fontWeight,
+              : "'Playfair Display', serif"),
+            fontSize: l.fontSize || invitation.titleSize || 36,
+            color: l.color || invitation.textColor || "#1e293b",
+            align: (l.align || invitation.textAlignment || "center") as any,
+            fontWeight: l.fontWeight || invitation.fontWeight || "700",
           };
         }
-        if (l.id === "layer-subtitle") {
-          return { ...l, text: invitation.subtitle || l.text };
+        if (l.id === "layer-subtitle" || l.key === "subtitle") {
+          return { ...l, text: l.text || invitation.subtitle || "" };
         }
-        if (l.id === "layer-datetime") {
-          return { ...l, text: dateText };
+        if (l.id === "layer-datetime" || l.key === "datetime" || l.key === "dateTime") {
+          return { ...l, text: l.text || (invitation.eventDate ? dateText : l.text) || "" };
         }
-        if (l.id === "layer-venue") {
-          return { ...l, text: venueText };
+        if (l.id === "layer-venue" || l.key === "venue") {
+          return { ...l, text: l.text || (invitation.eventVenue ? venueText : l.text) || "" };
         }
         if (l.id === "layer-description") {
-          return { ...l, text: descText };
+          return { ...l, text: l.text || invitation.mainText || "" };
         }
-        if (l.id === "layer-rsvp") {
+        if (l.id === "layer-rsvp" || l.key === "rsvp") {
           return {
             ...l,
-            text: (invitation.buttonText || l.text).toUpperCase(),
-            color: invitation.buttonColor || l.color,
+            text: l.text || invitation.buttonText || "RSVP Now",
+            color: l.color || invitation.buttonColor || "#5B5FEF",
           };
         }
-        return l;
+        return { ...l, text: l.text || "" };
       });
     } else if ((tplConfig as any)?.defaultTextLayers && (tplConfig as any).defaultTextLayers.length > 0) {
       layers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
         id: tl.id,
         key: tl.key,
-        text: tl.key === "title" ? titleText : tl.text,
-        x: tl.left,
-        y: tl.top,
-        top: tl.top,
-        left: tl.left,
+        text: tl.text,
+        x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
+        y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
+        top: tl.top !== undefined ? tl.top : tl.y,
+        left: tl.left !== undefined ? tl.left : tl.x,
         fontSize: tl.fontSize,
         fontFamily: tl.fontFamily,
         color: tl.color,
         casing: "none" as const,
-        align: tl.textAlign || "center",
-        textAlign: tl.textAlign || "center",
+        align: tl.textAlign || tl.align || "center",
+        textAlign: tl.textAlign || tl.align || "center",
         letterSpacing: 0.5,
         lineHeight: 1.2,
         fontWeight: String(tl.fontWeight),
@@ -979,11 +1029,11 @@ function InvitationDesignerPageContent() {
       layers = tplConfig.textLayers.map((tl) => ({
         id: tl.id,
         key: tl.key,
-        text: tl.id.includes("title") || tl.id.includes("names") ? titleText : tl.text,
-        x: tl.x,
-        y: tl.y,
-        top: tl.y,
-        left: tl.x,
+        text: tl.text,
+        x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
+        y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
+        top: tl.top !== undefined ? tl.top : tl.y,
+        left: tl.left !== undefined ? tl.left : tl.x,
         fontSize: tl.fontSize,
         fontFamily: tl.fontFamily,
         color: tl.color,
