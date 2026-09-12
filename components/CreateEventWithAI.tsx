@@ -141,7 +141,7 @@ export default function CreateEventWithAI({ onSuccess, className = "" }: CreateE
 
       if (res.data && res.data.success) {
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-cake-and-confetti";
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-floating-cakes";
 
         if (typeof window !== "undefined") {
           sessionStorage.setItem("pending_template_id", targetTplId);

@@ -171,10 +171,6 @@ export default function AIAssistantPage() {
   const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-corporate-annual-launch");
-  const [templateTitle, setTemplateTitle] = useState("");
-  const [templateVenue, setTemplateVenue] = useState("");
-  const [templateDate, setTemplateDate] = useState("");
-  const [templateTime, setTemplateTime] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -334,7 +330,7 @@ export default function AIAssistantPage() {
       if (res.data) {
         setAiEventData(res.data);
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-cake-and-confetti";
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-floating-cakes";
 
         if (typeof window !== "undefined") {
           sessionStorage.setItem("pending_template_id", targetTplId);
@@ -460,14 +456,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
   const handleSelectTemplate = (tpl: Template) => {
     setSelectedTemplateId(tpl.id);
-    setTemplateTitle(tpl.name);
-    setTemplateVenue(getDefaultVenueForTemplate(tpl));
-    if (!templateDate) {
-      setTemplateDate(getDefaultEventDate());
-    }
-    if (!templateTime) {
-      setTemplateTime(getDefaultEventTime());
-    }
   };
 
   const handleCreateFromTemplate = async (tplToUse?: Template) => {
@@ -486,10 +474,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
       const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-birthday-maya";
 
-      const finalTitle = (templateTitle && templateTitle.trim()) || targetTpl?.name || "Special Celebration";
-      const finalVenue = (templateVenue && templateVenue.trim()) || getDefaultVenueForTemplate(targetTpl);
-      const finalDate = templateDate || getDefaultEventDate();
-      const finalTime = templateTime || getDefaultEventTime();
+      const finalTitle = targetTpl?.name || "Special Celebration";
+      const finalVenue = getDefaultVenueForTemplate(targetTpl);
+      const finalDate = getDefaultEventDate();
+      const finalTime = getDefaultEventTime();
 
       const res = await eventService.createEvent({
         title: finalTitle,
@@ -1576,45 +1564,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     )}
                   </div>
 
-                  {/* Event Details Form */}
-                  <div className="space-y-2.5 pt-3 border-t border-gray-100">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-semibold text-gray-500">
-                        Event Details (Auto-filled · Optional to change)
-                      </span>
-                      <span className="text-[10px] text-gray-400">
-                        Ready to create immediately
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={templateTitle}
-                        onChange={(e) => setTemplateTitle(e.target.value)}
-                        placeholder="Event Title (e.g. Maya's 5th Birthday)"
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                      />
-                      <input
-                        type="text"
-                        value={templateVenue}
-                        onChange={(e) => setTemplateVenue(e.target.value)}
-                        placeholder="Venue (e.g. Sweet Retreat Bakery)"
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                      />
-                      <input
-                        type="date"
-                        value={templateDate}
-                        onChange={(e) => setTemplateDate(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                      />
-                      <input
-                        type="time"
-                        value={templateTime}
-                        onChange={(e) => setTemplateTime(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                      />
-                    </div>
-
+                  {/* Create Event Button */}
+                  <div className="pt-3 border-t border-gray-100">
                     <button
                       onClick={() => handleCreateFromTemplate()}
                       disabled={creatingEvent}

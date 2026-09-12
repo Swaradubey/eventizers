@@ -60,62 +60,9 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     category: "Bridal Shower",
     designer: "Garden Guild",
   },
-  {
-    id: "tpl-floral-arch",
-    title: "Floral Arch",
-    badge: "Trending",
-    category: "Bridal Shower",
-    designer: "Flora Studio",
-  },
-  {
-    id: "tpl-limoncello",
-    title: "Little Limoncello",
-    badge: "Featured",
-    category: "Bridal Shower",
-    designer: "Amalfi Coast",
-  },
-  {
-    id: "tpl-pumpkin-petals",
-    title: "Pumpkin & Petals",
-    badge: "Trending",
-    category: "Bridal Shower",
-    designer: "Autumn Harvest",
-  },
-  {
-    id: "tpl-wedding-elegance",
-    title: "Eternal Botanical Garland",
-    badge: "Featured",
-    category: "Wedding",
-    designer: "Haute Wedding",
-  },
-  {
-    id: "tpl-corporate-summit",
-    title: "Global Innovation Summit 2026",
-    badge: "Trending",
-    category: "Corporate",
-    designer: "Enterprise Lab",
-  },
-  {
-    id: "tpl-networking-founders",
-    title: "Founders & Tech Connect",
-    badge: "Popular",
-    category: "Corporate",
-    designer: "Silicon Mixer",
-  },
-  {
-    id: "tpl-charity-gala",
-    title: "Black Tie Charity Gala",
-    badge: "Trending",
-    category: "Dinner & Gala",
-    designer: "Grand Ballroom",
-  },
-  {
-    id: "tpl-dinner-sunset-soiree",
-    title: "Sunset Garden Soirée",
-    badge: "Popular",
-    category: "Dinner & Gala",
-    designer: "Chef's Table",
-  },
+
+
+
   {
     id: "tpl-golden-milestone",
     title: "Golden Milestone",
@@ -144,48 +91,7 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     category: "Birthday",
     designer: "Vintage Groovy",
   },
-  {
-    id: "tpl-midnight-lounge",
-    title: "Midnight Lounge",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Velvet Speakeasy",
-  },
-  {
-    id: "tpl-emerald-soiree",
-    title: "Emerald Soirée",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Conservatory Guild",
-  },
-  {
-    id: "tpl-champagne-brunch",
-    title: "Champagne Brunch",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Villa Garden",
-  },
-  {
-    id: "tpl-noir-tuxedo",
-    title: "Noir Tuxedo",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Black Tie Club",
-  },
-  {
-    id: "tpl-rustic-espresso",
-    title: "Rustic Espresso",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Timber Lodge",
-  },
-  {
-    id: "tpl-lavender-twilight",
-    title: "Lavender Twilight",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Sonoma Twilight",
-  },
+
 ];
 
 const CATEGORIES = ["All", "Bridal Shower", "Wedding", "Birthday", "Corporate", "Dinner & Gala"];

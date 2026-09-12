@@ -170,10 +170,6 @@ export default function Hero() {
   const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-corporate-annual-launch");
-  const [templateTitle, setTemplateTitle] = useState("");
-  const [templateVenue, setTemplateVenue] = useState("");
-  const [templateDate, setTemplateDate] = useState("");
-  const [templateTime, setTemplateTime] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -256,55 +252,88 @@ export default function Hero() {
     }
   }, [activeTab, templates.length]);
 
-  // Restore pending template selection on login
+  // Restore pending template selection and draft data on login
   useEffect(() => {
     if (user) {
       try {
         const pendingId = sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id");
-        const pendingName = sessionStorage.getItem("pending_template_name") || localStorage.getItem("pending_template_name");
         if (pendingId) {
           setSelectedTemplateId(pendingId);
-          if (pendingName) {
-            setTemplateTitle(pendingName);
-          }
           sessionStorage.removeItem("pending_template_id");
           sessionStorage.removeItem("pending_template_name");
           localStorage.removeItem("pending_template_id");
           localStorage.removeItem("pending_template_name");
         }
+        const pendingPrompt = sessionStorage.getItem("pending_prompt");
+        if (pendingPrompt) {
+          setPrompt(pendingPrompt);
+          sessionStorage.removeItem("pending_prompt");
+        }
+        const pendingEventType = sessionStorage.getItem("pending_event_type");
+        if (pendingEventType) {
+          setEventType(pendingEventType);
+          sessionStorage.removeItem("pending_event_type");
+        }
+        const pendingVenue = sessionStorage.getItem("pending_venue");
+        if (pendingVenue) {
+          setVenue(pendingVenue);
+          sessionStorage.removeItem("pending_venue");
+        }
+        const pendingGuestCount = sessionStorage.getItem("pending_guest_count");
+        if (pendingGuestCount) {
+          setGuestCount(pendingGuestCount);
+          sessionStorage.removeItem("pending_guest_count");
+        }
+        const pendingEventDate = sessionStorage.getItem("pending_event_date");
+        if (pendingEventDate) {
+          setEventDate(pendingEventDate);
+          sessionStorage.removeItem("pending_event_date");
+        }
+        const pendingStartTime = sessionStorage.getItem("pending_start_time");
+        if (pendingStartTime) {
+          setStartTime(pendingStartTime);
+          sessionStorage.removeItem("pending_start_time");
+        }
+        const pendingEndTime = sessionStorage.getItem("pending_end_time");
+        if (pendingEndTime) {
+          setEndTime(pendingEndTime);
+          sessionStorage.removeItem("pending_end_time");
+        }
+        const pendingIsFullDay = sessionStorage.getItem("pending_is_full_day");
+        if (pendingIsFullDay !== null) {
+          setIsFullDay(pendingIsFullDay === "true");
+          sessionStorage.removeItem("pending_is_full_day");
+        }
       } catch (e) {
-        console.warn("Error restoring pending template:", e);
+        console.warn("Error restoring pending data:", e);
       }
     }
   }, [user]);
 
   const handleSelectTemplate = (tpl: Template) => {
     setSelectedTemplateId(tpl.id);
-    setTemplateTitle(tpl.name);
-    setTemplateVenue(getDefaultVenueForTemplate(tpl));
-    if (!templateDate) {
-      setTemplateDate(getDefaultEventDate());
-    }
-    if (!templateTime) {
-      setTemplateTime(getDefaultEventTime());
-    }
-
-    if (!user) {
-      try {
-        localStorage.setItem("pending_template_id", tpl.id);
-        localStorage.setItem("pending_template_name", tpl.name);
-        sessionStorage.setItem("pending_template_id", tpl.id);
-        sessionStorage.setItem("pending_template_name", tpl.name);
-      } catch (e) {
-        console.warn("Storage write error:", e);
-      }
-      setIsAuthModalOpen(true);
-      return;
+    try {
+      localStorage.setItem("pending_template_id", tpl.id);
+      localStorage.setItem("pending_template_name", tpl.name);
+      sessionStorage.setItem("pending_template_id", tpl.id);
+      sessionStorage.setItem("pending_template_name", tpl.name);
+    } catch (e) {
+      console.warn("Storage write error:", e);
     }
   };
 
   const handleGenerate = async () => {
     if (!user) {
+      try {
+        if (prompt.trim()) sessionStorage.setItem("pending_prompt", prompt);
+        sessionStorage.setItem("pending_event_type", eventType);
+        sessionStorage.setItem("pending_venue", venue);
+        sessionStorage.setItem("pending_guest_count", guestCount);
+        sessionStorage.setItem("pending_event_date", eventDate);
+        sessionStorage.setItem("pending_start_time", startTime);
+        sessionStorage.setItem("pending_end_time", endTime);
+        sessionStorage.setItem("pending_is_full_day", String(isFullDay));
+      } catch (e) {}
       setIsAuthModalOpen(true);
       return;
     }
@@ -338,7 +367,7 @@ export default function Hero() {
       if (res.data) {
         setAiEventData(res.data);
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-cake-and-confetti";
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-floating-cakes";
 
         if (typeof window !== "undefined") {
           sessionStorage.setItem("pending_template_id", targetTplId);
@@ -488,10 +517,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     setSuccessMsg(null);
 
     try {
-      const finalTitle = (templateTitle && templateTitle.trim()) || targetTpl?.name || "Special Celebration";
-      const finalVenue = (templateVenue && templateVenue.trim()) || getDefaultVenueForTemplate(targetTpl);
-      const finalDate = templateDate || getDefaultEventDate();
-      const finalTime = templateTime || getDefaultEventTime();
+      const finalTitle = targetTpl?.name || "Special Celebration";
+      const finalVenue = getDefaultVenueForTemplate(targetTpl);
+      const finalDate = getDefaultEventDate();
+      const finalTime = getDefaultEventTime();
 
       const res = await eventService.createEvent({
         title: finalTitle,
@@ -560,20 +589,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
     if (e.target.files && e.target.files.length > 0) {
       handleFileSelection(e.target.files[0]);
     }
@@ -643,11 +664,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   const handleFileSelection = async (file: File) => {
     setUploadError(null);
     setErrorMsg(null);
-
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
 
     if (!file) return;
 
@@ -1142,10 +1158,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   <button
                     key={tab.id}
                     onClick={() => {
-                      if (!user && (tab.id === 0 || tab.id === 2)) {
-                        setIsAuthModalOpen(true);
-                        return;
-                      }
                       setActiveTab(tab.id);
                       setErrorMsg(null);
                       setSuccessMsg(null);
@@ -1188,29 +1200,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 
                 {/* Input Area (Middle of Card) */}
                 <div 
-                  onClick={() => {
-                    if (!user) {
-                      setIsAuthModalOpen(true);
-                    }
-                  }}
                   className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-text"
                 >
                   <textarea
                     rows={2}
                     value={prompt}
-                    onFocus={(e) => {
-                      if (!user) {
-                        e.target.blur();
-                        setIsAuthModalOpen(true);
-                      }
-                    }}
-                    onChange={(e) => {
-                      if (!user) {
-                        setIsAuthModalOpen(true);
-                        return;
-                      }
-                      setPrompt(e.target.value);
-                    }}
+                    onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -1248,10 +1243,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     <button
                       key={idx}
                       onClick={() => {
-                        if (!user) {
-                          setIsAuthModalOpen(true);
-                          return;
-                        }
                         setPrompt(item.promptText);
                       }}
                       className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-3.5 py-1.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
@@ -1265,13 +1256,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
                 {/* Form Fields (Below the prompt box/suggestions) */}
                 <div 
-                  onClickCapture={(e) => {
-                    if (!user) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsAuthModalOpen(true);
-                    }
-                  }}
                   className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-left"
                 >
                   {/* 1. EVENT TYPE */}
@@ -1767,78 +1751,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   )}
                 </div>
 
-                {/* Event Details Form */}
-                <div 
-                  onClickCapture={(e) => {
-                    if (!user) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsAuthModalOpen(true);
-                    }
-                  }}
-                  className="space-y-2.5 pt-3 border-t border-gray-100"
-                >
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[11px] font-semibold text-gray-500">
-                      Event Details (Auto-filled · Optional to change)
-                    </span>
-                    <span className="text-[10px] text-gray-400">
-                      Ready to create immediately
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={templateTitle}
-                      onChange={(e) => {
-                        if (!user) {
-                          setIsAuthModalOpen(true);
-                          return;
-                        }
-                        setTemplateTitle(e.target.value);
-                      }}
-                      placeholder="Event Title (e.g. Maya's 5th Birthday)"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                    />
-                    <input
-                      type="text"
-                      value={templateVenue}
-                      onChange={(e) => {
-                        if (!user) {
-                          setIsAuthModalOpen(true);
-                          return;
-                        }
-                        setTemplateVenue(e.target.value);
-                      }}
-                      placeholder="Venue (e.g. Sweet Retreat Bakery)"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                    />
-                    <input
-                      type="date"
-                      value={templateDate}
-                      onChange={(e) => {
-                        if (!user) {
-                          setIsAuthModalOpen(true);
-                          return;
-                        }
-                        setTemplateDate(e.target.value);
-                      }}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                    />
-                    <input
-                      type="time"
-                      value={templateTime}
-                      onChange={(e) => {
-                        if (!user) {
-                          setIsAuthModalOpen(true);
-                          return;
-                        }
-                        setTemplateTime(e.target.value);
-                      }}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-[#F9FAFB] text-gray-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#6C5CE7]"
-                    />
-                  </div>
-
+                {/* Create Event Button */}
+                <div className="pt-3 border-t border-gray-100">
                   <button
                     onClick={() => handleCreateFromTemplate()}
                     disabled={creatingEvent}
@@ -1893,10 +1807,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 {!uploadedFile && (
                   <div
                     onClick={() => {
-                      if (!user) {
-                        setIsAuthModalOpen(true);
-                        return;
-                      }
                       fileInputRef.current?.click();
                     }}
                     onDragEnter={handleDragEnter}

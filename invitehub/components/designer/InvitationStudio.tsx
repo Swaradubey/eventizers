@@ -339,8 +339,7 @@ export default function InvitationStudio({
       tplConfig?.textColor?.toLowerCase() === "#f8fafc" ||
       tplConfig?.backgroundColor?.toLowerCase() === "#0a0b10" ||
       tplConfig?.backgroundColor?.toLowerCase() === "#14131a" ||
-      tplConfig?.id === "tpl-electric-outline" ||
-      tplConfig?.id === "tpl-hype-night";
+      false;
 
     const pendingUploadTitle = typeof window !== "undefined"
       ? sessionStorage.getItem("pending_upload_title")
@@ -1219,7 +1218,7 @@ export default function InvitationStudio({
     const targetTplId =
       targetInvite?.templateId ||
       foundEvt?.selectedTemplateId ||
-      "tpl-cake-and-confetti";
+      "tpl-floating-cakes";
 
     loadedTemplateIdRef.current = targetTplId;
 
