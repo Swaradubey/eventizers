@@ -23,9 +23,6 @@ import {
   Sparkles,
   ShieldCheck,
   UserCog,
-  ClipboardList,
-  Heart,
-  ScanLine,
   ImageIcon,
   MapPin,
   KeyRound,
@@ -36,17 +33,55 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user } = useAuth();
+  const { user, logout } = useAuth();
   const { isOpen, setIsOpen, isCollapsed, setIsCollapsed } = useSidebar();
 
   const isAdminPath = pathname?.startsWith("/admin");
-  const isGuestRole = user?.role === "GUEST";
+  const isGuestUser = user?.role === "GUEST";
   const isStaffCoHost = user?.role === "STAFF_COHOST" || user?.role === "COHOST" || user?.role === "STAFF";
+
+  const guestMenuItems = [
+    {
+      label: "Guest Portal",
+      href: "/dashboard/guest",
+      icon: LayoutDashboard,
+    },
+    {
+      label: "My Invitation",
+      href: "/dashboard/guest?tab=invitation",
+      icon: Mail,
+    },
+    {
+      label: "RSVP Status",
+      href: "/dashboard/guest?tab=rsvp",
+      icon: UserCheck,
+    },
+    {
+      label: "QR Ticket & Badge",
+      href: "/dashboard/guest?tab=ticket",
+      icon: Ticket,
+    },
+    {
+      label: "Event Gallery",
+      href: "/dashboard/guest?tab=gallery",
+      icon: ImageIcon,
+    },
+    {
+      label: "Venue Check-In",
+      href: "/dashboard/guest?tab=checkin",
+      icon: MapPin,
+    },
+    {
+      label: "Access Recovery",
+      href: "/dashboard/guest?tab=recovery",
+      icon: KeyRound,
+    },
+  ];
 
   const menuItems = isAdminPath
     ? [
         {
-          label: "Events",
+          label: "My Events",
           href: "/admin/events",
           icon: Calendar,
         },
@@ -91,55 +126,14 @@ export default function Sidebar() {
           icon: Settings,
         },
       ]
-    : isGuestRole
-    ? [
-        {
-          label: "Guest Portal",
-          href: "/dashboard/guest",
-          icon: LayoutDashboard,
-        },
-        {
-          label: "My Invitation",
-          href: "/dashboard/guest?tab=invitation",
-          icon: Mail,
-        },
-        {
-          label: "RSVP Status",
-          href: "/dashboard/guest?tab=rsvp",
-          icon: UserCheck,
-        },
-        {
-          label: "QR Ticket & Badge",
-          href: "/dashboard/guest?tab=ticket",
-          icon: Ticket,
-        },
-        {
-          label: "Event Gallery",
-          href: "/dashboard/guest?tab=gallery",
-          icon: ImageIcon,
-        },
-        {
-          label: "Venue Check-In",
-          href: "/dashboard/guest?tab=checkin",
-          icon: MapPin,
-        },
-        {
-          label: "Access Recovery",
-          href: "/dashboard/guest?tab=recovery",
-          icon: KeyRound,
-        },
-      ]
+    : isGuestUser
+    ? guestMenuItems
     : isStaffCoHost
     ? [
         {
           label: "Check-in",
           href: "/dashboard/check-in",
           icon: QrCode,
-        },
-        {
-          label: "GPS Check-In",
-          href: "/dashboard/gps-checkin",
-          icon: MapPin,
         },
         {
           label: "Guests",
@@ -164,7 +158,7 @@ export default function Sidebar() {
           icon: Sparkles,
         },
         {
-          label: "Events",
+          label: "My Events",
           href: "/dashboard/events",
           icon: Calendar,
         },
@@ -187,11 +181,6 @@ export default function Sidebar() {
           label: "Check-In",
           href: "/dashboard/check-in",
           icon: UserCheck,
-        },
-        {
-          label: "GPS Check-In",
-          href: "/dashboard/gps-checkin",
-          icon: MapPin,
         },
         {
           label: "Messages",

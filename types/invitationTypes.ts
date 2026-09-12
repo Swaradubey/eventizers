@@ -90,12 +90,15 @@ export interface CanvasStageConfig {
     imageUrl?: string | null;
   } | null;
   isLandscape?: boolean;
+  cardImageFit?: "cover" | "contain";
   cardBg: CardBgConfig;
   card?: {
     artworkUrl: string;
     backgroundColor: string;
     aspectRatio?: '5x7' | 'square' | string;
-  };
+    [key: string]: any;
+  } | any;
+  decorations?: any[];
   stageBackdrop: StageBackdropConfig;
   backdrop?: {
     type: 'color' | 'texture';
@@ -115,6 +118,13 @@ export interface CanvasStageConfig {
     address: string;
     description?: string;
   };
+  backside?: {
+    enabled: boolean;
+    message?: string;
+    signOff?: string;
+    photoUrl?: string | null;
+  };
+  showingBackside?: boolean;
 }
 
 export interface Invitation {
@@ -155,7 +165,9 @@ export interface Invitation {
     artworkUrl: string;
     backgroundColor: string;
     aspectRatio?: '5x7' | 'square' | string;
-  };
+    [key: string]: any;
+  } | any;
+  decorations?: any[];
   background?: CardBgConfig;
   cardBg?: CardBgConfig;
   effects?: EffectsConfig;
@@ -191,6 +203,8 @@ export interface InvitationPayload {
   textElements?: TextLayer[];
   envelope?: EnvelopeConfig;
   stageBackdrop?: StageBackdropConfig;
+  card?: any;
+  decorations?: any[];
   background?: CardBgConfig;
   cardBg?: CardBgConfig;
   effects?: EffectsConfig;

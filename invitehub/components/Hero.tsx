@@ -821,6 +821,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     try {
       if (resolvedPersistentUrl) {
         safeSetSessionStorage("pending_upload_invite", resolvedPersistentUrl);
+        try { localStorage.setItem("pending_upload_invite", resolvedPersistentUrl); } catch (_) {}
       }
       if (uploadedFile) {
         safeSetSessionStorage("pending_upload_name", uploadedFile.name);
@@ -829,6 +830,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       if (uploadTitle) {
         safeSetSessionStorage("pending_upload_title", uploadTitle);
       }
+      try {
+        sessionStorage.removeItem("pending_template_id");
+        localStorage.removeItem("pending_template_id");
+      } catch (_) {}
 
       // If Replicate / OCR detected text layers, seamlessly inject into stationery design
       if (detectedTextLayers && detectedTextLayers.length > 0) {
@@ -919,6 +924,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         const createdImage = res.event?.coverImage || res.event?.imageUrl || bgToUse;
         if (createdImage) {
           safeSetSessionStorage("pending_upload_invite", createdImage);
+          try { localStorage.setItem("pending_upload_invite", createdImage); } catch (_) {}
+          try {
+            sessionStorage.removeItem("pending_template_id");
+            localStorage.removeItem("pending_template_id");
+          } catch (_) {}
         }
         if (detectedTextLayers && detectedTextLayers.length > 0) {
           const stationeryPayload = {
@@ -2062,48 +2072,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                             ? "✨ Replicate erased printed text from background. Separated typography will open as editable layers in designer."
                             : "Customize this invitation directly in the designer or create your event right away."}
                         </p>
-                      </div>
-                    </div>
-
-                    {/* Extracted Details Editable Fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2 border-t border-gray-100">
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Event Title</label>
-                        <input
-                          type="text"
-                          value={uploadTitle}
-                          onChange={(e) => setUploadTitle(e.target.value)}
-                          placeholder="e.g. Annual Gala 2026"
-                          className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Venue / Location</label>
-                        <input
-                          type="text"
-                          value={uploadVenue}
-                          onChange={(e) => setUploadVenue(e.target.value)}
-                          placeholder="e.g. Grand Ballroom"
-                          className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Date</label>
-                        <input
-                          type="date"
-                          value={uploadDate}
-                          onChange={(e) => setUploadDate(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Time</label>
-                        <input
-                          type="time"
-                          value={uploadTime}
-                          onChange={(e) => setUploadTime(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#6C5CE7] focus:ring-1 focus:ring-[#6C5CE7]"
-                        />
                       </div>
                     </div>
 

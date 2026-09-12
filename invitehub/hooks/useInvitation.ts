@@ -328,6 +328,8 @@ export const useInvitation = (eventId: string | null) => {
               const rawCache = localStorage.getItem(`invitation_4layer_${eventId}`);
               if (rawCache) {
                 const parsed = JSON.parse(rawCache);
+                if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
+                if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
                 if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
                 if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
                 if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
@@ -335,9 +337,18 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.background) fetchedInvitation.background = parsed.background;
                 if (parsed.effects) fetchedInvitation.effects = parsed.effects;
                 if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
+                if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
+                if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
+                if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
+                if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
               }
             } catch (e) {}
           }
+
+          if (!fetchedInvitation.templateId && eventRes.event.selectedTemplateId) {
+            fetchedInvitation.templateId = eventRes.event.selectedTemplateId;
+          }
+
           setInvitation(fetchedInvitation);
         } else {
           // Initialize a default draft using selectedTemplateId if present
@@ -351,6 +362,7 @@ export const useInvitation = (eventId: string | null) => {
           const defaultInvitation: Invitation = {
             id: "", // empty indicates it's unsaved/new
             eventId: eventId,
+            templateId: tplKey || undefined,
             title: `Invitation to ${eventRes.event.title}`,
             subtitle: tplConfig ? (eventRes.event.venue || "TBD") : "You are cordially invited to celebrate with us.",
             mainText: tplConfig?.description || "Join us for an unforgettable experience filled with joy and celebration. Please RSVP using the button below to secure your spot.",
@@ -459,30 +471,41 @@ export const useInvitation = (eventId: string | null) => {
         savedInvite = res.invitation;
         setSuccessMessage("Invitation saved successfully!");
       }
-      // Cache 4-layer state in localStorage for persistent parity across studio & designer
+      // Cache 4-layer and template state in localStorage for persistent parity across studio & designer
       if (typeof window !== "undefined" && targetEventId) {
         try {
           const cachePayload = {
+            templateId: formData.templateId || invitation?.templateId,
+            templateName: (formData as any).templateName || (invitation as any)?.templateName,
             textElements: formData.textElements || invitation?.textElements,
             envelope: formData.envelope || invitation?.envelope,
             stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
+            card: (formData as any).card || (invitation as any)?.card,
             cardBg: formData.cardBg || formData.background || invitation?.cardBg,
             background: formData.background || formData.cardBg || invitation?.background,
+            decorations: (formData as any).decorations || (invitation as any)?.decorations,
             effects: formData.effects || invitation?.effects,
             isLandscape: formData.isLandscape !== undefined ? formData.isLandscape : invitation?.isLandscape,
+            containerDimensions: (formData as any).containerDimensions || (invitation as any)?.containerDimensions,
+            aspectRatio: (formData as any).aspectRatio || (invitation as any)?.aspectRatio,
+            canvasPreset: (formData as any).canvasPreset || (invitation as any)?.canvasPreset,
+            designData: formData.designData || invitation?.designData,
           };
           localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(cachePayload));
         } catch (e) {}
       }
 
-      // Merge rich 4-layer state back into savedInvite
+      // Merge rich 4-layer state back into savedInvite - preserve card and decorative layers
       const fullSavedInvite: Invitation = {
         ...savedInvite,
+        templateId: formData.templateId || savedInvite.templateId || invitation?.templateId,
         textElements: formData.textElements || invitation?.textElements,
         envelope: formData.envelope || invitation?.envelope,
         stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
+        card: (formData as any).card || (invitation as any)?.card,
         cardBg: formData.cardBg || formData.background || invitation?.cardBg,
         background: formData.background || formData.cardBg || invitation?.background,
+        decorations: (formData as any).decorations || (invitation as any)?.decorations,
         effects: formData.effects || invitation?.effects,
         isLandscape: formData.isLandscape !== undefined ? formData.isLandscape : invitation?.isLandscape,
       };

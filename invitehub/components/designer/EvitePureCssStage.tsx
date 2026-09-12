@@ -545,21 +545,58 @@ export default function EvitePureCssStage({
         className="relative w-full flex flex-col items-center justify-center transition-transform duration-300"
         style={{ maxWidth: `${maxW}px`, minHeight: "620px", transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined, transformOrigin: "top center" }}
       >
-        {/* LAYER 2A: Liner */}
+        {/* LAYER 2: Open Envelope & Liner positioned behind the card */}
         <div
-          data-layer="2-envelope-liner"
-          className="absolute rounded-t-3xl pointer-events-none top-4 w-[92%] sm:w-[94%] h-[320px]"
-          style={{ zIndex: 10, background: linerCss, boxShadow: "0 10px 30px rgba(0,0,0,0.15)", clipPath: "polygon(0 0, 100% 0, 85% 100%, 15% 100%)" }}
-        />
+          data-layer="2-envelope-container"
+          className="absolute pointer-events-none transition-all duration-300 select-none"
+          style={{
+            zIndex: 10,
+            width: "78%",
+            height: "94%",
+            right: "-12%",
+            top: "3%",
+            filter: "drop-shadow(0 25px 35px rgba(0, 0, 0, 0.45))",
+          }}
+        >
+          {/* Envelope Body */}
+          <div
+            className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: envelopeOuter,
+            }}
+          >
+            {/* Interior Liner */}
+            <div
+              className="absolute inset-x-2 top-2 bottom-2 rounded-lg overflow-hidden"
+              style={{
+                background: linerCss,
+              }}
+            >
+              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] pointer-events-none" />
+            </div>
+          </div>
 
-        {/* LAYER 2B: Open flap */}
-        <div
-          data-layer="2-envelope-outer-flap"
-          className="absolute pointer-events-none -top-12 w-[98%] sm:w-[100%] h-[160px]"
-          style={{ zIndex: 10, background: envelopeOuter, clipPath: "polygon(0 100%, 50% 0%, 100% 100%)", filter: "drop-shadow(0 -4px 12px rgba(0,0,0,0.25))" }}
-        />
+          {/* Open Flap Peak */}
+          <div
+            className="absolute -top-[28%] inset-x-0 h-[32%] pointer-events-none"
+            style={{
+              zIndex: 11,
+              background: envelopeOuter,
+              clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
+              filter: "drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.25))",
+            }}
+          >
+            <div
+              className="absolute inset-x-2 bottom-0 top-1.5 opacity-95"
+              style={{
+                background: linerCss,
+                clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
+              }}
+            />
+          </div>
+        </div>
 
-        {/* LAYER 3: Card Surface */}
+        {/* LAYER 3: Card Surface in foreground */}
         <div
           ref={effectiveCardRef as any}
           id="invitation-card-container"
@@ -567,22 +604,20 @@ export default function EvitePureCssStage({
           data-testid="preview-card"
           onClick={(e) => { if (e.target === e.currentTarget && onCardClick) onCardClick(); }}
           className="relative rounded-2xl overflow-hidden transition-all duration-300"
-          style={{ zIndex: 20, width: "84%", aspectRatio: resolvedAspect === "square" ? "1 / 1" : "3 / 4", containerType: "inline-size", ...cardInlineStyle }}
+          style={{
+            zIndex: 20,
+            width: "78%",
+            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "3 / 4",
+            containerType: "inline-size",
+            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)",
+            ...cardInlineStyle,
+          }}
         >
           {isPureCss && cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
           {!isPureCss && cardData.decorativeBorderSvgUrl && (
             <img src={cardData.decorativeBorderSvgUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" crossOrigin="anonymous" style={{ zIndex: 0 }} />
           )}
           <TextLayerSet layers={textLayers} mode={mode} selectedTextId={selectedTextId} editingTextId={editingTextId} cardDimensions={cardDimensions} onTextClick={onTextClick} onTextDoubleClick={onTextDoubleClick} onTextUpdate={onTextUpdate} onLayerMouseDown={handleLayerMouseDown} />
-        </div>
-
-        {/* LAYER 2C: Front Pocket */}
-        <div
-          data-layer="2-envelope-pocket-front"
-          className="relative w-full rounded-b-3xl pointer-events-none shadow-2xl -mt-16 h-[200px]"
-          style={{ zIndex: 25, background: envelopeOuter, clipPath: "polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)", filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.3))" }}
-        >
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ background: "linear-gradient(135deg, transparent 49.5%, rgba(0,0,0,0.6) 49.5%, rgba(0,0,0,0.6) 50.5%, transparent 50.5%)" }} />
         </div>
       </div>
     </div>

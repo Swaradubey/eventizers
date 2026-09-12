@@ -32,8 +32,13 @@ import {
   MapPin,
   UserPlus,
   Tag,
+  Share2,
+  MessageCircle,
+  Palette,
+  Crown,
+  CopyPlus,
 } from "lucide-react";
-import { Event } from "../../services/eventService";
+import eventService, { Event } from "../../services/eventService";
 import API from "../../services/api";
 import { Invitation } from "../../types/invitationTypes";
 import guestService from "../../services/guestService";
@@ -42,6 +47,11 @@ import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData
 import GuestSelectionModal from "./GuestSelectionModal";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
+import RsvpOptionsModal, { RsvpOptionsState } from "./RsvpOptionsModal";
+import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
+import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
+import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
+import InvitationWorkflowReview from "./InvitationWorkflowReview";
 
 // --- Types & Interfaces ---
 
@@ -72,7 +82,8 @@ export const isUserUploadedImage = (url?: string | null): boolean => {
     trimmed === "" ||
     trimmed.startsWith("#") ||
     trimmed.includes("snapshot") ||
-    trimmed.startsWith("blob:")
+    trimmed.includes("canvas_snapshot") ||
+    trimmed.includes("invitation_snapshot")
   ) {
     return false;
   }
@@ -80,10 +91,15 @@ export const isUserUploadedImage = (url?: string | null): boolean => {
   if (trimmed.includes("/assets/templates/")) {
     return false;
   }
-  // Base64 user uploads, /uploads/ directory, or external upload URLs
+  // Auto-generated canvas snapshot data URLs (from html-to-image) are NOT user uploads
+  if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) {
+    return false;
+  }
+  // Base64 user uploads, blob URLs, /uploads/ directory, or external upload URLs
   return (
     trimmed.startsWith("data:") ||
-    trimmed.includes("/uploads/") ||
+    trimmed.startsWith("blob:") ||
+    (trimmed.includes("/uploads/") && !trimmed.includes("snapshot")) ||
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://")
   );
@@ -98,11 +114,53 @@ export const getCleanTemplateSvg = (url?: string | null): string | null => {
   return url;
 };
 
+export const getPendingOrUploadedImageUrl = (
+  invite?: Invitation | null,
+  evt?: Event | null,
+  explicitUrl?: string | null
+): string | null => {
+  if (explicitUrl && isUserUploadedImage(explicitUrl)) {
+    return explicitUrl;
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramUrl =
+        urlParams.get("uploadedImageUrl") ||
+        urlParams.get("customBackgroundUrl") ||
+        urlParams.get("imageUrl");
+      if (paramUrl && isUserUploadedImage(paramUrl)) return paramUrl;
+    } catch (_) {}
+
+    try {
+      const sessionUpload = sessionStorage.getItem("pending_upload_invite");
+      if (sessionUpload && isUserUploadedImage(sessionUpload)) return sessionUpload;
+    } catch (_) {}
+
+    try {
+      const localUpload = localStorage.getItem("pending_upload_invite");
+      if (localUpload && isUserUploadedImage(localUpload)) return localUpload;
+    } catch (_) {}
+  }
+  if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
+    return invite.imageUrl;
+  }
+  if (evt?.coverImage && isUserUploadedImage(evt.coverImage)) {
+    return evt.coverImage;
+  }
+  if (evt?.imageUrl && isUserUploadedImage(evt.imageUrl)) {
+    return evt.imageUrl;
+  }
+  return null;
+};
+
 export interface StudioDesignState {
   activeTemplateId: string | null;
   templateId?: string | null;
   isPureCss?: boolean;
   card?: any;
+  decorations?: any[];
+  cardImageFit?: "cover" | "contain";
   textLayers: TextLayer[];
   selectedTextId: string | null;
   photoSlot?: PhotoSlot | null;
@@ -130,6 +188,12 @@ export interface StudioDesignState {
     texture: "matte" | "cotton-press" | "linen" | "glossy";
     shadow: "subtle" | "floating" | "deep" | "none";
   };
+  backside?: {
+    enabled: boolean;
+    message?: string;
+    signOff?: string;
+    photoUrl?: string | null;
+  };
   eventDetails: {
     title: string;
     host: string;
@@ -144,7 +208,11 @@ export interface StudioDesignState {
 interface InvitationStudioProps {
   initialEvent: Event | null;
   initialInvitation: Invitation | null;
+  events?: Event[];
+  selectedEventId?: string | null;
+  onSelectEvent?: (eventId: string) => void;
   templateIdQuery?: string | null;
+  uploadedImageUrl?: string | null;
   onSave?: (updated: any) => Promise<any>;
   onBack?: () => void;
 }
@@ -159,6 +227,15 @@ const TYPOGRAPHY_OPTIONS = [
   { name: "Cinzel - Elegant Classic", value: "'Cinzel', serif", weight: "700" },
   { name: "Dancing Script", value: "'Dancing Script', cursive", weight: "700" },
   { name: "Montserrat - Geometric", value: "'Montserrat', sans-serif", weight: "800" },
+];
+
+export const PRESET_STAGE_BACKDROPS = [
+  { id: "gold-swirl", label: "Evite Gold Swirl", style: "/assets/backdrops/evite_gold_swirl.jpg", icon: "✨" },
+  { id: "carrara", label: "Carrara Marble", style: "linear-gradient(120deg, #f8fafc 0%, #e2e8f0 50%, #ffffff 100%)", icon: "🏛️" },
+  { id: "studio-slate", label: "Studio Slate", style: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", icon: "🌌" },
+  { id: "charcoal", label: "Charcoal Onyx", style: "#121316", icon: "⬛" },
+  { id: "warm-linen", label: "Warm Linen", style: "#f7f5f0", icon: "📜" },
+  { id: "terracotta", label: "Terracotta", style: "linear-gradient(135deg, #4a2818 0%, #7c3a20 100%)", icon: "🏺" },
 ];
 
 const PRESET_BACKGROUNDS = [
@@ -233,7 +310,11 @@ const STICKERS = [
 export default function InvitationStudio({
   initialEvent,
   initialInvitation,
+  events: propEvents,
+  selectedEventId: propSelectedEventId,
+  onSelectEvent,
   templateIdQuery,
+  uploadedImageUrl,
   onSave,
   onBack,
 }: InvitationStudioProps) {
@@ -246,7 +327,12 @@ export default function InvitationStudio({
     invite: Invitation | null,
     isExplicitSwitch?: boolean
   ): StudioDesignState => {
-    const tplConfig = getTemplateConfig(tplId);
+    // If the user uploaded an existing invitation, detect it immediately
+    const pendingUploadUrl = !isExplicitSwitch
+      ? getPendingOrUploadedImageUrl(invite, evt, uploadedImageUrl)
+      : null;
+    const effectiveTplId = pendingUploadUrl ? null : tplId;
+    const tplConfig = effectiveTplId ? getTemplateConfig(effectiveTplId) : null;
 
     const isDark =
       tplConfig?.textColor === "#FFFFFF" ||
@@ -256,12 +342,17 @@ export default function InvitationStudio({
       tplConfig?.id === "tpl-electric-outline" ||
       tplConfig?.id === "tpl-hype-night";
 
+    const pendingUploadTitle = typeof window !== "undefined"
+      ? sessionStorage.getItem("pending_upload_title")
+      : null;
+
     const titleText =
+      pendingUploadTitle ||
       tplConfig?.title ||
       invite?.eventTitle ||
       invite?.title ||
       evt?.title ||
-      "IT'S AVERY'S BIRTHDAY!";
+      "YOU'RE INVITED!";
 
     const dateText =
       tplConfig?.date
@@ -324,11 +415,16 @@ export default function InvitationStudio({
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
     let cardBgValue = "#faf8f5";
 
-    // Priority 0: Preserved 4-Layer state from invite
-    if (invite?.cardBg) {
+    // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
+    if (pendingUploadUrl) {
+      cardBgType = "image";
+      cardBgValue = pendingUploadUrl;
+    }
+    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image)
+    else if (invite?.cardBg && (invite.cardBg.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background) {
+    } else if (invite?.background && (invite.background.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
@@ -341,6 +437,14 @@ export default function InvitationStudio({
     else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
       cardBgType = "image";
       cardBgValue = tplConfig.decorationImage;
+    }
+    // Priority 3: Preserved color/gradient from invite
+    else if (invite?.cardBg) {
+      cardBgType = invite.cardBg.type;
+      cardBgValue = invite.cardBg.value;
+    } else if (invite?.background) {
+      cardBgType = invite.background.type;
+      cardBgValue = invite.background.value;
     }
     // Priority 3: Template gradient (clean — no text, just colors)
     else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
@@ -368,11 +472,11 @@ export default function InvitationStudio({
       cardBgValue = "#faf8f5";
     }
 
-    // Resolve Text Layers: Use saved textElements if present and same template, otherwise structured layout from template
+    // Resolve Text Layers: prioritize saved text elements from draft/invite whenever present
     let resolvedTextLayers: TextLayer[] = [];
-    const isSameTemplate = invite?.templateId === tplId;
-    if (!isExplicitSwitch && isSameTemplate && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0) {
-      resolvedTextLayers = invite.textElements.map((tl) => ({ ...tl }));
+    const hasSavedLayers = Boolean(!isExplicitSwitch && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0);
+    if (hasSavedLayers) {
+      resolvedTextLayers = (invite!.textElements as TextLayer[]).map((tl) => ({ ...tl }));
     } else if ((tplConfig as any)?.defaultTextLayers && Array.isArray((tplConfig as any).defaultTextLayers) && (tplConfig as any).defaultTextLayers.length > 0) {
       resolvedTextLayers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
         id: tl.id,
@@ -493,16 +597,17 @@ export default function InvitationStudio({
       resolvedTextLayers[0]?.id ||
       "layer-title";
 
+    const defaultAmbientBackdrop = "/assets/backdrops/evite_gold_swirl.jpg";
     const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || {
-      type: "color",
-      value: isDark ? "#0d1117" : "#0f172a",
+      type: "pattern",
+      value: defaultAmbientBackdrop,
     };
 
     const initialBackdropValue =
       (invite as any)?.canvasWorkspaceBg ||
       (invite as any)?.backdropBackground ||
       savedBackdrop.value ||
-      (isDark ? "#0d1117" : "#0f172a");
+      defaultAmbientBackdrop;
 
     const savedEnvelope = invite?.envelope || {
       color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || invite?.accentColor || (isDark ? "#18181b" : "#781d60"),
@@ -517,13 +622,34 @@ export default function InvitationStudio({
       shadow: "floating",
     };
 
+    const savedBackside = (invite as any)?.backside || {
+      enabled: false,
+      message: "We can't wait to celebrate with you! Please join us for this special occasion.",
+      signOff: hostText || "With love, The Host",
+      photoUrl: null,
+    };
+
+    const resolvedCard = pendingUploadUrl ? null : {
+      ...((tplConfig as any)?.card || {}),
+      ...((invite as any)?.card || {}),
+      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || [],
+      decorativeImages: (invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : []),
+      illustrationLayers: (invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
+      stickerElements: (invite as any)?.card?.stickerElements || (tplConfig as any)?.card?.stickerElements || [],
+    };
+
+    const resolvedDecorations = resolvedCard?.decorations || [];
+
     return {
-      activeTemplateId: tplConfig?.id || tplId || null,
-      templateId: tplConfig?.id || tplId || null,
-      isPureCss: (tplConfig as any)?.isPureCss || false,
-      card: (tplConfig as any)?.card,
+      activeTemplateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
+      templateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
+      isPureCss: pendingUploadUrl ? false : ((tplConfig as any)?.isPureCss || false),
+      card: resolvedCard,
+      decorations: resolvedDecorations,
+      cardImageFit: "contain",
       isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
-      photoSlot: tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null,
+      photoSlot: pendingUploadUrl ? null : (tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null),
       textLayers: resolvedTextLayers,
       selectedTextId: defaultSelectedId,
       cardBg: {
@@ -542,6 +668,7 @@ export default function InvitationStudio({
         linerCss: (tplConfig?.envelope as any)?.linerCss || (savedEnvelope as any)?.linerCss,
       },
       effects: savedEffects,
+      backside: savedBackside,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
@@ -556,26 +683,54 @@ export default function InvitationStudio({
 
   // --- Initial Design State Generation ---
   const getInitialDesign = (): StudioDesignState => {
-    const effectiveTemplateId =
-      templateIdQuery ||
-      initialInvitation?.templateId ||
-      initialEvent?.selectedTemplateId ||
-      (typeof window !== "undefined"
-        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
-        : null);
+    let cachedDraft: any = null;
+    if (typeof window !== "undefined") {
+      try {
+        const targetEvtId =
+          initialInvitation?.eventId ||
+          initialEvent?.id ||
+          propSelectedEventId ||
+          new URLSearchParams(window.location.search).get("eventId");
+        if (targetEvtId) {
+          const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+          if (raw) cachedDraft = JSON.parse(raw);
+        }
+      } catch (e) {}
+    }
 
-    const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, initialInvitation);
+    const mergedInvite = {
+      ...(initialInvitation || {}),
+      ...(cachedDraft || {}),
+    };
+
+    const pendingUploadUrl = getPendingOrUploadedImageUrl(mergedInvite as any, initialEvent, uploadedImageUrl);
+    const isUploadedSession = Boolean(pendingUploadUrl);
+
+    const effectiveTemplateId = isUploadedSession
+      ? null
+      : (cachedDraft?.templateId ||
+         mergedInvite?.templateId ||
+         templateIdQuery ||
+         initialEvent?.selectedTemplateId ||
+         (typeof window !== "undefined"
+           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+           : null));
+
+    const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, mergedInvite as any);
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded image URL — this has highest priority over any template background.
-    if (typeof window !== "undefined") {
-      const pendingUpload = sessionStorage.getItem("pending_upload_invite");
-      if (pendingUpload) {
-        baseState.cardBg = { type: "image", value: pendingUpload };
-      } else if (initialInvitation?.imageUrl && isUserUploadedImage(initialInvitation.imageUrl)) {
-        baseState.cardBg = { type: "image", value: initialInvitation.imageUrl };
-      }
+    if (isUploadedSession && pendingUploadUrl) {
+      baseState.cardBg = { type: "image", value: pendingUploadUrl };
+      baseState.card = null;
+      baseState.photoSlot = null;
+      baseState.isPureCss = false;
+      baseState.activeTemplateId = null;
+      baseState.templateId = null;
+      baseState.cardImageFit = "contain";
+    }
 
+    if (typeof window !== "undefined") {
       // If AI generated dynamic 4-layer stationery design, seamlessly inject all layers
       const pendingStationery = sessionStorage.getItem("pending_stationery_design");
       if (pendingStationery) {
@@ -622,9 +777,11 @@ export default function InvitationStudio({
   };
 
   const [designState, setDesignState] = useState<StudioDesignState>(getInitialDesign);
-  const [activeTab, setActiveTab] = useState<"templates" | "text" | "backgrounds" | "envelope" | "effects" | "details">("text");
+  const [activeTab, setActiveTab] = useState<"text" | "backgrounds" | "envelope" | "effects" | "backside" | "details">("text");
+  const [showingBackside, setShowingBackside] = useState(false);
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
   // --- Canvas Zoom & Aspect Ratio Controls ---
   const [canvasZoom, setCanvasZoom] = useState(100); // 50-150%
@@ -661,9 +818,104 @@ export default function InvitationStudio({
       : null)
   );
 
-  // Progress Steps
-  const STEPS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
+  // Centralized Multi-Step Workflow Navigation ("Design", "Details", "Gifting", "Review", "Add guests")
+  const WORKFLOW_TABS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // Workflow State: Host Details, RSVP Options, Wishlists, Charities, Funds
+  const [hostDetails, setHostDetails] = useState<HostDetailsData>({
+    name: (initialEvent as any)?.host || (initialInvitation?.designData?.hostDetails?.name) || "SWARA KUMARI",
+    phone: initialInvitation?.designData?.hostDetails?.phone || "",
+    coHost: initialInvitation?.designData?.hostDetails?.coHost || "",
+  });
+
+  const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>({
+    deadlineEnabled: Boolean(
+      initialInvitation?.designData?.rsvpOptions?.deadlineEnabled ||
+      initialEvent?.rsvpSettings?.rsvpDeadline
+    ),
+    deadlineDate:
+      initialInvitation?.designData?.rsvpOptions?.deadlineDate ||
+      initialEvent?.rsvpSettings?.rsvpDeadline ||
+      "",
+    allowAfterDeadline:
+      initialInvitation?.designData?.rsvpOptions?.allowAfterDeadline ?? false,
+    allowMaybe:
+      initialInvitation?.designData?.rsvpOptions?.allowMaybe ??
+      initialEvent?.rsvpSettings?.allowMaybeResponse ??
+      true,
+    privateGuestList:
+      initialInvitation?.designData?.rsvpOptions?.privateGuestList ?? false,
+    allowGuestsToBringAnyone:
+      initialInvitation?.designData?.rsvpOptions?.allowGuestsToBringAnyone ??
+      initialEvent?.rsvpSettings?.allowPlusOnes ??
+      true,
+    maxAdditionalGuests:
+      initialInvitation?.designData?.rsvpOptions?.maxAdditionalGuests ??
+      initialEvent?.rsvpSettings?.maxPlusOnes ??
+      9,
+  });
+
+  const [isRsvpModalOpen, setIsRsvpModalOpen] = useState(false);
+
+  const [wishlists, setWishlists] = useState<WishlistData[]>(
+    initialInvitation?.designData?.wishlists || []
+  );
+  const [charities, setCharities] = useState<CharityData[]>(
+    initialInvitation?.designData?.charities || []
+  );
+  const [personalFunds, setPersonalFunds] = useState<PersonalFundData[]>(
+    initialInvitation?.designData?.personalFunds || []
+  );
+
+  // Synchronize Details form fields with Canvas text layers and eventDetails
+  const handleDetailsFieldChange = (
+    field: "title" | "dateTime" | "location" | "hostNote",
+    value: string
+  ) => {
+    setDesignState((prev) => {
+      const nextDetails = { ...prev.eventDetails };
+      let nextLayers = [...prev.textLayers];
+
+      if (field === "title") {
+        nextDetails.title = value;
+        nextLayers = nextLayers.map((l) =>
+          l.id === "layer-title" || l.key === "title" || l.id === "layer-names"
+            ? { ...l, text: value }
+            : l
+        );
+      } else if (field === "dateTime") {
+        nextDetails.date = value;
+        nextLayers = nextLayers.map((l) =>
+          l.id === "layer-date" || l.key === "dateTime"
+            ? { ...l, text: value }
+            : l
+        );
+      } else if (field === "location") {
+        nextDetails.venue = value;
+        nextDetails.address = value;
+        nextLayers = nextLayers.map((l) =>
+          l.id === "layer-venue" || l.key === "venue"
+            ? { ...l, text: value }
+            : l
+        );
+      } else if (field === "hostNote") {
+        nextDetails.description = value;
+        nextLayers = nextLayers.map((l) =>
+          l.id === "layer-description" || l.id === "layer-rsvp"
+            ? { ...l, text: value }
+            : l
+        );
+      }
+
+      return {
+        ...prev,
+        eventDetails: nextDetails,
+        textLayers: nextLayers,
+      };
+    });
+  };
+
   // Tracks whether we are in the process of generating a snapshot + saving before opening dispatch
   const [isPreparingDispatch, setIsPreparingDispatch] = useState(false);
 
@@ -835,6 +1087,12 @@ export default function InvitationStudio({
         pushStateToHistory({
           ...designState,
           cardBg: { type: "image", value: res.url },
+          card: null,
+          isPureCss: false,
+          photoSlot: null,
+          activeTemplateId: null,
+          templateId: null,
+          cardImageFit: "contain",
         });
       }
     } catch (err) {
@@ -893,6 +1151,8 @@ export default function InvitationStudio({
   // --- Snapshot, Save & Dispatch Integration ---
   const [currentInvitation, setCurrentInvitation] = useState<Invitation | null>(initialInvitation);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(initialEvent);
+  const [eventsList, setEventsList] = useState<Event[]>(propEvents || []);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [snapshotDataUrl, setSnapshotDataUrl] = useState<string | null>(null);
   const [isGeneratingSnapshot, setIsGeneratingSnapshot] = useState(false);
@@ -902,6 +1162,202 @@ export default function InvitationStudio({
   const [eventGuests, setEventGuests] = useState<any[]>([]);
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Synchronize events list from props or fetch dynamically
+  useEffect(() => {
+    if (propEvents && propEvents.length > 0) {
+      setEventsList(propEvents);
+    } else {
+      eventService
+        .getEvents()
+        .then((res) => {
+          if (res && res.success && res.events) {
+            setEventsList(res.events);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [propEvents]);
+
+  // Handle event switching from the top bar or toolbar dropdown
+  const handleEventChange = async (eventId: string) => {
+    if (onSelectEvent) {
+      onSelectEvent(eventId);
+    }
+    const foundEvt = eventsList.find((e) => e.id === eventId);
+    if (!foundEvt) return;
+
+    setCurrentEvent(foundEvt);
+
+    // 1. Check local storage cache for saved 4-layer state
+    let cachedDraft: any = null;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(`invitation_4layer_${eventId}`);
+        if (raw) cachedDraft = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    // 2. Fetch saved invitation draft from backend API
+    let remoteInvite: any = null;
+    try {
+      const res = await API.get(`/events/${eventId}/invitation`);
+      if (res.data?.success && res.data?.invitation) {
+        remoteInvite = res.data.invitation;
+      }
+    } catch (fetchErr) {
+      console.warn("[handleEventChange] Remote invitation fetch notice:", fetchErr);
+    }
+
+    // 3. Merge cached draft and remote invitation
+    const targetInvite = {
+      ...(remoteInvite || {}),
+      ...(cachedDraft || {}),
+    };
+
+    // 4. Determine target template ID (with fallback to default)
+    const targetTplId =
+      targetInvite?.templateId ||
+      foundEvt?.selectedTemplateId ||
+      "tpl-cake-and-confetti";
+
+    loadedTemplateIdRef.current = targetTplId;
+
+    // 5. Hydrate fresh state from template
+    const freshState = createDesignStateFromTemplate(
+      targetTplId,
+      foundEvt,
+      targetInvite,
+      false
+    );
+
+    // 6. Set current invitation and full canvas design state
+    setCurrentInvitation(targetInvite.id ? targetInvite : null);
+    setDesignState({
+      ...freshState,
+      card: targetInvite.card || freshState.card,
+      cardBg: targetInvite.cardBg || targetInvite.background || freshState.cardBg,
+      decorations: targetInvite.decorations || targetInvite.card?.decorations || freshState.decorations || [],
+      textLayers: (targetInvite.textElements && targetInvite.textElements.length > 0)
+        ? targetInvite.textElements
+        : freshState.textLayers,
+      eventDetails: {
+        ...freshState.eventDetails,
+        title: foundEvt.title || targetInvite.eventTitle || targetInvite.title || freshState.eventDetails.title,
+        date: foundEvt.eventDate ? foundEvt.eventDate.substring(0, 10) : targetInvite.eventDate || freshState.eventDetails.date,
+        time: foundEvt.eventTime || targetInvite.eventTime || freshState.eventDetails.time,
+        venue: foundEvt.venue || targetInvite.eventVenue || freshState.eventDetails.venue,
+        address: (foundEvt as any).location || foundEvt.venue || targetInvite.eventVenue || freshState.eventDetails.address,
+        description: foundEvt.description || targetInvite.mainText || freshState.eventDetails.description,
+        host: (foundEvt as any).host || hostDetails.name || freshState.eventDetails.host,
+      },
+    });
+
+    // 7. Update host details and rsvp options if saved
+    if (targetInvite.designData?.hostDetails || (foundEvt as any)?.host) {
+      setHostDetails({
+        name: targetInvite.designData?.hostDetails?.name || (foundEvt as any)?.host || "SWARA KUMARI",
+        phone: targetInvite.designData?.hostDetails?.phone || "",
+        coHost: targetInvite.designData?.hostDetails?.coHost || "",
+      });
+    }
+    if (targetInvite.designData?.rsvpOptions || foundEvt.rsvpSettings) {
+      setRsvpOptions({
+        deadlineEnabled: Boolean(targetInvite.designData?.rsvpOptions?.deadlineEnabled ?? foundEvt.rsvpSettings?.rsvpDeadline),
+        deadlineDate: targetInvite.designData?.rsvpOptions?.deadlineDate || foundEvt.rsvpSettings?.rsvpDeadline || "",
+        allowAfterDeadline: targetInvite.designData?.rsvpOptions?.allowAfterDeadline ?? false,
+        allowMaybe: targetInvite.designData?.rsvpOptions?.allowMaybe ?? foundEvt.rsvpSettings?.allowMaybeResponse ?? true,
+        privateGuestList: targetInvite.designData?.rsvpOptions?.privateGuestList ?? false,
+        allowGuestsToBringAnyone: targetInvite.designData?.rsvpOptions?.allowGuestsToBringAnyone ?? foundEvt.rsvpSettings?.allowPlusOnes ?? true,
+        maxAdditionalGuests:
+          targetInvite.designData?.rsvpOptions?.maxAdditionalGuests ??
+          foundEvt.rsvpSettings?.maxPlusOnes ??
+          9,
+      });
+    }
+
+    // 8. Synchronize URL query parameters
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("eventId", eventId);
+      if (targetInvite?.id) {
+        url.searchParams.set("invitationId", targetInvite.id);
+      } else {
+        url.searchParams.delete("invitationId");
+      }
+      if (targetTplId) {
+        url.searchParams.set("templateId", targetTplId);
+      }
+      window.history.pushState({}, "", url.toString());
+    }
+
+    setToast({
+      message: `✨ Switched to "${foundEvt.title}"! Loaded saved design & artwork.`,
+      type: "success",
+    });
+  };
+
+  // WhatsApp Share Flow reading current card state & event context
+  const handleWhatsAppShare = async () => {
+    if (isSavingDraft || isGeneratingSnapshot) return;
+    try {
+      let saved = await saveDesign();
+      const inv = saved || currentInvitation || initialInvitation;
+      const targetId = inv?.id;
+
+      if (!targetId) {
+        setToast({
+          message: "Please save the invitation before sharing.",
+          type: "error",
+        });
+        return;
+      }
+
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const publishedUrl = `${origin}/invitation/${targetId}`;
+
+      const title = designState.eventDetails.title || currentEvent?.title || initialEvent?.title || "Special Event Invitation";
+      const subtitle = designState.eventDetails.description ? `\n_${designState.eventDetails.description}_` : "";
+      const dateStr = designState.eventDetails.date
+        ? `\n📅 *Date:* ${designState.eventDetails.date}${designState.eventDetails.time ? ` at ${designState.eventDetails.time}` : ""}`
+        : currentEvent?.eventDate
+        ? `\n📅 *Date:* ${new Date(currentEvent.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`
+        : "";
+      const venueStr = (designState.eventDetails.venue || currentEvent?.venue)
+        ? `\n📍 *Location:* ${designState.eventDetails.venue || currentEvent?.venue}`
+        : "";
+
+      const messageText = `✨ *You're Cordially Invited!* ✨\n\n*${title}*${subtitle}${dateStr}${venueStr}\n\nPlease view your full invitation & RSVP using the link below:\n${publishedUrl}`;
+
+      const selectedGuestPhones = Array.from(
+        new Set(
+          eventGuests
+            .filter((g: any) => selectedGuestIds.includes(g.id) && g.phone && g.phone.trim())
+            .map((g: any) => g.phone.trim())
+        )
+      );
+
+      if (selectedGuestPhones.length === 1) {
+        const cleanPhone = selectedGuestPhones[0].replace(/[^\d+]/g, "").replace(/^\+/, "");
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+        window.open(whatsappUrl, "_blank");
+      } else {
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+        window.open(whatsappUrl, "_blank");
+      }
+
+      setToast({
+        message: "WhatsApp share link generated! Opening WhatsApp...",
+        type: "success",
+      });
+    } catch (err: any) {
+      console.error("WhatsApp share failed:", err);
+      setToast({
+        message: "Failed to generate WhatsApp share link.",
+        type: "error",
+      });
+    }
+  };
 
   // Synchronize initial props
   useEffect(() => {
@@ -922,9 +1378,11 @@ export default function InvitationStudio({
   const uploadAppliedToCanvasRef = useRef(false);
   useEffect(() => {
     if (uploadAppliedToCanvasRef.current) return;
+    // Guard: never override an active preset template with an asynchronous snapshot or background update
+    if (designState.activeTemplateId || designState.templateId || designState.card?.artworkUrl) return;
     // Check sessionStorage first (highest priority — set by Hero / AI-assistant upload flow)
     const pendingFromSession = typeof window !== "undefined"
-      ? sessionStorage.getItem("pending_upload_invite")
+      ? sessionStorage.getItem("pending_upload_invite") || localStorage.getItem("pending_upload_invite")
       : null;
     const uploadedUrl =
       pendingFromSession ||
@@ -935,53 +1393,129 @@ export default function InvitationStudio({
     if (!uploadedUrl) return;
 
     uploadAppliedToCanvasRef.current = true;
-    if (pendingFromSession) {
-      try { sessionStorage.removeItem("pending_upload_invite"); } catch (e) { }
-    }
     setDesignState((prev) => ({
       ...prev,
       cardBg: { type: "image", value: uploadedUrl },
+      card: null,
+      isPureCss: false,
+      photoSlot: null,
+      activeTemplateId: null,
+      templateId: null,
+      cardImageFit: prev.cardImageFit || "contain",
     }));
-  }, [initialInvitation?.imageUrl]);
+  }, [initialInvitation?.imageUrl, designState.activeTemplateId, designState.templateId, designState.card?.artworkUrl]);
+
+  // Auto-detect natural aspect ratio of uploaded image to optimize canvas preset
+  useEffect(() => {
+    const uploadedUrl =
+      (designState.cardBg?.type === "image" && isUserUploadedImage(designState.cardBg.value)
+        ? designState.cardBg.value
+        : null) ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_upload_invite") || localStorage.getItem("pending_upload_invite")
+        : null);
+
+    if (!uploadedUrl) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio > 1.2) {
+        setCanvasPreset("landscape-4x3");
+        setDesignState((prev) => ({ ...prev, isLandscape: true }));
+      } else if (ratio < 0.65) {
+        setCanvasPreset("story-9x16");
+        setDesignState((prev) => ({ ...prev, isLandscape: false }));
+      } else if (ratio >= 0.9 && ratio <= 1.1) {
+        setCanvasPreset("square-5x5");
+        setDesignState((prev) => ({ ...prev, isLandscape: false }));
+      } else {
+        setCanvasPreset("portrait-5x7");
+        setDesignState((prev) => ({ ...prev, isLandscape: false }));
+      }
+    };
+    img.src = uploadedUrl;
+  }, []);
 
   // Canvas Re-hydration & Source Template Loading Logic
   useEffect(() => {
+    // If an uploaded image is active on the canvas or in storage,
+    // prevent default template presets or placeholder graphics from mounting over it.
+    const hasUploadedImage =
+      (designState.cardBg?.type === "image" && isUserUploadedImage(designState.cardBg.value)) ||
+      (typeof window !== "undefined" &&
+        Boolean(sessionStorage.getItem("pending_upload_invite") || localStorage.getItem("pending_upload_invite")));
+
+    if (hasUploadedImage) return;
+
+    const targetEvtId =
+      currentEvent?.id ||
+      initialEvent?.id ||
+      propSelectedEventId ||
+      initialInvitation?.eventId;
+
+    let cachedDraft: any = null;
+    if (typeof window !== "undefined" && targetEvtId) {
+      try {
+        const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+        if (raw) cachedDraft = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const mergedInvite = {
+      ...(initialInvitation || {}),
+      ...(cachedDraft || {}),
+    };
+
     const targetTplId =
-      templateIdQuery ||
+      mergedInvite?.templateId ||
       initialInvitation?.templateId ||
+      templateIdQuery ||
       initialEvent?.selectedTemplateId ||
+      currentEvent?.selectedTemplateId ||
       (typeof window !== "undefined"
         ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
         : null);
 
-    if (targetTplId && targetTplId !== loadedTemplateIdRef.current) {
-      const config = getTemplateConfig(targetTplId);
-      if (config) {
-        loadedTemplateIdRef.current = targetTplId;
-        const freshState = createDesignStateFromTemplate(
-          targetTplId,
-          currentEvent || initialEvent,
-          currentInvitation || initialInvitation
-        );
-        setDesignState(freshState);
-        setUndoStack([]);
-        setRedoStack([]);
-        if (typeof window !== "undefined") {
-          try {
-            sessionStorage.removeItem("pending_template_id");
-            localStorage.removeItem("pending_template_id");
-          } catch (e) { }
-        }
+    const hasSavedLayers = Boolean(
+      (initialInvitation?.textElements && initialInvitation.textElements.length > 0) ||
+      (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
+    );
+
+    if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
+      loadedTemplateIdRef.current = targetTplId || null;
+      const freshState = createDesignStateFromTemplate(
+        targetTplId,
+        currentEvent || initialEvent,
+        mergedInvite as any,
+        false
+      );
+      setDesignState((prev) => {
+        const nextCard = freshState.card || prev.card;
+        const nextCardBg = (freshState.cardBg?.type === "image" || !prev.cardBg || prev.cardBg.type !== "image")
+          ? freshState.cardBg
+          : prev.cardBg;
+        return {
+          ...freshState,
+          card: nextCard,
+          cardBg: nextCardBg,
+          decorations: freshState.decorations || prev.decorations || nextCard?.decorations || [],
+        };
+      });
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("pending_template_id");
+          localStorage.removeItem("pending_template_id");
+        } catch (e) {}
       }
     }
   }, [
-    templateIdQuery,
+    initialInvitation?.id,
     initialInvitation?.templateId,
+    initialInvitation?.textElements,
     initialEvent?.selectedTemplateId,
-    initialEvent,
-    initialInvitation,
-    currentEvent,
-    currentInvitation,
+    currentEvent?.id,
+    templateIdQuery,
   ]);
 
   // Apply new template from in-studio template switcher
@@ -996,6 +1530,16 @@ export default function InvitationStudio({
       true
     );
     pushStateToHistory(nextState);
+
+    // Update URL query param to reflect new template
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("templateId", templateId);
+        window.history.replaceState({}, "", url.toString());
+      } catch (e) {}
+    }
+
     setToast({
       message: `✨ Loaded ${config.title} template into canvas!`,
       type: "success",
@@ -1162,6 +1706,10 @@ export default function InvitationStudio({
       currentInvitation?.eventId ||
       (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
 
+    const activeTplId = designState.activeTemplateId || designState.templateId || templateIdQuery || "custom";
+    const tplConfig = getTemplateConfig(activeTplId);
+    const templateName = tplConfig?.title || designState.activeTemplateId || "Custom Template";
+
     const resolvedImageUrl = snapshotUrl
       || (designState.cardBg.type === "image" && designState.cardBg.value ? designState.cardBg.value : null)
       || currentInvitation?.imageUrl
@@ -1192,16 +1740,60 @@ export default function InvitationStudio({
       isFoil: l.isFoil || null,
     }));
 
+    const effectiveArtworkUrl =
+      (designState.card as any)?.artworkUrl ||
+      (tplConfig as any)?.card?.artworkUrl ||
+      (designState.cardBg?.type === "image" && !isUserUploadedImage(designState.cardBg.value) ? designState.cardBg.value : null) ||
+      (tplConfig as any)?.decorationImage ||
+      null;
+
+    const decorativeImages: string[] = Array.from(
+      new Set(
+        [
+          effectiveArtworkUrl,
+          ...((designState.card as any)?.decorativeImages || []),
+          ...((tplConfig as any)?.card?.decorativeImages || []),
+          ...((designState.card as any)?.decorations || []),
+          ...((tplConfig as any)?.card?.decorations || []),
+          ...(designState.decorations || []),
+        ].filter(Boolean)
+      )
+    );
+
+    const fullCardModel = {
+      ...((tplConfig as any)?.card || {}),
+      ...(designState.card || {}),
+      artworkUrl: effectiveArtworkUrl || (designState.card as any)?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || "",
+      decorativeBorderSvgUrl: (designState.card as any)?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || effectiveArtworkUrl || "",
+      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : "#FAF8F5"),
+      aspectRatio: (designState.card as any)?.aspectRatio || activePreset.aspect || "5x7",
+      decorations: decorativeImages,
+      decorativeImages,
+      illustrationLayers: (designState.card as any)?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
+      stickerElements: (designState.card as any)?.stickerElements || (tplConfig as any)?.card?.stickerElements || [],
+    };
+
+    const fullBackgroundModel = {
+      ...designState.cardBg,
+      color: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/")
+        ? designState.cardBg.value
+        : (tplConfig?.backgroundColor || (designState.card as any)?.backgroundColor || "#FAF8F5"),
+      pattern: (designState.cardBg as any)?.pattern || null,
+      decorativeImages,
+      artworkUrl: effectiveArtworkUrl,
+    };
+
     return {
       id: currentInvitation?.id || undefined,
       eventId: targetEventId,
-      templateId: templateIdQuery || designState.activeTemplateId || "custom",
+      templateId: activeTplId,
+      templateName,
       title: titleText,
       subtitle: subtitleText,
       mainText,
       message,
       accentColor,
-      backgroundColor: typeof designState.cardBg.value === "string" ? designState.cardBg.value : "#FAF8F5",
+      backgroundColor: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : (tplConfig?.backgroundColor || "#FAF8F5"),
       textColor,
       titleSize,
       fontWeight: titleLayer?.fontWeight || "900",
@@ -1217,17 +1809,42 @@ export default function InvitationStudio({
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
       eventVenue: designState.eventDetails.venue || venueLayer?.text?.trim() || currentEvent?.venue || initialEvent?.venue || null,
       textElements: normalizedTextLayers,
+      layers: normalizedTextLayers,
+      card: fullCardModel,
+      decorations: decorativeImages,
       containerDimensions: { width: 540, height: 756, aspectRatio: designState.isLandscape ? "landscape" : "5x7" },
-      background: designState.cardBg,
-      cardBg: designState.cardBg,
+      canvasPreset,
+      aspectRatio: activePreset.aspect,
+      background: fullBackgroundModel,
+      cardBg: fullBackgroundModel,
       stageBackdrop: designState.stageBackdrop,
       backdrop: designState.stageBackdrop,
       canvasWorkspaceBg: designState.stageBackdrop.value,
       backdropBackground: designState.stageBackdrop.value,
       envelope: designState.envelope,
       effects: designState.effects,
+      backside: designState.backside,
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
+      designData: {
+        ...(currentInvitation?.designData || {}),
+        hostDetails,
+        rsvpOptions,
+        wishlists,
+        charities,
+        personalFunds,
+      },
+      rsvpSettings: {
+        rsvpDeadline: rsvpOptions.deadlineEnabled ? rsvpOptions.deadlineDate || null : null,
+        allowPlusOnes: rsvpOptions.allowGuestsToBringAnyone,
+        maxPlusOnes: rsvpOptions.maxAdditionalGuests,
+        allowMaybeResponse: rsvpOptions.allowMaybe,
+        requirePhoneNumber: false,
+        collectDietaryRestrictions: false,
+        collectMealPreference: false,
+        collectSongRequests: false,
+        customQuestions: [],
+      },
     };
   };
 
@@ -1272,8 +1889,60 @@ export default function InvitationStudio({
       }
 
       if (saved) {
-        setCurrentInvitation(saved);
-        return saved;
+        // Non-destructive state merge: retain complete card artwork, templateId, decorations
+        const mergedInvite: Invitation = {
+          ...currentInvitation,
+          ...payload,
+          ...saved,
+          templateId: payload.templateId || saved.templateId || currentInvitation?.templateId || designState.activeTemplateId,
+          card: payload.card || (currentInvitation as any)?.card || designState.card,
+          cardBg: payload.cardBg || currentInvitation?.cardBg || designState.cardBg,
+          background: payload.background || currentInvitation?.background || designState.cardBg,
+          decorations: payload.decorations || (currentInvitation as any)?.decorations || designState.decorations,
+          textElements: payload.textElements || designState.textLayers,
+        };
+        setCurrentInvitation(mergedInvite);
+
+        // Keep active canvas state intact so decorative layers stay mounted
+        const activeTpl = payload.templateId || designState.activeTemplateId || designState.templateId || (typeof templateIdQuery === "string" ? templateIdQuery : null);
+        setDesignState((prev) => ({
+          ...prev,
+          activeTemplateId: prev.activeTemplateId || activeTpl || prev.templateId || null,
+          templateId: prev.templateId || activeTpl || prev.activeTemplateId || null,
+          card: {
+            ...(prev.card || {}),
+            ...payload.card,
+          },
+          decorations: payload.decorations || prev.decorations || [],
+        }));
+
+        // Persist rich 4-layer state to local storage cache for instant recovery
+        if (typeof window !== "undefined" && payload.eventId) {
+          try {
+            localStorage.setItem(
+              `invitation_4layer_${payload.eventId}`,
+              JSON.stringify({
+                templateId: payload.templateId,
+                templateName: payload.templateName,
+                textElements: payload.textElements,
+                card: payload.card,
+                cardBg: payload.cardBg,
+                background: payload.background,
+                decorations: payload.decorations,
+                envelope: payload.envelope,
+                stageBackdrop: payload.stageBackdrop,
+                effects: payload.effects,
+                isLandscape: payload.isLandscape,
+                containerDimensions: payload.containerDimensions,
+                canvasPreset: payload.canvasPreset,
+                aspectRatio: payload.aspectRatio,
+                backside: payload.backside,
+                designData: payload.designData,
+              })
+            );
+          } catch (e) {}
+        }
+        return mergedInvite;
       }
       return null;
     } catch (error: any) {
@@ -1305,31 +1974,99 @@ export default function InvitationStudio({
     } finally {
       setIsPreparingDispatch(false);
     }
-    setCurrentStepIndex(4);
+    setCurrentStepIndex(3);
     setIsDispatchModalOpen(true);
+  };
+
+  // "Save & exit" button handler: commits current progress (text changes, template, element positions, details),
+  // displays a success toast, and keeps user on / switches back to the Canvas Studio Design tab (step 0).
+  const handleSaveAndExit = async () => {
+    if (isSavingDraft || isGeneratingSnapshot) return;
+    try {
+      let saved: Invitation | null = null;
+      if (currentStepIndex === 0) {
+        const { dataUrl, uploadedUrl } = await generateSnapshot();
+        saved = await saveDesign(uploadedUrl || dataUrl);
+      } else {
+        saved = await saveDesign();
+      }
+
+      if (saved) {
+        // Adjust URL parameters to preserve active event, template ID, and invitation ID
+        const activeEventId =
+          saved.eventId ||
+          currentEvent?.id ||
+          initialEvent?.id ||
+          propSelectedEventId ||
+          (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+        const activeCardId = saved.id || currentInvitation?.id || initialInvitation?.id;
+        const activeTplId = saved.templateId || designState.activeTemplateId || designState.templateId;
+
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          if (activeEventId) {
+            url.searchParams.set("eventId", activeEventId);
+          }
+          if (activeCardId) {
+            url.searchParams.set("invitationId", activeCardId);
+          }
+          if (activeTplId) {
+            url.searchParams.set("templateId", activeTplId);
+          }
+          if (activeEventId) {
+            try {
+              localStorage.setItem(
+                `invitation_4layer_${activeEventId}`,
+                JSON.stringify({
+                  templateId: activeTplId,
+                  templateName: (saved as any)?.templateName || designState.activeTemplateId,
+                  textElements: designState.textLayers,
+                  card: (saved as any)?.card || designState.card,
+                  cardBg: (saved as any)?.cardBg || designState.cardBg,
+                  background: (saved as any)?.background || designState.cardBg,
+                  decorations: (saved as any)?.decorations || designState.decorations || (designState.card as any)?.decorations || [],
+                  envelope: designState.envelope,
+                  stageBackdrop: designState.stageBackdrop,
+                  effects: designState.effects,
+                  isLandscape: designState.isLandscape,
+                  backside: designState.backside,
+                })
+              );
+            } catch (e) {}
+          }
+          if (window.location.pathname !== "/dashboard/invitations") {
+            router.push(`/dashboard/invitations?${url.searchParams.toString()}`);
+          } else {
+            window.history.replaceState({}, "", url.toString());
+          }
+        }
+
+        setToast({
+          message: "Changes saved successfully! ✨",
+          type: "success",
+        });
+      }
+    } catch (e) {
+      console.error("Error saving draft in Save & exit:", e);
+      setToast({
+        message: "Failed to save changes. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   // Handle proceed next / send
   const handleProceedNext = async () => {
     if (isGeneratingSnapshot || isSavingDraft || isPreparingDispatch) return;
 
-    // If on the final step ("Add guests"): open the send modal
-    if (currentStepIndex === STEPS.length - 1) {
-      setIsDispatchModalOpen(true);
-      return;
-    }
-
     // When on "Design" step (step 0): capture snapshot, save payload, and advance to "Details" (step 1)
     if (currentStepIndex === 0) {
-      // 1. Capture and upload snapshot with graceful fallback
       const { dataUrl, uploadedUrl } = await generateSnapshot();
-
-      // 2. Save payload
       const saved = await saveDesign(uploadedUrl || dataUrl);
       if (saved) {
         setToast({ message: "Design saved! Advancing to details... ✨", type: "success" });
         setCurrentStepIndex(1);
-        setActiveTab("details");
       }
       return;
     }
@@ -1350,7 +2087,7 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Review" step (step 3): generate snapshot, save, advance to "Add guests" and open modal
+    // When on "Review" step (step 3): open dispatch modal
     if (currentStepIndex === 3) {
       await prepareAndOpenDispatch();
       return;
@@ -1498,35 +2235,29 @@ export default function InvitationStudio({
       {/* ========================================================================= */}
       {/* TOP BAR: Back, Undo/Redo, Progress Steps, Next Action                     */}
       {/* ========================================================================= */}
-      <header className="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between z-30 shadow-xs text-slate-800 flex-shrink-0">
-        {/* Left: Back & Undo/Redo */}
-        <div className="flex items-center gap-3 sm:gap-4">
+      {/* ========================================================================= */}
+      {/* TOP BAR: Back, Undo/Redo, Event Selector, WhatsApp, Send, Preview, Save  */}
+      {/* ========================================================================= */}
+      <header className="h-16 bg-white border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between z-30 shadow-xs text-slate-800 flex-shrink-0 gap-2 sm:gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+        {/* Left: < Back to browse, Undo, Redo */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
-            onClick={async () => {
-              try {
-                await saveDesign();
-              } catch (e) {
-                console.warn("Auto-saving on return to designer:", e);
+            onClick={() => {
+              if (onBack) {
+                onBack();
+              } else {
+                router.push("/dashboard/invitations");
               }
-              if (onBack) onBack();
-              else router.push("/dashboard/invitations");
             }}
-            className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors py-1.5 px-2.5 sm:px-3 rounded-xl hover:bg-indigo-50 border border-slate-200/90 hover:border-indigo-200 shadow-xs cursor-pointer"
-            title="Return to Invitation Designer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer shrink-0 active:scale-98"
+            title="Back to browse templates"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Invitation Designer</span>
+            <ChevronDown className="w-3.5 h-3.5 rotate-90 text-slate-600" />
+            <span>Back to browse</span>
           </button>
 
-          <span className="text-slate-300 font-light select-none">/</span>
-          <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 hidden sm:inline-block">
-            Canvas
-          </span>
-
-          <div className="h-5 w-px bg-slate-200" />
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 shrink-0 ml-1">
             <button
               type="button"
               onClick={handleUndo}
@@ -1548,78 +2279,198 @@ export default function InvitationStudio({
           </div>
         </div>
 
-        {/* Center: Progress Steps ("Design", "Details", "Gifting", "Review", "Add guests") */}
-        <div className="hidden md:flex items-center gap-2 lg:gap-3">
-          {STEPS.map((step, idx) => {
-            const isActive = idx === currentStepIndex;
-            const isCompleted = idx < currentStepIndex;
-            return (
-              <button
-                key={step}
-                type="button"
-                onClick={() => {
-                  if (idx === STEPS.length - 1) {
-                    // "Add guests" tab: always generate fresh snapshot before opening modal
-                    prepareAndOpenDispatch();
-                    return;
-                  }
-                  setCurrentStepIndex(idx);
-                  if (idx === 1) setActiveTab("details");
-                  if (idx === 0) setActiveTab("text");
-                }}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${isActive
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : isCompleted
-                    ? "text-slate-700 hover:bg-slate-100"
-                    : "text-slate-400 hover:text-slate-600"
+        {/* Center: Centralized Workflow Navigation Tabs ("Design", "Details", "Gifting", "Review", "Add guests") */}
+        <div className="hidden md:flex items-center justify-center shrink-0 px-1">
+          <nav className="flex items-center gap-1 lg:gap-2 bg-slate-100/90 p-1 rounded-full border border-slate-200/90 shadow-2xs select-none">
+            {WORKFLOW_TABS.map((tab, idx) => {
+              const isActive = idx === currentStepIndex;
+              const isCompleted = idx < currentStepIndex;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    if (tab === "Add guests") {
+                      setIsGuestSelectionModalOpen(true);
+                    } else {
+                      setCurrentStepIndex(idx);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : isCompleted
+                      ? "text-slate-700 hover:text-slate-900 hover:bg-white/80"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-white/60"
                   }`}
-              >
-                <span>{step}</span>
-              </button>
-            );
-          })}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      isActive
+                        ? "bg-white text-slate-900"
+                        : isCompleted
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    {isCompleted ? "✓" : idx + 1}
+                  </span>
+                  <span>{tab}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Right: Actions & Next */}
-        <div className="flex items-center gap-2.5">
+        {/* Right: Actions Controls (Event Selector, WhatsApp, Send, Preview, Premium Badge, Save, Next) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end">
+          {/* Active Event dropdown selector */}
+          {eventsList.length > 0 && (
+            <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-100/90 hover:bg-slate-200/70 transition-colors px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="hidden xl:inline text-slate-500 font-semibold shrink-0">Event:</span>
+              <select
+                value={currentEvent?.id || propSelectedEventId || ""}
+                onChange={(e) => handleEventChange(e.target.value)}
+                className="bg-transparent font-bold focus:outline-none text-slate-800 cursor-pointer max-w-[90px] sm:max-w-[130px] truncate text-xs"
+                title="Select active event"
+              >
+                <option value="">Select Event...</option>
+                {eventsList.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Share via WhatsApp button (visible on large displays) */}
           <button
             type="button"
-            onClick={() => saveDesign()}
+            onClick={handleWhatsAppShare}
+            disabled={isSavingDraft || isGeneratingSnapshot}
+            className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl active:scale-95 transition-all shadow-xs shadow-emerald-500/20 focus:outline-none disabled:opacity-50 cursor-pointer shrink-0"
+            title="Share Published Invitation Page via WhatsApp"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>WhatsApp</span>
+          </button>
+
+          {/* Send Invitations button (visible on large displays) */}
+          <button
+            type="button"
+            onClick={prepareAndOpenDispatch}
+            disabled={isGeneratingSnapshot || isSavingDraft || isPreparingDispatch}
+            className="hidden 2xl:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-xs shadow-blue-500/20 focus:outline-none disabled:opacity-50 cursor-pointer shrink-0"
+            title="Distribute Invitations to Guests"
+          >
+            {isPreparingDispatch ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Preparing...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-3.5 h-3.5 text-white" />
+                <span>Send ({selectedGuestIds.length})</span>
+              </>
+            )}
+          </button>
+
+          {/* Preview button */}
+          <button
+            type="button"
+            onClick={() => setIsPreviewModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0"
+            title="Preview full screen"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Preview</span>
+          </button>
+
+          {/* Premium Badge */}
+          <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#f8f1fc] text-[#6b21a8] border border-[#e9d5ff] font-bold text-xs shadow-2xs select-none shrink-0">
+            <Crown className="w-3.5 h-3.5 fill-[#a855f7] text-[#a855f7]" />
+            <span>Premium</span>
+          </div>
+
+          {/* Save button */}
+          <button
+            type="button"
+            onClick={handleSaveAndExit}
             disabled={isGeneratingSnapshot || isSavingDraft}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
-            title="Save draft"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
+            title="Save draft and persist changes"
           >
             {isSavingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             <span>Save</span>
           </button>
 
+          {/* Next button (Evite Olive Green) */}
           <button
             type="button"
             onClick={handleProceedNext}
             disabled={isGeneratingSnapshot || isSavingDraft || isPreparingDispatch}
-            className="flex items-center gap-2 px-5 py-2 rounded-full bg-slate-900 hover:bg-black text-white text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 sm:gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#3e5622] hover:bg-[#32481b] text-white text-xs font-bold tracking-wide shadow-sm hover:shadow transition-all active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
           >
-            {isGeneratingSnapshot || isSavingDraft || isPreparingDispatch ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>{isGeneratingSnapshot ? "Rendering..." : isPreparingDispatch ? "Preparing..." : "Saving..."}</span>
-              </>
-            ) : (
-              <>
-                <span>{currentStepIndex === STEPS.length - 1 ? "Send" : "Next"}</span>
-                <span className="text-sm">→</span>
-              </>
-            )}
+            <span>{currentStepIndex >= 3 ? "Send" : "Next"}</span>
+            <span className="text-xs">→</span>
           </button>
         </div>
       </header>
 
+      {/* Mobile/Tablet Guaranteed Top Workflow Steps Bar */}
+      <div className="md:hidden w-full bg-slate-100/95 border-b border-slate-200 px-2 py-1.5 flex items-center justify-center overflow-x-auto [&::-webkit-scrollbar]:hidden shrink-0 z-25 shadow-2xs">
+        <nav className="flex items-center gap-1 select-none min-w-max mx-auto">
+          {WORKFLOW_TABS.map((tab, idx) => {
+            const isActive = idx === currentStepIndex;
+            const isCompleted = idx < currentStepIndex;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  if (tab === "Add guests") {
+                    setIsGuestSelectionModalOpen(true);
+                  } else {
+                    setCurrentStepIndex(idx);
+                  }
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : isCompleted
+                    ? "text-slate-700 bg-white/70"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <span
+                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                    isActive
+                      ? "bg-white text-slate-900"
+                      : isCompleted
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {isCompleted ? "✓" : idx + 1}
+                </span>
+                <span>{tab}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
       {/* ========================================================================= */}
-      {/* CANVAS CONTROLS BAR: Preset Size Selector + Zoom Controls                */}
+      {/* STEP 0: CANVAS STUDIO (CANVAS CONTROLS BAR + CANVAS WORKSPACE)            */}
       {/* ========================================================================= */}
-      <div className="h-10 bg-white border-b border-slate-200/80 px-4 flex items-center gap-3 z-20 flex-shrink-0 shadow-2xs">
+      {currentStepIndex === 0 && (
+        <>
+          <div className="h-10 bg-white border-b border-slate-200/80 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 z-20 flex-shrink-0 shadow-2xs overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {/* Aspect Ratio / Size Presets */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
           {CANVAS_PRESETS.map((p) => (
             <button
@@ -1637,10 +2488,10 @@ export default function InvitationStudio({
           ))}
         </div>
 
-        <div className="h-4 w-px bg-slate-200 mx-1" />
+        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
 
         {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
           <button
             type="button"
@@ -1675,153 +2526,172 @@ export default function InvitationStudio({
             Reset
           </button>
         </div>
+
+        {/* Fit / Fill toggle for image backgrounds */}
+        {designState.cardBg?.type === "image" && (
+          <>
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">Fit</span>
+              <button
+                type="button"
+                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "contain" }))}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.cardImageFit || "contain") === "contain"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  }`}
+                title="Fit 1:1 without cropping"
+              >
+                Fit (1:1)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "cover" }))}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${designState.cardImageFit === "cover"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  }`}
+                title="Fill entire card"
+              >
+                Fill (Cover)
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ========================================================================= */}
       {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
         {/* ------------------------------------------------------------- */}
-        {/* LEFT MULTI-TAB SIDEBAR                                        */}
+        {/* MULTI-TAB SIDEBAR (Left on desktop, Bottom dock on mobile)   */}
         {/* ------------------------------------------------------------- */}
-        <div className="flex h-full z-20 shadow-xl flex-shrink-0 bg-white border-r border-slate-200/90 text-slate-800">
-          {/* Vertical Icon Strip */}
-          <div className="w-[76px] bg-white border-r border-slate-200/70 flex flex-col items-center py-4 gap-3 flex-shrink-0">
-            {/* 0. Templates Tab */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("templates")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "templates"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-              title="Templates"
-            >
-              <Sparkles className="w-5 h-5 stroke-[1.8] text-amber-500" />
-              <span className="text-[10px] tracking-tight">Templates</span>
-            </button>
-
+        <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
+          {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
+          <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
             {/* 1. Text Tab */}
             <button
               type="button"
-              onClick={() => setActiveTab("text")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "text"
+              onClick={() => {
+                if (activeTab === "text" && mobileToolsOpen) {
+                  setMobileToolsOpen(false);
+                } else {
+                  setActiveTab("text");
+                  setMobileToolsOpen(true);
+                }
+              }}
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "text"
                 ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
                 : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                 }`}
             >
-              <span className="text-lg font-bold font-serif leading-none">T</span>
+              <span className="text-base lg:text-lg font-bold font-serif leading-none">T</span>
               <span className="text-[10px] tracking-tight">Text</span>
             </button>
 
             {/* 2. Backgrounds Tab */}
             <button
               type="button"
-              onClick={() => setActiveTab("backgrounds")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
+              onClick={() => {
+                if (activeTab === "backgrounds" && mobileToolsOpen) {
+                  setMobileToolsOpen(false);
+                } else {
+                  setActiveTab("backgrounds");
+                  setMobileToolsOpen(true);
+                }
+              }}
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
                 ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
                 : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                 }`}
             >
-              <Layers className="w-5 h-5 stroke-[1.8]" />
+              <svg className="w-4 h-4 lg:w-5 lg:h-5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="20" x2="20" y2="4" />
+                <line x1="8" y1="20" x2="20" y2="8" />
+                <line x1="14" y1="20" x2="20" y2="14" />
+                <line x1="4" y1="14" x2="14" y2="4" />
+              </svg>
               <span className="text-[10px] tracking-tight">Backgrounds</span>
             </button>
 
             {/* 3. Effects Tab */}
             <button
               type="button"
-              onClick={() => setActiveTab("effects")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "effects"
+              onClick={() => {
+                if (activeTab === "effects" && mobileToolsOpen) {
+                  setMobileToolsOpen(false);
+                } else {
+                  setActiveTab("effects");
+                  setMobileToolsOpen(true);
+                }
+              }}
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "effects"
                 ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
                 : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                 }`}
             >
-              <Sparkles className="w-5 h-5 stroke-[1.8]" />
+              <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Effects</span>
             </button>
 
             {/* 4. Envelope Tab */}
             <button
               type="button"
-              onClick={() => setActiveTab("envelope")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "envelope"
+              onClick={() => {
+                if (activeTab === "envelope" && mobileToolsOpen) {
+                  setMobileToolsOpen(false);
+                } else {
+                  setActiveTab("envelope");
+                  setMobileToolsOpen(true);
+                }
+              }}
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
                 ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
                 : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                 }`}
             >
-              <Mail className="w-5 h-5 stroke-[1.8]" />
+              <Mail className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
               <span className="text-[10px] tracking-tight">Envelope</span>
             </button>
 
-            {/* 5. Details Tab */}
+            {/* 5. Backside Tab */}
             <button
               type="button"
-              onClick={() => setActiveTab("details")}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "details"
+              onClick={() => {
+                if (activeTab === "backside" && mobileToolsOpen) {
+                  setMobileToolsOpen(false);
+                } else {
+                  setActiveTab("backside");
+                  setMobileToolsOpen(true);
+                }
+              }}
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backside"
                 ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
                 : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                 }`}
             >
-              <Calendar className="w-5 h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Details</span>
+              <CopyPlus className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+              <span className="text-[10px] tracking-tight">Backside</span>
             </button>
           </div>
 
-          {/* Sub-Panel Content Area */}
-          <div className="w-80 md:w-88 h-full overflow-y-auto p-5 space-y-6 flex flex-col text-slate-700 bg-white">
-            {/* -------------------- TAB 0: TEMPLATES -------------------- */}
-            {activeTab === "templates" && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-                      Curated Templates
-                    </span>
-                    <p className="text-xs text-slate-500 mt-0.5">Click any template to apply its design 1:1</p>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {NEW_TEMPLATES.length} Styles
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 max-h-[calc(100vh-180px)] overflow-y-auto pr-1">
-                  {NEW_TEMPLATES.map((tpl) => {
-                    const isSelected = designState.activeTemplateId === tpl.id;
-                    return (
-                      <button
-                        key={tpl.id}
-                        type="button"
-                        onClick={() => handleSelectTemplate(tpl.id)}
-                        className={`group rounded-xl p-2 border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col ${isSelected
-                          ? "border-slate-900 ring-2 ring-slate-900 bg-slate-50 shadow-sm"
-                          : "border-slate-200 hover:border-slate-400 bg-white hover:shadow-xs"
-                          }`}
-                      >
-                        <div className="w-full rounded-lg overflow-hidden relative mb-2 bg-slate-100 border border-slate-100">
-                          <EviteCardPreview
-                            template={tpl}
-                            hoverScale={true}
-                          />
-                          {tpl.badge && (
-                            <span className="absolute top-1.5 right-1.5 z-20 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 shadow-xs pointer-events-none">
-                              {tpl.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs font-bold text-slate-900 truncate">{tpl.title}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{tpl.category || tpl.type}</p>
-                        {isSelected && (
-                          <div className="absolute bottom-2 right-2 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
+          {/* Sub-Panel Content Area (Drawer on mobile/tablet, Sidebar on desktop) */}
+          <div className={`${mobileToolsOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:md:w-88 max-h-[48vh] lg:max-h-none h-auto lg:h-full overflow-y-auto p-4 sm:p-5 space-y-6 flex-col text-slate-700 bg-white border-b lg:border-b-0 border-slate-200 custom-scrollbar`}>
+            {/* Mobile close bar */}
+            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                {activeTab} Settings
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileToolsOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Close settings"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             {/* -------------------- TAB 1: TEXT -------------------- */}
             {activeTab === "text" && (
               <div className="space-y-6 animate-in fade-in duration-200">
@@ -2222,6 +3092,55 @@ export default function InvitationStudio({
                         if (file) handleFileUpload(file);
                       }}
                     />
+                  </div>
+                </div>
+
+                {/* Evite Ambient Workspace Backdrops */}
+                <div>
+                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
+                    Ambient Workspace Backdrop
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PRESET_STAGE_BACKDROPS.map((stageBg) => {
+                      const isSelected = designState.stageBackdrop.value === stageBg.style;
+                      return (
+                        <button
+                          key={stageBg.id}
+                          type="button"
+                          onClick={() => {
+                            pushStateToHistory({
+                              ...designState,
+                              stageBackdrop: {
+                                type: "pattern",
+                                value: stageBg.style,
+                              },
+                              canvasWorkspaceBg: stageBg.style,
+                              backdropBackground: stageBg.style,
+                            } as any);
+                          }}
+                          className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${
+                            isSelected
+                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                          }`}
+                          style={{
+                            background: stageBg.style.startsWith("/")
+                              ? `url(${stageBg.style}) center/cover no-repeat`
+                              : stageBg.style,
+                          }}
+                          title={stageBg.label}
+                        >
+                          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="text-sm">{stageBg.icon}</span>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -2780,6 +3699,107 @@ export default function InvitationStudio({
                 </div>
               </div>
             )}
+
+            {/* -------------------- TAB: BACKSIDE -------------------- */}
+            {activeTab === "backside" && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Card Backside
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Add a personal note or sign-off to the reverse side
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDesignState((prev) => ({
+                        ...prev,
+                        backside: {
+                          enabled: !prev.backside?.enabled,
+                          message: prev.backside?.message || "We can't wait to celebrate with you! Please join us for this special occasion.",
+                          signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
+                          photoUrl: prev.backside?.photoUrl || null,
+                        },
+                      }));
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      designState.backside?.enabled ? "bg-slate-900" : "bg-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        designState.backside?.enabled ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Flip Card Preview button */}
+                <button
+                  type="button"
+                  onClick={() => setShowingBackside((prev) => !prev)}
+                  className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{showingBackside ? "View Front Side" : "Flip & View Backside"}</span>
+                </button>
+
+                {designState.backside?.enabled && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                        Backside Message / Note
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={designState.backside?.message || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            backside: {
+                              enabled: true,
+                              message: val,
+                              signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
+                              photoUrl: prev.backside?.photoUrl || null,
+                            },
+                          }));
+                        }}
+                        placeholder="Write a message to appear on the back of your invitation..."
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 resize-none shadow-2xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                        Sign-Off / Signature
+                      </label>
+                      <input
+                        type="text"
+                        value={designState.backside?.signOff || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            backside: {
+                              enabled: true,
+                              message: prev.backside?.message || "",
+                              signOff: val,
+                              photoUrl: prev.backside?.photoUrl || null,
+                            },
+                          }));
+                        }}
+                        placeholder="e.g. With love, The Smiths"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2793,6 +3813,8 @@ export default function InvitationStudio({
           onSelectLayer={(id) => {
             if (id) {
               handleSelectLayer(id);
+              setActiveTab("text");
+              setMobileToolsOpen(true);
             } else {
               setDesignState((prev) => ({ ...prev, selectedTextId: null }));
               setEditingTextId(null);
@@ -2820,7 +3842,9 @@ export default function InvitationStudio({
           onCardClick={() => {
             setEditingTextId(null);
           }}
-          className="flex-1"
+          showingBackside={showingBackside}
+          onFlipCard={() => setShowingBackside((prev) => !prev)}
+          className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
         />
 
         {/* Hidden file input for photo slot replacement */}
@@ -2832,6 +3856,97 @@ export default function InvitationStudio({
           onChange={handlePhotoSlotUpload}
         />
       </div>
+    </>
+  )}
+
+  {/* ========================================================================= */}
+  {/* STEP 1: DETAILS WORKFLOW SCREEN (LIVE PREVIEW PANE + DETAILS FORM)        */}
+  {/* ========================================================================= */}
+  {currentStepIndex === 1 && (
+    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+        <InvitationWorkflowPreviewPane
+          designState={designState}
+          onRsvpClick={(status) => {
+            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+          }}
+        />
+      </div>
+      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+        <InvitationWorkflowDetails
+          title={designState.eventDetails.title}
+          dateTime={designState.eventDetails.date}
+          location={designState.eventDetails.venue || designState.eventDetails.address}
+          hostNote={designState.eventDetails.description || ""}
+          hostDetails={hostDetails}
+          rsvpOptions={rsvpOptions}
+          onUpdateField={handleDetailsFieldChange}
+          onUpdateHostDetails={setHostDetails}
+          onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
+        />
+      </div>
+    </div>
+  )}
+
+  {/* ========================================================================= */}
+  {/* STEP 2: GIFTING WORKFLOW SCREEN (LIVE PREVIEW PANE + GIFTING SECTIONS)    */}
+  {/* ========================================================================= */}
+  {currentStepIndex === 2 && (
+    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+        <InvitationWorkflowPreviewPane
+          designState={designState}
+          onRsvpClick={(status) => {
+            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+          }}
+        />
+      </div>
+      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+        <InvitationWorkflowGifting
+          wishlists={wishlists}
+          charities={charities}
+          personalFunds={personalFunds}
+          onAddWishlist={(item) => setWishlists((p) => [...p, item])}
+          onRemoveWishlist={(id) => setWishlists((p) => p.filter((w) => w.id !== id))}
+          onAddCharity={(item) => setCharities((p) => [...p, item])}
+          onRemoveCharity={(id) => setCharities((p) => p.filter((c) => c.id !== id))}
+          onAddPersonalFund={(item) => setPersonalFunds((p) => [...p, item])}
+          onRemovePersonalFund={(id) => setPersonalFunds((p) => p.filter((f) => f.id !== id))}
+        />
+      </div>
+    </div>
+  )}
+
+  {/* ========================================================================= */}
+  {/* STEP 3: REVIEW WORKFLOW SCREEN (LIVE PREVIEW PANE + REVIEW SUMMARY)       */}
+  {/* ========================================================================= */}
+  {currentStepIndex === 3 && (
+    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+      <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+        <InvitationWorkflowPreviewPane
+          designState={designState}
+          onRsvpClick={(status) => {
+            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+          }}
+        />
+      </div>
+      <div className="w-full md:w-[56%] lg:w-[58%] flex-1 md:h-full flex flex-col min-h-0">
+        <InvitationWorkflowReview
+          designState={designState}
+          rsvpOptions={rsvpOptions}
+          hostDetails={hostDetails}
+          wishlists={wishlists}
+          charities={charities}
+          personalFunds={personalFunds}
+          selectedGuestCount={selectedGuestIds.length}
+          totalGuestCount={eventGuests.length}
+          onSendInvitations={prepareAndOpenDispatch}
+          onShareWhatsApp={handleWhatsAppShare}
+          onJumpToStep={(idx) => setCurrentStepIndex(idx)}
+        />
+      </div>
+    </div>
+  )}
 
       {/* ========================================================================= */}
       {/* EMAIL SNAPSHOT & DISPATCH MODAL                                           */}
@@ -3037,6 +4152,98 @@ export default function InvitationStudio({
         initiallySelectedGuestIds={selectedGuestIds}
         onApply={handleApplyGuestSelection}
       />
+
+      {/* RSVP Options Modal */}
+      <RsvpOptionsModal
+        isOpen={isRsvpModalOpen}
+        onClose={() => setIsRsvpModalOpen(false)}
+        options={rsvpOptions}
+        onSave={(newOpts) => {
+          setRsvpOptions(newOpts);
+          setToast({ message: "RSVP settings updated! ✨", type: "success" });
+        }}
+      />
+
+      {/* ========================================================================= */}
+      {/* FULL-SCREEN LIVE PREVIEW MODAL                                            */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isPreviewModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
+            onClick={() => setIsPreviewModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-4xl w-full max-h-[94vh] bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-3.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-sm font-bold text-white">Full-Screen Card Preview</h3>
+                  <span className="hidden sm:inline text-xs text-slate-400 font-medium ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                    {activePreset.label}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewModalOpen(false)}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title="Close Preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-950 min-h-[500px]">
+                <div className="w-full flex items-center justify-center py-2">
+                  <div
+                    className="w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center transition-all"
+                    style={{ maxWidth: `${Math.min(Math.max(activePreset.maxW + 40, 520), 680)}px` }}
+                  >
+                    <InvitationCanvasStage
+                      config={{
+                        ...designState,
+                        selectedTextId: null,
+                      }}
+                      zoom={Math.min(canvasZoom, 100)}
+                      maxW={activePreset.maxW}
+                      aspectRatio={activePreset.aspect}
+                      readOnly={true}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 flex items-center gap-3 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppShare}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share via WhatsApp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPreviewModalOpen(false);
+                      prepareAndOpenDispatch();
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send to Guests ({selectedGuestIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
-import { getCleanTemplateSvg } from "./InvitationStudio";
+import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
+import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
 
@@ -55,6 +56,8 @@ export interface InvitationCanvasStageProps {
   photoInputRef?: any;
   onCardClick?: () => void;
   onBackdropClick?: () => void;
+  showingBackside?: boolean;
+  onFlipCard?: () => void;
 }
 
 export default function InvitationCanvasStage({
@@ -75,13 +78,16 @@ export default function InvitationCanvasStage({
   photoInputRef,
   onCardClick,
   onBackdropClick,
+  showingBackside = false,
+  onFlipCard,
 }: InvitationCanvasStageProps) {
   const localCardRef = useRef<HTMLDivElement>(null);
   const effectiveCardRef: any = cardRef || localCardRef;
+  const isLandscape = Boolean(config.isLandscape);
 
   const [cardDimensions, setCardDimensions] = useState<ContainerDimensions>({
     width: maxW || 500,
-    height: Math.round((maxW || 500) * 1.4),
+    height: isLandscape ? Math.round((maxW || 500) * 0.75) : Math.round((maxW || 500) * 1.4),
   });
 
   useEffect(() => {
@@ -97,10 +103,14 @@ export default function InvitationCanvasStage({
       }
     };
     updateDims();
+    const timer = setTimeout(updateDims, 150);
     const ro = new ResizeObserver(updateDims);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [effectiveCardRef]);
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [effectiveCardRef, maxW, isLandscape]);
 
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
@@ -220,19 +230,77 @@ export default function InvitationCanvasStage({
     ? STICKERS_DATA[config.envelope.sticker] || config.envelope.sticker
     : null;
 
-  // Resolve Clean Card Artwork: strip baked text SVGs
+  // Check if there is an explicit user upload
+  const isUploadedBg = Boolean(
+    config.cardBg?.type === "image" && config.cardBg.value && isUserUploadedImage(config.cardBg.value)
+  );
+  const isUploadedCard = Boolean(
+    config.card?.artworkUrl && isUserUploadedImage(config.card.artworkUrl)
+  );
+  const isUserUpload = isUploadedBg || isUploadedCard;
+
+  const uploadedImageSrc = isUploadedBg
+    ? config.cardBg.value
+    : (isUploadedCard ? config.card!.artworkUrl : null);
+
+  // Resolve fallback template configuration if preset template ID exists
+  const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
+  const fallbackTpl = activeTplId ? getTemplateConfig(activeTplId) : null;
+
+  // Resolve Clean Card Artwork: user uploaded image takes absolute precedence over template defaults
   const cardImageRaw =
+    uploadedImageSrc ||
     config.card?.artworkUrl ||
-    (config.cardBg?.type === "image" && config.cardBg.value ? config.cardBg.value : null);
+    (config.cardBg?.type === "image" && config.cardBg.value ? config.cardBg.value : null) ||
+    (fallbackTpl as any)?.card?.artworkUrl ||
+    fallbackTpl?.decorationImage ||
+    null;
   const cleanCardImage =
     cardImageRaw && !cardImageRaw.startsWith("#") ? getCleanTemplateSvg(cardImageRaw) || cardImageRaw : null;
+
+  // Collect all decorative illustrations (balloons, cake, party hats, candles, gifts)
+  const rawDecorations: any[] = [
+    ...((config.card as any)?.decorations || []),
+    ...((config as any)?.decorations || []),
+    ...((config as any)?.template?.decorations || []),
+    ...((fallbackTpl as any)?.card?.decorations || []),
+    ...((config.card as any)?.decorativeImages || []),
+    ...((config as any)?.background?.decorativeImages || []),
+  ];
+
+  const decorationItems = Array.from(
+    new Set(
+      rawDecorations
+        .map((d) => (typeof d === "string" ? d : d?.url || d?.src || ""))
+        .filter((src) => src && typeof src === "string" && !src.startsWith("#"))
+    )
+  );
+
+  const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
+  const [hasImgError, setHasImgError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(cleanCardImage);
+    setHasImgError(false);
+  }, [cleanCardImage]);
+
+  const handleImageError = () => {
+    // If -bg.svg clean variant failed to load, fallback to cardImageRaw
+    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw) {
+      setImgSrc(cardImageRaw);
+    } else {
+      setHasImgError(true);
+    }
+  };
+
+  const cardImageFit = config.cardImageFit || (isUserUpload ? "contain" : "cover");
 
   const cardBgColor =
     config.card?.backgroundColor ||
     (config.cardBg?.type === "color"
       ? config.cardBg.value
       : config.cardBg?.type === "image"
-      ? "#faf8f5"
+      ? (isUserUpload ? "#ffffff" : "#faf8f5")
       : "#ffffff");
 
   const cardAspectRatio =
@@ -283,13 +351,11 @@ export default function InvitationCanvasStage({
       ? "0 6px 16px rgba(0,0,0,0.12)"
       : "none";
 
-  const isLandscape = Boolean(config.isLandscape);
-
   // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
   // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
-  // to render a pure-CSS zero-image card. The config object is adapted below.
+  // to render a pure-CSS zero-image card. (Bypassed if user uploaded an image).
   const cssConfig = (config.card as any)?.cssConfig || null;
-  if (cssConfig || (config as any).isPureCss) {
+  if (!isUserUpload && (cssConfig || (config as any).isPureCss)) {
     // Build a minimal template-like object from the config for EvitePureCssStage
     const pureCssTpl = {
       id: (config as any).templateId || config.activeTemplateId || "unknown",
@@ -360,11 +426,14 @@ export default function InvitationCanvasStage({
       style={{
         zIndex: 1,
         background: isBackdropGradient ? backdropGradient : undefined,
-        backgroundColor: isBackdropGradient ? undefined : backdropValue,
-        backgroundImage: isBackdropGradient
-          ? undefined
-          : "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.15) 1px, transparent 1px)",
-        backgroundSize: "20px 20px",
+        backgroundColor: isBackdropGradient ? undefined : (backdropValue?.startsWith("#") || backdropValue?.startsWith("rgb") ? backdropValue : "#1c1917"),
+        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http"))
+          ? `url('${backdropValue}')`
+          : isBackdropGradient
+            ? undefined
+            : `url('/assets/backdrops/evite_gold_swirl.jpg')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -387,41 +456,77 @@ export default function InvitationCanvasStage({
         }}
       >
         {/* ========================================================================= */}
-        {/* LAYER 2: Envelope & Liner (z-index: 10)                                   */
-        /* Outer flap, pocket body, and inner liner pattern                          */}
+        {/* LAYER 2: Envelope & Liner (z-index: 10) - Standing beside/behind card      */}
         {/* ========================================================================= */}
-
-        {/* 2A: Inner Liner Graphic/Pattern (Behind Card) */}
         <div
-          data-layer="2-envelope-liner"
-          className={`absolute rounded-t-3xl transition-all duration-300 pointer-events-none ${
-            isLandscape ? "top-6 w-[96%] sm:w-[98%] h-[290px]" : "top-4 w-[92%] sm:w-[94%] h-[320px]"
-          }`}
+          data-layer="2-envelope-container"
+          className="absolute pointer-events-none transition-all duration-300 select-none"
           style={{
             zIndex: 10,
-            background: linerStyle,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-            clipPath: "polygon(0 0, 100% 0, 85% 100%, 15% 100%)",
-          }}
-        />
-
-        {/* 2B: Envelope Outer Flap (Top open triangle behind card) */}
-        <div
-          data-layer="2-envelope-outer-flap"
-          className={`absolute transition-all duration-300 pointer-events-none ${
-            isLandscape ? "-top-14 w-[100%] sm:w-[102%] h-[150px]" : "-top-12 w-[98%] sm:w-[100%] h-[160px]"
-          }`}
-          style={{
-            zIndex: 10,
-            background: envelopeOuterColor,
-            clipPath: "polygon(0 100%, 50% 0%, 100% 100%)",
-            filter: "drop-shadow(0 -4px 12px rgba(0,0,0,0.25))",
+            width: isLandscape ? "86%" : "78%",
+            height: isLandscape ? "94%" : "95%",
+            right: isLandscape ? "-8%" : "-14%",
+            top: "2%",
+            filter: "drop-shadow(0 25px 35px rgba(0, 0, 0, 0.45))",
           }}
         >
-          {/* Optional Stamp on Flap */}
-          {stampEmoji && (
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-amber-500/20 border border-amber-300/40 flex items-center justify-center text-xl shadow-xs pointer-events-none">
-              {stampEmoji}
+          {/* Envelope Main Rectangular Body */}
+          <div
+            className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: envelopeOuterColor,
+            }}
+          >
+            {/* Open Interior Pocket with Liner */}
+            <div
+              className="absolute inset-x-2.5 top-2.5 bottom-2.5 rounded-lg overflow-hidden"
+              style={{
+                background: linerStyle,
+              }}
+            >
+              {/* Subtle inner paper shadow */}
+              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] pointer-events-none" />
+            </div>
+
+            {/* Inner V-cut shadow */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-30"
+              style={{
+                background: "linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 60%)",
+              }}
+            />
+          </div>
+
+          {/* Open Top Triangular Flap (Peak pointing up) */}
+          <div
+            className="absolute -top-[28%] inset-x-0 h-[32%] pointer-events-none"
+            style={{
+              zIndex: 11,
+              background: envelopeOuterColor,
+              clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
+              filter: "drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.25))",
+            }}
+          >
+            {/* Inner Triangular Liner of the Flap */}
+            <div
+              className="absolute inset-x-2 bottom-0 top-1.5 opacity-95"
+              style={{
+                background: linerStyle,
+                clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
+              }}
+            />
+            {/* Optional Stamp on Flap */}
+            {stampEmoji && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-amber-500/25 border border-amber-300/40 flex items-center justify-center text-base shadow-xs">
+                {stampEmoji}
+              </div>
+            )}
+          </div>
+
+          {/* Optional Sticker Seal */}
+          {stickerEmoji && (
+            <div className="absolute top-1/2 right-4 w-10 h-10 rounded-full bg-white/95 shadow-md border border-black/10 flex items-center justify-center text-xl pointer-events-none">
+              {stickerEmoji}
             </div>
           )}
         </div>
@@ -445,27 +550,81 @@ export default function InvitationCanvasStage({
           style={{
             zIndex: 20,
             position: "relative",
-            width: isLandscape ? "92%" : "84%",
+            width: isLandscape ? "88%" : "76%",
             aspectRatio: cardAspectRatio,
             backgroundColor: cardBgColor,
             background:
               config.cardBg?.type === "preset" || config.cardBg?.type === "gradient"
                 ? config.cardBg.value
                 : undefined,
-            boxShadow: cardShadowStyle,
+            boxShadow: cardShadowStyle || "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)",
           }}
         >
-          {/* 3A: Clean Decorative Artwork / Floral Illustrations (Zero pre-baked text strings) */}
-          {cleanCardImage && (
-            <img
-              src={cleanCardImage}
-              alt="Card Decorative Artwork"
-              crossOrigin="anonymous"
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-              style={{ zIndex: 0 }}
-              draggable={false}
-            />
-          )}
+          {showingBackside ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-between p-8 sm:p-12 text-center bg-[#FAF8F5] select-none">
+              <div className="w-full flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-400">
+                <span>Card Backside</span>
+                {onFlipCard && (
+                  <button
+                    type="button"
+                    onClick={onFlipCard}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer underline"
+                  >
+                    Flip to Front
+                  </button>
+                )}
+              </div>
+              <div className="max-w-md my-auto space-y-4 px-4">
+                <p className="text-base sm:text-lg text-slate-800 font-serif leading-relaxed italic">
+                  "{config.backside?.message || "We can't wait to celebrate with you!"}"
+                </p>
+                <p className="text-sm font-semibold tracking-wide text-slate-600 uppercase">
+                  {config.backside?.signOff || "With Love, The Host"}
+                </p>
+                {config.backside?.photoUrl && (
+                  <div className="w-28 h-28 mx-auto rounded-2xl overflow-hidden shadow-md border-2 border-white">
+                    <img src={config.backside.photoUrl} alt="Backside note" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                <span>Scan QR or RSVP Online</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
+              {imgSrc && !hasImgError && (
+                <img
+                  src={imgSrc}
+                  alt="Invitation Card Artwork"
+                  aria-hidden="true"
+                  crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
+                  onError={handleImageError}
+                  className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-200 ${
+                    cardImageFit === "contain" ? "object-contain" : "object-cover"
+                  }`}
+                  style={{ zIndex: 0 }}
+                  draggable={false}
+                />
+              )}
+
+              {/* 3A-2: Additional decorative illustrations & stickers (balloons, cake, hats, candles, gifts) */}
+              {decorationItems.map((decoSrc, idx) => {
+                if (decoSrc === imgSrc) return null; // Avoid duplicating base artwork
+                return (
+                  <img
+                    key={`card-decoration-${idx}`}
+                    src={decoSrc}
+                    alt="Template Decoration"
+                    aria-hidden="true"
+                    crossOrigin={decoSrc.startsWith("http") ? "anonymous" : undefined}
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                    style={{ zIndex: 2 }}
+                    draggable={false}
+                  />
+                );
+              })}
 
           {/* 3B: Foil Shimmer Overlay if active */}
           {config.effects?.foil && (
@@ -647,32 +806,7 @@ export default function InvitationCanvasStage({
               </div>
             );
           })}
-        </div>
-
-        {/* 2C: Envelope Front Pocket (Lower half holding the card) */}
-        <div
-          data-layer="2-envelope-pocket-front"
-          className={`relative w-full rounded-b-3xl pointer-events-none shadow-2xl transition-all duration-300 ${
-            isLandscape ? "-mt-24 h-[190px]" : "-mt-16 h-[200px]"
-          }`}
-          style={{
-            zIndex: 25,
-            background: envelopeOuterColor,
-            clipPath: "polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)",
-            filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
-          }}
-        >
-          {/* Envelope Crease & Texture Line */}
-          <svg className="w-full h-full opacity-20 pointer-events-none" viewBox="0 0 100 70">
-            <polygon points="0,0 50,35 100,0" fill="none" stroke="#000" strokeWidth="1.5" />
-            <polygon points="0,70 50,35 100,70" fill="none" stroke="#fff" strokeWidth="1.5" />
-          </svg>
-
-          {/* Optional Sticker Seal on front flap */}
-          {stickerEmoji && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white/90 shadow-lg border border-black/10 flex items-center justify-center text-2xl pointer-events-none">
-              {stickerEmoji}
-            </div>
+            </>
           )}
         </div>
       </div>

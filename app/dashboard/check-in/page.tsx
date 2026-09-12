@@ -6,6 +6,9 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
 import checkInService from "../../../services/checkInService";
+import gpsCheckInService, {
+  GpsEvent,
+} from "../../../services/gpsCheckInService";
 import { CheckInGuest, CheckInSummary } from "../../../types/checkInTypes";
 import {
   Menu,
@@ -25,8 +28,39 @@ import {
   Square,
   AlertTriangle,
   Wifi,
+  MapPin,
+  Crosshair,
+  Navigation,
+  Sparkles,
+  ShieldCheck,
+  SlidersHorizontal,
+  Check,
+  Loader2,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Standard Haversine distance formula in meters
+function calculateHaversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
 
 function CheckInPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -63,6 +97,280 @@ function CheckInPageContent() {
 
   // Toasts
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // GPS Check-In States
+  const [currentGpsEvent, setCurrentGpsEvent] = useState<GpsEvent | null>(null);
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [geofenceRadius, setGeofenceRadius] = useState<number>(150);
+  const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
+  const [isSubmittingGpsCheckIn, setIsSubmittingGpsCheckIn] = useState(false);
+  const [gpsCheckInResult, setGpsCheckInResult] = useState<{
+    success: boolean;
+    message: string;
+    distance?: number;
+    checkedInAt?: string;
+  } | null>(null);
+
+  // Recalculate distance between user and event coordinates
+  const recalculateDistance = (
+    coords: { latitude: number; longitude: number } | null,
+    event: GpsEvent | null
+  ) => {
+    if (!coords || !event) {
+      setDistanceMeters(null);
+      return;
+    }
+
+    const venueLat =
+      event.venueLatitude !== null && event.venueLatitude !== undefined
+        ? Number(event.venueLatitude)
+        : 28.535517;
+    const venueLon =
+      event.venueLongitude !== null && event.venueLongitude !== undefined
+        ? Number(event.venueLongitude)
+        : 77.391029;
+
+    const d = calculateHaversineDistance(
+      coords.latitude,
+      coords.longitude,
+      venueLat,
+      venueLon
+    );
+    setDistanceMeters(d);
+  };
+
+  // Trigger browser geolocation
+  const fetchLocation = (showToast = false) => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser.");
+      if (showToast) {
+        triggerToast("Geolocation not supported by this browser.", "error");
+      }
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        setUserCoords(coords);
+        setIsLocating(false);
+        recalculateDistance(coords, currentGpsEvent);
+
+        if (showToast) {
+          triggerToast("Location updated successfully.", "success");
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        let errorMsg = "Unable to retrieve GPS location.";
+        if (err.code === 1) {
+          errorMsg = "Location permission denied. Please allow location access in your browser settings.";
+        } else if (err.code === 2) {
+          errorMsg = "Position unavailable. Please ensure GPS/location services are enabled.";
+        } else if (err.code === 3) {
+          errorMsg = "Location request timed out. Please try again.";
+        }
+        setLocationError(errorMsg);
+        if (showToast) {
+          triggerToast(errorMsg, "error");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+    );
+  };
+
+  // Fetch initial location
+  useEffect(() => {
+    fetchLocation(false);
+  }, []);
+
+  // Fetch GPS event details when selectedEventId changes
+  useEffect(() => {
+    if (!selectedEventId) {
+      setCurrentGpsEvent(null);
+      setDistanceMeters(null);
+      return;
+    }
+
+    let isMounted = true;
+    async function loadGpsEventData() {
+      try {
+        const details = await gpsCheckInService.getEventDetails(selectedEventId!);
+        if (isMounted && details) {
+          setCurrentGpsEvent(details);
+          if (details.geofenceRadius) {
+            setGeofenceRadius(Number(details.geofenceRadius));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch GPS event details:", err);
+      }
+    }
+
+    setGpsCheckInResult(null);
+    loadGpsEventData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedEventId]);
+
+  // Recalculate distance when userCoords or currentGpsEvent changes
+  useEffect(() => {
+    if (userCoords && currentGpsEvent) {
+      recalculateDistance(userCoords, currentGpsEvent);
+    }
+  }, [userCoords, currentGpsEvent]);
+
+  // Handle Self Check-In with GPS
+  const handleGpsCheckIn = async () => {
+    if (!selectedEventId) {
+      triggerToast("Please select an event first.", "error");
+      return;
+    }
+
+    setIsSubmittingGpsCheckIn(true);
+    setLocationError(null);
+
+    if (!navigator.geolocation) {
+      setIsSubmittingGpsCheckIn(false);
+      triggerToast("Geolocation not supported by this browser.", "error");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        setUserCoords(coords);
+        recalculateDistance(coords, currentGpsEvent);
+
+        try {
+          const res = await gpsCheckInService.submitGpsCheckIn(selectedEventId, coords);
+
+          if (res.success) {
+            setGpsCheckInResult({
+              success: true,
+              message: res.message || "Checked in successfully via GPS!",
+              distance: res.distance,
+              checkedInAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            });
+            triggerToast("Venue check-in successful! Welcome to the event.", "success");
+            fetchCheckInData(selectedEventId, debouncedSearch, statusFilter, page);
+          } else {
+            setGpsCheckInResult({
+              success: false,
+              message: res.message || "You are outside the check-in perimeter.",
+              distance: res.distance,
+            });
+            triggerToast(
+              res.message || `You are outside the ${geofenceRadius}m check-in perimeter (${res.distance}m away).`,
+              "error"
+            );
+          }
+        } catch (err: any) {
+          const apiError = err?.response?.data?.message || err?.response?.data?.error;
+          const dist = err?.response?.data?.distance;
+
+          setGpsCheckInResult({
+            success: false,
+            message: apiError || "Failed to process check-in.",
+            distance: dist,
+          });
+
+          triggerToast(
+            apiError ||
+              (dist
+                ? `You are ${dist}m away, which is outside the ${geofenceRadius}m perimeter.`
+                : "Failed to process check-in. Please try again."),
+            "error"
+          );
+        } finally {
+          setIsSubmittingGpsCheckIn(false);
+        }
+      },
+      (err) => {
+        setIsSubmittingGpsCheckIn(false);
+        let errorMsg = "Unable to retrieve GPS coordinates.";
+        if (err.code === 1) {
+          errorMsg = "Location permission denied. Please allow location access in your browser.";
+        }
+        setLocationError(errorMsg);
+        triggerToast(errorMsg, "error");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Handle Geofence Radius Selection
+  const handleRadiusSelect = async (radius: number) => {
+    if (!selectedEventId || radius === geofenceRadius) return;
+    setGeofenceRadius(radius);
+    setIsUpdatingRadius(true);
+
+    try {
+      await gpsCheckInService.updateGeofenceRadius(selectedEventId, {
+        geofenceRadius: radius,
+      });
+      triggerToast(`Geofence perimeter set to ${radius}m.`, "success");
+      if (currentGpsEvent) {
+        setCurrentGpsEvent({ ...currentGpsEvent, geofenceRadius: radius });
+      }
+    } catch (err) {
+      console.error("Failed to update geofence:", err);
+      triggerToast("Failed to update geofence on server.", "error");
+    } finally {
+      setIsUpdatingRadius(false);
+    }
+  };
+
+  // Handle Sync Venue to Current Location
+  const handleSyncVenueToCurrentLocation = async () => {
+    if (!selectedEventId || !userCoords) return;
+    setIsUpdatingRadius(true);
+    try {
+      await gpsCheckInService.updateGeofenceRadius(selectedEventId, {
+        geofenceRadius,
+        venueLatitude: userCoords.latitude,
+        venueLongitude: userCoords.longitude,
+      });
+      if (currentGpsEvent) {
+        setCurrentGpsEvent({
+          ...currentGpsEvent,
+          venueLatitude: userCoords.latitude,
+          venueLongitude: userCoords.longitude,
+        });
+      }
+      setDistanceMeters(0);
+      triggerToast("Venue coordinates synced to your current GPS position! Distance is now 0m.", "success");
+    } catch (err) {
+      triggerToast("Could not sync venue coordinates.", "error");
+    } finally {
+      setIsUpdatingRadius(false);
+    }
+  };
+
+  const isWithinPerimeter =
+    distanceMeters !== null && distanceMeters <= geofenceRadius;
+  const activeEventTitle =
+    currentGpsEvent?.title ||
+    events.find((e) => e.id === selectedEventId)?.title ||
+    "Selected Event";
+  const activeVenue =
+    currentGpsEvent?.venue ||
+    currentGpsEvent?.address ||
+    "Oakwood Community Park";
 
   // Geolocation helpers
   const getCoordinates = (): Promise<{ latitude: number; longitude: number } | null> => {
@@ -639,6 +947,205 @@ function CheckInPageContent() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* GPS Check-In Section */}
+              <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100/90 w-full space-y-5">
+                {/* 1. Header with Active Event & Refresh GPS */}
+                <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                        GPS Venue Check-In
+                      </h3>
+                      <p className="text-xs text-slate-500 truncate max-w-[180px] sm:max-w-xs">
+                        {activeEventTitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchLocation(true)}
+                    disabled={isLocating}
+                    title="Refresh GPS location"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors disabled:opacity-60 shrink-0 cursor-pointer"
+                  >
+                    <Crosshair
+                      className={`w-3.5 h-3.5 text-blue-600 ${isLocating ? "animate-spin text-blue-500" : ""}`}
+                    />
+                    <span>{isLocating ? "Locating..." : "Refresh GPS"}</span>
+                  </button>
+                </div>
+
+                {/* 2. Venue & Proximity Distance Badge */}
+                <div className="bg-slate-50/80 rounded-2xl border border-slate-200/70 p-4 text-center space-y-2.5">
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600">
+                    <Navigation className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate max-w-xs">{activeVenue}</span>
+                  </div>
+
+                  <div className="flex items-center justify-center">
+                    {distanceMeters !== null ? (
+                      <span
+                        className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide border shadow-2xs transition-all ${
+                          isWithinPerimeter
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : "bg-amber-50 text-amber-800 border-amber-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isWithinPerimeter ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                          }`}
+                        />
+                        {isWithinPerimeter
+                          ? `Within Perimeter (${distanceMeters}m Away • Radius: ${geofenceRadius}m)`
+                          : `${distanceMeters}m Away (Radius: ${geofenceRadius}m)`}
+                      </span>
+                    ) : isLocating ? (
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 animate-pulse">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                        Calculating distance to venue...
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                        <Info className="w-3.5 h-3.5 text-slate-400" />
+                        GPS location needed to measure distance
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Sync Venue Here Action Card */}
+                {distanceMeters !== null && !isWithinPerimeter && (
+                  <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 text-xs text-blue-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-left">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="text-xs leading-snug">
+                        Testing from home or office? Sync venue to your current GPS position.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSyncVenueToCurrentLocation}
+                      disabled={isUpdatingRadius}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                      {isUpdatingRadius ? "Syncing..." : "Sync Venue Here"}
+                    </button>
+                  </div>
+                )}
+
+                {/* 4. Self Check-In Controls */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                        Self Check-In (Guest Action)
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Verify GPS location and check in automatically.
+                      </p>
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  {locationError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <span>{locationError}</span>
+                    </div>
+                  )}
+
+                  {gpsCheckInResult && (
+                    <div
+                      className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                        gpsCheckInResult.success
+                          ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                          : "bg-amber-50/80 border-amber-200 text-amber-900"
+                      }`}
+                    >
+                      {gpsCheckInResult.success ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold">{gpsCheckInResult.message}</p>
+                        {gpsCheckInResult.distance !== undefined && (
+                          <p className="text-[11px] mt-0.5 opacity-90">
+                            Verified Distance: {gpsCheckInResult.distance}m (Geofence Limit: {geofenceRadius}m)
+                          </p>
+                        )}
+                        {gpsCheckInResult.checkedInAt && (
+                          <p className="text-[11px] mt-0.5 opacity-80">
+                            Checked in at {gpsCheckInResult.checkedInAt}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleGpsCheckIn}
+                    disabled={isSubmittingGpsCheckIn || !selectedEventId}
+                    className={`w-full py-3 px-4 rounded-2xl font-bold text-white transition-all shadow-sm flex items-center justify-center gap-2 text-sm ${
+                      isSubmittingGpsCheckIn
+                        ? "bg-blue-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 active:scale-[0.99] hover:shadow-md cursor-pointer"
+                    }`}
+                  >
+                    {isSubmittingGpsCheckIn ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying GPS Location...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-4 h-4" />
+                        <span>Check In With GPS</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* 5. Geofence Perimeter Radius */}
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="text-xs font-semibold text-slate-700">Geofence Radius</span>
+                    </div>
+                    {isUpdatingRadius && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[50, 150, 300, 500].map((radius) => {
+                      const isSelected = geofenceRadius === radius;
+                      return (
+                        <button
+                          key={radius}
+                          type="button"
+                          onClick={() => handleRadiusSelect(radius)}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
+                          <span>{radius}m</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 

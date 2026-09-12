@@ -104,6 +104,10 @@ export interface EviteTemplateSchema {
     backgroundColor: string;
     aspectRatio: '5x7' | 'square' | 'portrait';
     cssConfig?: CssCardConfig;      // populated for pure-CSS templates
+    decorations?: any[];
+    decorativeImages?: string[];
+    illustrationLayers?: any[];
+    stickerElements?: any[];
   };
   defaultTextLayers: Array<{
     id: string;
@@ -293,7 +297,14 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     category: "Birthday",
     backdrop: {"type":"color","value":"linear-gradient(135deg, #FAF6EE 0%, #F5EFEB 100%)"},
     envelope: {"outerColor":"#F7F5F0","linerPatternUrl":"radial-gradient(ellipse at center, #E6C875 0%, #C49B45 60%, #997328 100%)","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/cake-and-confetti-bg.svg","backgroundColor":"#FAF6EE","aspectRatio":"5x7"},
+    card: {
+      "artworkUrl": "/assets/templates/cake-and-confetti-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/cake-and-confetti-bg.svg",
+      "decorativeImages": ["/assets/templates/cake-and-confetti-bg.svg"],
+      "decorations": ["/assets/templates/cake-and-confetti-bg.svg"],
+      "backgroundColor": "#FAF6EE",
+      "aspectRatio": "5x7"
+    },
     defaultTextLayers: [
           {
                 "id": "layer-greeting",
@@ -2806,7 +2817,25 @@ export const getTemplateConfig = (templateId?: string | null): NewTemplateData |
   if (NEW_TEMPLATES_CONFIG[templateId]) return NEW_TEMPLATES_CONFIG[templateId];
   const cleanId = templateId.trim().toLowerCase();
   const matchedKey = Object.keys(NEW_TEMPLATES_CONFIG).find(k => k.toLowerCase() === cleanId);
-  return matchedKey ? NEW_TEMPLATES_CONFIG[matchedKey] : null;
+  if (matchedKey) return NEW_TEMPLATES_CONFIG[matchedKey];
+  // Preset aliases support (e.g. 'turning-6-party', 'turning-6', 'cake-and-confetti')
+  if (
+    cleanId.includes("turning-6") ||
+    cleanId.includes("turning6") ||
+    cleanId.includes("cake-and-confetti") ||
+    cleanId.includes("cake-confetti") ||
+    cleanId === "birthday-party-6"
+  ) {
+    return NEW_TEMPLATES_CONFIG["tpl-cake-and-confetti"] || null;
+  }
+  const byPartial = Object.values(NEW_TEMPLATES_CONFIG).find(t =>
+    t.id.toLowerCase().includes(cleanId) ||
+    cleanId.includes(t.id.toLowerCase()) ||
+    t.title.toLowerCase().replace(/\s+/g, '-').includes(cleanId) ||
+    cleanId.includes(t.title.toLowerCase().replace(/\s+/g, '-'))
+  );
+  if (byPartial) return byPartial;
+  return null;
 };
 
 export const getEviteCardTemplate = (templateId?: string | null): EviteCardTemplate | null => {
