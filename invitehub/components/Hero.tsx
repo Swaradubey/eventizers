@@ -286,7 +286,7 @@ export default function Hero() {
         }
         const pendingEventDate = sessionStorage.getItem("pending_event_date");
         if (pendingEventDate) {
-          setEventDate(pendingEventDate);
+          setDate(pendingEventDate);
           sessionStorage.removeItem("pending_event_date");
         }
         const pendingStartTime = sessionStorage.getItem("pending_start_time");
@@ -329,7 +329,7 @@ export default function Hero() {
         sessionStorage.setItem("pending_event_type", eventType);
         sessionStorage.setItem("pending_venue", venue);
         sessionStorage.setItem("pending_guest_count", guestCount);
-        sessionStorage.setItem("pending_event_date", eventDate);
+        sessionStorage.setItem("pending_event_date", date);
         sessionStorage.setItem("pending_start_time", startTime);
         sessionStorage.setItem("pending_end_time", endTime);
         sessionStorage.setItem("pending_is_full_day", String(isFullDay));
