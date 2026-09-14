@@ -39,27 +39,7 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     category: "Bridal Shower",
     designer: "Blush & Petals",
   },
-  {
-    id: "tpl-elegant-lace",
-    title: "Elegant Lace",
-    badge: "Featured",
-    category: "Bridal Shower",
-    designer: "Maison Dentelle",
-  },
-  {
-    id: "tpl-painted-petals",
-    title: "Painted Petals",
-    badge: "Trending",
-    category: "Bridal Shower",
-    designer: "Atelier Bleu",
-  },
-  {
-    id: "tpl-floral-elegance",
-    title: "Floral Elegance",
-    badge: "Popular",
-    category: "Bridal Shower",
-    designer: "Garden Guild",
-  },
+
 
 
 
