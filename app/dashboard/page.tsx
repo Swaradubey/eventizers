@@ -11,7 +11,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        router.replace("/login");
+        router.replace("/dashboard/ai-assistant");
       } else if (user.role === "GUEST") {
         router.replace("/dashboard/guest");
       } else if (

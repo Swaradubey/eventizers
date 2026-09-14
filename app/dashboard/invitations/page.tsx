@@ -13,10 +13,72 @@ function InvitationPageContent() {
   const searchParams = useSearchParams();
   const queryEventId = searchParams?.get("eventId") || null;
   const queryTemplateId = searchParams?.get("templateId") || null;
+  const isGuest = searchParams?.get("guest") === "1";
 
   // Events list for dropdown
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(queryEventId);
+
+  // Hydrate guest draft from localStorage on mount
+  useEffect(() => {
+    if (!isGuest || user) return;
+    try {
+      const raw = localStorage.getItem("guestEventDraft");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+
+      if (draft.type === "template" && draft.templateId) {
+        if (!sessionStorage.getItem("pending_template_id")) {
+          sessionStorage.setItem("pending_template_id", draft.templateId);
+          localStorage.setItem("pending_template_id", draft.templateId);
+        }
+      } else if (draft.type === "upload" && draft.uploadUrl) {
+        if (!sessionStorage.getItem("pending_upload_invite")) {
+          sessionStorage.setItem("pending_upload_invite", draft.uploadUrl);
+          localStorage.setItem("pending_upload_invite", draft.uploadUrl);
+        }
+        if (draft.uploadName && !sessionStorage.getItem("pending_upload_name")) {
+          sessionStorage.setItem("pending_upload_name", draft.uploadName);
+        }
+        if (draft.uploadType && !sessionStorage.getItem("pending_upload_type")) {
+          sessionStorage.setItem("pending_upload_type", draft.uploadType);
+        }
+        if (draft.uploadTitle && !sessionStorage.getItem("pending_upload_title")) {
+          sessionStorage.setItem("pending_upload_title", draft.uploadTitle);
+        }
+        if (draft.stationeryDesign && !sessionStorage.getItem("pending_stationery_design")) {
+          sessionStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
+        }
+      } else if (draft.type === "ai") {
+        if (draft.prompt && !sessionStorage.getItem("pending_prompt")) {
+          sessionStorage.setItem("pending_prompt", draft.prompt);
+        }
+        if (draft.eventType && !sessionStorage.getItem("pending_event_type")) {
+          sessionStorage.setItem("pending_event_type", draft.eventType);
+        }
+        if (draft.venue && !sessionStorage.getItem("pending_venue")) {
+          sessionStorage.setItem("pending_venue", draft.venue);
+        }
+        if (draft.guestCount && !sessionStorage.getItem("pending_guest_count")) {
+          sessionStorage.setItem("pending_guest_count", draft.guestCount);
+        }
+        if (draft.date && !sessionStorage.getItem("pending_event_date")) {
+          sessionStorage.setItem("pending_event_date", draft.date);
+        }
+        if (draft.startTime && !sessionStorage.getItem("pending_start_time")) {
+          sessionStorage.setItem("pending_start_time", draft.startTime);
+        }
+        if (draft.endTime && !sessionStorage.getItem("pending_end_time")) {
+          sessionStorage.setItem("pending_end_time", draft.endTime);
+        }
+        if (draft.isFullDay !== undefined && !sessionStorage.getItem("pending_is_full_day")) {
+          sessionStorage.setItem("pending_is_full_day", String(draft.isFullDay));
+        }
+      }
+    } catch (e) {
+      console.warn("Canvas page: failed to hydrate guest draft:", e);
+    }
+  }, [isGuest, user]);
 
   // Invitation hook for target event
   const {
@@ -26,12 +88,7 @@ function InvitationPageContent() {
     saveInvitation,
   } = useInvitation(selectedEventId);
 
-  // Protected route check
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
+  // Protected route check removed: guest users can access Canvas editor
 
   // Load user events for selector
   useEffect(() => {
@@ -57,7 +114,7 @@ function InvitationPageContent() {
     }
   }, [queryEventId]);
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -109,6 +166,13 @@ function InvitationPageContent() {
         }
       }}
       onSave={async (payload) => {
+        if (!user) {
+          // Store draft locally for later sync after auth
+          try {
+            localStorage.setItem("guestDraft", JSON.stringify(payload));
+          } catch (e) {}
+          return null;
+        }
         let targetEventId = payload.eventId || selectedEventId || activeEvent?.id;
         if (!targetEventId && payload.title) {
           try {

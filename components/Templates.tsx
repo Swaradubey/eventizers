@@ -103,16 +103,15 @@ export default function Templates() {
   };
 
   const handleCardClick = (templateId: string) => {
-    if (!user) {
-      try {
-        localStorage.setItem("pending_template_id", templateId);
-        sessionStorage.setItem("pending_template_id", templateId);
-      } catch (e) {}
-      setPendingTemplateId(templateId);
-      setIsAuthModalOpen(true);
-      return;
-    }
-    router.push(`/dashboard/invitations?templateId=${encodeURIComponent(templateId)}&studio=true`);
+    try {
+      const guestDraft = {
+        type: "template",
+        templateId,
+        templateName: filteredTemplates.find((t) => t.id === templateId)?.title || "Event",
+      };
+      localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+    } catch (e) {}
+    router.push("/canvas?guest=true");
   };
 
   const handleAuthSuccess = () => {

@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Sparkles, 
-  ChevronDown, 
   Wand2, 
   Send, 
   LayoutTemplate, 
@@ -13,12 +12,6 @@ import {
   SlidersHorizontal,
   FileUp,
   Check,
-  PartyPopper,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  ListChecks,
   ArrowRight,
   FileText,
   Trash2,
@@ -42,40 +35,7 @@ import { templateCards, matchesCategory } from "../lib/templateData";
 import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "../lib/newTemplatesData";
 import EviteCardPreview from "./designer/EviteCardPreview";
 
-const eventTypes = [
-  "Birthday",
-  "Baby Shower",
-  "Graduation",
-  "Wedding",
-  "Corporate Event",
-  "Networking",
-  "Fundraiser",
-  "Community Event",
-  "Private Dinner",
-];
 
-const guestCounts = [
-  "Up to 25 guests",
-  "25–50 guests",
-  "50–100 guests",
-  "100–250 guests",
-  "250+ guests",
-];
-
-const guestLists = [
-  "Family",
-  "Close Friends",
-  "Work Colleagues",
-  "Neighbors",
-  "VIP Guests",
-];
-
-const timeOptions = [
-  "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
-  "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
-  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
-  "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
-];
 
 const fallbackTemplates: Template[] = templateCards.map((tc) => ({
   id: tc.id,
@@ -153,14 +113,6 @@ export default function Hero() {
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
   const [prompt, setPrompt] = useState("");
-  const [eventType, setEventType] = useState("");
-  const [guestCount, setGuestCount] = useState("");
-  const [guestList, setGuestList] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("18:00");
-  const [endTime, setEndTime] = useState("22:00");
-  const [isFullDay, setIsFullDay] = useState(false);
-  const [venue, setVenue] = useState("");
   const [generating, setGenerating] = useState(false);
   const [aiEventData, setAiEventData] = useState<any | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
@@ -269,41 +221,7 @@ export default function Hero() {
           setPrompt(pendingPrompt);
           sessionStorage.removeItem("pending_prompt");
         }
-        const pendingEventType = sessionStorage.getItem("pending_event_type");
-        if (pendingEventType) {
-          setEventType(pendingEventType);
-          sessionStorage.removeItem("pending_event_type");
-        }
-        const pendingVenue = sessionStorage.getItem("pending_venue");
-        if (pendingVenue) {
-          setVenue(pendingVenue);
-          sessionStorage.removeItem("pending_venue");
-        }
-        const pendingGuestCount = sessionStorage.getItem("pending_guest_count");
-        if (pendingGuestCount) {
-          setGuestCount(pendingGuestCount);
-          sessionStorage.removeItem("pending_guest_count");
-        }
-        const pendingEventDate = sessionStorage.getItem("pending_event_date");
-        if (pendingEventDate) {
-          setDate(pendingEventDate);
-          sessionStorage.removeItem("pending_event_date");
-        }
-        const pendingStartTime = sessionStorage.getItem("pending_start_time");
-        if (pendingStartTime) {
-          setStartTime(pendingStartTime);
-          sessionStorage.removeItem("pending_start_time");
-        }
-        const pendingEndTime = sessionStorage.getItem("pending_end_time");
-        if (pendingEndTime) {
-          setEndTime(pendingEndTime);
-          sessionStorage.removeItem("pending_end_time");
-        }
-        const pendingIsFullDay = sessionStorage.getItem("pending_is_full_day");
-        if (pendingIsFullDay !== null) {
-          setIsFullDay(pendingIsFullDay === "true");
-          sessionStorage.removeItem("pending_is_full_day");
-        }
+
       } catch (e) {
         console.warn("Error restoring pending data:", e);
       }
@@ -326,13 +244,6 @@ export default function Hero() {
     if (!user) {
       try {
         if (prompt.trim()) sessionStorage.setItem("pending_prompt", prompt);
-        sessionStorage.setItem("pending_event_type", eventType);
-        sessionStorage.setItem("pending_venue", venue);
-        sessionStorage.setItem("pending_guest_count", guestCount);
-        sessionStorage.setItem("pending_event_date", date);
-        sessionStorage.setItem("pending_start_time", startTime);
-        sessionStorage.setItem("pending_end_time", endTime);
-        sessionStorage.setItem("pending_is_full_day", String(isFullDay));
       } catch (e) {}
       setIsAuthModalOpen(true);
       return;
@@ -349,19 +260,9 @@ export default function Hero() {
     setAiEventData(null);
 
     try {
-      const timeStr = isFullDay ? "Full Day" : (startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || undefined);
       const res = await API.post("/ai/generate-event", {
         userPrompt: prompt.trim(),
         prompt: prompt.trim(),
-        eventType: eventType || undefined,
-        guestCount: guestCount || undefined,
-        date: date || undefined,
-        time: timeStr,
-        startTime: isFullDay ? undefined : startTime,
-        endTime: isFullDay ? undefined : endTime,
-        isFullDay,
-        venue: venue || undefined,
-        guestListName: guestList || undefined,
       });
 
       if (res.data) {
@@ -460,14 +361,15 @@ ${aiEventData.activities?.map((item: string) => `• ${item}`).join('\n') || 'No
 ✅ **Checklist**:
 ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'None'}`;
 
-      const selectedTime = isFullDay ? "09:00" : (startTime || "18:00");
+      const selectedTime = "18:00";
+      const eventDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const res = await eventService.createEvent({
         title: aiEventData.title || "AI Generated Event",
         description: formattedDescription,
-        venue: venue || "TBD Venue",
-        eventDate: date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        venue: "TBD Venue",
+        eventDate,
         eventTime: selectedTime,
-        eventType: eventType || "Other",
+        eventType: "Other",
         status: "draft",
       });
 
@@ -476,14 +378,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setAiEventData(null);
         setPrompt("");
-        setEventType("");
-        setGuestCount("");
-        setDate("");
-        setStartTime("18:00");
-        setEndTime("22:00");
-        setIsFullDay(false);
-        setVenue("");
-        setGuestList("");
         setTimeout(() => {
           router.push(eventId ? `/dashboard/invitations?eventId=${eventId}` : "/dashboard/invitations");
         }, 800);
@@ -1254,204 +1148,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   ))}
                 </div>
 
-                {/* Form Fields (Below the prompt box/suggestions) */}
-                <div 
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-left"
-                >
-                  {/* 1. EVENT TYPE */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
-                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-                      EVENT TYPE
-                    </label>
-                    <div className="relative flex items-center gap-2">
-                      <PartyPopper className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
-                      <select
-                        value={eventType}
-                        onChange={(e) => setEventType(e.target.value)}
-                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
-                          eventType ? "text-gray-800" : "text-gray-400"
-                        }`}
-                      >
-                        <option value="" disabled className="text-gray-400">
-                          Select event type
-                        </option>
-                        {eventTypes.map((t) => (
-                          <option key={t} value={t} className="text-gray-800">
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
-                    </div>
-                  </div>
 
-                  {/* 2. DATE */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
-                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-                      DATE
-                    </label>
-                    <div className="relative flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
-                      <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-transparent text-xs sm:text-sm text-gray-800 focus:outline-none cursor-pointer font-medium pr-6"
-                      />
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* 3. TIME */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase select-none">
-                        TIME
-                      </label>
-                      <div
-                        className="flex items-center gap-1.5 cursor-pointer select-none"
-                        onClick={() => setIsFullDay(!isFullDay)}
-                      >
-                        <span className="text-xs font-medium text-gray-500">Full Day</span>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={isFullDay}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsFullDay(!isFullDay);
-                          }}
-                          className={`relative inline-flex h-4 w-7 sm:h-5 sm:w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            isFullDay ? "bg-[#4C6FFF]" : "bg-gray-200"
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                              isFullDay ? "translate-x-3 sm:translate-x-4" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Start time pill */}
-                      <div
-                        className={`relative flex-1 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50/90 border border-gray-200/80 rounded-xl transition-all ${
-                          isFullDay ? "opacity-40 pointer-events-none" : ""
-                        }`}
-                      >
-                        <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                        <select
-                          disabled={isFullDay}
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          className="w-full bg-transparent text-xs text-gray-800 focus:outline-none appearance-none cursor-pointer pr-4 font-medium"
-                        >
-                          {timeOptions.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2 pointer-events-none" />
-                      </div>
-
-                      <span className="text-gray-400 font-semibold text-xs">-</span>
-
-                      {/* End time pill */}
-                      <div
-                        className={`relative flex-1 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50/90 border border-gray-200/80 rounded-xl transition-all ${
-                          isFullDay ? "opacity-40 pointer-events-none" : ""
-                        }`}
-                      >
-                        <select
-                          disabled={isFullDay}
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          className="w-full bg-transparent text-xs text-gray-800 focus:outline-none appearance-none cursor-pointer pr-4 font-medium pl-1"
-                        >
-                          {timeOptions.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. VENUE */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
-                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-                      VENUE
-                    </label>
-                    <div className="relative flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <input
-                        type="text"
-                        value={venue}
-                        onChange={(e) => setVenue(e.target.value)}
-                        placeholder="Add location"
-                        className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 5. GUEST GROUP */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
-                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-                      GUEST GROUP
-                    </label>
-                    <div className="relative flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
-                      <select
-                        value={guestCount}
-                        onChange={(e) => setGuestCount(e.target.value)}
-                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
-                          guestCount ? "text-gray-800" : "text-gray-400"
-                        }`}
-                      >
-                        <option value="" disabled className="text-gray-400">
-                          Estimated guest count
-                        </option>
-                        {guestCounts.map((g) => (
-                          <option key={g} value={g} className="text-gray-800">
-                            {g}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* 6. GUEST LIST */}
-                  <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-3.5 shadow-sm hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all flex flex-col justify-between">
-                    <label className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-                      GUEST LIST
-                    </label>
-                    <div className="relative flex items-center gap-2">
-                      <ListChecks className="w-4 h-4 text-gray-400 flex-shrink-0 pointer-events-none" />
-                      <select
-                        value={guestList}
-                        onChange={(e) => setGuestList(e.target.value)}
-                        className={`w-full bg-transparent text-xs sm:text-sm focus:outline-none appearance-none cursor-pointer pr-6 font-medium ${
-                          guestList ? "text-gray-800" : "text-gray-400"
-                        }`}
-                      >
-                        <option value="" disabled className="text-gray-400">
-                          Select a saved list
-                        </option>
-                        {guestLists.map((l) => (
-                          <option key={l} value={l} className="text-gray-800">
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-0 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Bottom Action Button */}
                 <button

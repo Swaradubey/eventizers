@@ -89,7 +89,7 @@ export default function Footer() {
       }
       router.push("/dashboard/ai-assistant");
     } else {
-      router.push("/login?redirect=/dashboard/ai-assistant");
+      router.push("/dashboard/ai-assistant");
     }
   };
 

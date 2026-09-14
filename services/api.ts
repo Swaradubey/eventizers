@@ -43,8 +43,10 @@ API.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const isAuthEndpoint = error.config.url?.includes("/auth/me") || error.config.url?.includes("/auth/login") || error.config.url?.includes("/admin/login") || error.config.url?.includes("/invitations/public");
-      if (!isAuthEndpoint) {
-        if (typeof window !== "undefined") {
+      if (!isAuthEndpoint && typeof window !== "undefined") {
+        const hadToken = Boolean(localStorage.getItem("token") || sessionStorage.getItem("token"));
+        const isGuestMode = window.location.search.includes("guest=1") || Boolean(localStorage.getItem("guestDraft"));
+        if (hadToken && !isGuestMode) {
           localStorage.removeItem("token");
           sessionStorage.removeItem("token");
           const isAdminRoute = window.location.pathname.startsWith("/admin");

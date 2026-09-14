@@ -52,6 +52,8 @@ import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
 import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
 import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
+import { useAuth } from "../../context/AuthContext";
+import AuthModal from "../AuthModal";
 
 // --- Types & Interfaces ---
 
@@ -322,6 +324,8 @@ export default function InvitationStudio({
   onBack,
 }: InvitationStudioProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // --- Template State Builder ---
   const createDesignStateFromTemplate = (
@@ -1662,11 +1666,14 @@ export default function InvitationStudio({
         setSnapshotDataUrl(dataUrl);
 
         // Upload to file storage so the payload sends a lightweight URL instead of raw base64
+        // Skip server upload for guest users (no auth token) to avoid 401 redirect
         let uploadedUrl: string | null = null;
-        try {
-          uploadedUrl = await uploadSnapshotBlob(dataUrl);
-        } catch (uploadErr) {
-          console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+        if (user) {
+          try {
+            uploadedUrl = await uploadSnapshotBlob(dataUrl);
+          } catch (uploadErr) {
+            console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+          }
         }
 
         return { dataUrl, uploadedUrl };
@@ -1985,6 +1992,19 @@ export default function InvitationStudio({
   // displays a success toast, and keeps user on / switches back to the Canvas Studio Design tab (step 0).
   const handleSaveAndExit = async () => {
     if (isSavingDraft || isGeneratingSnapshot) return;
+
+    // Guest auth gate: persist draft locally, then show auth modal
+    if (!user) {
+      try {
+        const draftPayload = constructPayload(null);
+        localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+        localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+      } catch (e) {}
+      setToast({ message: "Sign in to save your design permanently.", type: "success" });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       let saved: Invitation | null = null;
       if (currentStepIndex === 0) {
@@ -2090,8 +2110,18 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Review" step (step 3): open dispatch modal
+    // When on "Review" step (step 3): check auth before dispatching
     if (currentStepIndex === 3) {
+      if (!user) {
+        // Persist draft locally before showing auth modal
+        try {
+          const draftPayload = constructPayload(null);
+          localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+          localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+        } catch (e) {}
+        setIsAuthModalOpen(true);
+        return;
+      }
       await prepareAndOpenDispatch();
       return;
     }
@@ -4247,6 +4277,30 @@ export default function InvitationStudio({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Auth Modal for deferred sign-in on Next/Send */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          setTimeout(async () => {
+            // Auto-save any pending guest draft after successful sign-in
+            try {
+              const rawDraft = localStorage.getItem("guestDraft");
+              if (rawDraft) {
+                const draftPayload = JSON.parse(rawDraft);
+                localStorage.removeItem("guestDraft");
+                localStorage.removeItem("guestDraftTemplateId");
+                await saveDesign(draftPayload.snapshotUrl || null);
+              }
+            } catch (e) {
+              console.warn("Guest draft resume failed:", e);
+            }
+            handleProceedNext();
+          }, 300);
+        }}
+      />
     </div>
   );
 }
