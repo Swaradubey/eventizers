@@ -12,6 +12,7 @@ export interface InvitationStoreState {
   editingTextId: string | null;
   envelope: {
     outerColor: string;
+    flapColor?: string;
     linerCss?: string;
     isOpen: boolean;
   };
@@ -58,8 +59,9 @@ function createInitialState(templateId = DEFAULT_TEMPLATE_ID): InvitationStoreSt
     selectedTextId: layers[0]?.id || null,
     editingTextId: null,
     envelope: {
-      outerColor: tpl?.envelope?.outerColor || "#1C1A10",
-      linerCss: (tpl?.envelope as any)?.linerCss || undefined,
+      outerColor: tpl?.envelope?.outerColor || "#5384db",
+      flapColor: (tpl?.envelope as any)?.flapColor || "#7ba3e8",
+      linerCss: (tpl?.envelope as any)?.linerCss || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
       isOpen: true,
     },
     card: {

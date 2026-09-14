@@ -351,13 +351,14 @@ export const useInvitation = (eventId: string | null) => {
 
           setInvitation(fetchedInvitation);
         } else {
-          // Initialize a default draft using selectedTemplateId if present
-          const tplKey = eventRes.event.selectedTemplateId;
-          const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+          const urlTplId = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("templateId") || sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")) : null;
+          const tplKey = eventRes.event.selectedTemplateId || urlTplId;
+          const tplConfig = tplKey ? (TEMPLATES_CONFIG[tplKey] || (NEW_TEMPLATES_CONFIG as any)[tplKey]) : null;
 
           // Comprehensive fallback: clean template image > event image fields
           const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
           const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
+          const innerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
 
           const defaultInvitation: Invitation = {
             id: "", // empty indicates it's unsaved/new
@@ -367,7 +368,7 @@ export const useInvitation = (eventId: string | null) => {
             subtitle: tplConfig ? (eventRes.event.venue || "TBD") : "You are cordially invited to celebrate with us.",
             mainText: tplConfig?.description || "Join us for an unforgettable experience filled with joy and celebration. Please RSVP using the button below to secure your spot.",
             accentColor: tplConfig?.accentColor || "#5B5FEF",
-            backgroundColor: tplConfig?.backgroundColor || "#FAF8F5",
+            backgroundColor: innerBg,
             textColor: tplConfig?.textColor || "#2D1B3D",
             titleSize: tplConfig?.titleSize || 48,
             fontWeight: tplConfig?.fontWeight || "700",
@@ -378,26 +379,34 @@ export const useInvitation = (eventId: string | null) => {
             buttonColor: tplConfig?.buttonColor || "#5B5FEF",
             buttonRadius: tplConfig?.buttonRadius || 12,
             status: "draft",
+            card: (tplConfig as any)?.card ? { ...(tplConfig as any).card, backgroundColor: innerBg } : undefined,
+            backgroundLayer: (tplConfig as any)?.backgroundLayer,
+            frameLayers: (tplConfig as any)?.frameLayers,
+            innerCardLayer: (tplConfig as any)?.innerCardLayer,
+            textElements: (tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers,
           };
           setInvitation(defaultInvitation);
         }
       } catch (err: any) {
         // If API returns 404/error and no invitation exists, create a default local state
-        const tplKey = eventRes.event.selectedTemplateId;
-        const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+        const urlTplId = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("templateId") || sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")) : null;
+        const tplKey = eventRes.event.selectedTemplateId || urlTplId;
+        const tplConfig = tplKey ? (TEMPLATES_CONFIG[tplKey] || (NEW_TEMPLATES_CONFIG as any)[tplKey]) : null;
 
         // Comprehensive fallback: clean template image > event image fields
         const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
         const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
+        const innerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
 
         const defaultInvitation: Invitation = {
           id: "",
           eventId: eventId,
+          templateId: tplKey || undefined,
           title: `Invitation to ${eventRes.event.title}`,
           subtitle: tplConfig ? (eventRes.event.venue || "TBD") : "You are cordially invited to celebrate with us.",
           mainText: tplConfig?.description || "Join us for an unforgettable experience filled with joy and celebration. Please RSVP using the button below to secure your spot.",
           accentColor: tplConfig?.accentColor || "#5B5FEF",
-          backgroundColor: tplConfig?.backgroundColor || "#FAF8F5",
+          backgroundColor: innerBg,
           textColor: tplConfig?.textColor || "#2D1B3D",
           titleSize: tplConfig?.titleSize || 48,
           fontWeight: tplConfig?.fontWeight || "700",
@@ -408,6 +417,11 @@ export const useInvitation = (eventId: string | null) => {
           buttonColor: tplConfig?.buttonColor || "#5B5FEF",
           buttonRadius: tplConfig?.buttonRadius || 12,
           status: "draft",
+          card: (tplConfig as any)?.card ? { ...(tplConfig as any).card, backgroundColor: innerBg } : undefined,
+          backgroundLayer: (tplConfig as any)?.backgroundLayer,
+          frameLayers: (tplConfig as any)?.frameLayers,
+          innerCardLayer: (tplConfig as any)?.innerCardLayer,
+          textElements: (tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers,
         };
         setInvitation(defaultInvitation);
       }

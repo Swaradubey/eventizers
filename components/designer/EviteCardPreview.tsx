@@ -2,6 +2,7 @@
 
 import React from "react";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
+import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export interface EviteCardPreviewProps {
   template?: any;
@@ -228,16 +229,20 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       } ${className}`}
       style={{ background: cardOnly ? undefined : backdropBg }}
     >
-      {/* 1. Envelope & Gold Liner (Behind Card) — only when cardOnly is false */}
+      {/* 1. Envelope & Liner (Behind Card) — only when cardOnly is false */}
       {!cardOnly && (
         <div
-          className="absolute right-[-15%] top-[10%] w-[80%] h-[90%] rotate-[12deg] rounded-sm shadow-md pointer-events-none overflow-hidden"
-          style={{ backgroundColor: envelopeOuter }}
+          className="absolute pointer-events-none select-none"
+          style={{
+            zIndex: 1,
+            width: "78%",
+            height: "94%",
+            left: "56%",
+            top: "47%",
+            transform: "translate(-50%, -50%)",
+          }}
         >
-          <div
-            className="w-full h-1/2"
-            style={{ background: envelopeLiner }}
-          />
+          <EnvelopeBackdrop color={envelopeOuter} liner={envelopeLiner} />
         </div>
       )}
 
@@ -251,6 +256,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           border: cardBorder,
           boxShadow: cardShadow,
           borderRadius: cssConfig?.borderRadius || "12px",
+          transform: cardOnly ? undefined : "translateX(-3%)",
         }}
       >
         {/* Background Artwork / Vector SVG */}

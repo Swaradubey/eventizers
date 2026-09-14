@@ -254,6 +254,8 @@ const PRESET_BACKGROUNDS = [
 ];
 
 const ENVELOPE_COLORS = [
+  { id: "cornflower", hex: "#5384db", name: "Sky Cornflower" },
+  { id: "babyblue", hex: "#7ba3e8", name: "Soft Light Blue" },
   { id: "plum", hex: "#781d60", name: "Rich Berry" },
   { id: "mint", hex: "#9fd0c4", name: "Pale Mint" },
   { id: "kraft", hex: "#d8be9b", name: "Kraft Paper" },
@@ -280,6 +282,7 @@ const ENVELOPE_COLORS = [
 ];
 
 const ENVELOPE_LINERS = [
+  { id: "vertical-pink-stripes", name: "Pink Candy Stripes", style: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)" },
   { id: "none", name: "Plain Solid", style: "rgba(0,0,0,0.02)" },
   { id: "gold-foil", name: "Gold Leaf Foil", style: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)" },
   { id: "silver-foil", name: "Silver Leaf Foil", style: "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)" },
@@ -609,8 +612,9 @@ export default function InvitationStudio({
       defaultAmbientBackdrop;
 
     const savedEnvelope = invite?.envelope || {
-      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || invite?.accentColor || (isDark ? "#18181b" : "#781d60"),
-      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "gold-foil",
+      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
+      flapColor: (tplConfig as any)?.envelope?.flapColor || "#7ba3e8",
+      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "vertical-pink-stripes",
       stamp: "wax",
       sticker: null,
     };
@@ -3323,7 +3327,7 @@ export default function InvitationStudio({
                       Interior Liner Patterns
                     </span>
                     <div className="grid grid-cols-2 gap-2.5">
-                      {ENVELOPE_LINERS.map((liner) => {
+                       {ENVELOPE_LINERS.map((liner) => {
                         const isSelected = designState.envelope.liner === liner.id;
                         return (
                           <button
@@ -3332,7 +3336,7 @@ export default function InvitationStudio({
                             onClick={() =>
                               pushStateToHistory({
                                 ...designState,
-                                envelope: { ...designState.envelope, liner: liner.id },
+                                envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
                               })
                             }
                             className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected

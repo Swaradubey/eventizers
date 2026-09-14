@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -72,7 +73,7 @@ export interface EvitePureCssStageProps {
 // CSS BORDER OVERLAY — pure HTML div-based borders (zero SVG)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CssBorderOverlay({ border }: { border: CssBorderConfig }) {
+export function CssBorderOverlay({ border }: { border: CssBorderConfig }) {
   if (!border || border.type === "none") return null;
 
   const offset = border.offset ?? 12;
@@ -431,8 +432,8 @@ export default function EvitePureCssStage({
   const cssConfig: CssCardConfig | null = cardData.cssConfig || null;
   const isPureCss = Boolean(template.isPureCss) || Boolean(cssConfig);
 
-  const cardBgColor = cssConfig?.backgroundColor || cardData.backgroundColor || template.backgroundColor || "#ffffff";
-  const resolvedAspect = aspectRatio || (cardData.aspectRatio === "square" ? "square" : "portrait");
+  const cardBgColor = cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || cardData.backgroundColor || "#ffffff";
+  const resolvedAspect = aspectRatio || (cardData.aspectRatio === "square" ? "square" : "5x7");
 
   const textLayers: StageTextLayer[] = (
     overrideTextLayers && overrideTextLayers.length > 0 ? overrideTextLayers
@@ -451,10 +452,10 @@ export default function EvitePureCssStage({
     "radial-gradient(circle, #2d3238 0%, #181a1d 100%)";
 
   const cardInlineStyle: React.CSSProperties = {
-    backgroundColor: cssConfig?.backgroundColor || cardBgColor,
+    backgroundColor: cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || "#ffffff",
     background: cssConfig?.backgroundGradient || undefined,
     boxShadow: cssConfig?.paperShadow || "0 10px 25px rgba(0,0,0,0.15)",
-    borderRadius: cssConfig?.borderRadius,
+    borderRadius: cssConfig?.borderRadius || (template as any)?.innerCardLayer?.borderRadius || "14px",
     clipPath: cssConfig?.clipPath,
   };
 
@@ -464,7 +465,7 @@ export default function EvitePureCssStage({
       <div
         data-testid={`evite-css-card-${template.id}`}
         className={`relative w-full overflow-hidden select-none ${hoverScale ? "transition-transform duration-500 group-hover:scale-[1.03]" : ""} ${className}`}
-        style={{ aspectRatio: resolvedAspect === "square" ? "1 / 1" : "3 / 4", containerType: "inline-size", ...cardInlineStyle }}
+        style={{ aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7", containerType: "inline-size", ...cardInlineStyle }}
       >
         {isPureCss && cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
         {!isPureCss && cardData.decorativeBorderSvgUrl && (
@@ -482,32 +483,19 @@ export default function EvitePureCssStage({
         data-testid={`evite-css-stationery-${template.id}`}
         className={`relative w-full h-[330px] sm:h-[350px] flex items-end justify-start select-none ${className}`}
       >
-        {/* Layer 2: Pure CSS Envelope Wall & Open Flap Behind (Zero SVG) */}
+        {/* Layer 2: Open Envelope & Liner Behind */}
         <div
-          className="absolute inset-x-0 bottom-0 top-12 rounded-2xl pointer-events-none transition-transform duration-300"
+          className="absolute pointer-events-none select-none transition-transform duration-300"
           style={{
             zIndex: 1,
-            background: envelopeOuter,
-            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.18), 0 4px 10px -3px rgba(0,0,0,0.1)",
+            width: "78%",
+            height: "94%",
+            left: "56%",
+            top: "47%",
+            transform: "translate(-50%, -50%)",
           }}
         >
-          {/* Triangular Open Flap Peak Framing Liner */}
-          <div
-            className="absolute -top-12 inset-x-0 h-16 pointer-events-none"
-            style={{
-              background: envelopeOuter,
-              clipPath: "polygon(0 100%, 50% 0%, 100% 100%)",
-              filter: "drop-shadow(0 -2px 6px rgba(0,0,0,0.15))",
-            }}
-          />
-          {/* Pure CSS Interior Liner Fill */}
-          <div
-            className="absolute inset-x-2 top-[-38px] bottom-4 rounded-t-xl opacity-95 pointer-events-none"
-            style={{
-              background: linerCss,
-              clipPath: "polygon(0 38px, 50% 0, 100% 38px, 100% 100%, 0 100%)",
-            }}
-          />
+          <EnvelopeBackdrop color={envelopeOuter} liner={linerCss} />
         </div>
 
         {/* Layer 3: Pure CSS Invitation Card in Front */}
@@ -516,8 +504,9 @@ export default function EvitePureCssStage({
             hoverScale ? "group-hover:-translate-y-2 group-hover:shadow-[0_18px_35px_-8px_rgba(0,0,0,0.32)]" : ""
           }`}
           style={{
-            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "3 / 4",
+            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
+            transform: "translateX(-3%)",
             ...cardInlineStyle,
           }}
         >
@@ -543,7 +532,12 @@ export default function EvitePureCssStage({
         ref={stageRef as any}
         data-testid="invitation-stage-container"
         className="relative w-full flex flex-col items-center justify-center transition-transform duration-300"
-        style={{ maxWidth: `${maxW}px`, minHeight: "620px", transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined, transformOrigin: "top center" }}
+        style={{
+          maxWidth: `${maxW}px`,
+          aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
+          transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
+          transformOrigin: "center center",
+        }}
       >
         {/* LAYER 2: Open Envelope & Liner positioned behind the card */}
         <div
@@ -552,48 +546,13 @@ export default function EvitePureCssStage({
           style={{
             zIndex: 10,
             width: "78%",
-            height: "94%",
-            right: "-12%",
-            top: "3%",
-            filter: "drop-shadow(0 25px 35px rgba(0, 0, 0, 0.45))",
+            height: "96%",
+            left: "56%",
+            top: "46%",
+            transform: "translate(-50%, -50%)",
           }}
         >
-          {/* Envelope Body */}
-          <div
-            className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl"
-            style={{
-              background: envelopeOuter,
-            }}
-          >
-            {/* Interior Liner */}
-            <div
-              className="absolute inset-x-2 top-2 bottom-2 rounded-lg overflow-hidden"
-              style={{
-                background: linerCss,
-              }}
-            >
-              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Open Flap Peak */}
-          <div
-            className="absolute -top-[28%] inset-x-0 h-[32%] pointer-events-none"
-            style={{
-              zIndex: 11,
-              background: envelopeOuter,
-              clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
-              filter: "drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.25))",
-            }}
-          >
-            <div
-              className="absolute inset-x-2 bottom-0 top-1.5 opacity-95"
-              style={{
-                background: linerCss,
-                clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
-              }}
-            />
-          </div>
+          <EnvelopeBackdrop color={envelopeOuter} liner={linerCss} />
         </div>
 
         {/* LAYER 3: Card Surface in foreground */}
@@ -607,9 +566,10 @@ export default function EvitePureCssStage({
           style={{
             zIndex: 20,
             width: "78%",
-            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "3 / 4",
+            transform: "translateX(-3%)",
+            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
-            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)",
+            boxShadow: cssConfig?.paperShadow || "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)",
             ...cardInlineStyle,
           }}
         >
@@ -623,3 +583,4 @@ export default function EvitePureCssStage({
     </div>
   );
 }
+

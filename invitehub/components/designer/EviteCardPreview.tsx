@@ -2,6 +2,7 @@
 
 import React from "react";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
+import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export interface EviteCardPreviewProps {
   template?: any;
@@ -78,17 +79,21 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const cssConfig = cardData.cssConfig;
 
   const cardBg =
+    resolvedTemplate.innerCardLayer?.backgroundColor ||
     cssConfig?.backgroundGradient ||
     cssConfig?.backgroundColor ||
     cardData.backgroundColor ||
     resolvedTemplate.backgroundColor ||
     "#FFFFFF";
 
+  const borderConfig = cssConfig?.border || resolvedTemplate.innerCardLayer?.border;
   const cardBorder =
-    typeof cardData.border === "string"
+    borderConfig?.inset
+      ? "none"
+      : typeof cardData.border === "string"
       ? cardData.border
-      : cssConfig?.border
-      ? `${cssConfig.border.thickness || 1}px solid ${cssConfig.border.color || "#D4AF37"}`
+      : borderConfig
+      ? `${borderConfig.thickness || 1}px ${borderConfig.style || borderConfig.type || "solid"} ${borderConfig.color || "#D4AF37"}`
       : "1px solid rgba(0,0,0,0.08)";
 
   const cardShadow =
@@ -228,15 +233,23 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       } ${className}`}
       style={{ background: cardOnly ? undefined : backdropBg }}
     >
-      {/* 1. Envelope & Gold Liner (Behind Card) — only when cardOnly is false */}
+      {/* 1. Envelope & Liner (Behind Card) — only when cardOnly is false */}
       {!cardOnly && (
         <div
-          className="absolute right-[-15%] top-[10%] w-[80%] h-[90%] rotate-[12deg] rounded-sm shadow-md pointer-events-none overflow-hidden"
-          style={{ backgroundColor: envelopeOuter }}
+          className="absolute pointer-events-none select-none"
+          style={{
+            zIndex: 5,
+            width: "78%",
+            height: "94%",
+            left: "56%",
+            top: "47%",
+            transform: "translate(-50%, -50%)",
+          }}
         >
-          <div
-            className="w-full h-1/2"
-            style={{ background: envelopeLiner }}
+          <EnvelopeBackdrop
+            color={envelopeOuter || "#5384db"}
+            flapColor="#7ba3e8"
+            liner={envelopeLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)"}
           />
         </div>
       )}
@@ -251,8 +264,25 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           border: cardBorder,
           boxShadow: cardShadow,
           borderRadius: cssConfig?.borderRadius || "12px",
+          transform: cardOnly ? undefined : "translateX(-3%)",
         }}
       >
+        {/* Inset Border if defined (e.g. dotted frame) */}
+        {borderConfig && (
+          <div
+            data-testid="preview-border-overlay"
+            className="absolute pointer-events-none select-none"
+            style={{
+              inset: `${Math.round((borderConfig.inset ?? 16) * 0.45)}px`,
+              borderRadius: `${Math.round((borderConfig.borderRadius ?? 12) * 0.6)}px`,
+              border: `${Math.max(1, Math.round((borderConfig.thickness ?? 2) * 0.7))}px ${
+                borderConfig.style || borderConfig.type || "solid"
+              } ${borderConfig.color || "#D4AF37"}`,
+              zIndex: 15,
+            }}
+          />
+        )}
+
         {/* Background Artwork / Vector SVG */}
         {displayArtwork && (
           /* eslint-disable-next-line @next/next/no-img-element */

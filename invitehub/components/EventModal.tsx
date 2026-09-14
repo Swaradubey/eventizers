@@ -197,6 +197,7 @@ export default function EventModal({
         eventTime: formData.eventTime,
         status: formData.status || "draft",
         coverImage: formData.coverImage.trim() || undefined,
+        selectedTemplateId: selectedTemplateId || undefined,
       };
 
       let createdEventId: string | null = null;

@@ -203,6 +203,9 @@ export interface StudioDesignState {
     address: string;
     description?: string;
   };
+  backgroundLayer?: any;
+  frameLayers?: any;
+  innerCardLayer?: any;
 }
 
 interface InvitationStudioProps {
@@ -254,6 +257,8 @@ const PRESET_BACKGROUNDS = [
 ];
 
 const ENVELOPE_COLORS = [
+  { id: "cornflower", hex: "#5384db", name: "Sky Cornflower" },
+  { id: "babyblue", hex: "#7ba3e8", name: "Soft Light Blue" },
   { id: "plum", hex: "#781d60", name: "Rich Berry" },
   { id: "mint", hex: "#9fd0c4", name: "Pale Mint" },
   { id: "kraft", hex: "#d8be9b", name: "Kraft Paper" },
@@ -280,6 +285,7 @@ const ENVELOPE_COLORS = [
 ];
 
 const ENVELOPE_LINERS = [
+  { id: "vertical-pink-stripes", name: "Pink Candy Stripes", style: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)" },
   { id: "none", name: "Plain Solid", style: "rgba(0,0,0,0.02)" },
   { id: "gold-foil", name: "Gold Leaf Foil", style: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)" },
   { id: "silver-foil", name: "Silver Leaf Foil", style: "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)" },
@@ -412,14 +418,39 @@ export default function InvitationStudio({
     const titleAlign = (tplConfig?.textAlignment as any) || (invite?.textAlignment as any) || "center";
 
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
-    let cardBgValue = "#faf8f5";
+    let cardBgValue = "#ffffff";
 
     // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
     if (pendingUploadUrl) {
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
-    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image)
+    // Priority 0: Inner Card Layer designed background from template schema (crisp white)
+    else if ((tplConfig as any)?.innerCardLayer?.backgroundColor) {
+      cardBgType = "color";
+      cardBgValue = (tplConfig as any).innerCardLayer.backgroundColor;
+    }
+    // Priority 1: CSS config background (pure CSS stationery)
+    else if ((tplConfig?.card as any)?.cssConfig?.backgroundColor) {
+      cardBgType = "color";
+      cardBgValue = (tplConfig?.card as any).cssConfig.backgroundColor;
+    }
+    // Priority 2: Card solid background color from template card
+    else if (tplConfig?.card?.backgroundColor && typeof tplConfig.card.backgroundColor === "string") {
+      cardBgType = "color";
+      cardBgValue = tplConfig.card.backgroundColor;
+    }
+    // Priority 3: Evite decoupled card artwork (pure decorative frame, no baked text)
+    else if ((tplConfig as any)?.card?.artworkUrl) {
+      cardBgType = "image";
+      cardBgValue = (tplConfig as any).card.artworkUrl;
+    }
+    // Priority 4: Clean Template Decoration Image (never with baked-in text)
+    else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
+      cardBgType = "image";
+      cardBgValue = tplConfig.decorationImage;
+    }
+    // Priority 5: Preserved 4-Layer state from invite (if it contains real artwork / image)
     else if (invite?.cardBg && (invite.cardBg.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
@@ -427,48 +458,30 @@ export default function InvitationStudio({
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
-    // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
-    else if ((tplConfig as any)?.card?.artworkUrl) {
-      cardBgType = "image";
-      cardBgValue = (tplConfig as any).card.artworkUrl;
-    }
-    // Priority 2: Clean Template Decoration Image (never with baked-in text)
-    else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
-      cardBgType = "image";
-      cardBgValue = tplConfig.decorationImage;
-    }
-    // Priority 3: Preserved color/gradient from invite
-    else if (invite?.cardBg) {
+    // Priority 6: Preserved color from invite
+    else if (invite?.cardBg && invite.cardBg.value) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background) {
-      cardBgType = invite.background.type;
-      cardBgValue = invite.background.value;
     }
-    // Priority 3: Template gradient (clean — no text, just colors)
-    else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
-      cardBgType = "gradient";
-      cardBgValue = tplConfig.gradient;
-    }
-    // Priority 4: Template solid background color
+    // Priority 7: Template solid background color
     else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 5: User-uploaded invitation image (user-chosen, no template text overlap risk)
+    // Priority 8: User-uploaded invitation image (user-chosen, no template text overlap risk)
     else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
-    // Priority 6: Clean template SVG fallback if invitation has a template image URL
+    // Priority 9: Clean template SVG fallback if invitation has a template image URL
     else if (invite?.imageUrl && invite.imageUrl.includes("/assets/templates/")) {
       cardBgType = "image";
-      cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
+      cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#ffffff";
     }
-    // Fallback: clean warm white
+    // Fallback: crisp white
     else {
       cardBgType = "color";
-      cardBgValue = "#faf8f5";
+      cardBgValue = "#ffffff";
     }
 
     // Resolve Text Layers: prioritize saved text elements from draft/invite whenever present
@@ -605,12 +618,17 @@ export default function InvitationStudio({
     const initialBackdropValue =
       (invite as any)?.canvasWorkspaceBg ||
       (invite as any)?.backdropBackground ||
+      (tplConfig as any)?.backgroundLayer?.gradient ||
+      (tplConfig as any)?.backgroundLayer?.value ||
+      (tplConfig?.backdrop as any)?.gradient ||
+      (tplConfig as any)?.gradient ||
       savedBackdrop.value ||
       defaultAmbientBackdrop;
 
     const savedEnvelope = invite?.envelope || {
-      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || invite?.accentColor || (isDark ? "#18181b" : "#781d60"),
-      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "gold-foil",
+      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
+      flapColor: (tplConfig as any)?.envelope?.flapColor || "#7ba3e8",
+      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "vertical-pink-stripes",
       stamp: "wax",
       sticker: null,
     };
@@ -628,10 +646,20 @@ export default function InvitationStudio({
       photoUrl: null,
     };
 
+    const tplInnerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
+
     const resolvedCard = pendingUploadUrl ? null : {
       ...((tplConfig as any)?.card || {}),
       ...((invite as any)?.card || {}),
       artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      backgroundColor: tplInnerBg,
+      cssConfig: (tplConfig as any)?.card?.cssConfig || (invite as any)?.card?.cssConfig || ((tplConfig as any)?.innerCardLayer ? {
+        backgroundColor: (tplConfig as any)?.innerCardLayer?.backgroundColor || "#ffffff",
+        backgroundGradient: (tplConfig as any)?.innerCardLayer?.backgroundGradient,
+        borderRadius: (tplConfig as any)?.innerCardLayer?.borderRadius || "14px",
+        border: (tplConfig as any)?.innerCardLayer?.border,
+        paperShadow: (tplConfig as any)?.innerCardLayer?.paperShadow,
+      } : undefined),
       decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || [],
       decorativeImages: (invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : []),
       illustrationLayers: (invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
@@ -639,6 +667,27 @@ export default function InvitationStudio({
     };
 
     const resolvedDecorations = resolvedCard?.decorations || [];
+
+    const resolvedBackgroundLayer = (tplConfig as any)?.backgroundLayer || {
+      type: "color",
+      value: (tplConfig?.backdrop as any)?.value || initialBackdropValue,
+      gradient: (tplConfig?.backdrop as any)?.gradient || (tplConfig as any)?.gradient || initialBackdropValue,
+    };
+
+    const resolvedFrameLayers = (tplConfig as any)?.frameLayers || {
+      envelope: savedEnvelope,
+      border: (resolvedCard as any)?.cssConfig?.border || null,
+      artworkUrl: (resolvedCard as any)?.artworkUrl || '',
+      decorativeBorderSvgUrl: (resolvedCard as any)?.decorativeBorderSvgUrl || '',
+    };
+
+    const resolvedInnerCardLayer = (tplConfig as any)?.innerCardLayer || {
+      backgroundColor: resolvedCard?.backgroundColor || "#ffffff",
+      borderRadius: resolvedCard?.cssConfig?.borderRadius || "14px",
+      border: resolvedCard?.cssConfig?.border,
+      paperShadow: resolvedCard?.cssConfig?.paperShadow,
+      aspectRatio: "5/7",
+    };
 
     return {
       activeTemplateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
@@ -658,7 +707,7 @@ export default function InvitationStudio({
       stageBackdrop: {
         ...savedBackdrop,
         value: initialBackdropValue,
-        gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient,
+        gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
       },
       canvasWorkspaceBg: initialBackdropValue,
       backdropBackground: initialBackdropValue,
@@ -668,6 +717,9 @@ export default function InvitationStudio({
       },
       effects: savedEffects,
       backside: savedBackside,
+      backgroundLayer: resolvedBackgroundLayer,
+      frameLayers: resolvedFrameLayers,
+      innerCardLayer: resolvedInnerCardLayer,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
@@ -707,9 +759,9 @@ export default function InvitationStudio({
 
     const effectiveTemplateId = isUploadedSession
       ? null
-      : (cachedDraft?.templateId ||
+      : (templateIdQuery ||
+         cachedDraft?.templateId ||
          mergedInvite?.templateId ||
-         templateIdQuery ||
          initialEvent?.selectedTemplateId ||
          (typeof window !== "undefined"
            ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
@@ -1759,13 +1811,30 @@ export default function InvitationStudio({
       )
     );
 
+    const tplInnerCard = (designState as any)?.innerCardLayer || (tplConfig as any)?.innerCardLayer;
+    const resolvedCardBgColor =
+      tplInnerCard?.backgroundColor ||
+      (designState.card as any)?.backgroundColor ||
+      (designState.card as any)?.cssConfig?.backgroundColor ||
+      (tplConfig as any)?.card?.cssConfig?.backgroundColor ||
+      (tplConfig as any)?.card?.backgroundColor ||
+      (designState.cardBg.type === "color" && !designState.cardBg.value.includes("gradient") ? designState.cardBg.value : null) ||
+      "#ffffff";
+
     const fullCardModel = {
       ...((tplConfig as any)?.card || {}),
       ...(designState.card || {}),
       artworkUrl: effectiveArtworkUrl || (designState.card as any)?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || "",
       decorativeBorderSvgUrl: (designState.card as any)?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || effectiveArtworkUrl || "",
-      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : "#FAF8F5"),
+      backgroundColor: resolvedCardBgColor,
       aspectRatio: (designState.card as any)?.aspectRatio || activePreset.aspect || "5x7",
+      cssConfig: (designState.card as any)?.cssConfig || (tplConfig as any)?.card?.cssConfig || (tplInnerCard ? {
+        backgroundColor: tplInnerCard.backgroundColor || "#ffffff",
+        backgroundGradient: tplInnerCard.backgroundGradient,
+        borderRadius: tplInnerCard.borderRadius || "14px",
+        border: tplInnerCard.border,
+        paperShadow: tplInnerCard.paperShadow,
+      } : undefined),
       decorations: decorativeImages,
       decorativeImages,
       illustrationLayers: (designState.card as any)?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
@@ -1774,9 +1843,7 @@ export default function InvitationStudio({
 
     const fullBackgroundModel = {
       ...designState.cardBg,
-      color: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/")
-        ? designState.cardBg.value
-        : (tplConfig?.backgroundColor || (designState.card as any)?.backgroundColor || "#FAF8F5"),
+      color: resolvedCardBgColor,
       pattern: (designState.cardBg as any)?.pattern || null,
       decorativeImages,
       artworkUrl: effectiveArtworkUrl,
@@ -1792,7 +1859,7 @@ export default function InvitationStudio({
       mainText,
       message,
       accentColor,
-      backgroundColor: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : (tplConfig?.backgroundColor || "#FAF8F5"),
+      backgroundColor: resolvedCardBgColor,
       textColor,
       titleSize,
       fontWeight: titleLayer?.fontWeight || "900",
@@ -1823,6 +1890,22 @@ export default function InvitationStudio({
       envelope: designState.envelope,
       effects: designState.effects,
       backside: designState.backside,
+      backgroundLayer: (designState as any)?.backgroundLayer || (tplConfig as any)?.backgroundLayer || {
+        type: "color",
+        value: designState.stageBackdrop.value,
+        gradient: (designState.stageBackdrop as any)?.gradient,
+      },
+      frameLayers: (designState as any)?.frameLayers || (tplConfig as any)?.frameLayers || {
+        envelope: designState.envelope,
+        border: (fullCardModel.cssConfig as any)?.border || null,
+      },
+      innerCardLayer: tplInnerCard || {
+        backgroundColor: resolvedCardBgColor,
+        borderRadius: (fullCardModel.cssConfig as any)?.borderRadius || "14px",
+        border: (fullCardModel.cssConfig as any)?.border,
+        paperShadow: (fullCardModel.cssConfig as any)?.paperShadow,
+        aspectRatio: "5/7",
+      },
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
       designData: {
@@ -1937,6 +2020,9 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
+                backgroundLayer: payload.backgroundLayer,
+                frameLayers: payload.frameLayers,
+                innerCardLayer: payload.innerCardLayer,
               })
             );
           } catch (e) {}
@@ -2030,6 +2116,9 @@ export default function InvitationStudio({
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
+                  backgroundLayer: designState.backgroundLayer,
+                  frameLayers: designState.frameLayers,
+                  innerCardLayer: designState.innerCardLayer,
                 })
               );
             } catch (e) {}

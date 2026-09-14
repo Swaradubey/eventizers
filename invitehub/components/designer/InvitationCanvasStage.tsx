@@ -5,10 +5,15 @@ import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
-import EvitePureCssStage from "./EvitePureCssStage";
+import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
+  "vertical-pink-stripes":
+    "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+  "pink-stripes":
+    "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
   none: "rgba(0,0,0,0.02)",
   "gold-foil": "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)",
   "silver-foil": "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)",
@@ -212,15 +217,20 @@ export default function InvitationCanvasStage({
     [readOnly, onSelectLayer, editingTextId, setEditingTextId, onUpdateLayer, effectiveCardRef]
   );
 
-  // Resolve Envelope Outer Color & Liner Style
+  // Resolve Envelope Outer Color, Flap Color & Liner Style
   const envelopeOuterColor =
-    (config.envelope as any)?.outerColor || config.envelope?.color || "#781d60";
+    (config.envelope as any)?.outerColor || config.envelope?.color || "#5384db";
+  const envelopeFlapColor =
+    (config.envelope as any)?.flapColor || (config.envelope as any)?.flapBorderColor || "#7ba3e8";
   const linerRaw =
-    (config.envelope as any)?.linerPatternUrl || config.envelope?.liner || "";
+    (config.envelope as any)?.linerPatternUrl || config.envelope?.liner || "vertical-pink-stripes";
   // Support pure-CSS liner (linerCss) OR legacy lookup-table liner
   const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
   const linerStyle =
-    envelopeLinerCss || ENVELOPE_LINERS_DATA[linerRaw] || linerRaw || "rgba(0,0,0,0.02)";
+    envelopeLinerCss ||
+    ENVELOPE_LINERS_DATA[linerRaw] ||
+    (linerRaw && linerRaw.includes("gradient") ? linerRaw : null) ||
+    ENVELOPE_LINERS_DATA["vertical-pink-stripes"];
 
   // Resolve Stamp & Sticker
   const stampEmoji = config.envelope?.stamp
@@ -296,6 +306,7 @@ export default function InvitationCanvasStage({
   const cardImageFit = config.cardImageFit || (isUserUpload ? "contain" : "cover");
 
   const cardBgColor =
+    (config as any).innerCardLayer?.backgroundColor ||
     config.card?.backgroundColor ||
     (config.cardBg?.type === "color"
       ? config.cardBg.value
@@ -304,11 +315,12 @@ export default function InvitationCanvasStage({
       : "#ffffff");
 
   const cardAspectRatio =
-    config.card?.aspectRatio === "5x7"
+    (config as any).innerCardLayer?.aspectRatio ||
+    (config.card?.aspectRatio === "5x7" || config.card?.aspectRatio === "5/7"
       ? "5/7"
-      : config.card?.aspectRatio === "square"
+      : config.card?.aspectRatio === "square" || config.card?.aspectRatio === "1/1"
       ? "1/1"
-      : aspectRatio;
+      : aspectRatio || (isLandscape ? "4/3" : "5/7"));
 
   const backdropValue =
     (config as any)?.canvasWorkspaceBg ||
@@ -354,7 +366,15 @@ export default function InvitationCanvasStage({
   // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
   // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
   // to render a pure-CSS zero-image card. (Bypassed if user uploaded an image).
-  const cssConfig = (config.card as any)?.cssConfig || null;
+  const rawCssConfig = (config.card as any)?.cssConfig;
+  const innerBorder = (config as any).innerCardLayer?.border;
+  const innerShadow = (config as any).innerCardLayer?.boxShadow;
+  const cssConfig = rawCssConfig || innerBorder ? {
+    ...(rawCssConfig || {}),
+    ...(innerBorder ? { border: innerBorder } : {}),
+    ...(innerShadow ? { paperShadow: innerShadow } : {}),
+  } : null;
+
   if (!isUserUpload && (cssConfig || (config as any).isPureCss)) {
     // Build a minimal template-like object from the config for EvitePureCssStage
     const pureCssTpl = {
@@ -378,7 +398,7 @@ export default function InvitationCanvasStage({
         cssConfig,
         artworkUrl: "",
         decorativeBorderSvgUrl: "",
-        aspectRatio: config.card?.aspectRatio || "portrait",
+        aspectRatio: cardAspectRatio,
       },
       textLayers: config.textLayers,
       defaultTextLayers: config.textLayers,
@@ -450,85 +470,34 @@ export default function InvitationCanvasStage({
         className="relative w-full flex flex-col items-center justify-center transition-transform duration-300"
         style={{
           maxWidth: `${maxW}px`,
+          aspectRatio: isLandscape ? "4 / 3" : "5 / 7",
           minHeight: isLandscape ? "520px" : "620px",
           transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
           transformOrigin: "top center",
         }}
       >
         {/* ========================================================================= */}
-        {/* LAYER 2: Envelope & Liner (z-index: 10) - Standing beside/behind card      */}
+        {/* LAYER 2: Envelope & Liner (z-index: 10) - Open vertical pocket behind card */}
         {/* ========================================================================= */}
         <div
           data-layer="2-envelope-container"
           className="absolute pointer-events-none transition-all duration-300 select-none"
           style={{
             zIndex: 10,
-            width: isLandscape ? "86%" : "78%",
-            height: isLandscape ? "94%" : "95%",
-            right: isLandscape ? "-8%" : "-14%",
-            top: "2%",
-            filter: "drop-shadow(0 25px 35px rgba(0, 0, 0, 0.45))",
+            width: isLandscape ? "84%" : "78%",
+            height: isLandscape ? "96%" : "96%",
+            left: isLandscape ? "54%" : "56%",
+            top: isLandscape ? "47%" : "46%",
+            transform: "translate(-50%, -50%)",
           }}
         >
-          {/* Envelope Main Rectangular Body */}
-          <div
-            className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl"
-            style={{
-              background: envelopeOuterColor,
-            }}
-          >
-            {/* Open Interior Pocket with Liner */}
-            <div
-              className="absolute inset-x-2.5 top-2.5 bottom-2.5 rounded-lg overflow-hidden"
-              style={{
-                background: linerStyle,
-              }}
-            >
-              {/* Subtle inner paper shadow */}
-              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] pointer-events-none" />
-            </div>
-
-            {/* Inner V-cut shadow */}
-            <div
-              className="absolute inset-0 pointer-events-none opacity-30"
-              style={{
-                background: "linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 60%)",
-              }}
-            />
-          </div>
-
-          {/* Open Top Triangular Flap (Peak pointing up) */}
-          <div
-            className="absolute -top-[28%] inset-x-0 h-[32%] pointer-events-none"
-            style={{
-              zIndex: 11,
-              background: envelopeOuterColor,
-              clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
-              filter: "drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.25))",
-            }}
-          >
-            {/* Inner Triangular Liner of the Flap */}
-            <div
-              className="absolute inset-x-2 bottom-0 top-1.5 opacity-95"
-              style={{
-                background: linerStyle,
-                clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
-              }}
-            />
-            {/* Optional Stamp on Flap */}
-            {stampEmoji && (
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-amber-500/25 border border-amber-300/40 flex items-center justify-center text-base shadow-xs">
-                {stampEmoji}
-              </div>
-            )}
-          </div>
-
-          {/* Optional Sticker Seal */}
-          {stickerEmoji && (
-            <div className="absolute top-1/2 right-4 w-10 h-10 rounded-full bg-white/95 shadow-md border border-black/10 flex items-center justify-center text-xl pointer-events-none">
-              {stickerEmoji}
-            </div>
-          )}
+          <EnvelopeBackdrop
+            color={envelopeOuterColor}
+            flapColor={envelopeFlapColor}
+            liner={linerStyle}
+            stampEmoji={stampEmoji}
+            stickerEmoji={stickerEmoji}
+          />
         </div>
 
         {/* ========================================================================= */}
@@ -550,11 +519,15 @@ export default function InvitationCanvasStage({
           style={{
             zIndex: 20,
             position: "relative",
-            width: isLandscape ? "88%" : "76%",
+            width: isLandscape ? "88%" : "78%",
             aspectRatio: cardAspectRatio,
+            transform: isLandscape ? "translateX(-2%)" : "translateX(-3%)",
             backgroundColor: cardBgColor,
             background:
-              config.cardBg?.type === "preset" || config.cardBg?.type === "gradient"
+              (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
+              !(config as any).innerCardLayer?.backgroundColor &&
+              config.cardBg.value !== backdropGradient &&
+              config.cardBg.value !== backdropValue
                 ? config.cardBg.value
                 : undefined,
             boxShadow: cardShadowStyle || "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)",
@@ -593,6 +566,9 @@ export default function InvitationCanvasStage({
             </div>
           ) : (
             <>
+              {/* Border Overlay if defined by cssConfig or innerCardLayer */}
+              {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
+
               {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
               {imgSrc && !hasImgError && (
                 <img
@@ -809,6 +785,39 @@ export default function InvitationCanvasStage({
             </>
           )}
         </div>
+
+        {/* Floating Flip Card Pill Button (matching mobile reference preview) */}
+        {onFlipCard && (
+          <button
+            type="button"
+            data-testid="canvas-flip-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFlipCard();
+            }}
+            className="absolute z-30 flex items-center justify-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-md border border-slate-200/90 cursor-pointer pointer-events-auto transition-all active:scale-95"
+            style={{
+              bottom: isLandscape ? "2%" : "3%",
+              left: isLandscape ? "48%" : "47%",
+              transform: "translateX(-50%)",
+            }}
+            title="Flip to view backside"
+          >
+            <svg
+              className="w-3.5 h-3.5 text-slate-700"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="7" height="16" x="4" y="4" rx="1.5" />
+              <path d="M15 8h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4" />
+            </svg>
+            <span>{showingBackside ? "View Front" : "Flip"}</span>
+          </button>
+        )}
       </div>
     </div>
   );

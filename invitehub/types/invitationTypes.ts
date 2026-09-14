@@ -169,6 +169,9 @@ export interface Invitation {
   } | any;
   decorations?: any[];
   background?: CardBgConfig;
+  backgroundLayer?: any;
+  frameLayers?: any;
+  innerCardLayer?: any;
   cardBg?: CardBgConfig;
   effects?: EffectsConfig;
   isLandscape?: boolean;
