@@ -18,27 +18,7 @@ export interface CuratedTemplate {
 }
 
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
-  {
-    id: "tpl-hibiscus-blooms",
-    title: "Hibiscus Blooms",
-    badge: "Trending",
-    category: "Bridal Shower",
-    designer: "Tropical Atelier",
-  },
-  {
-    id: "tpl-chicory-whispers",
-    title: "Chicory Whispers",
-    badge: "Popular",
-    category: "Bridal Shower",
-    designer: "Botanical Press",
-  },
-  {
-    id: "tpl-lovely-blossoms",
-    title: "Lovely Blossoms",
-    badge: "Trending",
-    category: "Bridal Shower",
-    designer: "Blush & Petals",
-  },
+
 
 
 
@@ -50,27 +30,7 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     category: "Birthday",
     designer: "Evite Couture",
   },
-  {
-    id: "tpl-modern-minimalist-arch",
-    title: "Modern Minimalist Arch",
-    badge: "Popular",
-    category: "Birthday",
-    designer: "Studio Minimal",
-  },
-  {
-    id: "tpl-classic-french-dinner",
-    title: "Classic French Dinner",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Atelier Paris",
-  },
-  {
-    id: "tpl-retro-70s-sunset",
-    title: "Retro 70s Sunset",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Vintage Groovy",
-  },
+
 
 ];
 
