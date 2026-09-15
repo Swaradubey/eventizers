@@ -249,13 +249,21 @@ export default function InvitationCanvasStage({
   );
   const isUserUpload = isUploadedBg || isUploadedCard;
 
+  // View mode / Envelope visibility: In standalone "Card Only" mode or by default for custom uploaded images
+  const isCardOnlyMode = Boolean(
+    config.hideEnvelope ||
+    config.viewMode === "card" ||
+    (isUserUpload && config.viewMode !== "envelope" && config.hideEnvelope !== false)
+  );
+  const showEnvelope = !isCardOnlyMode;
+
   const uploadedImageSrc = isUploadedBg
     ? config.cardBg.value
     : (isUploadedCard ? config.card!.artworkUrl : null);
 
   // Resolve fallback template configuration if preset template ID exists
   const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
-  const fallbackTpl = activeTplId ? getTemplateConfig(activeTplId) : null;
+  const fallbackTpl = (!isUserUpload && activeTplId) ? getTemplateConfig(activeTplId) : null;
 
   // Resolve Clean Card Artwork: user uploaded image takes absolute precedence over template defaults
   const cardImageRaw =
@@ -268,8 +276,8 @@ export default function InvitationCanvasStage({
   const cleanCardImage =
     cardImageRaw && !cardImageRaw.startsWith("#") ? getCleanTemplateSvg(cardImageRaw) || cardImageRaw : null;
 
-  // Collect all decorative illustrations (balloons, cake, party hats, candles, gifts)
-  const rawDecorations: any[] = [
+  // Collect decorative illustrations (balloons, cake, party hats, candles, gifts) only for non-upload templates
+  const rawDecorations: any[] = isUserUpload ? [] : [
     ...((config.card as any)?.decorations || []),
     ...((config as any)?.decorations || []),
     ...((config as any)?.template?.decorations || []),
@@ -322,12 +330,17 @@ export default function InvitationCanvasStage({
       ? "1/1"
       : aspectRatio || (isLandscape ? "4/3" : "5/7"));
 
-  const backdropValue =
+  const cleanNeutralBg = "#f8fafc";
+  const rawBackdropValue =
     (config as any)?.canvasWorkspaceBg ||
     (config as any)?.backdropBackground ||
     config.backdrop?.value ||
     config.stageBackdrop?.value ||
-    "#0f172a";
+    (isCardOnlyMode ? cleanNeutralBg : "#0f172a");
+
+  const backdropValue = isCardOnlyMode
+    ? (rawBackdropValue && !rawBackdropValue.includes("evite_gold_swirl") && !rawBackdropValue.includes("gold-swirl") ? rawBackdropValue : cleanNeutralBg)
+    : rawBackdropValue;
 
   const backdropGradient =
     (config as any)?.canvasWorkspaceBg ||
@@ -361,7 +374,11 @@ export default function InvitationCanvasStage({
       ? "0 18px 36px -8px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)"
       : config.effects?.shadow === "subtle"
       ? "0 6px 16px rgba(0,0,0,0.12)"
-      : "none";
+      : config.effects?.shadow === "none"
+      ? "none"
+      : isCardOnlyMode
+      ? "0 20px 40px -15px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)"
+      : "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)";
 
   // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
   // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
@@ -446,10 +463,12 @@ export default function InvitationCanvasStage({
       style={{
         zIndex: 1,
         background: isBackdropGradient ? backdropGradient : undefined,
-        backgroundColor: isBackdropGradient ? undefined : (backdropValue?.startsWith("#") || backdropValue?.startsWith("rgb") ? backdropValue : "#1c1917"),
-        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http"))
+        backgroundColor: isBackdropGradient
+          ? undefined
+          : (backdropValue?.startsWith("#") || backdropValue?.startsWith("rgb") ? backdropValue : (isCardOnlyMode ? "#f8fafc" : "#1c1917")),
+        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http")) && !backdropValue.includes("evite_gold_swirl")
           ? `url('${backdropValue}')`
-          : isBackdropGradient
+          : isBackdropGradient || isCardOnlyMode
             ? undefined
             : `url('/assets/backdrops/evite_gold_swirl.jpg')`,
         backgroundSize: "cover",
@@ -479,26 +498,28 @@ export default function InvitationCanvasStage({
         {/* ========================================================================= */}
         {/* LAYER 2: Envelope & Liner (z-index: 10) - Open vertical pocket behind card */}
         {/* ========================================================================= */}
-        <div
-          data-layer="2-envelope-container"
-          className="absolute pointer-events-none transition-all duration-300 select-none"
-          style={{
-            zIndex: 10,
-            width: isLandscape ? "84%" : "78%",
-            height: isLandscape ? "96%" : "96%",
-            left: isLandscape ? "54%" : "56%",
-            top: isLandscape ? "47%" : "46%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <EnvelopeBackdrop
-            color={envelopeOuterColor}
-            flapColor={envelopeFlapColor}
-            liner={linerStyle}
-            stampEmoji={stampEmoji}
-            stickerEmoji={stickerEmoji}
-          />
-        </div>
+        {showEnvelope && (
+          <div
+            data-layer="2-envelope-container"
+            className="absolute pointer-events-none transition-all duration-300 select-none"
+            style={{
+              zIndex: 10,
+              width: isLandscape ? "84%" : "78%",
+              height: isLandscape ? "96%" : "96%",
+              left: isLandscape ? "54%" : "56%",
+              top: isLandscape ? "47%" : "46%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <EnvelopeBackdrop
+              color={envelopeOuterColor}
+              flapColor={envelopeFlapColor}
+              liner={linerStyle}
+              stampEmoji={stampEmoji}
+              stickerEmoji={stickerEmoji}
+            />
+          </div>
+        )}
 
         {/* ========================================================================= */}
         {/* LAYER 3: Invitation Card Surface (z-index: 20)                            */}
@@ -519,9 +540,9 @@ export default function InvitationCanvasStage({
           style={{
             zIndex: 20,
             position: "relative",
-            width: isLandscape ? "88%" : "78%",
+            width: isCardOnlyMode ? (isLandscape ? "92%" : "84%") : (isLandscape ? "88%" : "78%"),
             aspectRatio: cardAspectRatio,
-            transform: isLandscape ? "translateX(-2%)" : "translateX(-3%)",
+            transform: isCardOnlyMode ? "none" : (isLandscape ? "translateX(-2%)" : "translateX(-3%)"),
             backgroundColor: cardBgColor,
             background:
               (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
@@ -530,7 +551,7 @@ export default function InvitationCanvasStage({
               config.cardBg.value !== backdropValue
                 ? config.cardBg.value
                 : undefined,
-            boxShadow: cardShadowStyle || "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)",
+            boxShadow: cardShadowStyle,
           }}
         >
           {showingBackside ? (

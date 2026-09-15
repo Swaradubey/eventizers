@@ -125,6 +125,8 @@ export interface CanvasStageConfig {
     photoUrl?: string | null;
   };
   showingBackside?: boolean;
+  viewMode?: "card" | "envelope";
+  hideEnvelope?: boolean;
 }
 
 export interface Invitation {

@@ -206,6 +206,8 @@ export interface StudioDesignState {
   backgroundLayer?: any;
   frameLayers?: any;
   innerCardLayer?: any;
+  viewMode?: "card" | "envelope";
+  hideEnvelope?: boolean;
 }
 
 interface InvitationStudioProps {
@@ -704,13 +706,15 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
-      stageBackdrop: {
-        ...savedBackdrop,
-        value: initialBackdropValue,
-        gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
-      },
-      canvasWorkspaceBg: initialBackdropValue,
-      backdropBackground: initialBackdropValue,
+      stageBackdrop: pendingUploadUrl
+        ? { type: "color", value: "#f8fafc" }
+        : {
+            ...savedBackdrop,
+            value: initialBackdropValue,
+            gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
+          },
+      canvasWorkspaceBg: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
+      backdropBackground: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       envelope: {
         ...savedEnvelope,
         linerCss: (tplConfig?.envelope as any)?.linerCss || (savedEnvelope as any)?.linerCss,
@@ -720,6 +724,8 @@ export default function InvitationStudio({
       backgroundLayer: resolvedBackgroundLayer,
       frameLayers: resolvedFrameLayers,
       innerCardLayer: resolvedInnerCardLayer,
+      viewMode: pendingUploadUrl ? "card" : "envelope",
+      hideEnvelope: Boolean(pendingUploadUrl),
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
@@ -770,7 +776,7 @@ export default function InvitationStudio({
     const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, mergedInvite as any);
 
     // If the user came from "Upload Existing", override the card background with the
-    // uploaded image URL — this has highest priority over any template background.
+    // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
     if (isUploadedSession && pendingUploadUrl) {
       baseState.cardBg = { type: "image", value: pendingUploadUrl };
       baseState.card = null;
@@ -779,21 +785,28 @@ export default function InvitationStudio({
       baseState.activeTemplateId = null;
       baseState.templateId = null;
       baseState.cardImageFit = "contain";
+      baseState.hideEnvelope = true;
+      baseState.viewMode = "card";
+      baseState.stageBackdrop = { type: "color", value: "#f8fafc" };
+      baseState.canvasWorkspaceBg = "#f8fafc";
+      baseState.backdropBackground = "#f8fafc";
     }
 
     if (typeof window !== "undefined") {
-      // If AI generated dynamic 4-layer stationery design, seamlessly inject all layers
-      const pendingStationery = sessionStorage.getItem("pending_stationery_design");
+      // If AI generated dynamic 4-layer stationery design or extracted text layers from upload
+      const pendingStationery = sessionStorage.getItem("pending_stationery_design") || localStorage.getItem("pending_stationery_design");
       if (pendingStationery) {
         try {
           const sd = JSON.parse(pendingStationery);
-          if (sd.envelopeColor) baseState.envelope.color = sd.envelopeColor;
-          if (sd.envelopeLiner) {
+          if (sd.envelopeColor && !isUploadedSession) baseState.envelope.color = sd.envelopeColor;
+          if (sd.envelopeLiner && !isUploadedSession) {
             baseState.envelope.liner = sd.envelopeLiner;
             baseState.envelope.linerCss = sd.envelopeLiner;
           }
-          if (sd.backdropColor) {
+          if (sd.backdropColor && !isUploadedSession) {
             baseState.stageBackdrop = { type: "color", value: sd.backdropColor };
+            baseState.canvasWorkspaceBg = sd.backdropColor;
+            baseState.backdropBackground = sd.backdropColor;
           }
           if (sd.cardBgColor && (!baseState.cardBg || baseState.cardBg.type !== "image")) {
             baseState.cardBg = { type: "color", value: sd.cardBgColor };
@@ -803,20 +816,21 @@ export default function InvitationStudio({
               id: el.id || `ai-layer-${idx}`,
               key: el.role || el.id || `layer-${idx}`,
               text: el.text || "",
-              x: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : 50,
-              y: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (22 + idx * 12),
-              top: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (22 + idx * 12),
-              left: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : 50,
-              fontSize: el.fontSize || (el.role === "title" ? 36 : 14),
+              x: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : (el.left !== undefined ? el.left : 50),
+              y: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (el.top !== undefined ? el.top : 22 + idx * 12),
+              top: el.y !== undefined ? (el.y > 1 ? el.y : Math.round(el.y * 100)) : (el.top !== undefined ? el.top : 22 + idx * 12),
+              left: el.x !== undefined ? (el.x > 1 ? el.x : Math.round(el.x * 100)) : (el.left !== undefined ? el.left : 50),
+              fontSize: el.fontSize || (el.role === "title" ? 36 : 16),
               fontFamily: el.fontFamily?.includes("'") ? el.fontFamily : `'${el.fontFamily || "Inter"}', sans-serif`,
               color: el.color || "#1E293B",
               fontWeight: el.role === "title" ? "800" : "600",
-              align: "center",
-              textAlign: "center",
-              letterSpacing: 0.5,
-              lineHeight: 1.2,
-              casing: "none" as const,
+              align: (el.align || el.textAlign || "center") as "left" | "center" | "right",
+              textAlign: (el.textAlign || el.align || "center") as "left" | "center" | "right",
+              letterSpacing: el.letterSpacing ?? 0.5,
+              lineHeight: el.lineHeight ?? 1.2,
+              casing: (el.casing || "none") as "uppercase" | "lowercase" | "capitalize" | "none",
             }));
+            baseState.selectedTextId = baseState.textLayers[0]?.id || "layer-title";
           }
         } catch (e) {
           console.warn("Could not apply pending_stationery_design:", e);
@@ -2646,6 +2660,46 @@ export default function InvitationStudio({
             </div>
           </>
         )}
+
+        {/* View Mode Switcher: Standalone Card Only vs Card + Envelope Presentation */}
+        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">View</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDesignState((prev) => ({
+                ...prev,
+                viewMode: "card",
+                hideEnvelope: true,
+              }));
+            }}
+            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.viewMode === "card" || designState.hideEnvelope)
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
+            title="Standalone Card Only View"
+          >
+            Card Only
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDesignState((prev) => ({
+                ...prev,
+                viewMode: "envelope",
+                hideEnvelope: false,
+              }));
+            }}
+            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(!designState.hideEnvelope && designState.viewMode !== "card")
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
+            title="Card + Envelope Presentation View"
+          >
+            Envelope View
+          </button>
+        </div>
       </div>
 
       {/* ========================================================================= */}

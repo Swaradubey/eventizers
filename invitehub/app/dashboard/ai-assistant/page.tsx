@@ -762,6 +762,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           })),
         };
         safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
       }
     } catch (e) {
       console.error("Failed to store pending upload:", e);
