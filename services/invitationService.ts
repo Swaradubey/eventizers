@@ -106,6 +106,19 @@ export interface PublicInvitationResponse {
     eventDate: string;
     eventTime: string;
     coverImage?: string;
+    selectedTemplateId?: string;
+    rsvpSettings?: {
+      rsvpDeadlineEnabled?: boolean;
+      rsvpDeadlineDate?: string | null;
+      allowLateRsvp?: boolean;
+      allowMaybe?: boolean;
+      isPrivateGuestList?: boolean;
+      allowPlusOne?: boolean;
+      maxAdditionalGuests?: number;
+      collectDietaryRestrictions?: boolean;
+      collectMealPreference?: boolean;
+      requirePhoneNumber?: boolean;
+    } | null;
   };
 }
 
@@ -114,7 +127,12 @@ export interface PublicRSVPayload {
   name: string;
   email: string;
   phone?: string;
-  rsvpStatus: "confirmed" | "declined" | "attending";
+  rsvpStatus: "confirmed" | "declined" | "maybe";
+  adultsCount?: number;
+  childrenCount?: number;
+  additionalGuests?: number;
+  dietaryPreference?: string;
+  specialDietaryRequests?: string;
 }
 
 export const getPublicInvitation = async (id: string): Promise<PublicInvitationResponse> => {
@@ -124,6 +142,11 @@ export const getPublicInvitation = async (id: string): Promise<PublicInvitationR
 
 export const submitPublicRSVP = async (payload: PublicRSVPayload): Promise<{ success: boolean; message: string; guest?: any }> => {
   const response = await API.post<{ success: boolean; message: string; guest?: any }>("/invitations/public/rsvp", payload);
+  return response.data;
+};
+
+export const getPublicRsvpSettings = async (eventId: string): Promise<{ success: boolean; rsvpSettings: any }> => {
+  const response = await API.get<{ success: boolean; rsvpSettings: any }>(`/invitations/public/${eventId}/rsvp-settings`);
   return response.data;
 };
 
@@ -138,6 +161,7 @@ const invitationService = {
   sendInvitationToGuests,
   getPublicInvitation,
   submitPublicRSVP,
+  getPublicRsvpSettings,
 };
 
 export default invitationService;

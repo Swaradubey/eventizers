@@ -35,7 +35,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   className = "",
   overrideTextLayers,
   aspectRatio = "5x7",
-  cardOnly = false,
+  cardOnly = true,
 }) => {
   // Resolve template from prop, templateId, or event.selectedTemplateId
   const effectiveTemplateId =

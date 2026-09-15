@@ -431,13 +431,20 @@ export default function InvitationStudio({
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
-    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image)
-    else if (invite?.cardBg && (invite.cardBg.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
+    // Priority 0a: Preserved 4-Layer cardBg from invite (from localStorage cache or DB)
+    else if (invite?.cardBg && invite.cardBg.value) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background && (invite.background.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
+    }
+    // Priority 0b: Preserved background from invite
+    else if (invite?.background && invite.background.value) {
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
+    }
+    // Priority 0c: Invite card.artworkUrl (from localStorage cache with full 4-layer state)
+    else if ((invite as any)?.card?.artworkUrl && !isUserUploadedImage((invite as any).card.artworkUrl)) {
+      cardBgType = "image";
+      cardBgValue = (invite as any).card.artworkUrl;
     }
     // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
     else if ((tplConfig as any)?.card?.artworkUrl) {
@@ -457,22 +464,22 @@ export default function InvitationStudio({
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
-    // Priority 3: Template gradient (clean — no text, just colors)
+    // Priority 4: Template gradient (clean — no text, just colors)
     else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
       cardBgType = "gradient";
       cardBgValue = tplConfig.gradient;
     }
-    // Priority 4: Template solid background color
+    // Priority 5: Template solid background color
     else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 5: User-uploaded invitation image (user-chosen, no template text overlap risk)
+    // Priority 6: User-uploaded invitation image (user-chosen, no template text overlap risk)
     else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
-    // Priority 6: Clean template SVG fallback if invitation has a template image URL
+    // Priority 7: Clean template SVG fallback if invitation has a template image URL
     else if (invite?.imageUrl && invite.imageUrl.includes("/assets/templates/")) {
       cardBgType = "image";
       cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
@@ -646,7 +653,8 @@ export default function InvitationStudio({
     const resolvedCard = pendingUploadUrl ? null : {
       ...((tplConfig as any)?.card || {}),
       ...((invite as any)?.card || {}),
-      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" && !isUserUploadedImage(cardBgValue) ? cardBgValue : ""),
+      decorativeBorderSvgUrl: (invite as any)?.card?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || "",
       backgroundColor: tplInnerBg,
       cssConfig: (tplConfig as any)?.card?.cssConfig || (invite as any)?.card?.cssConfig || ((tplConfig as any)?.innerCardLayer ? {
         backgroundColor: (tplConfig as any)?.innerCardLayer?.backgroundColor || "#ffffff",
@@ -759,6 +767,7 @@ export default function InvitationStudio({
     const effectiveTemplateId = isUploadedSession
       ? null
       : (templateIdQuery ||
+         cachedDraft?.activeTemplateId ||
          cachedDraft?.templateId ||
          mergedInvite?.templateId ||
          initialEvent?.selectedTemplateId ||
@@ -1337,12 +1346,30 @@ export default function InvitationStudio({
     setCurrentInvitation(targetInvite.id ? targetInvite : null);
     setDesignState({
       ...freshState,
-      card: targetInvite.card || freshState.card,
-      cardBg: targetInvite.cardBg || targetInvite.background || freshState.cardBg,
-      decorations: targetInvite.decorations || targetInvite.card?.decorations || freshState.decorations || [],
+      activeTemplateId: cachedDraft?.activeTemplateId || targetInvite.templateId || freshState.activeTemplateId,
+      isPureCss: cachedDraft?.isPureCss ?? freshState.isPureCss,
+      cardImageFit: cachedDraft?.cardImageFit || freshState.cardImageFit,
+      card: targetInvite.card || cachedDraft?.card || freshState.card,
+      cardBg: targetInvite.cardBg || targetInvite.background || cachedDraft?.cardBg || cachedDraft?.background || freshState.cardBg,
+      decorations: targetInvite.decorations || targetInvite.card?.decorations || cachedDraft?.decorations || freshState.decorations || [],
+      backgroundLayer: cachedDraft?.backgroundLayer || freshState.backgroundLayer,
+      innerCardLayer: cachedDraft?.innerCardLayer || freshState.innerCardLayer,
+      frameLayers: cachedDraft?.frameLayers || freshState.frameLayers,
+      photoSlot: cachedDraft?.photoSlot || freshState.photoSlot,
+      viewMode: cachedDraft?.viewMode || freshState.viewMode,
+      hideEnvelope: cachedDraft?.hideEnvelope ?? freshState.hideEnvelope,
+      stageBackdrop: cachedDraft?.stageBackdrop || freshState.stageBackdrop,
+      canvasWorkspaceBg: cachedDraft?.canvasWorkspaceBg || freshState.canvasWorkspaceBg,
+      backdropBackground: cachedDraft?.backdropBackground || freshState.backdropBackground,
+      envelope: cachedDraft?.envelope || freshState.envelope,
+      effects: cachedDraft?.effects || freshState.effects,
+      backside: cachedDraft?.backside || freshState.backside,
+      isLandscape: cachedDraft?.isLandscape ?? freshState.isLandscape,
       textLayers: (targetInvite.textElements && targetInvite.textElements.length > 0)
         ? targetInvite.textElements
-        : freshState.textLayers,
+        : (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
+          ? cachedDraft.textElements
+          : freshState.textLayers,
       eventDetails: {
         ...freshState.eventDetails,
         title: foundEvt.title || targetInvite.eventTitle || targetInvite.title || freshState.eventDetails.title,
@@ -1719,6 +1746,21 @@ export default function InvitationStudio({
       setDesignState((prev) => ({ ...prev, selectedTextId: null }));
       await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
 
+      // Wait for ALL images inside the card container to be fully loaded before snapshot
+      const imgs = targetNode.querySelectorAll('img');
+      await Promise.all(
+        Array.from(imgs).map((img) => {
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            setTimeout(resolve, 3000);
+          });
+        })
+      );
+      // Extra frame to ensure layout is stable after image loads
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 80)));
+
       // Multi-stage capture with graceful fallbacks
       let dataUrl: string | null = null;
       const bgColor = typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("gradient")
@@ -2067,6 +2109,17 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
+                activeTemplateId: designState.activeTemplateId,
+                isPureCss: designState.isPureCss,
+                cardImageFit: designState.cardImageFit,
+                viewMode: designState.viewMode,
+                hideEnvelope: designState.hideEnvelope,
+                backgroundLayer: designState.backgroundLayer,
+                innerCardLayer: designState.innerCardLayer,
+                frameLayers: designState.frameLayers,
+                photoSlot: designState.photoSlot,
+                canvasWorkspaceBg: designState.canvasWorkspaceBg,
+                backdropBackground: designState.backdropBackground,
               })
             );
           } catch (e) {}
@@ -2173,6 +2226,17 @@ export default function InvitationStudio({
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
+                  activeTemplateId: designState.activeTemplateId,
+                  isPureCss: designState.isPureCss,
+                  cardImageFit: designState.cardImageFit,
+                  viewMode: designState.viewMode,
+                  hideEnvelope: designState.hideEnvelope,
+                  backgroundLayer: designState.backgroundLayer,
+                  innerCardLayer: designState.innerCardLayer,
+                  frameLayers: designState.frameLayers,
+                  photoSlot: designState.photoSlot,
+                  canvasWorkspaceBg: designState.canvasWorkspaceBg,
+                  backdropBackground: designState.backdropBackground,
                 })
               );
             } catch (e) {}
@@ -2311,7 +2375,13 @@ export default function InvitationStudio({
         }
       }
 
-      // 2. Prepare payload
+      // 2. Prepare payload — include full design state so backend cardRenderer can
+      // reconstruct the card background and text layers as a fallback
+      const fullCardModel = {
+        ...(designState.card || {}),
+        artworkUrl: (designState.card as any)?.artworkUrl || "",
+        backgroundColor: (designState.card as any)?.backgroundColor || designState.cardBg?.value || "#FAF8F5",
+      };
       payload = {
         invitationId: activeInvitationId,
         eventId: targetEventId,
@@ -2329,6 +2399,13 @@ export default function InvitationStudio({
         cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
         cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
         eventDetails: designState.eventDetails,
+        card: fullCardModel,
+        cardBg: designState.cardBg,
+        background: designState.cardBg,
+        textElements: designState.textLayers,
+        decorations: designState.decorations || [],
+        envelope: designState.envelope,
+        effects: designState.effects,
       };
 
       // 3. Dispatch to backend endpoint

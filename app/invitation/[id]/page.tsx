@@ -15,6 +15,11 @@ import {
   AlertCircle,
   RefreshCw,
   Check,
+  Users,
+  Minus,
+  Plus,
+  UtensilsCrossed,
+  AlarmClock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import invitationService from "@/services/invitationService";
@@ -59,7 +64,12 @@ export default function PublicInvitationPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [rsvpStatus, setRsvpStatus] = useState<"confirmed" | "declined">("confirmed");
+  const [rsvpStatus, setRsvpStatus] = useState<"confirmed" | "declined" | "maybe">("confirmed");
+  const [adultsCount, setAdultsCount] = useState(1);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [additionalGuests, setAdditionalGuests] = useState(0);
+  const [dietaryPreference, setDietaryPreference] = useState<string>("");
+  const [specialDietaryRequests, setSpecialDietaryRequests] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false);
   const [rsvpFeedback, setRsvpFeedback] = useState<string | null>(null);
@@ -81,7 +91,19 @@ export default function PublicInvitationPage() {
         const res = await invitationService.getPublicInvitation(invitationId);
         if (res.success && res.invitation) {
           setInvitation(res.invitation);
-          setEventData(res.event);
+          let eventInfo = res.event;
+
+          // Fallback: fetch rsvpSettings separately if not included in event response
+          if (eventInfo && !eventInfo.rsvpSettings) {
+            try {
+              const settingsRes = await invitationService.getPublicRsvpSettings(eventInfo.id);
+              if (settingsRes.success && settingsRes.rsvpSettings) {
+                eventInfo = { ...eventInfo, rsvpSettings: settingsRes.rsvpSettings };
+              }
+            } catch (_) {}
+          }
+
+          setEventData(eventInfo);
         } else {
           setError(res.error || "Invitation not found.");
         }
@@ -116,6 +138,11 @@ export default function PublicInvitationPage() {
         email: email.trim(),
         phone: phone.trim() || undefined,
         rsvpStatus,
+        adultsCount: rsvpStatus !== "declined" ? adultsCount : undefined,
+        childrenCount: rsvpStatus !== "declined" ? childrenCount : undefined,
+        additionalGuests: rsvpStatus !== "declined" ? additionalGuests : undefined,
+        dietaryPreference: rsvpStatus !== "declined" ? dietaryPreference || undefined : undefined,
+        specialDietaryRequests: rsvpStatus !== "declined" ? specialDietaryRequests.trim() || undefined : undefined,
       });
 
       if (res.success) {
@@ -199,6 +226,25 @@ export default function PublicInvitationPage() {
   const titleSize = invitation?.titleSize ? `${Math.min(invitation.titleSize, 56)}px` : "40px";
   const textAlignment = (invitation?.textAlignment || "center") as any;
   const fontFamily = invitation?.fontFamily === "Playfair Display" ? "'Playfair Display', serif" : invitation?.fontFamily || "sans-serif";
+
+  // RSVP Settings
+  const rsvpSettings = eventData?.rsvpSettings || null;
+  const allowMaybe = rsvpSettings?.allowMaybe ?? true;
+  const isPrivateGuestList = rsvpSettings?.isPrivateGuestList ?? false;
+  const allowPlusOne = rsvpSettings?.allowPlusOne ?? true;
+  const maxAdditionalGuests = rsvpSettings?.maxAdditionalGuests ?? 1;
+  const deadlineEnabled = rsvpSettings?.rsvpDeadlineEnabled ?? false;
+  const deadlineDate = rsvpSettings?.rsvpDeadlineDate || rsvpSettings?.rsvpDeadline;
+  const allowLateRsvp = rsvpSettings?.allowLateRsvp ?? false;
+  const collectDietary = rsvpSettings?.collectDietaryRestrictions ?? false;
+  const collectMeal = rsvpSettings?.collectMealPreference ?? false;
+
+  const isDeadlinePassed = (() => {
+    if (!deadlineEnabled || !deadlineDate) return false;
+    const d = new Date(deadlineDate);
+    if (isNaN(d.getTime())) return false;
+    return new Date() > d && !allowLateRsvp;
+  })();
 
   const fullVenueLocation = [
     eventData.venue,
@@ -303,6 +349,21 @@ export default function PublicInvitationPage() {
               <p className="text-xs text-gray-500 mt-1">Please confirm whether you will be joining us</p>
             </div>
 
+            {/* RSVP Deadline Expired Banner */}
+            {isDeadlinePassed && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100">
+                  <AlarmClock className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-amber-900">RSVP Deadline Has Passed</p>
+                  <p className="text-xs text-amber-700">
+                    The deadline to respond was {new Date(deadlineDate!).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. You may no longer submit a response.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {rsvpSubmitted ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -322,7 +383,7 @@ export default function PublicInvitationPage() {
                 </button>
               </motion.div>
             ) : (
-              <form onSubmit={handleRSVPSubmit} className="space-y-4">
+              <form onSubmit={handleRSVPSubmit} className="space-y-4" aria-disabled={isDeadlinePassed}>
                 {rsvpError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -331,31 +392,49 @@ export default function PublicInvitationPage() {
                 )}
 
                 {/* RSVP Choice Buttons */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${allowMaybe ? "grid-cols-3" : "grid-cols-2"}`}>
                   <button
                     type="button"
                     onClick={() => setRsvpStatus("confirmed")}
-                    className={`py-3.5 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                    disabled={isDeadlinePassed}
+                    className={`py-3.5 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       rsvpStatus === "confirmed"
                         ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm"
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                     }`}
                   >
                     <CheckCircle className={`w-4 h-4 ${rsvpStatus === "confirmed" ? "text-emerald-600" : "text-gray-400"}`} />
-                    Yes, I'll attend
+                    Yes, I'll be there
                   </button>
+
+                  {allowMaybe && (
+                    <button
+                      type="button"
+                      onClick={() => setRsvpStatus("maybe")}
+                      disabled={isDeadlinePassed}
+                      className={`py-3.5 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                        rsvpStatus === "maybe"
+                          ? "border-amber-600 bg-amber-50 text-amber-900 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Clock className={`w-4 h-4 ${rsvpStatus === "maybe" ? "text-amber-600" : "text-gray-400"}`} />
+                      Maybe
+                    </button>
+                  )}
 
                   <button
                     type="button"
                     onClick={() => setRsvpStatus("declined")}
-                    className={`py-3.5 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                    disabled={isDeadlinePassed}
+                    className={`py-3.5 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       rsvpStatus === "declined"
                         ? "border-rose-600 bg-rose-50 text-rose-900 shadow-sm"
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                     }`}
                   >
                     <XCircle className={`w-4 h-4 ${rsvpStatus === "declined" ? "text-rose-600" : "text-gray-400"}`} />
-                    Regretfully Decline
+                    No, I can't
                   </button>
                 </div>
 
@@ -367,8 +446,9 @@ export default function PublicInvitationPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    disabled={isDeadlinePassed}
                     placeholder="e.g. Alex Morgan"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -380,8 +460,9 @@ export default function PublicInvitationPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isDeadlinePassed}
                     placeholder="e.g. alex@example.com"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -392,16 +473,183 @@ export default function PublicInvitationPage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    disabled={isDeadlinePassed}
                     placeholder="e.g. +1 (555) 000-0000"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
+
+                {/* Family Headcount — shown when attending or maybe */}
+                {(rsvpStatus === "confirmed" || rsvpStatus === "maybe") && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 pt-1"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-gray-500" />
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Headcount</span>
+                    </div>
+
+                    {/* Adults */}
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Number of Adults (18+)</p>
+                        <p className="text-xs text-gray-500">Including yourself</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAdultsCount(Math.max(1, adultsCount - 1))}
+                          disabled={isDeadlinePassed || adultsCount <= 1}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-bold text-gray-900">{adultsCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdultsCount(adultsCount + 1)}
+                          disabled={isDeadlinePassed}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Children */}
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Number of Children (under 12)</p>
+                        <p className="text-xs text-gray-500">If applicable</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setChildrenCount(Math.max(0, childrenCount - 1))}
+                          disabled={isDeadlinePassed || childrenCount <= 0}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-bold text-gray-900">{childrenCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => setChildrenCount(childrenCount + 1)}
+                          disabled={isDeadlinePassed}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Additional Guests (+1, +2, etc.) — shown when host allows */}
+                {(rsvpStatus === "confirmed" || rsvpStatus === "maybe") && allowPlusOne && maxAdditionalGuests > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="pt-1"
+                  >
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Bringing Additional Guests?</p>
+                        <p className="text-xs text-gray-500">Max {maxAdditionalGuests} guest{maxAdditionalGuests > 1 ? "s" : ""} allowed</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAdditionalGuests(Math.max(0, additionalGuests - 1))}
+                          disabled={isDeadlinePassed || additionalGuests <= 0}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-bold text-gray-900">{additionalGuests}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdditionalGuests(Math.min(maxAdditionalGuests, additionalGuests + 1))}
+                          disabled={isDeadlinePassed || additionalGuests >= maxAdditionalGuests}
+                          className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Meal / Dietary Preferences — shown when attending and host collects it */}
+                {(rsvpStatus === "confirmed" || rsvpStatus === "maybe") && (collectDietary || collectMeal) && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 pt-1"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <UtensilsCrossed className="w-4 h-4 text-gray-500" />
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Dietary Preferences</span>
+                    </div>
+
+                    {/* Veg / Non-Veg Radio Buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDietaryPreference(dietaryPreference === "veg" ? "" : "veg")}
+                        disabled={isDeadlinePassed}
+                        className={`flex-1 py-3 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                          dietaryPreference === "veg"
+                            ? "border-green-600 bg-green-50 text-green-900 shadow-sm"
+                            : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-green-500 border-2 border-green-600" />
+                        Veg
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDietaryPreference(dietaryPreference === "non-veg" ? "" : "non-veg")}
+                        disabled={isDeadlinePassed}
+                        className={`flex-1 py-3 px-4 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                          dietaryPreference === "non-veg"
+                            ? "border-orange-600 bg-orange-50 text-orange-900 shadow-sm"
+                            : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-orange-500 border-2 border-orange-600" />
+                        Non-Veg
+                      </button>
+                    </div>
+
+                    {/* Special Dietary Requests */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Special Dietary Requests / Allergies
+                      </label>
+                      <textarea
+                        value={specialDietaryRequests}
+                        onChange={(e) => setSpecialDietaryRequests(e.target.value)}
+                        disabled={isDeadlinePassed}
+                        placeholder="e.g. Gluten-free, nut allergy, etc."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B3D] text-gray-900 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Submit RSVP Button */}
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 text-sm font-bold text-white shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50"
+                  disabled={submitting || isDeadlinePassed}
+                  className="w-full py-4 text-sm font-bold text-white shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: buttonColor,
                     borderRadius: buttonRadius,
@@ -422,6 +670,16 @@ export default function PublicInvitationPage() {
               </form>
             )}
           </div>
+
+          {/* 4. [Who's Coming / Attendee List] — hidden when private */}
+          {!isPrivateGuestList && (
+            <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 text-left shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Who's Coming</h3>
+              <p className="text-sm text-gray-500 italic">
+                The attendee list will be visible here once guests have confirmed their attendance.
+              </p>
+            </div>
+          )}
 
           {/* 4. [Date, Time, Location & Event Details Card] */}
           <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 space-y-5 text-left shadow-sm">

@@ -297,16 +297,28 @@ export default function InvitationCanvasStage({
 
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
   const [hasImgError, setHasImgError] = useState(false);
+  const triedFallbacksRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setImgSrc(cleanCardImage);
     setHasImgError(false);
+    triedFallbacksRef.current = new Set();
   }, [cleanCardImage]);
 
   const handleImageError = () => {
+    if (!imgSrc) {
+      setHasImgError(true);
+      return;
+    }
+    // Track which URLs we've already tried to prevent infinite loops
+    triedFallbacksRef.current.add(imgSrc);
+
     // If -bg.svg clean variant failed to load, fallback to cardImageRaw
-    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw) {
+    if (cardImageRaw && imgSrc !== cardImageRaw && !triedFallbacksRef.current.has(cardImageRaw)) {
       setImgSrc(cardImageRaw);
+    } else if (fallbackTpl?.card?.artworkUrl && fallbackTpl.card.artworkUrl !== imgSrc && !triedFallbacksRef.current.has(fallbackTpl.card.artworkUrl)) {
+      // Try template config artwork URL as last resort before giving up
+      setImgSrc(fallbackTpl.card.artworkUrl);
     } else {
       setHasImgError(true);
     }
