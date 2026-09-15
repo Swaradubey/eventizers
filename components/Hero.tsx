@@ -107,6 +107,7 @@ export default function Hero() {
   const { user } = useAuth();
   const router = useRouter();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingAuthAction, setPendingAuthAction] = useState<"ai" | "upload" | null>(null);
 
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
@@ -240,13 +241,10 @@ export default function Hero() {
   const handleGenerate = async () => {
     if (!user) {
       try {
-        const guestDraft = {
-          type: "ai",
-          prompt: prompt.trim(),
-        };
-        localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+        sessionStorage.setItem("pending_prompt", prompt.trim());
       } catch (e) {}
-      router.push("/canvas?guest=true");
+      setPendingAuthAction("ai");
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -495,12 +493,22 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (!user) {
+      setPendingAuthAction("upload");
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      setPendingAuthAction("upload");
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.target.files && e.target.files.length > 0) {
       handleFileSelection(e.target.files[0]);
     }
@@ -1538,6 +1546,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 {!uploadedFile && (
                   <div
                     onClick={() => {
+                      if (!user) {
+                        setPendingAuthAction("upload");
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
                       fileInputRef.current?.click();
                     }}
                     onDragEnter={handleDragEnter}
@@ -1756,7 +1769,24 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       {/* Sign-In / Register Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAuthAction(null);
+        }}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          if (pendingAuthAction === "ai") {
+            setPendingAuthAction(null);
+            handleGenerate();
+          } else if (pendingAuthAction === "upload") {
+            setPendingAuthAction(null);
+            setTimeout(() => {
+              fileInputRef.current?.click();
+            }, 100);
+          } else {
+            setPendingAuthAction(null);
+          }
+        }}
       />
     </section>
   );

@@ -8,7 +8,6 @@ function CanvasBridgeContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isGuest = searchParams?.get("guest") === "true";
 
   useEffect(() => {
     if (authLoading) return;
@@ -46,8 +45,8 @@ function CanvasBridgeContent() {
     }
 
     if (guestDraft) {
-      // Map the consolidated draft fields to the legacy sessionStorage keys
-      // that InvitationStudio already reads on mount
+      // Map the consolidated draft fields to the session/local storage keys
+      // that InvitationStudio reads on mount
       try {
         if (guestDraft.type === "template" && guestDraft.templateId) {
           params.set("templateId", guestDraft.templateId);
@@ -79,33 +78,15 @@ function CanvasBridgeContent() {
           if (guestDraft.eventType) {
             sessionStorage.setItem("pending_event_type", guestDraft.eventType);
           }
-          if (guestDraft.venue) {
-            sessionStorage.setItem("pending_venue", guestDraft.venue);
-          }
-          if (guestDraft.guestCount) {
-            sessionStorage.setItem("pending_guest_count", guestDraft.guestCount);
-          }
-          if (guestDraft.date) {
-            sessionStorage.setItem("pending_event_date", guestDraft.date);
-          }
-          if (guestDraft.startTime) {
-            sessionStorage.setItem("pending_start_time", guestDraft.startTime);
-          }
-          if (guestDraft.endTime) {
-            sessionStorage.setItem("pending_end_time", guestDraft.endTime);
-          }
-          if (guestDraft.isFullDay !== undefined) {
-            sessionStorage.setItem("pending_is_full_day", String(guestDraft.isFullDay));
-          }
         }
       } catch (e) {
         console.warn("Canvas bridge: failed to hydrate session storage:", e);
       }
     }
 
-    // Redirect to the actual canvas
+    // Redirect to the actual canvas editor
     router.replace(`/dashboard/invitations?${params.toString()}`);
-  }, [user, authLoading, router, searchParams, isGuest]);
+  }, [user, authLoading, router, searchParams]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">

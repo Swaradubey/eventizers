@@ -396,13 +396,20 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-birthday-maya";
 
     if (!user) {
+      // Guest flow: persist draft and navigate directly to canvas — no sign-in required
       try {
+        const guestDraft = {
+          type: "template",
+          templateId: targetTplId,
+          templateName: targetTpl?.name || "Event",
+        };
+        localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
         localStorage.setItem("pending_template_id", targetTplId);
         localStorage.setItem("pending_template_name", targetTpl?.name || "Event");
         sessionStorage.setItem("pending_template_id", targetTplId);
         sessionStorage.setItem("pending_template_name", targetTpl?.name || "Event");
       } catch (e) {}
-      setIsAuthModalOpen(true);
+      router.push("/canvas?guest=true");
       return;
     }
 

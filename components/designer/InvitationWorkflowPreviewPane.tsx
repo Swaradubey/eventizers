@@ -7,15 +7,24 @@ import { StudioDesignState } from "./InvitationStudio";
 
 interface InvitationWorkflowPreviewPaneProps {
   designState: StudioDesignState;
+  allowMaybe?: boolean;
   onRsvpClick?: (status: "yes" | "maybe" | "no") => void;
 }
 
 export default function InvitationWorkflowPreviewPane({
   designState,
+  allowMaybe = true,
   onRsvpClick,
 }: InvitationWorkflowPreviewPaneProps) {
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
+
+  // If allowMaybe is toggled off while currently selected, reset selection
+  React.useEffect(() => {
+    if (!allowMaybe && selectedRsvp === "maybe") {
+      setSelectedRsvp(null);
+    }
+  }, [allowMaybe, selectedRsvp]);
 
   const handleRsvp = (status: "yes" | "maybe" | "no") => {
     setSelectedRsvp(status);
@@ -104,17 +113,19 @@ export default function InvitationWorkflowPreviewPane({
           >
             Yes
           </button>
-          <button
-            type="button"
-            onClick={() => handleRsvp("maybe")}
-            className={`px-7 py-2 rounded-full text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer ${
-              selectedRsvp === "maybe"
-                ? "bg-[#273815] text-white ring-2 ring-[#3e5622]"
-                : "bg-[#3e5622] hover:bg-[#32481b] text-white"
-            }`}
-          >
-            Maybe
-          </button>
+          {allowMaybe && (
+            <button
+              type="button"
+              onClick={() => handleRsvp("maybe")}
+              className={`px-7 py-2 rounded-full text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer ${
+                selectedRsvp === "maybe"
+                  ? "bg-[#273815] text-white ring-2 ring-[#3e5622]"
+                  : "bg-[#3e5622] hover:bg-[#32481b] text-white"
+              }`}
+            >
+              Maybe
+            </button>
+          )}
           <button
             type="button"
             onClick={() => handleRsvp("no")}

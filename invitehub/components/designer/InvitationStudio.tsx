@@ -38,7 +38,7 @@ import {
   Crown,
   CopyPlus,
 } from "lucide-react";
-import eventService, { Event } from "../../services/eventService";
+import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API from "../../services/api";
 import { Invitation } from "../../types/invitationTypes";
 import guestService from "../../services/guestService";
@@ -52,6 +52,8 @@ import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
 import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
 import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
+import { useAuth } from "../../context/AuthContext";
+import AuthModal from "../AuthModal";
 
 // --- Types & Interfaces ---
 
@@ -327,6 +329,8 @@ export default function InvitationStudio({
   onBack,
 }: InvitationStudioProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // --- Template State Builder ---
   const createDesignStateFromTemplate = (
@@ -420,39 +424,14 @@ export default function InvitationStudio({
     const titleAlign = (tplConfig?.textAlignment as any) || (invite?.textAlignment as any) || "center";
 
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
-    let cardBgValue = "#ffffff";
+    let cardBgValue = "#faf8f5";
 
     // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
     if (pendingUploadUrl) {
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
-    // Priority 0: Inner Card Layer designed background from template schema (crisp white)
-    else if ((tplConfig as any)?.innerCardLayer?.backgroundColor) {
-      cardBgType = "color";
-      cardBgValue = (tplConfig as any).innerCardLayer.backgroundColor;
-    }
-    // Priority 1: CSS config background (pure CSS stationery)
-    else if ((tplConfig?.card as any)?.cssConfig?.backgroundColor) {
-      cardBgType = "color";
-      cardBgValue = (tplConfig?.card as any).cssConfig.backgroundColor;
-    }
-    // Priority 2: Card solid background color from template card
-    else if (tplConfig?.card?.backgroundColor && typeof tplConfig.card.backgroundColor === "string") {
-      cardBgType = "color";
-      cardBgValue = tplConfig.card.backgroundColor;
-    }
-    // Priority 3: Evite decoupled card artwork (pure decorative frame, no baked text)
-    else if ((tplConfig as any)?.card?.artworkUrl) {
-      cardBgType = "image";
-      cardBgValue = (tplConfig as any).card.artworkUrl;
-    }
-    // Priority 4: Clean Template Decoration Image (never with baked-in text)
-    else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
-      cardBgType = "image";
-      cardBgValue = tplConfig.decorationImage;
-    }
-    // Priority 5: Preserved 4-Layer state from invite (if it contains real artwork / image)
+    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image)
     else if (invite?.cardBg && (invite.cardBg.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
@@ -460,30 +439,48 @@ export default function InvitationStudio({
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
-    // Priority 6: Preserved color from invite
-    else if (invite?.cardBg && invite.cardBg.value) {
+    // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
+    else if ((tplConfig as any)?.card?.artworkUrl) {
+      cardBgType = "image";
+      cardBgValue = (tplConfig as any).card.artworkUrl;
+    }
+    // Priority 2: Clean Template Decoration Image (never with baked-in text)
+    else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
+      cardBgType = "image";
+      cardBgValue = tplConfig.decorationImage;
+    }
+    // Priority 3: Preserved color/gradient from invite
+    else if (invite?.cardBg) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
+    } else if (invite?.background) {
+      cardBgType = invite.background.type;
+      cardBgValue = invite.background.value;
     }
-    // Priority 7: Template solid background color
+    // Priority 3: Template gradient (clean — no text, just colors)
+    else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
+      cardBgType = "gradient";
+      cardBgValue = tplConfig.gradient;
+    }
+    // Priority 4: Template solid background color
     else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 8: User-uploaded invitation image (user-chosen, no template text overlap risk)
+    // Priority 5: User-uploaded invitation image (user-chosen, no template text overlap risk)
     else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
-    // Priority 9: Clean template SVG fallback if invitation has a template image URL
+    // Priority 6: Clean template SVG fallback if invitation has a template image URL
     else if (invite?.imageUrl && invite.imageUrl.includes("/assets/templates/")) {
       cardBgType = "image";
-      cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#ffffff";
+      cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
     }
-    // Fallback: crisp white
+    // Fallback: clean warm white
     else {
       cardBgType = "color";
-      cardBgValue = "#ffffff";
+      cardBgValue = "#faf8f5";
     }
 
     // Resolve Text Layers: prioritize saved text elements from draft/invite whenever present
@@ -620,10 +617,6 @@ export default function InvitationStudio({
     const initialBackdropValue =
       (invite as any)?.canvasWorkspaceBg ||
       (invite as any)?.backdropBackground ||
-      (tplConfig as any)?.backgroundLayer?.gradient ||
-      (tplConfig as any)?.backgroundLayer?.value ||
-      (tplConfig?.backdrop as any)?.gradient ||
-      (tplConfig as any)?.gradient ||
       savedBackdrop.value ||
       defaultAmbientBackdrop;
 
@@ -894,31 +887,37 @@ export default function InvitationStudio({
     coHost: initialInvitation?.designData?.hostDetails?.coHost || "",
   });
 
-  const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>({
-    deadlineEnabled: Boolean(
-      initialInvitation?.designData?.rsvpOptions?.deadlineEnabled ||
-      initialEvent?.rsvpSettings?.rsvpDeadline
-    ),
-    deadlineDate:
-      initialInvitation?.designData?.rsvpOptions?.deadlineDate ||
-      initialEvent?.rsvpSettings?.rsvpDeadline ||
-      "",
-    allowAfterDeadline:
-      initialInvitation?.designData?.rsvpOptions?.allowAfterDeadline ?? false,
-    allowMaybe:
-      initialInvitation?.designData?.rsvpOptions?.allowMaybe ??
-      initialEvent?.rsvpSettings?.allowMaybeResponse ??
-      true,
-    privateGuestList:
-      initialInvitation?.designData?.rsvpOptions?.privateGuestList ?? false,
-    allowGuestsToBringAnyone:
-      initialInvitation?.designData?.rsvpOptions?.allowGuestsToBringAnyone ??
-      initialEvent?.rsvpSettings?.allowPlusOnes ??
-      true,
-    maxAdditionalGuests:
-      initialInvitation?.designData?.rsvpOptions?.maxAdditionalGuests ??
-      initialEvent?.rsvpSettings?.maxPlusOnes ??
-      9,
+  const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>(() => {
+    const s = initialEvent?.rsvpSettings;
+    const r = initialInvitation?.designData?.rsvpOptions;
+    const deadlineEnabled = Boolean(
+      r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+    );
+    const deadlineDate =
+      r?.deadlineDate ||
+      s?.deadlineDate ||
+      (s?.rsvpDeadlineDate
+        ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+        : (s?.rsvpDeadline || ""));
+    const allowAfterDeadline = Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline);
+    const allowMaybe = r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true);
+    const privateGuestList = Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList);
+    const allowGuestsToBringAnyone =
+      r?.allowGuestsToBringAnyone ??
+      s?.allowPlusOne ??
+      s?.allowGuestsToBringAnyone ??
+      (s?.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true);
+    const maxAdditionalGuests = Number(r?.maxAdditionalGuests ?? s?.maxAdditionalGuests ?? s?.maxPlusOnes ?? 1);
+
+    return {
+      deadlineEnabled,
+      deadlineDate,
+      allowAfterDeadline,
+      allowMaybe,
+      privateGuestList,
+      allowGuestsToBringAnyone,
+      maxAdditionalGuests,
+    };
   });
 
   const [isRsvpModalOpen, setIsRsvpModalOpen] = useState(false);
@@ -1244,6 +1243,44 @@ export default function InvitationStudio({
     }
   }, [propEvents]);
 
+  // Synchronize and hydrate RSVP settings from backend when event is selected or loaded
+  useEffect(() => {
+    const targetEventId = currentEvent?.id || initialEvent?.id;
+    if (!targetEventId) return;
+
+    eventService
+      .getRsvpSettings(targetEventId)
+      .then((res) => {
+        if (res?.success && res.rsvpSettings) {
+          const s = res.rsvpSettings;
+          setRsvpOptions({
+            deadlineEnabled: Boolean(
+              s.rsvpDeadlineEnabled ?? s.deadlineEnabled ?? (s.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+            ),
+            deadlineDate:
+              s.deadlineDate ||
+              (s.rsvpDeadlineDate
+                ? (typeof s.rsvpDeadlineDate === "string"
+                    ? s.rsvpDeadlineDate.split("T")[0]
+                    : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+                : (s.rsvpDeadline || "")),
+            allowAfterDeadline: Boolean(s.allowLateRsvp ?? s.allowAfterDeadline),
+            allowMaybe: s.allowMaybe !== undefined ? Boolean(s.allowMaybe) : (s.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
+            privateGuestList: Boolean(s.isPrivateGuestList ?? s.privateGuestList),
+            allowGuestsToBringAnyone:
+              s.allowPlusOne !== undefined
+                ? Boolean(s.allowPlusOne)
+                : (s.allowGuestsToBringAnyone !== undefined ? Boolean(s.allowGuestsToBringAnyone) : (s.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true)),
+            maxAdditionalGuests: Number(s.maxAdditionalGuests ?? s.maxPlusOnes ?? 1),
+          });
+          setCurrentEvent((prev) => (prev ? { ...prev, rsvpSettings: s } : prev));
+        }
+      })
+      .catch((err) => {
+        console.warn("[InvitationStudio] Notice on fetching RSVP settings:", err?.message || err);
+      });
+  }, [currentEvent?.id, initialEvent?.id]);
+
   // Handle event switching from the top bar or toolbar dropdown
   const handleEventChange = async (eventId: string) => {
     if (onSelectEvent) {
@@ -1327,17 +1364,27 @@ export default function InvitationStudio({
       });
     }
     if (targetInvite.designData?.rsvpOptions || foundEvt.rsvpSettings) {
+      const s = foundEvt.rsvpSettings;
+      const r = targetInvite.designData?.rsvpOptions;
       setRsvpOptions({
-        deadlineEnabled: Boolean(targetInvite.designData?.rsvpOptions?.deadlineEnabled ?? foundEvt.rsvpSettings?.rsvpDeadline),
-        deadlineDate: targetInvite.designData?.rsvpOptions?.deadlineDate || foundEvt.rsvpSettings?.rsvpDeadline || "",
-        allowAfterDeadline: targetInvite.designData?.rsvpOptions?.allowAfterDeadline ?? false,
-        allowMaybe: targetInvite.designData?.rsvpOptions?.allowMaybe ?? foundEvt.rsvpSettings?.allowMaybeResponse ?? true,
-        privateGuestList: targetInvite.designData?.rsvpOptions?.privateGuestList ?? false,
-        allowGuestsToBringAnyone: targetInvite.designData?.rsvpOptions?.allowGuestsToBringAnyone ?? foundEvt.rsvpSettings?.allowPlusOnes ?? true,
-        maxAdditionalGuests:
-          targetInvite.designData?.rsvpOptions?.maxAdditionalGuests ??
-          foundEvt.rsvpSettings?.maxPlusOnes ??
-          9,
+        deadlineEnabled: Boolean(
+          r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+        ),
+        deadlineDate:
+          r?.deadlineDate ||
+          s?.deadlineDate ||
+          (s?.rsvpDeadlineDate
+            ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+            : (s?.rsvpDeadline || "")),
+        allowAfterDeadline: Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline),
+        allowMaybe: r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
+        privateGuestList: Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList),
+        allowGuestsToBringAnyone:
+          r?.allowGuestsToBringAnyone ??
+          s?.allowPlusOne ??
+          s?.allowGuestsToBringAnyone ??
+          (s?.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true),
+        maxAdditionalGuests: Number(r?.maxAdditionalGuests ?? s?.maxAdditionalGuests ?? s?.maxPlusOnes ?? 1),
       });
     }
 
@@ -1724,11 +1771,14 @@ export default function InvitationStudio({
         setSnapshotDataUrl(dataUrl);
 
         // Upload to file storage so the payload sends a lightweight URL instead of raw base64
+        // Skip server upload for guest users (no auth token) to avoid 401 redirect
         let uploadedUrl: string | null = null;
-        try {
-          uploadedUrl = await uploadSnapshotBlob(dataUrl);
-        } catch (uploadErr) {
-          console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+        if (user) {
+          try {
+            uploadedUrl = await uploadSnapshotBlob(dataUrl);
+          } catch (uploadErr) {
+            console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+          }
         }
 
         return { dataUrl, uploadedUrl };
@@ -1825,30 +1875,13 @@ export default function InvitationStudio({
       )
     );
 
-    const tplInnerCard = (designState as any)?.innerCardLayer || (tplConfig as any)?.innerCardLayer;
-    const resolvedCardBgColor =
-      tplInnerCard?.backgroundColor ||
-      (designState.card as any)?.backgroundColor ||
-      (designState.card as any)?.cssConfig?.backgroundColor ||
-      (tplConfig as any)?.card?.cssConfig?.backgroundColor ||
-      (tplConfig as any)?.card?.backgroundColor ||
-      (designState.cardBg.type === "color" && !designState.cardBg.value.includes("gradient") ? designState.cardBg.value : null) ||
-      "#ffffff";
-
     const fullCardModel = {
       ...((tplConfig as any)?.card || {}),
       ...(designState.card || {}),
       artworkUrl: effectiveArtworkUrl || (designState.card as any)?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || "",
       decorativeBorderSvgUrl: (designState.card as any)?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || effectiveArtworkUrl || "",
-      backgroundColor: resolvedCardBgColor,
+      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : "#FAF8F5"),
       aspectRatio: (designState.card as any)?.aspectRatio || activePreset.aspect || "5x7",
-      cssConfig: (designState.card as any)?.cssConfig || (tplConfig as any)?.card?.cssConfig || (tplInnerCard ? {
-        backgroundColor: tplInnerCard.backgroundColor || "#ffffff",
-        backgroundGradient: tplInnerCard.backgroundGradient,
-        borderRadius: tplInnerCard.borderRadius || "14px",
-        border: tplInnerCard.border,
-        paperShadow: tplInnerCard.paperShadow,
-      } : undefined),
       decorations: decorativeImages,
       decorativeImages,
       illustrationLayers: (designState.card as any)?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
@@ -1857,7 +1890,9 @@ export default function InvitationStudio({
 
     const fullBackgroundModel = {
       ...designState.cardBg,
-      color: resolvedCardBgColor,
+      color: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/")
+        ? designState.cardBg.value
+        : (tplConfig?.backgroundColor || (designState.card as any)?.backgroundColor || "#FAF8F5"),
       pattern: (designState.cardBg as any)?.pattern || null,
       decorativeImages,
       artworkUrl: effectiveArtworkUrl,
@@ -1873,7 +1908,7 @@ export default function InvitationStudio({
       mainText,
       message,
       accentColor,
-      backgroundColor: resolvedCardBgColor,
+      backgroundColor: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : (tplConfig?.backgroundColor || "#FAF8F5"),
       textColor,
       titleSize,
       fontWeight: titleLayer?.fontWeight || "900",
@@ -1904,22 +1939,6 @@ export default function InvitationStudio({
       envelope: designState.envelope,
       effects: designState.effects,
       backside: designState.backside,
-      backgroundLayer: (designState as any)?.backgroundLayer || (tplConfig as any)?.backgroundLayer || {
-        type: "color",
-        value: designState.stageBackdrop.value,
-        gradient: (designState.stageBackdrop as any)?.gradient,
-      },
-      frameLayers: (designState as any)?.frameLayers || (tplConfig as any)?.frameLayers || {
-        envelope: designState.envelope,
-        border: (fullCardModel.cssConfig as any)?.border || null,
-      },
-      innerCardLayer: tplInnerCard || {
-        backgroundColor: resolvedCardBgColor,
-        borderRadius: (fullCardModel.cssConfig as any)?.borderRadius || "14px",
-        border: (fullCardModel.cssConfig as any)?.border,
-        paperShadow: (fullCardModel.cssConfig as any)?.paperShadow,
-        aspectRatio: "5/7",
-      },
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
       designData: {
@@ -1931,6 +1950,20 @@ export default function InvitationStudio({
         personalFunds,
       },
       rsvpSettings: {
+        rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
+        rsvpDeadlineDate: rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate ? rsvpOptions.deadlineDate : null,
+        allowLateRsvp: rsvpOptions.allowAfterDeadline,
+        allowMaybe: rsvpOptions.allowMaybe,
+        isPrivateGuestList: rsvpOptions.privateGuestList,
+        allowPlusOne: rsvpOptions.allowGuestsToBringAnyone,
+        maxAdditionalGuests: rsvpOptions.maxAdditionalGuests,
+
+        deadlineEnabled: rsvpOptions.deadlineEnabled,
+        deadlineDate: rsvpOptions.deadlineDate || "",
+        allowAfterDeadline: rsvpOptions.allowAfterDeadline,
+        privateGuestList: rsvpOptions.privateGuestList,
+        allowGuestsToBringAnyone: rsvpOptions.allowGuestsToBringAnyone,
+
         rsvpDeadline: rsvpOptions.deadlineEnabled ? rsvpOptions.deadlineDate || null : null,
         allowPlusOnes: rsvpOptions.allowGuestsToBringAnyone,
         maxPlusOnes: rsvpOptions.maxAdditionalGuests,
@@ -2034,9 +2067,6 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
-                backgroundLayer: payload.backgroundLayer,
-                frameLayers: payload.frameLayers,
-                innerCardLayer: payload.innerCardLayer,
               })
             );
           } catch (e) {}
@@ -2081,6 +2111,19 @@ export default function InvitationStudio({
   // displays a success toast, and keeps user on / switches back to the Canvas Studio Design tab (step 0).
   const handleSaveAndExit = async () => {
     if (isSavingDraft || isGeneratingSnapshot) return;
+
+    // Guest auth gate: persist draft locally, then show auth modal
+    if (!user) {
+      try {
+        const draftPayload = constructPayload(null);
+        localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+        localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+      } catch (e) {}
+      setToast({ message: "Sign in to save your design permanently.", type: "success" });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       let saved: Invitation | null = null;
       if (currentStepIndex === 0) {
@@ -2130,9 +2173,6 @@ export default function InvitationStudio({
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
-                  backgroundLayer: designState.backgroundLayer,
-                  frameLayers: designState.frameLayers,
-                  innerCardLayer: designState.innerCardLayer,
                 })
               );
             } catch (e) {}
@@ -2164,6 +2204,16 @@ export default function InvitationStudio({
 
     // When on "Design" step (step 0): capture snapshot, save payload, and advance to "Details" (step 1)
     if (currentStepIndex === 0) {
+      if (!user) {
+        try {
+          const draftPayload = constructPayload(null);
+          localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+          localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+        } catch (e) {}
+        setToast({ message: "Sign in to save your design and continue.", type: "success" });
+        setIsAuthModalOpen(true);
+        return;
+      }
       const { dataUrl, uploadedUrl } = await generateSnapshot();
       const saved = await saveDesign(uploadedUrl || dataUrl);
       if (saved) {
@@ -2189,8 +2239,18 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Review" step (step 3): open dispatch modal
+    // When on "Review" step (step 3): check auth before dispatching
     if (currentStepIndex === 3) {
+      if (!user) {
+        // Persist draft locally before showing auth modal
+        try {
+          const draftPayload = constructPayload(null);
+          localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+          localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+        } catch (e) {}
+        setIsAuthModalOpen(true);
+        return;
+      }
       await prepareAndOpenDispatch();
       return;
     }
@@ -3466,7 +3526,7 @@ export default function InvitationStudio({
                       Interior Liner Patterns
                     </span>
                     <div className="grid grid-cols-2 gap-2.5">
-                      {ENVELOPE_LINERS.map((liner) => {
+                       {ENVELOPE_LINERS.map((liner) => {
                         const isSelected = designState.envelope.liner === liner.id;
                         return (
                           <button
@@ -3475,7 +3535,7 @@ export default function InvitationStudio({
                             onClick={() =>
                               pushStateToHistory({
                                 ...designState,
-                                envelope: { ...designState.envelope, liner: liner.id },
+                                envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
                               })
                             }
                             className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
@@ -4009,6 +4069,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4038,6 +4099,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4067,6 +4129,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4300,9 +4363,59 @@ export default function InvitationStudio({
         isOpen={isRsvpModalOpen}
         onClose={() => setIsRsvpModalOpen(false)}
         options={rsvpOptions}
-        onSave={(newOpts) => {
-          setRsvpOptions(newOpts);
-          setToast({ message: "RSVP settings updated! ✨", type: "success" });
+        onSave={async (newOpts) => {
+          const targetEventId = currentEvent?.id || initialEvent?.id;
+          if (!targetEventId) {
+            // Guest draft / offline state
+            setRsvpOptions(newOpts);
+            setToast({ message: "RSVP settings updated! ✨", type: "success" });
+            return;
+          }
+
+          try {
+            const payload: Partial<RsvpSettingsData> = {
+              rsvpDeadlineEnabled: newOpts.deadlineEnabled,
+              rsvpDeadlineDate: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              allowLateRsvp: newOpts.allowAfterDeadline,
+              allowMaybe: newOpts.allowMaybe,
+              isPrivateGuestList: newOpts.privateGuestList,
+              allowPlusOne: newOpts.allowGuestsToBringAnyone,
+              maxAdditionalGuests: newOpts.maxAdditionalGuests,
+
+              deadlineEnabled: newOpts.deadlineEnabled,
+              deadlineDate: newOpts.deadlineDate || "",
+              allowAfterDeadline: newOpts.allowAfterDeadline,
+              privateGuestList: newOpts.privateGuestList,
+              allowGuestsToBringAnyone: newOpts.allowGuestsToBringAnyone,
+
+              rsvpDeadline: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              allowPlusOnes: newOpts.allowGuestsToBringAnyone,
+              maxPlusOnes: newOpts.maxAdditionalGuests,
+              allowMaybeResponse: newOpts.allowMaybe,
+            };
+
+            const res = await eventService.patchRsvpSettings(targetEventId, payload);
+            if (res?.success) {
+              setRsvpOptions(newOpts);
+              if (currentEvent) {
+                setCurrentEvent((prev) =>
+                  prev ? { ...prev, rsvpSettings: { ...prev.rsvpSettings, ...res.rsvpSettings } } : prev
+                );
+              }
+              setToast({ message: "RSVP settings updated! ✨", type: "success" });
+            } else {
+              throw new Error(res?.message || "Failed to update RSVP settings.");
+            }
+          } catch (err: any) {
+            console.error("[handleSaveRsvpSettings] Error saving RSVP settings:", err);
+            const errMsg =
+              err.response?.data?.error ||
+              err.response?.data?.message ||
+              err.message ||
+              "Failed to update RSVP settings.";
+            setToast({ message: errMsg, type: "error" });
+            throw err;
+          }
         }}
       />
 
@@ -4386,6 +4499,30 @@ export default function InvitationStudio({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Auth Modal for deferred sign-in on Next/Send */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          setTimeout(async () => {
+            // Auto-save any pending guest draft after successful sign-in
+            try {
+              const rawDraft = localStorage.getItem("guestDraft");
+              if (rawDraft) {
+                const draftPayload = JSON.parse(rawDraft);
+                localStorage.removeItem("guestDraft");
+                localStorage.removeItem("guestDraftTemplateId");
+                await saveDesign(draftPayload.snapshotUrl || null);
+              }
+            } catch (e) {
+              console.warn("Guest draft resume failed:", e);
+            }
+            handleProceedNext();
+          }, 300);
+        }}
+      />
     </div>
   );
 }

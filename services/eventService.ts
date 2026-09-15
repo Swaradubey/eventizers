@@ -41,6 +41,24 @@ export interface CustomQuestion {
 }
 
 export interface RsvpSettingsData {
+  id?: string;
+  eventId?: string;
+  rsvpDeadlineEnabled?: boolean;
+  rsvpDeadlineDate?: string | Date | null;
+  allowLateRsvp?: boolean;
+  allowMaybe?: boolean;
+  isPrivateGuestList?: boolean;
+  allowPlusOne?: boolean;
+  maxAdditionalGuests?: number;
+
+  // Modal and preview aliases
+  deadlineEnabled?: boolean;
+  deadlineDate?: string;
+  allowAfterDeadline?: boolean;
+  privateGuestList?: boolean;
+  allowGuestsToBringAnyone?: boolean;
+
+  // Legacy fields
   rsvpDeadline: string | null;
   allowPlusOnes: boolean;
   maxPlusOnes: number;
@@ -152,6 +170,14 @@ export const updateRsvpSettings = async (
   settings: Partial<RsvpSettingsData>
 ): Promise<RsvpSettingsResponse> => {
   const response = await API.put<RsvpSettingsResponse>(`/events/${eventId}/rsvp-settings`, settings);
+  return response.data;
+};
+
+export const patchRsvpSettings = async (
+  eventId: string,
+  settings: Partial<RsvpSettingsData>
+): Promise<RsvpSettingsResponse> => {
+  const response = await API.patch<RsvpSettingsResponse>(`/events/${eventId}/rsvp-settings`, settings);
   return response.data;
 };
 
@@ -356,6 +382,7 @@ const eventService = {
   deleteEvent,
   getRsvpSettings,
   updateRsvpSettings,
+  patchRsvpSettings,
   getDesignSettings,
   updateDesignSettings,
   sendInvitations,

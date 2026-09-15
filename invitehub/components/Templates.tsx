@@ -104,12 +104,18 @@ export default function Templates() {
 
   const handleCardClick = (templateId: string) => {
     if (!user) {
+      // Guest flow: persist draft and navigate directly to canvas — no sign-in required
       try {
+        const guestDraft = {
+          type: "template",
+          templateId,
+          templateName: CURATED_TEMPLATES.find((t) => t.id === templateId)?.title || "Event",
+        };
+        localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
         localStorage.setItem("pending_template_id", templateId);
         sessionStorage.setItem("pending_template_id", templateId);
       } catch (e) {}
-      setPendingTemplateId(templateId);
-      setIsAuthModalOpen(true);
+      router.push("/canvas?guest=true");
       return;
     }
     router.push(`/dashboard/invitations?templateId=${encodeURIComponent(templateId)}&studio=true`);

@@ -41,6 +41,24 @@ export interface CustomQuestion {
 }
 
 export interface RsvpSettingsData {
+  id?: string;
+  eventId?: string;
+  rsvpDeadlineEnabled?: boolean;
+  rsvpDeadlineDate?: string | Date | null;
+  allowLateRsvp?: boolean;
+  allowMaybe?: boolean;
+  isPrivateGuestList?: boolean;
+  allowPlusOne?: boolean;
+  maxAdditionalGuests?: number;
+
+  // Modal and preview aliases
+  deadlineEnabled?: boolean;
+  deadlineDate?: string;
+  allowAfterDeadline?: boolean;
+  privateGuestList?: boolean;
+  allowGuestsToBringAnyone?: boolean;
+
+  // Legacy fields
   rsvpDeadline: string | null;
   allowPlusOnes: boolean;
   maxPlusOnes: number;
@@ -155,6 +173,14 @@ export const updateRsvpSettings = async (
   return response.data;
 };
 
+export const patchRsvpSettings = async (
+  eventId: string,
+  settings: Partial<RsvpSettingsData>
+): Promise<RsvpSettingsResponse> => {
+  const response = await API.patch<RsvpSettingsResponse>(`/events/${eventId}/rsvp-settings`, settings);
+  return response.data;
+};
+
 export const getDesignSettings = async (eventId: string): Promise<DesignSettingsResponse> => {
   const response = await API.get<DesignSettingsResponse>(`/events/${eventId}/design`);
   return response.data;
@@ -230,15 +256,10 @@ export const updateReminders = async (
   return response.data;
 };
 
-/**
- * Merge-save GUARANTEED reminders for a specific event.
- * Preserves all non-GUARANTEED reminders and replaces only GUARANTEED-tagged ones.
- */
 export const saveGuaranteeReminders = async (
   eventId: string,
   guaranteeReminders: EventReminder[]
 ): Promise<RemindersResponse> => {
-  // Fetch existing reminders first
   let existing: EventReminder[] = [];
   try {
     const res = await API.get<RemindersResponse>(`/events/${eventId}/reminders`);
@@ -246,15 +267,9 @@ export const saveGuaranteeReminders = async (
       existing = res.data.reminders;
     }
   } catch (_) {}
-
-  // Keep non-GUARANTEED reminders intact
   const nonGuarantee = existing.filter((r) => r.targetAudience !== "GUARANTEED");
-  const taggedGuarantee = guaranteeReminders.map((r) => ({
-    ...r,
-    targetAudience: "GUARANTEED" as const,
-  }));
+  const taggedGuarantee = guaranteeReminders.map((r) => ({ ...r, targetAudience: "GUARANTEED" as const }));
   const merged = [...nonGuarantee, ...taggedGuarantee];
-
   const response = await API.put<RemindersResponse>(`/events/${eventId}/reminders`, { reminders: merged });
   return response.data;
 };
@@ -367,6 +382,7 @@ const eventService = {
   deleteEvent,
   getRsvpSettings,
   updateRsvpSettings,
+  patchRsvpSettings,
   getDesignSettings,
   updateDesignSettings,
   sendInvitations,

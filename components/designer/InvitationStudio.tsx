@@ -38,7 +38,7 @@ import {
   Crown,
   CopyPlus,
 } from "lucide-react";
-import eventService, { Event } from "../../services/eventService";
+import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API from "../../services/api";
 import { Invitation } from "../../types/invitationTypes";
 import guestService from "../../services/guestService";
@@ -887,31 +887,37 @@ export default function InvitationStudio({
     coHost: initialInvitation?.designData?.hostDetails?.coHost || "",
   });
 
-  const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>({
-    deadlineEnabled: Boolean(
-      initialInvitation?.designData?.rsvpOptions?.deadlineEnabled ||
-      initialEvent?.rsvpSettings?.rsvpDeadline
-    ),
-    deadlineDate:
-      initialInvitation?.designData?.rsvpOptions?.deadlineDate ||
-      initialEvent?.rsvpSettings?.rsvpDeadline ||
-      "",
-    allowAfterDeadline:
-      initialInvitation?.designData?.rsvpOptions?.allowAfterDeadline ?? false,
-    allowMaybe:
-      initialInvitation?.designData?.rsvpOptions?.allowMaybe ??
-      initialEvent?.rsvpSettings?.allowMaybeResponse ??
-      true,
-    privateGuestList:
-      initialInvitation?.designData?.rsvpOptions?.privateGuestList ?? false,
-    allowGuestsToBringAnyone:
-      initialInvitation?.designData?.rsvpOptions?.allowGuestsToBringAnyone ??
-      initialEvent?.rsvpSettings?.allowPlusOnes ??
-      true,
-    maxAdditionalGuests:
-      initialInvitation?.designData?.rsvpOptions?.maxAdditionalGuests ??
-      initialEvent?.rsvpSettings?.maxPlusOnes ??
-      9,
+  const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>(() => {
+    const s = initialEvent?.rsvpSettings;
+    const r = initialInvitation?.designData?.rsvpOptions;
+    const deadlineEnabled = Boolean(
+      r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+    );
+    const deadlineDate =
+      r?.deadlineDate ||
+      s?.deadlineDate ||
+      (s?.rsvpDeadlineDate
+        ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+        : (s?.rsvpDeadline || ""));
+    const allowAfterDeadline = Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline);
+    const allowMaybe = r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true);
+    const privateGuestList = Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList);
+    const allowGuestsToBringAnyone =
+      r?.allowGuestsToBringAnyone ??
+      s?.allowPlusOne ??
+      s?.allowGuestsToBringAnyone ??
+      (s?.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true);
+    const maxAdditionalGuests = Number(r?.maxAdditionalGuests ?? s?.maxAdditionalGuests ?? s?.maxPlusOnes ?? 1);
+
+    return {
+      deadlineEnabled,
+      deadlineDate,
+      allowAfterDeadline,
+      allowMaybe,
+      privateGuestList,
+      allowGuestsToBringAnyone,
+      maxAdditionalGuests,
+    };
   });
 
   const [isRsvpModalOpen, setIsRsvpModalOpen] = useState(false);
@@ -1237,6 +1243,44 @@ export default function InvitationStudio({
     }
   }, [propEvents]);
 
+  // Synchronize and hydrate RSVP settings from backend when event is selected or loaded
+  useEffect(() => {
+    const targetEventId = currentEvent?.id || initialEvent?.id;
+    if (!targetEventId) return;
+
+    eventService
+      .getRsvpSettings(targetEventId)
+      .then((res) => {
+        if (res?.success && res.rsvpSettings) {
+          const s = res.rsvpSettings;
+          setRsvpOptions({
+            deadlineEnabled: Boolean(
+              s.rsvpDeadlineEnabled ?? s.deadlineEnabled ?? (s.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+            ),
+            deadlineDate:
+              s.deadlineDate ||
+              (s.rsvpDeadlineDate
+                ? (typeof s.rsvpDeadlineDate === "string"
+                    ? s.rsvpDeadlineDate.split("T")[0]
+                    : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+                : (s.rsvpDeadline || "")),
+            allowAfterDeadline: Boolean(s.allowLateRsvp ?? s.allowAfterDeadline),
+            allowMaybe: s.allowMaybe !== undefined ? Boolean(s.allowMaybe) : (s.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
+            privateGuestList: Boolean(s.isPrivateGuestList ?? s.privateGuestList),
+            allowGuestsToBringAnyone:
+              s.allowPlusOne !== undefined
+                ? Boolean(s.allowPlusOne)
+                : (s.allowGuestsToBringAnyone !== undefined ? Boolean(s.allowGuestsToBringAnyone) : (s.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true)),
+            maxAdditionalGuests: Number(s.maxAdditionalGuests ?? s.maxPlusOnes ?? 1),
+          });
+          setCurrentEvent((prev) => (prev ? { ...prev, rsvpSettings: s } : prev));
+        }
+      })
+      .catch((err) => {
+        console.warn("[InvitationStudio] Notice on fetching RSVP settings:", err?.message || err);
+      });
+  }, [currentEvent?.id, initialEvent?.id]);
+
   // Handle event switching from the top bar or toolbar dropdown
   const handleEventChange = async (eventId: string) => {
     if (onSelectEvent) {
@@ -1320,17 +1364,27 @@ export default function InvitationStudio({
       });
     }
     if (targetInvite.designData?.rsvpOptions || foundEvt.rsvpSettings) {
+      const s = foundEvt.rsvpSettings;
+      const r = targetInvite.designData?.rsvpOptions;
       setRsvpOptions({
-        deadlineEnabled: Boolean(targetInvite.designData?.rsvpOptions?.deadlineEnabled ?? foundEvt.rsvpSettings?.rsvpDeadline),
-        deadlineDate: targetInvite.designData?.rsvpOptions?.deadlineDate || foundEvt.rsvpSettings?.rsvpDeadline || "",
-        allowAfterDeadline: targetInvite.designData?.rsvpOptions?.allowAfterDeadline ?? false,
-        allowMaybe: targetInvite.designData?.rsvpOptions?.allowMaybe ?? foundEvt.rsvpSettings?.allowMaybeResponse ?? true,
-        privateGuestList: targetInvite.designData?.rsvpOptions?.privateGuestList ?? false,
-        allowGuestsToBringAnyone: targetInvite.designData?.rsvpOptions?.allowGuestsToBringAnyone ?? foundEvt.rsvpSettings?.allowPlusOnes ?? true,
-        maxAdditionalGuests:
-          targetInvite.designData?.rsvpOptions?.maxAdditionalGuests ??
-          foundEvt.rsvpSettings?.maxPlusOnes ??
-          9,
+        deadlineEnabled: Boolean(
+          r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+        ),
+        deadlineDate:
+          r?.deadlineDate ||
+          s?.deadlineDate ||
+          (s?.rsvpDeadlineDate
+            ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
+            : (s?.rsvpDeadline || "")),
+        allowAfterDeadline: Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline),
+        allowMaybe: r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
+        privateGuestList: Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList),
+        allowGuestsToBringAnyone:
+          r?.allowGuestsToBringAnyone ??
+          s?.allowPlusOne ??
+          s?.allowGuestsToBringAnyone ??
+          (s?.allowPlusOnes !== undefined ? Boolean(s.allowPlusOnes) : true),
+        maxAdditionalGuests: Number(r?.maxAdditionalGuests ?? s?.maxAdditionalGuests ?? s?.maxPlusOnes ?? 1),
       });
     }
 
@@ -1896,6 +1950,20 @@ export default function InvitationStudio({
         personalFunds,
       },
       rsvpSettings: {
+        rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
+        rsvpDeadlineDate: rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate ? rsvpOptions.deadlineDate : null,
+        allowLateRsvp: rsvpOptions.allowAfterDeadline,
+        allowMaybe: rsvpOptions.allowMaybe,
+        isPrivateGuestList: rsvpOptions.privateGuestList,
+        allowPlusOne: rsvpOptions.allowGuestsToBringAnyone,
+        maxAdditionalGuests: rsvpOptions.maxAdditionalGuests,
+
+        deadlineEnabled: rsvpOptions.deadlineEnabled,
+        deadlineDate: rsvpOptions.deadlineDate || "",
+        allowAfterDeadline: rsvpOptions.allowAfterDeadline,
+        privateGuestList: rsvpOptions.privateGuestList,
+        allowGuestsToBringAnyone: rsvpOptions.allowGuestsToBringAnyone,
+
         rsvpDeadline: rsvpOptions.deadlineEnabled ? rsvpOptions.deadlineDate || null : null,
         allowPlusOnes: rsvpOptions.allowGuestsToBringAnyone,
         maxPlusOnes: rsvpOptions.maxAdditionalGuests,
@@ -2136,6 +2204,16 @@ export default function InvitationStudio({
 
     // When on "Design" step (step 0): capture snapshot, save payload, and advance to "Details" (step 1)
     if (currentStepIndex === 0) {
+      if (!user) {
+        try {
+          const draftPayload = constructPayload(null);
+          localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+          localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+        } catch (e) {}
+        setToast({ message: "Sign in to save your design and continue.", type: "success" });
+        setIsAuthModalOpen(true);
+        return;
+      }
       const { dataUrl, uploadedUrl } = await generateSnapshot();
       const saved = await saveDesign(uploadedUrl || dataUrl);
       if (saved) {
@@ -3991,6 +4069,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4020,6 +4099,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4049,6 +4129,7 @@ export default function InvitationStudio({
       <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
         <InvitationWorkflowPreviewPane
           designState={designState}
+          allowMaybe={rsvpOptions.allowMaybe}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -4282,9 +4363,59 @@ export default function InvitationStudio({
         isOpen={isRsvpModalOpen}
         onClose={() => setIsRsvpModalOpen(false)}
         options={rsvpOptions}
-        onSave={(newOpts) => {
-          setRsvpOptions(newOpts);
-          setToast({ message: "RSVP settings updated! ✨", type: "success" });
+        onSave={async (newOpts) => {
+          const targetEventId = currentEvent?.id || initialEvent?.id;
+          if (!targetEventId) {
+            // Guest draft / offline state
+            setRsvpOptions(newOpts);
+            setToast({ message: "RSVP settings updated! ✨", type: "success" });
+            return;
+          }
+
+          try {
+            const payload: Partial<RsvpSettingsData> = {
+              rsvpDeadlineEnabled: newOpts.deadlineEnabled,
+              rsvpDeadlineDate: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              allowLateRsvp: newOpts.allowAfterDeadline,
+              allowMaybe: newOpts.allowMaybe,
+              isPrivateGuestList: newOpts.privateGuestList,
+              allowPlusOne: newOpts.allowGuestsToBringAnyone,
+              maxAdditionalGuests: newOpts.maxAdditionalGuests,
+
+              deadlineEnabled: newOpts.deadlineEnabled,
+              deadlineDate: newOpts.deadlineDate || "",
+              allowAfterDeadline: newOpts.allowAfterDeadline,
+              privateGuestList: newOpts.privateGuestList,
+              allowGuestsToBringAnyone: newOpts.allowGuestsToBringAnyone,
+
+              rsvpDeadline: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              allowPlusOnes: newOpts.allowGuestsToBringAnyone,
+              maxPlusOnes: newOpts.maxAdditionalGuests,
+              allowMaybeResponse: newOpts.allowMaybe,
+            };
+
+            const res = await eventService.patchRsvpSettings(targetEventId, payload);
+            if (res?.success) {
+              setRsvpOptions(newOpts);
+              if (currentEvent) {
+                setCurrentEvent((prev) =>
+                  prev ? { ...prev, rsvpSettings: { ...prev.rsvpSettings, ...res.rsvpSettings } } : prev
+                );
+              }
+              setToast({ message: "RSVP settings updated! ✨", type: "success" });
+            } else {
+              throw new Error(res?.message || "Failed to update RSVP settings.");
+            }
+          } catch (err: any) {
+            console.error("[handleSaveRsvpSettings] Error saving RSVP settings:", err);
+            const errMsg =
+              err.response?.data?.error ||
+              err.response?.data?.message ||
+              err.message ||
+              "Failed to update RSVP settings.";
+            setToast({ message: errMsg, type: "error" });
+            throw err;
+          }
         }}
       />
 

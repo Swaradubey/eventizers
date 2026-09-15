@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface RsvpOptionsState {
@@ -18,7 +18,7 @@ interface RsvpOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   options: RsvpOptionsState;
-  onSave: (options: RsvpOptionsState) => void;
+  onSave: (options: RsvpOptionsState) => Promise<void> | void;
 }
 
 export default function RsvpOptionsModal({
@@ -28,6 +28,13 @@ export default function RsvpOptionsModal({
   onSave,
 }: RsvpOptionsModalProps) {
   const [localOptions, setLocalOptions] = useState<RsvpOptionsState>({ ...options });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalOptions({ ...options });
+    }
+  }, [isOpen, options]);
 
   if (!isOpen) return null;
 
@@ -38,9 +45,17 @@ export default function RsvpOptionsModal({
     }));
   };
 
-  const handleDone = () => {
-    onSave(localOptions);
-    onClose();
+  const handleDone = async () => {
+    try {
+      setIsSaving(true);
+      await onSave(localOptions);
+      onClose();
+    } catch (err) {
+      // Keep modal open and edits intact if request fails
+      console.error("Failed to save RSVP options:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -258,10 +273,12 @@ export default function RsvpOptionsModal({
             </button>
             <button
               type="button"
+              disabled={isSaving}
               onClick={handleDone}
-              className="px-8 py-2.5 rounded-full bg-[#3e5622] hover:bg-[#32481b] text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+              className="px-8 py-2.5 rounded-full bg-[#3e5622] hover:bg-[#32481b] text-white text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Done
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSaving ? "Saving..." : "Done"}
             </button>
           </div>
         </motion.div>
