@@ -4165,6 +4165,22 @@ export default function InvitationStudio({
               textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
             }));
           }}
+          onComputedLayersChange={(computed) => {
+            setDesignState((prev) => ({
+              ...prev,
+              textLayers: prev.textLayers.map((tl) => {
+                const matched = computed.find((c) => c.id === tl.id);
+                if (!matched) return tl;
+                return {
+                  ...tl,
+                  x: matched.x,
+                  y: matched.y,
+                  left: matched.left ?? matched.x,
+                  top: matched.top ?? matched.y,
+                };
+              }),
+            }));
+          }}
           editingTextId={editingTextId}
           setEditingTextId={setEditingTextId}
           stageRef={envelopeStageRef}

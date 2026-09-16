@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
+import React, { useRef, useCallback, useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
@@ -49,6 +49,7 @@ export interface InvitationCanvasStageProps {
   selectedTextId?: string | null;
   onSelectLayer?: (id: string) => void;
   onUpdateLayer?: (id: string, updates: Partial<TextLayer>) => void;
+  onComputedLayersChange?: (layers: { id: string; x: number; y: number; left: number; top: number }[]) => void;
   editingTextId?: string | null;
   setEditingTextId?: (id: string | null) => void;
   stageRef?: any;
@@ -71,6 +72,7 @@ export default function InvitationCanvasStage({
   selectedTextId = null,
   onSelectLayer,
   onUpdateLayer,
+  onComputedLayersChange,
   editingTextId = null,
   setEditingTextId,
   stageRef,
@@ -121,6 +123,29 @@ export default function InvitationCanvasStage({
   const computedLayers = useMemo(() => {
     return computeAntiCollisionLayout(config.textLayers || [], cardDimensions);
   }, [config.textLayers, cardDimensions]);
+
+  // Sync computed (anti-collision adjusted) positions back to parent state
+  // so that saved positions match rendered positions and overlap doesn't reappear on reload
+  const callbackRef = useRef(onComputedLayersChange);
+  callbackRef.current = onComputedLayersChange;
+  const lastSyncedRef = useRef<string>("");
+  useLayoutEffect(() => {
+    if (readOnly || !callbackRef.current) return;
+    const hasAnyShift = computedLayers.some((l) => l.isShifted);
+    if (!hasAnyShift) return;
+    const syncKey = computedLayers.map((l) => `${l.id}:${Math.round(l.computedTop)}:${Math.round(l.computedLeft)}`).join("|");
+    if (syncKey === lastSyncedRef.current) return;
+    lastSyncedRef.current = syncKey;
+    callbackRef.current(
+      computedLayers.map((cl) => ({
+        id: cl.id,
+        x: Math.round(cl.computedLeft),
+        y: Math.round(cl.computedTop),
+        left: Math.round(cl.computedLeft),
+        top: Math.round(cl.computedTop),
+      }))
+    );
+  });
 
   const dragSessionRef = useRef<{
     layerId: string;
