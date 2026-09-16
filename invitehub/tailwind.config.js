@@ -14,6 +14,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        georgia: ["Georgia", "serif"],
         display: ["Georgia", "'Playfair Display'", "serif"],
         serif: ["Georgia", "Cambria", "'Times New Roman'", "Times", "serif"],
         heading: ["Georgia", "serif"],

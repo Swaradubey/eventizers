@@ -196,7 +196,7 @@ export default function AdminTicketingPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
                 Ticketing
               </h1>
               <p className="text-sm text-slate-500 mt-1">Manage ticket sales across the platform</p>

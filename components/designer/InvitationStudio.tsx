@@ -610,6 +610,14 @@ export default function InvitationStudio({
       ];
     }
 
+    // Safety net: deduplicate text layers by ID to prevent duplicate/overlaid text on re-hydration
+    const seenIds = new Set<string>();
+    resolvedTextLayers = resolvedTextLayers.filter((layer) => {
+      if (seenIds.has(layer.id)) return false;
+      seenIds.add(layer.id);
+      return true;
+    });
+
     const defaultSelectedId =
       resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
       resolvedTextLayers[0]?.id ||
@@ -837,6 +845,12 @@ export default function InvitationStudio({
         } catch (e) {
           console.warn("Could not apply pending_stationery_design:", e);
         }
+        // Clear pending stationery design from storage after applying to prevent
+        // duplicate text layers on subsequent re-hydration / page refresh
+        try {
+          sessionStorage.removeItem("pending_stationery_design");
+          localStorage.removeItem("pending_stationery_design");
+        } catch (e) {}
       }
     }
 
@@ -884,6 +898,9 @@ export default function InvitationStudio({
       ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
       : null)
   );
+
+  // Guard to prevent redundant re-hydration after initial load
+  const isInitializedRef = useRef(false);
 
   // Centralized Multi-Step Workflow Navigation ("Design", "Details", "Gifting", "Review", "Add guests")
   const WORKFLOW_TABS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
@@ -1634,9 +1651,20 @@ export default function InvitationStudio({
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
+    // Skip redundant re-hydration: if already initialized, same template, and same text layer count, no-op
+    if (isInitializedRef.current && !templateChanged) {
+      const currentTextCount = designState.textLayers?.length || 0;
+      const incomingTextCount = (mergedInvite as any)?.textElements?.length || 0;
+      // Only skip if both have same count (or both zero) — otherwise allow sync
+      if (incomingTextCount === 0 || incomingTextCount === currentTextCount) {
+        return;
+      }
+    }
+
     if (templateChanged || (hasSavedLayers && !loadedTemplateIdRef.current)) {
       // Template actually changed OR initial hydration — do a full state recreation
       loadedTemplateIdRef.current = targetTplId || null;
+      isInitializedRef.current = true;
       const freshState = createDesignStateFromTemplate(
         targetTplId,
         currentEvent || initialEvent,
@@ -1665,6 +1693,8 @@ export default function InvitationStudio({
       // Template unchanged but saved data arrived (e.g. after save) — sync fields without full recreation
       // This prevents the background from being lost during post-save re-hydration
       loadedTemplateIdRef.current = targetTplId || loadedTemplateIdRef.current;
+      isInitializedRef.current = true;
+      // Full replacement of text layers from saved data — never merge/concatenate
       setDesignState((prev) => ({
         ...prev,
         textLayers: (mergedInvite as any)?.textElements?.length > 0
@@ -1681,7 +1711,7 @@ export default function InvitationStudio({
   }, [
     initialInvitation?.id,
     initialInvitation?.templateId,
-    initialInvitation?.textElements,
+    initialInvitation?.textElements?.length,
     initialEvent?.selectedTemplateId,
     currentEvent?.id,
     templateIdQuery,
@@ -4258,7 +4288,6 @@ export default function InvitationStudio({
           selectedGuestCount={selectedGuestIds.length}
           totalGuestCount={eventGuests.length}
           onSendInvitations={prepareAndOpenDispatch}
-          onShareWhatsApp={handleWhatsAppShare}
           onJumpToStep={(idx) => setCurrentStepIndex(idx)}
         />
       </div>

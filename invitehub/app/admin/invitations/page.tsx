@@ -243,7 +243,7 @@ export default function AdminInvitationsPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
                 Invitations
               </h1>
               <p className="text-sm text-slate-500 mt-1">Manage invitations across all events</p>

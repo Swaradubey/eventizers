@@ -424,7 +424,7 @@ export default function AdminBillingPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
                 Billing
               </h1>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">

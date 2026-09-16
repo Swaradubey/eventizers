@@ -215,7 +215,7 @@ function AdminEventsPageContent() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-['Georgia',serif]">
                 Events
               </h1>
               <p className="text-sm text-slate-500 mt-1">

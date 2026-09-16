@@ -5,7 +5,6 @@ import {
   Calendar,
   MapPin,
   Send,
-  Share2,
   Users,
   CheckCircle2,
   Gift,
@@ -28,7 +27,6 @@ interface InvitationWorkflowReviewProps {
   selectedGuestCount: number;
   totalGuestCount: number;
   onSendInvitations: () => void;
-  onShareWhatsApp: () => void;
   onJumpToStep: (stepIndex: number) => void;
 }
 
@@ -42,7 +40,6 @@ export default function InvitationWorkflowReview({
   selectedGuestCount,
   totalGuestCount,
   onSendInvitations,
-  onShareWhatsApp,
   onJumpToStep,
 }: InvitationWorkflowReviewProps) {
   const { eventDetails } = designState;
@@ -57,15 +54,7 @@ export default function InvitationWorkflowReview({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onShareWhatsApp}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl shadow-xs transition-all cursor-pointer"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Share WhatsApp</span>
-          </button>
+        <div className="flex items-center">
           <button
             type="button"
             onClick={onSendInvitations}

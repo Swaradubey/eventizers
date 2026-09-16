@@ -505,7 +505,7 @@ export default function EditEventPage() {
             </button>
 
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-none font-['Georgia',serif]">
                 Edit event
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1 truncate max-w-xs sm:max-w-md">

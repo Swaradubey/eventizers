@@ -4146,7 +4146,6 @@ export default function InvitationStudio({
           selectedGuestCount={selectedGuestIds.length}
           totalGuestCount={eventGuests.length}
           onSendInvitations={prepareAndOpenDispatch}
-          onShareWhatsApp={handleWhatsAppShare}
           onJumpToStep={(idx) => setCurrentStepIndex(idx)}
         />
       </div>
