@@ -268,7 +268,7 @@ export default function Hero() {
       if (res.data) {
         setAiEventData(res.data);
         const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-floating-cakes";
+        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-abstract-nature-party";
 
         if (typeof window !== "undefined") {
           sessionStorage.setItem("pending_template_id", targetTplId);

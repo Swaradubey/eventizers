@@ -222,1227 +222,545 @@ export interface NewTemplateData {
 // -----------------------------------------------------------------------------
 export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
   {
-    id: "tpl-floating-cakes",
-    title: "Floating Cakes",
-    category: "Birthday",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FAF8F5 0%, #F5F0EA 100%)"},
-    envelope: {"outerColor":"#F5CAD5","linerPatternUrl":"sprinkles","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/floating-cakes-bg.svg","backgroundColor":"#FAF8F5","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "Mia's turning 5",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 34,
-                "color": "#2B2D31",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 42,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "Join us for a celebration full of confetti and cake",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#5C4A3E",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 57,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "Sunday, April 19th at 1 p.m.",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#475569",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 66,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Arable Residence, Brooklyn",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#475569",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 73,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-friendship-charms",
-    title: "Friendship Charms",
-    category: "Birthday",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FAF8F2 0%, #FEE2E2 100%)"},
-    envelope: {"outerColor":"#F7BABA","linerPatternUrl":"charms","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/friendship-charms-bg.svg","backgroundColor":"#FAF8F2","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "FERN IS TURNING 8",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 28,
-                "color": "#166534",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 59,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "Join us for a celebration",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 15,
-                "color": "#475569",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 66,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "Friday, August 12th at 3 in the afternoon",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 13,
-                "color": "#334155",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 74,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "Our Place",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 15,
-                "color": "#475569",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 83,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-sporty-frame",
-    title: "Sporty Frame",
-    category: "Birthday",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FAF9F5 0%, #F0FDF4 100%)"},
-    envelope: {"outerColor":"#0C9744","linerPatternUrl":"sports","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/sporty-frame-bg.svg","backgroundColor":"#FAF9F5","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "LET'S HAVE A BALL!",
-                "fontFamily": "'Montserrat', sans-serif",
-                "fontSize": 32,
-                "color": "#0284C7",
-                "fontWeight": "900",
-                "textAlign": "center",
-                "top": 44,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "JOIN US TO CELEBRATE TOM'S SEVENTH BIRTHDAY",
-                "fontFamily": "'Montserrat', sans-serif",
-                "fontSize": 12,
-                "color": "#1E293B",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 58,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SUNDAY, JULY 1ST • 3 PM - 5 PM",
-                "fontFamily": "'Montserrat', sans-serif",
-                "fontSize": 13,
-                "color": "#0284C7",
-                "fontWeight": "800",
-                "textAlign": "center",
-                "top": 69,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "MITCHELL PARK",
-                "fontFamily": "'Montserrat', sans-serif",
-                "fontSize": 13,
-                "color": "#1E293B",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 75,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-garden-brunch",
-    title: "Pastel Garden Brunch",
-    category: "Wedding",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FDFBF7 0%, #F7F3EC 100%)"},
-    envelope: {"outerColor":"#A8C3B0","linerPatternUrl":"pink-gingham","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/pastel-garden-brunch-bg.svg","backgroundColor":"#FDFBF7","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "You are cordially invited to a",
-                "fontFamily": "'Caveat', cursive",
-                "fontSize": 15,
-                "color": "#607258",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 45,
-                "left": 50
-          },
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "garden brunch",
-                "fontFamily": "'Caveat', cursive",
-                "fontSize": 38,
-                "color": "#6E885B",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 53,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "to celebrate",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#8C9E87",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 58,
-                "left": 50
-          },
-          {
-                "id": "layer-names",
-                "key": "celebrant",
-                "text": "Amanda Sanders",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 25,
-                "color": "#54684E",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 65,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "Saturday, April 19th at 11 am",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#72846E",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 73,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "1272 Misen Avenue",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#8E9E8B",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 78,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "Mimosas & light bites will be served",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 11,
-                "color": "#7B8C78",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 83,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-floral-wreath-sophia",
-    title: "Floral Wreath Sophia Henry",
-    category: "Wedding",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCFCF9 0%, #F6F5F0 100%)"},
-    envelope: {"outerColor":"#C4A482","linerPatternUrl":"sage-mist","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/floral-wreath-sophia-bg.svg","backgroundColor":"#FCFCF9","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "JOIN US TO CELEBRATE",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#7C8879",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 38,
-                "left": 50
-          },
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "SOPHIA\nHENRY",
-                "fontFamily": "'Cinzel', serif",
-                "fontSize": 30,
-                "color": "#242A24",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 49,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "Saturday, August 2nd at 2pm",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 12,
-                "color": "#546051",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 59,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "50 Rose Avenue Road",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#6C7A69",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 64,
-                "left": 50
-          },
-          {
-                "id": "layer-location",
-                "key": "venue",
-                "text": "Danville, AL",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#7C8A79",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 68,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-blue-hydrangeas",
-    title: "Blue Hydrangeas Morgan & Kevin",
-    category: "Wedding",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FFFFFF 0%, #F9FBFD 100%)"},
-    envelope: {"outerColor":"#9BB4CE","linerPatternUrl":"silver-foil","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/blue-hydrangeas-bg.svg","backgroundColor":"#FFFFFF","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "JOIN US TO CELEBRATE",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#5A6578",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 17,
-                "left": 50
-          },
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "Morgan Woods\n&\nKevin Barnes",
-                "fontFamily": "'Dancing Script', cursive",
-                "fontSize": 32,
-                "color": "#1E2530",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 30,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SATURDAY, APRIL 19TH\nat 7 o'clock in the evening",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#3B4859",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 44,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "THE WASHINGTON HOTEL",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#2D3748",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 52,
-                "left": 50
-          },
-          {
-                "id": "layer-location",
-                "key": "venue",
-                "text": "427 Lafayette Rd, Nashville, TN",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#64748B",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 56,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-minimalist-bella-carter",
-    title: "Minimalist Bella & Carter",
-    category: "Wedding",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCFCFA 0%, #F7F6F2 100%)"},
-    envelope: {"outerColor":"#ECE8E1","linerPatternUrl":"ivory-linen","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/minimalist-bella-carter-bg.svg","backgroundColor":"#FCFCFA","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "Bella\n&\nCarter",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 40,
-                "color": "#1C1C1C",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 50,
-                "left": 27
-          },
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "Together with our families,\nwe joyfully invite you to\ncelebrate our wedding on",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#4B4B4B",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 38,
-                "left": 73
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "07 / 18 / 2026",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 20,
-                "color": "#111111",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 55,
-                "left": 73
-          },
-          {
-                "id": "layer-time",
-                "key": "datetime",
-                "text": "at 5 o'clock in the evening",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#555555",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 67,
-                "left": 73
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "Wildwood Forest",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#222222",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 74,
-                "left": 73
-          },
-          {
-                "id": "layer-location",
-                "key": "venue",
-                "text": "Portland, Oregon",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#666666",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 79,
-                "left": 73
-          }
-    ],
-  },
-  {
-    id: "tpl-blue-botanical",
-    title: "Blue Botanical Tiffany & Michael",
-    category: "Wedding",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FFFFFF 0%, #FBFDFE 100%)"},
-    envelope: {"outerColor":"#102A54","linerPatternUrl":"silver-foil","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/blue-botanical-bg.svg","backgroundColor":"#FFFFFF","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "Please join us for",
-                "fontFamily": "'Dancing Script', cursive",
-                "fontSize": 22,
-                "color": "#3B4A60",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 28,
-                "left": 50
-          },
-          {
-                "id": "layer-title",
-                "key": "title",
-                "text": "TIFFANY JONES\nand\nMICHAEL NGUYEN",
-                "fontFamily": "'Cinzel', serif",
-                "fontSize": 21,
-                "color": "#141B26",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 41,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "Please join us for this special occasion.",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#4B586E",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 57,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "Friday, August 14th @ 5 PM",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#243042",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 63,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Jones Smith Venue",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#4B586E",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 68,
-                "left": 50
-          },
-          {
-                "id": "layer-location",
-                "key": "venue",
-                "text": "123 Floral Street St, Columbus, OH",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#6B798F",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 72,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-winter-foliage",
-    title: "Winter Foliage",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCFAF5 0%, #F2ECE0 100%)"},
-    envelope: {"outerColor":"#C93B4E","linerPatternUrl":"gold-foil","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/winter-foliage-bg.svg","backgroundColor":"#FCFAF5","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "PLEASE JOIN US FOR",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#6B7869",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 34,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "Julia's Very Merry\nBaby Shower",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 34,
-                "color": "#751824",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 44,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "HONORING BABY GIRL HARPER",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#7B8878",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 53,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SATURDAY, DECEMBER 12TH\nAT 2:00 IN THE AFTERNOON",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#203424",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 63,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Holly & Hearth Bistro",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 15,
-                "color": "#751824",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 73,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "452 Wintergreen Way, Aspen, CO",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#60705E",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 77,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "RSVP to Sarah by Dec 1st • 555-0192",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#751824",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 84,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-watercolor-eucalyptus-wreath",
-    title: "Watercolor Eucalyptus Wreath",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCFCFA 0%, #F2F4EF 100%)"},
-    envelope: {"outerColor":"#A8BCA9","linerPatternUrl":"sage-mist","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/watercolor-eucalyptus-wreath-bg.svg","backgroundColor":"#FCFCFA","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "WELCOME\nBABY!",
-                "fontFamily": "'Cinzel', serif",
-                "fontSize": 26,
-                "color": "#3D5340",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 32,
-                "left": 50
-          },
-          {
-                "id": "layer-intro",
-                "key": "intro",
-                "text": "PLEASE JOIN US TO CELEBRATE",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10,
-                "color": "#758E76",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 41,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "Baby Oliver Thompson",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 32,
-                "color": "#253526",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 58,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "HONORING MOM-TO-BE JESSICA",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#6A826B",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 64,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SUNDAY, MAY 17TH AT 1:00 PM",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#2E4030",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 71,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Botanical Conservatory",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#3D5340",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 77,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "784 Meadow Vista Lane, Portland, OR",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#627763",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 80.5,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "Registered at Target & Babylist • RSVP to 555-0144",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 10.5,
-                "color": "#4B634E",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 86.5,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-winnie-the-pooh-so-sweet",
-    title: "Disney's Winnie the Pooh: So Sweet",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCF8EE 0%, #EFE1BF 100%)"},
-    envelope: {"outerColor":"#E8C87A","linerPatternUrl":"gold-foil","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/winnie-the-pooh-so-sweet-bg.svg","backgroundColor":"#FCF8EE","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "A little hunny is on the way!",
-                "fontFamily": "'Caveat', cursive",
-                "fontSize": 22,
-                "color": "#A8681B",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 11,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "So Sweet Baby Shower",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 32,
-                "color": "#523211",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 43,
-                "left": 50
-          },
-          {
-                "id": "layer-honoree",
-                "key": "honoree",
-                "text": "FOR AMANDA JONES",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 13,
-                "color": "#9C5A14",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 48,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "Celebrating the sweet arrival of baby Noah",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#6E5031",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 53.5,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SATURDAY, SEPTEMBER 26TH\nAT 2:00 IN THE AFTERNOON",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#3D2409",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 63.5,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "Hundred Acre Garden Cafe",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 15,
-                "color": "#523211",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 72.5,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "100 Wood Cottage Rd, Pasadena, CA",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#7D5C3B",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 76,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "RSVP to Kanga & Roo by Sept 15 • 555-0188",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#8C5316",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 83.5,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-camellia-fields",
-    title: "Camellia Fields",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCF8F7 0%, #F3E9E7 100%)"},
-    envelope: {"outerColor":"#EABAC1","linerPatternUrl":"pink-gingham","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/camellia-fields-bg.svg","backgroundColor":"#FCF8F7","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "PLEASE JOIN US TO CELEBRATE",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#8C5C64",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 26,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "Cassidy Anderson",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 40,
-                "color": "#421E25",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 35,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "AND THE UPCOMING ARRIVAL OF HER BABY GIRL",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 12,
-                "color": "#7C4B54",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 41,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SATURDAY, JUNE 20TH\nAT 11:30 IN THE MORNING",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14.5,
-                "color": "#3D1C23",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 53.5,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Rosewood Manor Garden",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 16,
-                "color": "#59252F",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 65.5,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "324 Camellia Drive, Charleston, SC",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#7D4B54",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 69,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "RSVP to Chloe at 555-0167 • Registered at Pottery Barn Kids",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#8A4854",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 78,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-bountiful-bouquet",
-    title: "Bountiful Bouquet",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FCFCFA 0%, #F4F4EE 100%)"},
-    envelope: {"outerColor":"#D0D9CE","linerPatternUrl":"ivory-linen","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/bountiful-bouquet-bg.svg","backgroundColor":"#FCFCFA","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "JOIN US FOR A BABY SHOWER HONORING",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#7A8778",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 26,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "AMBER & TAYLOR",
-                "fontFamily": "'Cinzel', serif",
-                "fontSize": 32,
-                "color": "#1C241E",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 36,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "as they prepare to welcome their little one",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14,
-                "color": "#586957",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 42,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SUNDAY, AUGUST 16TH\n2:00 TO 5:00 IN THE AFTERNOON",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 13.5,
-                "color": "#2D3B2E",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 56,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Glasshouse Loft",
-                "fontFamily": "'Cinzel', serif",
-                "fontSize": 15.5,
-                "color": "#1C241E",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 69,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "89 Mercer Street, New York, NY",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#6A7A6B",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 72.5,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "RSVP by August 1st to taylor.amber@example.com",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#4B5E4D",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 81.5,
-                "left": 50
-          }
-    ],
-  },
-  {
-    id: "tpl-orchid-geranium",
-    title: "Orchid & Geranium",
-    category: "Baby Shower",
-    backdrop: {"type":"color","value":"linear-gradient(135deg, #FFFDF9 0%, #F5ECE4 100%)"},
-    envelope: {"outerColor":"#E28AA8","linerPatternUrl":"electric-gradient","isOpen":true},
-    card: {"artworkUrl":"/assets/templates/orchid-geranium-bg.svg","backgroundColor":"#FFFDF9","aspectRatio":"5x7"},
-    defaultTextLayers: [
-          {
-                "id": "layer-greeting",
-                "key": "greeting",
-                "text": "A BABY SHOWER CELEBRATION FOR",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#913B56",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 26,
-                "left": 50
-          },
-          {
-                "id": "layer-celebrant",
-                "key": "celebrant",
-                "text": "Brittany Anderson",
-                "fontFamily": "'Dancing Script', cursive",
-                "fontSize": 42,
-                "color": "#7E1343",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 35,
-                "left": 50
-          },
-          {
-                "id": "layer-subtitle",
-                "key": "title",
-                "text": "LET'S SHOWER BRITTANY WITH LOVE BEFORE BABY ARRIVES!",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#8F3255",
-                "fontWeight": "600",
-                "textAlign": "center",
-                "top": 41,
-                "left": 50
-          },
-          {
-                "id": "layer-datetime",
-                "key": "datetime",
-                "text": "SATURDAY, OCTOBER 10TH\nAT 1:00 IN THE AFTERNOON",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 14.5,
-                "color": "#3D1222",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 52,
-                "left": 50
-          },
-          {
-                "id": "layer-venue",
-                "key": "venue",
-                "text": "The Palm Terrace Pavilion",
-                "fontFamily": "'Playfair Display', serif",
-                "fontSize": 16,
-                "color": "#800D41",
-                "fontWeight": "700",
-                "textAlign": "center",
-                "top": 63,
-                "left": 50
-          },
-          {
-                "id": "layer-address",
-                "key": "address",
-                "text": "510 Coral Way, Miami, FL",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11.5,
-                "color": "#6E2C42",
-                "fontWeight": "400",
-                "textAlign": "center",
-                "top": 69.5,
-                "left": 50
-          },
-          {
-                "id": "layer-rsvp",
-                "key": "rsvp",
-                "text": "RSVP by Sept 25 to 555-0139 • Light bites & cocktails served",
-                "fontFamily": "'Inter', sans-serif",
-                "fontSize": 11,
-                "color": "#A82855",
-                "fontWeight": "500",
-                "textAlign": "center",
-                "top": 77.5,
-                "left": 50
-          }
-    ],
-  },
-
-  // ===========================================================================
-  // 10 ADULT BIRTHDAY — PURE CSS ZERO-IMAGE TEMPLATES
-  // All artworkUrl fields are '' (empty). Visuals come entirely from cssConfig.
-  // ===========================================================================
-
-  // 1. Golden Milestone
-  {
-    id: 'tpl-golden-milestone',
-    title: 'Golden Milestone',
-    category: 'Birthday',
-    isPureCss: true,
-    backdrop: {
-      type: 'color',
-      value: '#181818',
-      gradient: 'radial-gradient(ellipse at 50% 30%, #2a2515 0%, #181818 60%, #0d0d0d 100%)',
+    "id": "tpl-abstract-nature-party",
+    "title": "Abstract Nature Party",
+    "category": "Wedding",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #F9F5EE 0%, #EFE7DA 100%)",
+      "color": "#F9F5EE",
+      "gradient": "linear-gradient(135deg, #F9F5EE 0%, #EFE7DA 100%)"
     },
-    envelope: {
-      outerColor: '#1C1A10',
-      linerPatternUrl: '',
-      linerCss: 'linear-gradient(135deg, #BF953F 0%, #FCF6BA 30%, #B38728 60%, #FBF5B7 80%, #AA771C 100%)',
-      isOpen: true,
+    "envelope": {
+      "outerColor": "#3F5E3D",
+      "linerPatternUrl": "floral-liner",
+      "linerCss": "repeating-linear-gradient(45deg, #C4607B 0px, #C4607B 10px, #FAF3E8 10px, #FAF3E8 20px)",
+      "isOpen": true
     },
-    card: {
-      artworkUrl: '',
-      decorativeBorderSvgUrl: '',
-      backgroundColor: '#161616',
-      aspectRatio: 'portrait',
-      cssConfig: {
-        backgroundColor: '#161616',
-        paperShadow: 'inset 0 0 60px rgba(212,175,55,0.04), 0 20px 60px rgba(0,0,0,0.7)',
-        border: {
-          type: 'double-gold',
-          color: '#D4AF37',
-          secondaryColor: '#AA8A1E',
-          thickness: 2,
-          offset: 12,
-        },
+    "card": {
+      "artworkUrl": "/assets/templates/abstract-nature-party-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/abstract-nature-party-bg.svg",
+      "backgroundColor": "#FAF3E8",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "Please join us to celebrate\nthe marriage ceremony of",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 13,
+        "color": "#4A433A",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 28,
+        "left": 50
       },
-    },
-    defaultTextLayers: [
-      { id: 'gm-header', key: 'header', text: 'YOU ARE INVITED', fontFamily: "'Montserrat', sans-serif", fontSize: 9, fontWeight: '700', color: '#D4AF37', textAlign: 'center', top: 10, left: 50, letterSpacing: 6, casing: 'uppercase', foilGradient: 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728)' },
-      { id: 'gm-title', key: 'title', text: "Eleanor's 50th", fontFamily: "'Cormorant Garamond', serif", fontSize: 46, fontWeight: '700', color: '#D4AF37', textAlign: 'center', top: 28, left: 50, foilGradient: 'linear-gradient(135deg, #BF953F 0%, #FCF6BA 40%, #B38728 70%, #FBF5B7 100%)' },
-      { id: 'gm-subtitle', key: 'subtitle', text: 'A Golden Celebration', fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: '400', color: '#C9A84C', textAlign: 'center', top: 42, left: 50, letterSpacing: 2 },
-      { id: 'gm-divider', key: 'divider', text: '— ✦ —', fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: '400', color: '#D4AF37', textAlign: 'center', top: 51, left: 50 },
-      { id: 'gm-datetime', key: 'datetime', text: 'Saturday, October 18th at 7:00 PM', fontFamily: "'Cormorant Garamond', serif", fontSize: 13, fontWeight: '400', color: '#C9A84C', textAlign: 'center', top: 60, left: 50 },
-      { id: 'gm-venue', key: 'venue', text: 'The Grand Ballroom, Manhattan', fontFamily: "'Cormorant Garamond', serif", fontSize: 12, fontWeight: '400', color: '#A08030', textAlign: 'center', top: 68, left: 50 },
-      { id: 'gm-rsvp', key: 'rsvp', text: 'Black Tie  ·  RSVP by October 1st', fontFamily: "'Montserrat', sans-serif", fontSize: 9, fontWeight: '600', color: '#D4AF37', textAlign: 'center', top: 80, left: 50, letterSpacing: 3, casing: 'uppercase' },
-    ],
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Brittany Moore\n&\nDaniel Rodriguez",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 24,
+        "color": "#992847",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 43,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Saturday, June 30 at 1 PM",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 13,
+        "color": "#4A433A",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 58,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "The Rose Garden\n45 Mountain View Rd. Denver, CO",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 12,
+        "color": "#5C5348",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 68,
+        "left": 50
+      }
+    ]
   },
-
-
-
-  // ===========================================================================
-  // 14 NEW EVITE-STYLE VECTOR & BOTANICAL TEMPLATES (Pushed from Backend)
-  // ===========================================================================
-
-
-
-
-
-
+  {
+    "id": "tpl-bright-blooms-garden",
+    "title": "Bright Blooms Garden",
+    "category": "Wedding",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #F8F9FA 0%, #EEF1F5 100%)",
+      "color": "#F8F9FA",
+      "gradient": "linear-gradient(135deg, #F8F9FA 0%, #EEF1F5 100%)"
+    },
+    "envelope": {
+      "outerColor": "#FA835B",
+      "linerPatternUrl": "purple-stripes",
+      "linerCss": "repeating-linear-gradient(90deg, #845EC2 0px, #845EC2 8px, #FFFFFF 8px, #FFFFFF 16px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/bright-blooms-garden-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/bright-blooms-garden-bg.svg",
+      "backgroundColor": "#FFFFFF",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "PLEASE JOIN US TO CELEBRATE\nTHE WEDDING OF",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 11,
+        "letterSpacing": 2,
+        "color": "#6B7280",
+        "fontWeight": "600",
+        "textAlign": "left",
+        "top": 22,
+        "left": 38
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Peyton Barnes\n&\nAnthony Woods",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 26,
+        "color": "#262626",
+        "fontWeight": "600",
+        "textAlign": "left",
+        "top": 38,
+        "left": 38
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "SATURDAY, JUNE 4, 2026 AT 4 PM",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 10,
+        "letterSpacing": 1.5,
+        "color": "#525252",
+        "fontWeight": "500",
+        "textAlign": "left",
+        "top": 52,
+        "left": 38
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "WILDWOOD ESTATE\n45 MOUNTAIN VIEW RD.\nDENVER, CO",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 10,
+        "letterSpacing": 1.2,
+        "color": "#737373",
+        "fontWeight": "400",
+        "textAlign": "left",
+        "top": 62,
+        "left": 38
+      }
+    ]
+  },
+  {
+    "id": "tpl-vibrant-blooms-wedding",
+    "title": "Vibrant Blooms Wedding",
+    "category": "Wedding",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #FBF2E8 0%, #F5DEC7 100%)",
+      "color": "#FBF2E8",
+      "gradient": "linear-gradient(135deg, #FBF2E8 0%, #F5DEC7 100%)"
+    },
+    "envelope": {
+      "outerColor": "#E67E17",
+      "linerPatternUrl": "poppy-liner",
+      "linerCss": "repeating-linear-gradient(45deg, #D91B24 0px, #D91B24 10px, #FFF5DF 10px, #FFF5DF 20px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/vibrant-blooms-wedding-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/vibrant-blooms-wedding-bg.svg",
+      "backgroundColor": "#E67E17",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Emily Taylor\n&\nJoseph Lee",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 22,
+        "color": "#2C241E",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 35,
+        "left": 50
+      },
+      {
+        "id": "layer-subtitle",
+        "key": "subtitle",
+        "text": "invite you to\ncelebrate their wedding",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 12,
+        "color": "#5C4A3E",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 48,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Saturday, the sixth of August\ntwo thousand and twenty-seven\nat six o'clock in the evening",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 11,
+        "color": "#4A3C31",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 60,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "Wildwood Gardens\nSan Francisco, CA",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 11,
+        "color": "#5C4A3E",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 72,
+        "left": 50
+      }
+    ]
+  },
+  {
+    "id": "tpl-lily-of-the-valley",
+    "title": "Lily of the Valley",
+    "category": "Wedding",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #F8F5ED 0%, #EDE7D8 100%)",
+      "color": "#F8F5ED",
+      "gradient": "linear-gradient(135deg, #F8F5ED 0%, #EDE7D8 100%)"
+    },
+    "envelope": {
+      "outerColor": "#5A6F4E",
+      "linerPatternUrl": "craspedia-stripes",
+      "linerCss": "repeating-linear-gradient(90deg, #E5B232 0px, #E5B232 8px, #F7F3E7 8px, #F7F3E7 16px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/lily-of-the-valley-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/lily-of-the-valley-bg.svg",
+      "backgroundColor": "#F7F3E7",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "Please join us for the wedding of",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 13,
+        "color": "#54483C",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 30,
+        "left": 50
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Brianna Davis\nand\nThomas Brown",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 24,
+        "color": "#2E251E",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 44,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Saturday, June 15 at 4 PM",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 12,
+        "color": "#54483C",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 58,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "The Rose Garden\n45 Mountain View Rd.",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 11,
+        "color": "#6B5C4D",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 68,
+        "left": 50
+      }
+    ]
+  },
+  {
+    "id": "tpl-gold-ribbons-confetti",
+    "title": "Gold Ribbons & Confetti",
+    "category": "Birthday",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #F6F6F6 0%, #E8E8E8 100%)",
+      "color": "#F6F6F6",
+      "gradient": "linear-gradient(135deg, #F6F6F6 0%, #E8E8E8 100%)"
+    },
+    "envelope": {
+      "outerColor": "#1A1A1A",
+      "linerPatternUrl": "gold-foil",
+      "linerCss": "repeating-linear-gradient(45deg, #D4AF37 0px, #D4AF37 10px, #1A1A1A 10px, #1A1A1A 20px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/gold-ribbons-confetti-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/gold-ribbons-confetti-bg.svg",
+      "backgroundColor": "#FFFFFF",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-headline",
+        "key": "headline",
+        "text": "DAVE IS TURNING",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 18,
+        "letterSpacing": 2,
+        "color": "#1A1A1A",
+        "fontWeight": "800",
+        "textAlign": "center",
+        "top": 30,
+        "left": 50
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "50",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 48,
+        "color": "#1A1A1A",
+        "fontWeight": "900",
+        "textAlign": "center",
+        "top": 43,
+        "left": 50
+      },
+      {
+        "id": "layer-subtitle",
+        "key": "subtitle",
+        "text": "Please join us to celebrate!",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 12,
+        "color": "#555555",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 54,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Saturday, August 10 at 2 PM",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 13,
+        "color": "#222222",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 62,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "Downtown Pub\n457 Lakeview Rd.",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 11,
+        "color": "#666666",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 72,
+        "left": 50
+      }
+    ]
+  },
+  {
+    "id": "tpl-sparkle-balloons",
+    "title": "Sparkle Balloons",
+    "category": "Birthday",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #F5F2EA 0%, #E8E3D7 100%)",
+      "color": "#F5F2EA",
+      "gradient": "linear-gradient(135deg, #F5F2EA 0%, #E8E3D7 100%)"
+    },
+    "envelope": {
+      "outerColor": "#26252B",
+      "linerPatternUrl": "gold-stars",
+      "linerCss": "repeating-linear-gradient(135deg, #E8C36A 0px, #E8C36A 12px, #EDE9DF 12px, #EDE9DF 24px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/sparkle-balloons-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/sparkle-balloons-bg.svg",
+      "backgroundColor": "#EDE9DF",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "Join us for",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 14,
+        "color": "#4A4A4A",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 38,
+        "left": 50
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "APRIL'S BIRTHDAY!",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 24,
+        "letterSpacing": 1.5,
+        "color": "#1E1E1E",
+        "fontWeight": "700",
+        "textAlign": "center",
+        "top": 48,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Sunday, May 7th at 1 PM",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 12,
+        "color": "#4A4A4A",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 58,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "The Blais' Backyard\n8739 Shorecrest Drive",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 11,
+        "color": "#5C5C5C",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 68,
+        "left": 50
+      }
+    ]
+  },
+  {
+    "id": "tpl-celestial-flora",
+    "title": "Celestial Flora",
+    "category": "Birthday",
+    "backdrop": {
+      "type": "color",
+      "value": "linear-gradient(135deg, #FCF8F0 0%, #F5EDE0 100%)",
+      "color": "#FCF8F0",
+      "gradient": "linear-gradient(135deg, #FCF8F0 0%, #F5EDE0 100%)"
+    },
+    "envelope": {
+      "outerColor": "#DE6B35",
+      "linerPatternUrl": "sun-liner",
+      "linerCss": "repeating-linear-gradient(45deg, #F5B842 0px, #F5B842 10px, #FAF7EF 10px, #FAF7EF 20px)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/celestial-flora-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/celestial-flora-bg.svg",
+      "backgroundColor": "#FAF7EF",
+      "aspectRatio": "5x7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "Let's celebrate",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 13,
+        "color": "#594D42",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 28,
+        "left": 50
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Another Trip\nAround\nThe Sun",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 26,
+        "color": "#4B5E3C",
+        "fontWeight": "700",
+        "textAlign": "center",
+        "top": 42,
+        "left": 50
+      },
+      {
+        "id": "layer-name",
+        "key": "name",
+        "text": "Aria Thompson",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 16,
+        "color": "#B85B32",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 58,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Saturday, May 15 at 2 PM",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 12,
+        "color": "#594D42",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 66,
+        "left": 50
+      },
+      {
+        "id": "layer-venue",
+        "key": "venue",
+        "text": "412 Sunset Lane",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 11,
+        "color": "#6B5E52",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 74,
+        "left": 50
+      }
+    ]
+  }
 ];
 
 // Map for constant-time lookup by template ID
@@ -1487,7 +805,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     category: ev.category,
     tags: [ev.category, 'All'],
     title: ev.title,
-    badge: 'Trending',
+    badge: 'Free',
     subtitle: subLayer ? subLayer.text : ev.title,
     date: dateLayer ? dateLayer.text : 'Upcoming',
     time: '4:00 PM',

@@ -156,6 +156,47 @@ export const getPendingOrUploadedImageUrl = (
   return null;
 };
 
+/**
+ * Deduplicate text layers by ID to prevent duplicate/overlaid text on re-hydration.
+ * When the same event is loaded after save → send → browse → re-open, multiple code paths
+ * (localStorage cache, API response, template defaults) can inject identical layers.
+ * This guard ensures only unique layers survive, keeping the first occurrence.
+ */
+export const deduplicateTextLayers = <T extends { id: string }>(layers: T[]): T[] => {
+  if (!Array.isArray(layers) || layers.length === 0) return layers;
+  const seen = new Set<string>();
+  return layers.filter((layer) => {
+    if (seen.has(layer.id)) return false;
+    seen.add(layer.id);
+    return true;
+  });
+};
+
+/**
+ * Hard teardown helper for Canvas text objects (Evite-Style Clean Architecture).
+ * Synchronously removes all existing text objects from Fabric/Canvas before
+ * ingesting text layers on canvas load, event switch, or template switch.
+ */
+export const teardownCanvasTextLayers = (canvas?: any) => {
+  if (canvas && typeof canvas.getObjects === "function") {
+    try {
+      const existing = canvas.getObjects().filter(
+        (obj: any) => obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox' || obj.data?.isTextElement
+      );
+      existing.forEach((obj: any) => canvas.remove(obj));
+      if (typeof canvas.discardActiveObject === "function") {
+        canvas.discardActiveObject();
+      }
+      if (typeof canvas.requestRenderAll === "function") {
+        canvas.requestRenderAll();
+      }
+    } catch (err) {
+      console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
+    }
+  }
+};
+
+
 export interface StudioDesignState {
   activeTemplateId: string | null;
   templateId?: string | null;
@@ -611,12 +652,7 @@ export default function InvitationStudio({
     }
 
     // Safety net: deduplicate text layers by ID to prevent duplicate/overlaid text on re-hydration
-    const seenIds = new Set<string>();
-    resolvedTextLayers = resolvedTextLayers.filter((layer) => {
-      if (seenIds.has(layer.id)) return false;
-      seenIds.add(layer.id);
-      return true;
-    });
+    resolvedTextLayers = deduplicateTextLayers(resolvedTextLayers);
 
     const defaultSelectedId =
       resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
@@ -853,6 +889,10 @@ export default function InvitationStudio({
         } catch (e) {}
       }
     }
+
+    // Final deduplication: guard against any path that may have introduced duplicate text layers
+    // (e.g. pending_stationery_design overwrite, merged cache + API textElements)
+    baseState.textLayers = deduplicateTextLayers(baseState.textLayers);
 
     return baseState;
   };
@@ -1346,9 +1386,13 @@ export default function InvitationStudio({
     const targetTplId =
       targetInvite?.templateId ||
       foundEvt?.selectedTemplateId ||
-      "tpl-floating-cakes";
+      "tpl-abstract-nature-party";
 
     loadedTemplateIdRef.current = targetTplId;
+
+    // Hard Teardown Before Ingesting Text Layers:
+    // Synchronously remove existing text objects from Canvas/Fabric and discard active selection
+    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
 
     // 5. Hydrate fresh state from template
     const freshState = createDesignStateFromTemplate(
@@ -1381,11 +1425,13 @@ export default function InvitationStudio({
       effects: cachedDraft?.effects || freshState.effects,
       backside: cachedDraft?.backside || freshState.backside,
       isLandscape: cachedDraft?.isLandscape ?? freshState.isLandscape,
-      textLayers: (targetInvite.textElements && targetInvite.textElements.length > 0)
-        ? targetInvite.textElements
-        : (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
-          ? cachedDraft.textElements
-          : freshState.textLayers,
+      textLayers: deduplicateTextLayers(
+        (targetInvite.textElements && targetInvite.textElements.length > 0)
+          ? targetInvite.textElements
+          : (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
+            ? cachedDraft.textElements
+            : freshState.textLayers
+      ),
       eventDetails: {
         ...freshState.eventDetails,
         title: foundEvt.title || targetInvite.eventTitle || targetInvite.title || freshState.eventDetails.title,
@@ -1525,7 +1571,9 @@ export default function InvitationStudio({
         cardBg: (initialInvitation as any)?.cardBg || (prev as any)?.cardBg,
         background: (initialInvitation as any)?.background || (prev as any)?.background,
         decorations: (initialInvitation as any)?.decorations || (prev as any)?.decorations,
-        textElements: (initialInvitation as any)?.textElements || (prev as any)?.textElements,
+        textElements: deduplicateTextLayers(
+          (initialInvitation as any)?.textElements || (prev as any)?.textElements || []
+        ),
         envelope: (initialInvitation as any)?.envelope || (prev as any)?.envelope,
         stageBackdrop: (initialInvitation as any)?.stageBackdrop || (prev as any)?.stageBackdrop,
         effects: (initialInvitation as any)?.effects || (prev as any)?.effects,
@@ -1656,6 +1704,9 @@ export default function InvitationStudio({
     }
 
     if (templateChanged || (hasSavedLayers && !loadedTemplateIdRef.current)) {
+      // Hard Teardown Before Ingesting Text Layers:
+      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+
       // Template actually changed OR initial hydration — do a full state recreation
       loadedTemplateIdRef.current = targetTplId || null;
       isInitializedRef.current = true;
@@ -1672,6 +1723,7 @@ export default function InvitationStudio({
           : prev.cardBg;
         return {
           ...freshState,
+          textLayers: deduplicateTextLayers(freshState.textLayers),
           card: nextCard,
           cardBg: nextCardBg,
           decorations: freshState.decorations || prev.decorations || nextCard?.decorations || [],
@@ -1681,6 +1733,8 @@ export default function InvitationStudio({
         try {
           sessionStorage.removeItem("pending_template_id");
           localStorage.removeItem("pending_template_id");
+          sessionStorage.removeItem("pending_stationery_design");
+          localStorage.removeItem("pending_stationery_design");
         } catch (e) {}
       }
     } else if (hasSavedLayers && loadedTemplateIdRef.current) {
@@ -1691,9 +1745,11 @@ export default function InvitationStudio({
       // Full replacement of text layers from saved data — never merge/concatenate
       setDesignState((prev) => ({
         ...prev,
-        textLayers: (mergedInvite as any)?.textElements?.length > 0
-          ? (mergedInvite as any).textElements
-          : prev.textLayers,
+        textLayers: deduplicateTextLayers(
+          (mergedInvite as any)?.textElements?.length > 0
+            ? (mergedInvite as any).textElements
+            : prev.textLayers
+        ),
         cardBg: (mergedInvite as any)?.cardBg || prev.cardBg,
         card: (mergedInvite as any)?.card || prev.card,
         decorations: (mergedInvite as any)?.decorations || prev.decorations || [],
@@ -1715,6 +1771,10 @@ export default function InvitationStudio({
   const handleSelectTemplate = (templateId: string) => {
     const config = getTemplateConfig(templateId);
     if (!config) return;
+
+    // Hard Teardown Before Ingesting Text Layers:
+    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+
     loadedTemplateIdRef.current = templateId;
     const nextState = createDesignStateFromTemplate(
       templateId,
@@ -1722,6 +1782,7 @@ export default function InvitationStudio({
       currentInvitation || initialInvitation,
       true
     );
+    setDesignState(nextState);
     pushStateToHistory(nextState);
 
     // Update URL query param to reflect new template
@@ -2123,6 +2184,7 @@ export default function InvitationStudio({
 
       if (saved) {
         // Non-destructive state merge: retain complete card artwork, templateId, decorations
+        const dedupedTextLayers = deduplicateTextLayers(payload.textElements || designState.textLayers);
         const mergedInvite: Invitation = {
           ...currentInvitation,
           ...payload,
@@ -2132,7 +2194,7 @@ export default function InvitationStudio({
           cardBg: payload.cardBg || currentInvitation?.cardBg || designState.cardBg,
           background: payload.background || currentInvitation?.background || designState.cardBg,
           decorations: payload.decorations || (currentInvitation as any)?.decorations || designState.decorations,
-          textElements: payload.textElements || designState.textLayers,
+          textElements: dedupedTextLayers,
         };
         setCurrentInvitation(mergedInvite);
 
@@ -2150,7 +2212,7 @@ export default function InvitationStudio({
           stageBackdrop: payload.stageBackdrop || prev.stageBackdrop,
           envelope: payload.envelope || prev.envelope,
           effects: payload.effects || prev.effects,
-          textLayers: payload.textElements || prev.textLayers,
+          textLayers: dedupedTextLayers,
           decorations: payload.decorations || prev.decorations || [],
         }));
 
@@ -2162,7 +2224,7 @@ export default function InvitationStudio({
               JSON.stringify({
                 templateId: payload.templateId,
                 templateName: payload.templateName,
-                textElements: payload.textElements,
+                textElements: dedupedTextLayers,
                 card: payload.card,
                 cardBg: payload.cardBg,
                 background: payload.background,
@@ -2308,7 +2370,7 @@ export default function InvitationStudio({
                 JSON.stringify({
                   templateId: activeTplId,
                   templateName: (saved as any)?.templateName || designState.activeTemplateId,
-                  textElements: designState.textLayers,
+                  textElements: deduplicateTextLayers(designState.textLayers),
                   card: (saved as any)?.card || designState.card,
                   cardBg: (saved as any)?.cardBg || designState.cardBg,
                   background: (saved as any)?.background || designState.cardBg,

@@ -13,28 +13,56 @@ export interface CuratedTemplate {
   id: string;
   title: string;
   designer?: string;
-  badge?: "Trending" | "Popular" | "Featured";
+  badge?: "Trending" | "Popular" | "Featured" | "Free" | string;
   category: string;
 }
 
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
-
-
-
-
-
   {
-    id: "tpl-golden-milestone",
-    title: "Golden Milestone",
-    badge: "Trending",
-    category: "Birthday",
-    designer: "Evite Couture",
+    id: "tpl-abstract-nature-party",
+    title: "Abstract Nature Party",
+    badge: "Free",
+    category: "Wedding",
   },
-
-
+  {
+    id: "tpl-bright-blooms-garden",
+    title: "Bright Blooms Garden",
+    badge: "Free",
+    category: "Wedding",
+  },
+  {
+    id: "tpl-vibrant-blooms-wedding",
+    title: "Vibrant Blooms Wedding",
+    badge: "Free",
+    category: "Wedding",
+  },
+  {
+    id: "tpl-lily-of-the-valley",
+    title: "Lily of the Valley",
+    badge: "Free",
+    category: "Wedding",
+  },
+  {
+    id: "tpl-gold-ribbons-confetti",
+    title: "Gold Ribbons & Confetti",
+    badge: "Free",
+    category: "Birthday",
+  },
+  {
+    id: "tpl-sparkle-balloons",
+    title: "Sparkle Balloons",
+    badge: "Free",
+    category: "Birthday",
+  },
+  {
+    id: "tpl-celestial-flora",
+    title: "Celestial Flora",
+    badge: "Free",
+    category: "Birthday",
+  },
 ];
 
-const CATEGORIES = ["All", "Bridal Shower", "Wedding", "Birthday", "Corporate", "Dinner & Gala"];
+const CATEGORIES = ["All", "Wedding", "Birthday"];
 
 export default function Templates() {
   const { user } = useAuth();
@@ -71,7 +99,7 @@ export default function Templates() {
       };
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
     } catch (e) {}
-    router.push("/canvas?guest=true");
+    router.push(`/canvas?guest=true&templateId=${encodeURIComponent(templateId)}`);
   };
 
   const handleAuthSuccess = () => {
@@ -102,7 +130,10 @@ export default function Templates() {
           <span className="text-[12px] tracking-[0.2em] uppercase text-neutral-500 font-medium font-sans">
             Stationery & Botanical Collection
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3" style={{ fontFamily: "Georgia, serif" }}>
+          <h2
+            className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
             Invitations your guests will love
           </h2>
           <p className="mt-3.5 text-base sm:text-lg text-neutral-600 font-sans leading-relaxed">
@@ -131,10 +162,10 @@ export default function Templates() {
           })}
         </div>
 
-        {/* 3-Column Card Grid */}
+        {/* 2-3 Column Card Grid matching Evite gallery cards */}
         <motion.div
           layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 max-w-6xl mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto"
         >
           <AnimatePresence mode="popLayout">
             {filteredTemplates.map((template) => {
@@ -151,27 +182,46 @@ export default function Templates() {
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="group flex flex-col select-none"
                 >
-                  {/* Top Badge Header */}
-                  <div className="h-7 mb-2 flex items-center">
-                    {template.badge && (
-                      <span className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#f5f1e8] text-[#524c44] tracking-wide shadow-2xs">
-                        {template.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Pure CSS Stationery Visual Area (Envelope + Liner Behind + Card in Front) */}
+                  {/* Outer Card Display Container matching Evite screenshot */}
                   <div
                     onClick={() => handleCardClick(template.id)}
-                    className="relative w-full cursor-pointer group-hover:-translate-y-1 transition-transform duration-300"
+                    className="relative w-full bg-[#f3f4f6]/80 hover:bg-[#eceff3] rounded-2xl p-6 sm:p-7 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 min-h-[360px] shadow-xs hover:shadow-md"
                   >
-                    <EviteCardPreview
-                      template={tplConfig || template}
-                      hoverScale={true}
-                    />
+                    {/* Top Header: Free badge on left, Heart button on right */}
+                    <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
+                      <span className="pointer-events-auto bg-white/95 text-neutral-800 text-[11px] font-medium px-2.5 py-1 rounded-md shadow-2xs">
+                        {template.badge || "Free"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(template.id);
+                        }}
+                        className="pointer-events-auto p-1.5 rounded-full hover:bg-white/80 text-neutral-400 hover:text-rose-500 transition-colors cursor-pointer focus:outline-none"
+                        aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-transform duration-200 hover:scale-115 ${
+                            isFav
+                              ? "fill-rose-500 text-rose-500 scale-110"
+                              : "stroke-[1.6] text-neutral-400"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Centered Invitation Card Preview */}
+                    <div className="w-full max-w-[230px] mx-auto py-2 group-hover:scale-[1.02] transition-transform duration-300 drop-shadow-md">
+                      <EviteCardPreview
+                        template={tplConfig || template}
+                        hoverScale={false}
+                        cardOnly={true}
+                      />
+                    </div>
 
                     {/* Hover Pill "Customize" Button */}
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors duration-200">
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors duration-200 rounded-2xl">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -185,39 +235,14 @@ export default function Templates() {
                     </div>
                   </div>
 
-                  {/* Card Metadata Below Visual Area */}
-                  <div className="mt-4 text-center flex flex-col items-center">
+                  {/* Template Title Below Card */}
+                  <div className="mt-3.5 text-left">
                     <h3
                       onClick={() => handleCardClick(template.id)}
                       className="text-neutral-900 text-base font-sans font-medium hover:text-black cursor-pointer transition-colors"
                     >
                       {template.title}
                     </h3>
-
-                    {template.designer && (
-                      <p className="text-xs text-neutral-500 font-sans mt-0.5">
-                        {template.designer}
-                      </p>
-                    )}
-
-                    {/* Minimalist Centered Favorite Heart Icon */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(template.id);
-                      }}
-                      className="mt-2.5 p-1 text-neutral-400 hover:text-rose-500 transition-colors cursor-pointer focus:outline-none"
-                      aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                    >
-                      <Heart
-                        className={`w-4 h-4 transition-transform duration-200 hover:scale-115 ${
-                          isFav
-                            ? "fill-rose-500 text-rose-500 scale-110"
-                            : "stroke-[1.6] text-neutral-400"
-                        }`}
-                      />
-                    </button>
                   </div>
                 </motion.div>
               );

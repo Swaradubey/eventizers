@@ -330,7 +330,15 @@ export const useInvitation = (eventId: string | null) => {
                 const parsed = JSON.parse(rawCache);
                 if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
                 if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
-                if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
+                if (parsed.textElements) {
+                  // Deduplicate text layers by ID to prevent duplicate entries from stale cache
+                  const seen = new Set<string>();
+                  fetchedInvitation.textElements = (parsed.textElements as any[]).filter((item: any) => {
+                    if (!item?.id || seen.has(item.id)) return false;
+                    seen.add(item.id);
+                    return true;
+                  });
+                }
                 if (parsed.card) (fetchedInvitation as any).card = parsed.card;
                 if (parsed.decorations) (fetchedInvitation as any).decorations = parsed.decorations;
                 if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
@@ -477,10 +485,22 @@ export const useInvitation = (eventId: string | null) => {
       // Cache 4-layer and template state in localStorage for persistent parity across studio & designer
       if (typeof window !== "undefined" && targetEventId) {
         try {
+          // Deduplicate text elements before caching to prevent stale duplicates
+          const rawTextElements = formData.textElements || invitation?.textElements;
+          const dedupedTextElements = Array.isArray(rawTextElements)
+            ? (() => {
+                const seen = new Set<string>();
+                return rawTextElements.filter((item: any) => {
+                  if (!item?.id || seen.has(item.id)) return false;
+                  seen.add(item.id);
+                  return true;
+                });
+              })()
+            : rawTextElements;
           const cachePayload = {
             templateId: formData.templateId || invitation?.templateId,
             templateName: (formData as any).templateName || (invitation as any)?.templateName,
-            textElements: formData.textElements || invitation?.textElements,
+            textElements: dedupedTextElements,
             envelope: formData.envelope || invitation?.envelope,
             stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
             card: (formData as any).card || (invitation as any)?.card,
@@ -499,10 +519,21 @@ export const useInvitation = (eventId: string | null) => {
       }
 
       // Merge rich 4-layer state back into savedInvite - preserve card and decorative layers
+      const rawTextElements = formData.textElements || invitation?.textElements;
+      const dedupedTextElements = Array.isArray(rawTextElements)
+        ? (() => {
+            const seen = new Set<string>();
+            return rawTextElements.filter((item: any) => {
+              if (!item?.id || seen.has(item.id)) return false;
+              seen.add(item.id);
+              return true;
+            });
+          })()
+        : rawTextElements;
       const fullSavedInvite: Invitation = {
         ...savedInvite,
         templateId: formData.templateId || savedInvite.templateId || invitation?.templateId,
-        textElements: formData.textElements || invitation?.textElements,
+        textElements: dedupedTextElements,
         envelope: formData.envelope || invitation?.envelope,
         stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
         card: (formData as any).card || (invitation as any)?.card,

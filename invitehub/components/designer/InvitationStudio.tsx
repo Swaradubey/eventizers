@@ -57,6 +57,40 @@ import AuthModal from "../AuthModal";
 
 // --- Types & Interfaces ---
 
+export const deduplicateTextLayers = <T extends { id: string }>(layers: T[]): T[] => {
+  if (!Array.isArray(layers) || layers.length === 0) return layers;
+  const seen = new Set<string>();
+  return layers.filter((layer) => {
+    if (seen.has(layer.id)) return false;
+    seen.add(layer.id);
+    return true;
+  });
+};
+
+/**
+ * Hard teardown helper for Canvas text objects (Evite-Style Clean Architecture).
+ * Synchronously removes all existing text objects from Fabric/Canvas before
+ * ingesting text layers on canvas load, event switch, or template switch.
+ */
+export const teardownCanvasTextLayers = (canvas?: any) => {
+  if (canvas && typeof canvas.getObjects === "function") {
+    try {
+      const existing = canvas.getObjects().filter(
+        (obj: any) => obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox' || obj.data?.isTextElement
+      );
+      existing.forEach((obj: any) => canvas.remove(obj));
+      if (typeof canvas.discardActiveObject === "function") {
+        canvas.discardActiveObject();
+      }
+      if (typeof canvas.requestRenderAll === "function") {
+        canvas.requestRenderAll();
+      }
+    } catch (err) {
+      console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
+    }
+  }
+};
+
 export interface TextLayer {
   id: string;
   key?: string;
@@ -1333,9 +1367,13 @@ export default function InvitationStudio({
     const targetTplId =
       targetInvite?.templateId ||
       foundEvt?.selectedTemplateId ||
-      "tpl-floating-cakes";
+      "tpl-abstract-nature-party";
 
     loadedTemplateIdRef.current = targetTplId;
+
+    // Hard Teardown Before Ingesting Text Layers:
+    // Synchronously remove existing text objects from Canvas/Fabric and discard active selection
+    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
 
     // 5. Hydrate fresh state from template
     const freshState = createDesignStateFromTemplate(
@@ -1646,6 +1684,9 @@ export default function InvitationStudio({
     // Only re-hydrate when: saved layers exist for a new invitation ID, OR the
     // template has genuinely changed (not just because currentEvent was synced).
     if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
+      // Hard Teardown Before Ingesting Text Layers:
+      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
         targetTplId,
@@ -1693,6 +1734,10 @@ export default function InvitationStudio({
   const handleSelectTemplate = (templateId: string) => {
     const config = getTemplateConfig(templateId);
     if (!config) return;
+
+    // Hard Teardown Before Ingesting Text Layers:
+    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+
     loadedTemplateIdRef.current = templateId;
     const nextState = createDesignStateFromTemplate(
       templateId,
@@ -1700,6 +1745,7 @@ export default function InvitationStudio({
       currentInvitation || initialInvitation,
       true
     );
+    setDesignState(nextState);
     pushStateToHistory(nextState);
 
     // Update URL query param to reflect new template
