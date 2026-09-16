@@ -1498,10 +1498,22 @@ export default function InvitationStudio({
     }
   };
 
-  // Synchronize initial props
+  // Synchronize initial props — merge rather than overwrite to preserve locally-saved 4-layer state
   useEffect(() => {
     if (initialInvitation) {
-      setCurrentInvitation(initialInvitation);
+      setCurrentInvitation((prev) => ({
+        ...(prev || {}),
+        ...initialInvitation,
+        // Preserve locally-available 4-layer properties that the backend doesn't persist
+        card: (initialInvitation as any)?.card || (prev as any)?.card,
+        cardBg: (initialInvitation as any)?.cardBg || (prev as any)?.cardBg,
+        background: (initialInvitation as any)?.background || (prev as any)?.background,
+        decorations: (initialInvitation as any)?.decorations || (prev as any)?.decorations,
+        textElements: (initialInvitation as any)?.textElements || (prev as any)?.textElements,
+        envelope: (initialInvitation as any)?.envelope || (prev as any)?.envelope,
+        stageBackdrop: (initialInvitation as any)?.stageBackdrop || (prev as any)?.stageBackdrop,
+        effects: (initialInvitation as any)?.effects || (prev as any)?.effects,
+      }));
     }
   }, [initialInvitation]);
 
@@ -1616,12 +1628,14 @@ export default function InvitationStudio({
         ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
         : null);
 
+    const templateChanged = Boolean(targetTplId && targetTplId !== loadedTemplateIdRef.current);
     const hasSavedLayers = Boolean(
       (initialInvitation?.textElements && initialInvitation.textElements.length > 0) ||
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
-    if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
+    if (templateChanged || (hasSavedLayers && !loadedTemplateIdRef.current)) {
+      // Template actually changed OR initial hydration — do a full state recreation
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
         targetTplId,
@@ -1647,6 +1661,22 @@ export default function InvitationStudio({
           localStorage.removeItem("pending_template_id");
         } catch (e) {}
       }
+    } else if (hasSavedLayers && loadedTemplateIdRef.current) {
+      // Template unchanged but saved data arrived (e.g. after save) — sync fields without full recreation
+      // This prevents the background from being lost during post-save re-hydration
+      loadedTemplateIdRef.current = targetTplId || loadedTemplateIdRef.current;
+      setDesignState((prev) => ({
+        ...prev,
+        textLayers: (mergedInvite as any)?.textElements?.length > 0
+          ? (mergedInvite as any).textElements
+          : prev.textLayers,
+        cardBg: (mergedInvite as any)?.cardBg || prev.cardBg,
+        card: (mergedInvite as any)?.card || prev.card,
+        decorations: (mergedInvite as any)?.decorations || prev.decorations || [],
+        stageBackdrop: (mergedInvite as any)?.stageBackdrop || prev.stageBackdrop,
+        envelope: (mergedInvite as any)?.envelope || prev.envelope,
+        effects: (mergedInvite as any)?.effects || prev.effects,
+      }));
     }
   }, [
     initialInvitation?.id,
@@ -2084,6 +2114,11 @@ export default function InvitationStudio({
             ...(prev.card || {}),
             ...payload.card,
           },
+          cardBg: payload.cardBg || prev.cardBg,
+          stageBackdrop: payload.stageBackdrop || prev.stageBackdrop,
+          envelope: payload.envelope || prev.envelope,
+          effects: payload.effects || prev.effects,
+          textLayers: payload.textElements || prev.textLayers,
           decorations: payload.decorations || prev.decorations || [],
         }));
 

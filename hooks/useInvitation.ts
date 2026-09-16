@@ -331,6 +331,8 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
                 if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
                 if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
+                if (parsed.card) (fetchedInvitation as any).card = parsed.card;
+                if (parsed.decorations) (fetchedInvitation as any).decorations = parsed.decorations;
                 if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
                 if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
                 if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
@@ -340,6 +342,7 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
                 if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
                 if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
+                if (parsed.backside) (fetchedInvitation as any).backside = parsed.backside;
                 if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
               }
             } catch (e) {}

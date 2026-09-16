@@ -381,18 +381,26 @@ export default function InvitationCanvasStage({
       : "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)";
 
   // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
-  // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
-  // to render a pure-CSS zero-image card. (Bypassed if user uploaded an image).
+  // Only use EvitePureCssStage when the template is explicitly a pure-CSS design
+  // (isPureCss: true) OR has a real CSS border config with a border type defined.
+  // Templates that have artworkUrl images MUST fall through to the image render path.
   const rawCssConfig = (config.card as any)?.cssConfig;
   const innerBorder = (config as any).innerCardLayer?.border;
   const innerShadow = (config as any).innerCardLayer?.boxShadow;
-  const cssConfig = rawCssConfig || innerBorder ? {
+  // Fix: wrap condition in parens to avoid operator-precedence bug
+  const cssConfig = (rawCssConfig || innerBorder) ? {
     ...(rawCssConfig || {}),
     ...(innerBorder ? { border: innerBorder } : {}),
     ...(innerShadow ? { paperShadow: innerShadow } : {}),
   } : null;
 
-  if (!isUserUpload && (cssConfig || (config as any).isPureCss)) {
+  // Only route to pure-CSS stage when explicitly flagged OR cssConfig has an actual border type.
+  // This prevents image-based templates from being incorrectly swallowed by the CSS path.
+  const hasRealCssBorder = Boolean(cssConfig?.border?.type && cssConfig.border.type !== "none");
+  const isExplicitPureCss = Boolean((config as any).isPureCss);
+  const hasArtworkImage = Boolean(cleanCardImage);
+
+  if (!isUserUpload && !hasArtworkImage && (isExplicitPureCss || hasRealCssBorder)) {
     // Build a minimal template-like object from the config for EvitePureCssStage
     const pureCssTpl = {
       id: (config as any).templateId || config.activeTemplateId || "unknown",

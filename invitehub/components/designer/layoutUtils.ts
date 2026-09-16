@@ -44,7 +44,7 @@ export function getContainerScaleFactor(cardWidth: number, baseWidth = BASE_CANV
 export function computeAntiCollisionLayout(
   layers: TextLayer[],
   dimensions: ContainerDimensions,
-  minGapPercent = 1.8
+  minGapPercent = 2.5
 ): ComputedTextLayer[] {
   if (!layers || layers.length === 0) return [];
 
@@ -59,28 +59,34 @@ export function computeAntiCollisionLayout(
 
     const baseFontSize = layer.fontSize || 16;
     const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor * 10) / 10);
-    const effectiveLineHeight = layer.lineHeight || (scaledFontSize > 26 ? 1.15 : 1.25);
+    // Use tighter line-height for large display text, looser for body text
+    const effectiveLineHeight = layer.lineHeight || (scaledFontSize > 26 ? 1.2 : 1.35);
 
-    // Multi-line estimation
+    // Multi-line estimation with conservative (wider) char width to avoid under-counting lines
     const text = layer.text || "";
     const paragraphs = text.split("\n");
-    const maxTextWidthPx = Math.max(120, width * 0.88);
+
+    // Effective max text width: 88% of card width, capped generously
+    const maxTextWidthPx = Math.max(100, width * 0.86);
+
     let totalLines = 0;
 
     for (const p of paragraphs) {
-      if (p.length === 0) {
+      if (p.trim().length === 0) {
+        // Empty paragraph = blank line
         totalLines += 1;
         continue;
       }
-      // Average character width estimate for invitation serif/sans/display fonts
-      const charWidthEstimate = scaledFontSize * 0.52;
+      // Conservative char width: use 0.62× font size (accounts for wider display/serif glyphs)
+      // Increased from 0.52 to prevent underestimating line count for bold/display fonts
+      const charWidthEstimate = scaledFontSize * 0.62;
       const pWidthPx = p.length * charWidthEstimate;
       const wrappedLines = Math.max(1, Math.ceil(pWidthPx / maxTextWidthPx));
       totalLines += wrappedLines;
     }
 
-    // Layer height in pixels and percentage of card height
-    const heightPx = Math.round(totalLines * scaledFontSize * effectiveLineHeight + 6);
+    // Layer height: total line height + top/bottom padding buffer (12px extra)
+    const heightPx = Math.round(totalLines * scaledFontSize * effectiveLineHeight + 12);
     const heightPercent = (heightPx / height) * 100;
 
     return {
@@ -103,7 +109,8 @@ export function computeAntiCollisionLayout(
     .sort((a, b) => processed[a].rawY - processed[b].rawY);
 
   // 3. Forward anti-collision cascade pass
-  let maxBottomReached = 0;
+  // Track the bottom edge (in %) of the previously placed element
+  let prevBottomEdge = 0;
 
   for (let k = 0; k < sortedIndices.length; k++) {
     const idx = sortedIndices[k];
@@ -114,12 +121,8 @@ export function computeAntiCollisionLayout(
       // First element: clamp to avoid bleeding above top padding
       item.computedTop = Math.max(halfH + 2.5, item.rawY);
     } else {
-      const prevIdx = sortedIndices[k - 1];
-      const prevItem = processed[prevIdx];
-      const prevBottom = prevItem.computedTop + (prevItem.heightPercent / 2);
-
-      // Minimum required center Y to maintain clear visual gap
-      const minRequiredCenterY = prevBottom + minGapPercent + halfH;
+      // Minimum center Y = previous bottom edge + gap + half of current item's height
+      const minRequiredCenterY = prevBottomEdge + minGapPercent + halfH;
 
       if (item.rawY < minRequiredCenterY) {
         item.computedTop = Number(minRequiredCenterY.toFixed(2));
@@ -129,8 +132,11 @@ export function computeAntiCollisionLayout(
       }
     }
 
-    maxBottomReached = Math.max(maxBottomReached, item.computedTop + halfH);
+    // Update the bottom edge reached so far (center + half height)
+    prevBottomEdge = item.computedTop + halfH;
   }
+
+  const maxBottomReached = prevBottomEdge;
 
   // 4. Safe bottom bounds compression:
   // If the total pushed stack exceeds 95% of card height, proportionally compress gaps
