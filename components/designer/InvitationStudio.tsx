@@ -47,7 +47,7 @@ import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData
 import GuestSelectionModal from "./GuestSelectionModal";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
-import RsvpOptionsModal, { RsvpOptionsState } from "./RsvpOptionsModal";
+import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
 import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
 import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
 import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
@@ -919,12 +919,11 @@ export default function InvitationStudio({
     const deadlineEnabled = Boolean(
       r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
     );
-    const deadlineDate =
-      r?.deadlineDate ||
-      s?.deadlineDate ||
-      (s?.rsvpDeadlineDate
-        ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
-        : (s?.rsvpDeadline || ""));
+    const rawSavedDate = r?.deadlineDate || s?.deadlineDate || s?.rsvpDeadlineDate || s?.rsvpDeadline || "";
+    const rawSavedTime = r?.deadlineTime || s?.deadlineTime || (s as any)?.rsvpDeadlineTime || "";
+    const parsed = parseDeadline(rawSavedDate, rawSavedTime);
+    const deadlineDate = parsed.date;
+    const deadlineTime = parsed.time || (deadlineDate && deadlineEnabled ? "23:59" : parsed.time || "");
     const allowAfterDeadline = Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline);
     const allowMaybe = r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true);
     const privateGuestList = Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList);
@@ -938,6 +937,7 @@ export default function InvitationStudio({
     return {
       deadlineEnabled,
       deadlineDate,
+      deadlineTime,
       allowAfterDeadline,
       allowMaybe,
       privateGuestList,
@@ -1279,17 +1279,16 @@ export default function InvitationStudio({
       .then((res) => {
         if (res?.success && res.rsvpSettings) {
           const s = res.rsvpSettings;
+          const rawSavedDate = s.deadlineDate || s.rsvpDeadlineDate || s.rsvpDeadline || "";
+          const rawSavedTime = s.deadlineTime || s.rsvpDeadlineTime || "";
+          const parsed = parseDeadline(rawSavedDate, rawSavedTime);
+          const deadlineEnabled = Boolean(
+            s.rsvpDeadlineEnabled ?? s.deadlineEnabled ?? (s.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+          );
           setRsvpOptions({
-            deadlineEnabled: Boolean(
-              s.rsvpDeadlineEnabled ?? s.deadlineEnabled ?? (s.rsvpDeadline && s.rsvpDeadline.trim() !== "")
-            ),
-            deadlineDate:
-              s.deadlineDate ||
-              (s.rsvpDeadlineDate
-                ? (typeof s.rsvpDeadlineDate === "string"
-                    ? s.rsvpDeadlineDate.split("T")[0]
-                    : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
-                : (s.rsvpDeadline || "")),
+            deadlineEnabled,
+            deadlineDate: parsed.date,
+            deadlineTime: parsed.time || (parsed.date && deadlineEnabled ? "23:59" : parsed.time || ""),
             allowAfterDeadline: Boolean(s.allowLateRsvp ?? s.allowAfterDeadline),
             allowMaybe: s.allowMaybe !== undefined ? Boolean(s.allowMaybe) : (s.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
             privateGuestList: Boolean(s.isPrivateGuestList ?? s.privateGuestList),
@@ -1410,16 +1409,16 @@ export default function InvitationStudio({
     if (targetInvite.designData?.rsvpOptions || foundEvt.rsvpSettings) {
       const s = foundEvt.rsvpSettings;
       const r = targetInvite.designData?.rsvpOptions;
+      const rawSavedDate = r?.deadlineDate || s?.deadlineDate || s?.rsvpDeadlineDate || s?.rsvpDeadline || "";
+      const rawSavedTime = r?.deadlineTime || s?.deadlineTime || (s as any)?.rsvpDeadlineTime || "";
+      const parsed = parseDeadline(rawSavedDate, rawSavedTime);
+      const deadlineEnabled = Boolean(
+        r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
+      );
       setRsvpOptions({
-        deadlineEnabled: Boolean(
-          r?.deadlineEnabled ?? s?.rsvpDeadlineEnabled ?? s?.deadlineEnabled ?? (s?.rsvpDeadline && s.rsvpDeadline.trim() !== "")
-        ),
-        deadlineDate:
-          r?.deadlineDate ||
-          s?.deadlineDate ||
-          (s?.rsvpDeadlineDate
-            ? (typeof s.rsvpDeadlineDate === "string" ? s.rsvpDeadlineDate.split("T")[0] : new Date(s.rsvpDeadlineDate).toISOString().split("T")[0])
-            : (s?.rsvpDeadline || "")),
+        deadlineEnabled,
+        deadlineDate: parsed.date,
+        deadlineTime: parsed.time || (parsed.date && deadlineEnabled ? "23:59" : parsed.time || ""),
         allowAfterDeadline: Boolean(r?.allowAfterDeadline ?? s?.allowLateRsvp ?? s?.allowAfterDeadline),
         allowMaybe: r?.allowMaybe ?? s?.allowMaybe ?? (s?.allowMaybeResponse !== undefined ? Boolean(s.allowMaybeResponse) : true),
         privateGuestList: Boolean(r?.privateGuestList ?? s?.isPrivateGuestList ?? s?.privateGuestList),
@@ -2048,7 +2047,12 @@ export default function InvitationStudio({
       },
       rsvpSettings: {
         rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
-        rsvpDeadlineDate: rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate ? rsvpOptions.deadlineDate : null,
+        rsvpDeadlineDate:
+          rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+            ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+            : null,
+        rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+        deadlineTime: rsvpOptions.deadlineTime || "",
         allowLateRsvp: rsvpOptions.allowAfterDeadline,
         allowMaybe: rsvpOptions.allowMaybe,
         isPrivateGuestList: rsvpOptions.privateGuestList,
@@ -2061,7 +2065,10 @@ export default function InvitationStudio({
         privateGuestList: rsvpOptions.privateGuestList,
         allowGuestsToBringAnyone: rsvpOptions.allowGuestsToBringAnyone,
 
-        rsvpDeadline: rsvpOptions.deadlineEnabled ? rsvpOptions.deadlineDate || null : null,
+        rsvpDeadline:
+          rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+            ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+            : null,
         allowPlusOnes: rsvpOptions.allowGuestsToBringAnyone,
         maxPlusOnes: rsvpOptions.maxAdditionalGuests,
         allowMaybeResponse: rsvpOptions.allowMaybe,
@@ -4603,6 +4610,7 @@ export default function InvitationStudio({
         isOpen={isRsvpModalOpen}
         onClose={() => setIsRsvpModalOpen(false)}
         options={rsvpOptions}
+        defaultTime={designState.eventDetails.time || "23:59"}
         onSave={async (newOpts) => {
           const targetEventId = currentEvent?.id || initialEvent?.id;
           if (!targetEventId) {
@@ -4613,9 +4621,16 @@ export default function InvitationStudio({
           }
 
           try {
+            const combinedDeadlineIso =
+              newOpts.deadlineEnabled && newOpts.deadlineDate
+                ? combineDateTimeToIso(newOpts.deadlineDate, newOpts.deadlineTime)
+                : null;
+
             const payload: Partial<RsvpSettingsData> = {
               rsvpDeadlineEnabled: newOpts.deadlineEnabled,
-              rsvpDeadlineDate: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              rsvpDeadlineDate: combinedDeadlineIso,
+              rsvpDeadlineTime: newOpts.deadlineTime || null,
+              deadlineTime: newOpts.deadlineTime || "",
               allowLateRsvp: newOpts.allowAfterDeadline,
               allowMaybe: newOpts.allowMaybe,
               isPrivateGuestList: newOpts.privateGuestList,
@@ -4628,7 +4643,7 @@ export default function InvitationStudio({
               privateGuestList: newOpts.privateGuestList,
               allowGuestsToBringAnyone: newOpts.allowGuestsToBringAnyone,
 
-              rsvpDeadline: newOpts.deadlineEnabled && newOpts.deadlineDate ? newOpts.deadlineDate : null,
+              rsvpDeadline: combinedDeadlineIso,
               allowPlusOnes: newOpts.allowGuestsToBringAnyone,
               maxPlusOnes: newOpts.maxAdditionalGuests,
               allowMaybeResponse: newOpts.allowMaybe,

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export interface RsvpOptionsState {
   deadlineEnabled: boolean;
   deadlineDate?: string;
+  deadlineTime?: string;
   allowAfterDeadline: boolean;
   allowMaybe: boolean;
   privateGuestList: boolean;
@@ -14,11 +15,96 @@ export interface RsvpOptionsState {
   maxAdditionalGuests: number;
 }
 
+/**
+ * Parses saved date & time into separate YYYY-MM-DD and HH:mm formats.
+ */
+export function parseDeadline(
+  savedDate?: string | Date | null,
+  savedTime?: string | null
+): { date: string; time: string } {
+  if (!savedDate) {
+    return { date: "", time: savedTime || "" };
+  }
+
+  if (savedDate instanceof Date) {
+    if (isNaN(savedDate.getTime())) return { date: "", time: savedTime || "" };
+    const dateStr = `${savedDate.getFullYear()}-${String(savedDate.getMonth() + 1).padStart(2, "0")}-${String(savedDate.getDate()).padStart(2, "0")}`;
+    const timeStr =
+      savedTime ||
+      `${String(savedDate.getHours()).padStart(2, "0")}:${String(savedDate.getMinutes()).padStart(2, "0")}`;
+    return { date: dateStr, time: timeStr };
+  }
+
+  const str = String(savedDate).trim();
+  if (!str) return { date: "", time: savedTime || "" };
+
+  if (str.includes("T")) {
+    const [dPart, tPart] = str.split("T");
+    const dateStr = dPart;
+    let timeStr = savedTime || "";
+    if (!timeStr && tPart) {
+      const cleanTime = tPart.split(".")[0].replace("Z", "");
+      const timeComponents = cleanTime.split(":");
+      if (timeComponents.length >= 2) {
+        timeStr = `${timeComponents[0].padStart(2, "0")}:${timeComponents[1].padStart(2, "0")}`;
+      }
+    }
+    return { date: dateStr, time: timeStr };
+  }
+
+  if (str.includes(" ")) {
+    const [dPart, tPart] = str.split(" ");
+    const dateStr = dPart;
+    let timeStr = savedTime || "";
+    if (!timeStr && tPart) {
+      const timeComponents = tPart.split(":");
+      if (timeComponents.length >= 2) {
+        timeStr = `${timeComponents[0].padStart(2, "0")}:${timeComponents[1].padStart(2, "0")}`;
+      }
+    }
+    return { date: dateStr, time: timeStr };
+  }
+
+  return { date: str, time: savedTime || "" };
+}
+
+/**
+ * Combines date string (YYYY-MM-DD) and time string (HH:mm) into an ISO UTC timestamp.
+ */
+export function combineDateTimeToIso(dateStr?: string, timeStr?: string): string | null {
+  if (!dateStr) return null;
+  const time = timeStr && timeStr.trim() ? timeStr.trim() : "23:59";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  if (!year || !month || !day) return null;
+
+  const d = new Date(year, month - 1, day, hour || 0, minute || 0, 0, 0);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
+ * Formats a 24h time string (HH:mm) into a user-friendly 12h format (hh:mm A/PM).
+ */
+export function formatTime12(timeStr?: string): string {
+  if (!timeStr) return "";
+  const parts = timeStr.split(":");
+  if (parts.length < 2) return timeStr;
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1];
+  if (isNaN(hours)) return timeStr;
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
 interface RsvpOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   options: RsvpOptionsState;
   onSave: (options: RsvpOptionsState) => Promise<void> | void;
+  defaultTime?: string;
 }
 
 export default function RsvpOptionsModal({
@@ -26,29 +112,68 @@ export default function RsvpOptionsModal({
   onClose,
   options,
   onSave,
+  defaultTime = "23:59",
 }: RsvpOptionsModalProps) {
-  const [localOptions, setLocalOptions] = useState<RsvpOptionsState>({ ...options });
+  const initOptions = (opts: RsvpOptionsState): RsvpOptionsState => {
+    const parsed = parseDeadline(opts.deadlineDate, opts.deadlineTime);
+    return {
+      ...opts,
+      deadlineDate: parsed.date,
+      deadlineTime: parsed.time || (parsed.date && opts.deadlineEnabled ? (defaultTime || "23:59") : parsed.time || ""),
+    };
+  };
+
+  const [localOptions, setLocalOptions] = useState<RsvpOptionsState>(() => initOptions(options));
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setLocalOptions({ ...options });
+      setLocalOptions(initOptions(options));
     }
-  }, [isOpen, options]);
+  }, [isOpen, options, defaultTime]);
 
   if (!isOpen) return null;
 
   const handleToggle = (key: keyof RsvpOptionsState) => {
+    setLocalOptions((prev) => {
+      const nextVal = !prev[key];
+      const updates: Partial<RsvpOptionsState> = { [key]: nextVal };
+      if (key === "deadlineEnabled" && nextVal && prev.deadlineDate && !prev.deadlineTime) {
+        updates.deadlineTime = defaultTime || "23:59";
+      }
+      return {
+        ...prev,
+        ...updates,
+      };
+    });
+  };
+
+  const handleDateChange = (val: string) => {
     setLocalOptions((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      deadlineDate: val,
+      deadlineTime: prev.deadlineTime || (val ? (defaultTime || "23:59") : ""),
+    }));
+  };
+
+  const handleTimeChange = (val: string) => {
+    setLocalOptions((prev) => ({
+      ...prev,
+      deadlineTime: val,
     }));
   };
 
   const handleDone = async () => {
     try {
       setIsSaving(true);
-      await onSave(localOptions);
+      const finalOptions: RsvpOptionsState = {
+        ...localOptions,
+        deadlineTime:
+          localOptions.deadlineEnabled && localOptions.deadlineDate && !localOptions.deadlineTime
+            ? (defaultTime || "23:59")
+            : localOptions.deadlineTime,
+      };
+      await onSave(finalOptions);
       onClose();
     } catch (err) {
       // Keep modal open and edits intact if request fails
@@ -83,22 +208,34 @@ export default function RsvpOptionsModal({
           <div className="px-6 py-2 overflow-y-auto space-y-6 divide-y divide-slate-100">
             {/* 1. RSVP deadline */}
             <div className="pt-2 flex items-start justify-between gap-4">
-              <div className="space-y-1 pr-2">
+              <div className="space-y-1 pr-2 flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-slate-900">RSVP deadline</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Set a reply-by date and select if guests can still RSVP after the deadline.
                 </p>
                 {localOptions.deadlineEnabled && (
                   <div className="mt-3 pt-2 space-y-2">
-                    <input
-                      type="date"
-                      value={localOptions.deadlineDate || ""}
-                      onChange={(e) =>
-                        setLocalOptions((prev) => ({ ...prev, deadlineDate: e.target.value }))
-                      }
-                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-slate-800"
-                    />
-                    <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="date"
+                          value={localOptions.deadlineDate || ""}
+                          onChange={(e) => handleDateChange(e.target.value)}
+                          aria-label="RSVP deadline date"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-slate-800 transition-colors"
+                        />
+                      </div>
+                      <div className="w-32 shrink-0">
+                        <input
+                          type="time"
+                          value={localOptions.deadlineTime || ""}
+                          onChange={(e) => handleTimeChange(e.target.value)}
+                          aria-label="RSVP deadline time"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-slate-800 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer pt-0.5">
                       <input
                         type="checkbox"
                         checked={localOptions.allowAfterDeadline}

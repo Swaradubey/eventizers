@@ -358,7 +358,13 @@ export default function PublicInvitationPage() {
                 <div>
                   <p className="text-sm font-bold text-amber-900">RSVP Deadline Has Passed</p>
                   <p className="text-xs text-amber-700">
-                    The deadline to respond was {new Date(deadlineDate!).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. You may no longer submit a response.
+                    The deadline to respond was {(() => {
+                      const d = new Date(deadlineDate!);
+                      const dateFormatted = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                      const hasTime = typeof deadlineDate === "string" && (deadlineDate.includes("T") || deadlineDate.includes(" "));
+                      const timeFormatted = hasTime ? ` at ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "";
+                      return `${dateFormatted}${timeFormatted}`;
+                    })()}. You may no longer submit a response.
                   </p>
                 </div>
               </div>

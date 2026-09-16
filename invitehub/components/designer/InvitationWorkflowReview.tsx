@@ -13,7 +13,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { StudioDesignState } from "./InvitationStudio";
-import { RsvpOptionsState } from "./RsvpOptionsModal";
+import { RsvpOptionsState, formatTime12 } from "./RsvpOptionsModal";
 import { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
 import { HostDetailsData } from "./InvitationWorkflowDetails";
 
@@ -141,7 +141,9 @@ export default function InvitationWorkflowReview({
               <span className="text-slate-500">RSVP Deadline</span>
               <span className="font-bold text-slate-800">
                 {rsvpOptions.deadlineEnabled
-                  ? rsvpOptions.deadlineDate || "Enabled"
+                  ? rsvpOptions.deadlineDate
+                    ? `${rsvpOptions.deadlineDate}${rsvpOptions.deadlineTime ? ` at ${formatTime12(rsvpOptions.deadlineTime)}` : ""}`
+                    : "Enabled"
                   : "None set"}
               </span>
             </div>

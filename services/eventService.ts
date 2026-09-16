@@ -45,6 +45,7 @@ export interface RsvpSettingsData {
   eventId?: string;
   rsvpDeadlineEnabled?: boolean;
   rsvpDeadlineDate?: string | Date | null;
+  rsvpDeadlineTime?: string | null;
   allowLateRsvp?: boolean;
   allowMaybe?: boolean;
   isPrivateGuestList?: boolean;
@@ -54,6 +55,7 @@ export interface RsvpSettingsData {
   // Modal and preview aliases
   deadlineEnabled?: boolean;
   deadlineDate?: string;
+  deadlineTime?: string;
   allowAfterDeadline?: boolean;
   privateGuestList?: boolean;
   allowGuestsToBringAnyone?: boolean;
