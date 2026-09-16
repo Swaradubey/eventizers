@@ -1651,14 +1651,9 @@ export default function InvitationStudio({
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
-    // Skip redundant re-hydration: if already initialized, same template, and same text layer count, no-op
-    if (isInitializedRef.current && !templateChanged) {
-      const currentTextCount = designState.textLayers?.length || 0;
-      const incomingTextCount = (mergedInvite as any)?.textElements?.length || 0;
-      // Only skip if both have same count (or both zero) — otherwise allow sync
-      if (incomingTextCount === 0 || incomingTextCount === currentTextCount) {
-        return;
-      }
+    // Skip redundant re-hydration: if already initialized, same template, and no saved layers to apply, no-op
+    if (isInitializedRef.current && !templateChanged && !hasSavedLayers) {
+      return;
     }
 
     if (templateChanged || (hasSavedLayers && !loadedTemplateIdRef.current)) {
