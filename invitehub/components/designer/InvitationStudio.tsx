@@ -876,6 +876,19 @@ export default function InvitationStudio({
       : null)
   );
 
+  // Guard: tracks whether the canvas has already been hydrated from getInitialDesign().
+  // Prevents the re-hydration useEffect from firing a second time on mount and
+  // overlaying template-default text layers on top of correctly loaded saved layers.
+  const hasInitialHydratedRef = useRef(false);
+
+  // Lock: prevents React StrictMode double-mount from running the re-hydration
+  // effect body twice concurrently (each strict-mode mount fires effects twice in dev).
+  const isHydratingRef = useRef(false);
+
+  // Incrementing key forces InvitationCanvasStage to fully unmount+remount on event switch,
+  // which clears all stale text layer DOM nodes before the new event's layers mount.
+  const [canvasKey, setCanvasKey] = useState(0);
+
   // Centralized Multi-Step Workflow Navigation ("Design", "Details", "Gifting", "Review", "Add guests")
   const WORKFLOW_TABS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1403,6 +1416,17 @@ export default function InvitationStudio({
       window.history.pushState({}, "", url.toString());
     }
 
+    // 9. Force-unmount and remount the canvas so all stale text layer DOM nodes from
+    // the previous event are fully cleared before the new event's layers paint.
+    // This prevents orphan text elements from the previous event lingering on screen
+    // while the new event's state is being applied.
+    setCanvasKey((k) => k + 1);
+
+    // 10. Reset the hydration guard so the re-hydration effect is allowed to run
+    // if the template ID changes on a future prop update.
+    hasInitialHydratedRef.current = true;
+    isHydratingRef.current = false;
+
     setToast({
       message: `✨ Switched to "${foundEvt.title}"! Loaded saved design & artwork.`,
       type: "success",
@@ -1478,11 +1502,18 @@ export default function InvitationStudio({
     }
   }, [initialInvitation]);
 
+  // Sync initialEvent → currentEvent using a ref-based update so it does NOT
+  // add currentEvent?.id to the re-hydration effect's dependency array.
+  // Using a ref prevents a spurious second re-hydration triggered by the state update.
   useEffect(() => {
     if (initialEvent) {
-      setCurrentEvent(initialEvent);
+      setCurrentEvent((prev) => {
+        // Only update if the event ID actually changed to avoid unnecessary re-renders
+        if (prev?.id === initialEvent.id) return prev;
+        return initialEvent;
+      });
     }
-  }, [initialEvent]);
+  }, [initialEvent?.id]);
 
   // When initialInvitation.imageUrl arrives asynchronously (after mount), apply it as
   // the card background if it looks like a real uploaded image URL and the current
@@ -1550,7 +1581,24 @@ export default function InvitationStudio({
   }, []);
 
   // Canvas Re-hydration & Source Template Loading Logic
+  // IMPORTANT: This effect must NOT run on the initial mount if getInitialDesign() already
+  // produced the correct state — doing so would double-render text layers. The
+  // hasInitialHydratedRef flag gates this: the first pass marks it true and returns early;
+  // subsequent fires (e.g. templateIdQuery changes) proceed normally.
   useEffect(() => {
+    // Prevent React StrictMode double-mount from running the body concurrently
+    if (isHydratingRef.current) return;
+
+    // On the very first mount, getInitialDesign() already loaded the correct state.
+    // Skip this effect to prevent a second call that would generate template defaults
+    // and overlay them on top of the already-correct saved layers.
+    if (!hasInitialHydratedRef.current) {
+      hasInitialHydratedRef.current = true;
+      return;
+    }
+
+    isHydratingRef.current = true;
+
     // If an uploaded image is active on the canvas or in storage,
     // prevent default template presets or placeholder graphics from mounting over it.
     const hasUploadedImage =
@@ -1558,7 +1606,10 @@ export default function InvitationStudio({
       (typeof window !== "undefined" &&
         Boolean(sessionStorage.getItem("pending_upload_invite") || localStorage.getItem("pending_upload_invite")));
 
-    if (hasUploadedImage) return;
+    if (hasUploadedImage) {
+      isHydratingRef.current = false;
+      return;
+    }
 
     const targetEvtId =
       currentEvent?.id ||
@@ -1584,7 +1635,6 @@ export default function InvitationStudio({
       initialInvitation?.templateId ||
       templateIdQuery ||
       initialEvent?.selectedTemplateId ||
-      currentEvent?.selectedTemplateId ||
       (typeof window !== "undefined"
         ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
         : null);
@@ -1594,6 +1644,8 @@ export default function InvitationStudio({
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
+    // Only re-hydrate when: saved layers exist for a new invitation ID, OR the
+    // template has genuinely changed (not just because currentEvent was synced).
     if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
@@ -1621,12 +1673,20 @@ export default function InvitationStudio({
         } catch (e) {}
       }
     }
+
+    isHydratingRef.current = false;
   }, [
     initialInvitation?.id,
     initialInvitation?.templateId,
-    initialInvitation?.textElements,
+    // Use .length instead of the array reference: the array object identity changes on
+    // every render even when contents are the same, causing unnecessary effect re-fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    initialInvitation?.textElements?.length,
     initialEvent?.selectedTemplateId,
-    currentEvent?.id,
+    // NOTE: currentEvent?.id is intentionally EXCLUDED from deps.
+    // setCurrentEvent(initialEvent) fires a sync effect that updates currentEvent on mount,
+    // which would trigger this effect a second time and generate duplicate template-default
+    // text layers on top of the already-correct saved layers from getInitialDesign().
     templateIdQuery,
   ]);
 
@@ -1918,7 +1978,7 @@ export default function InvitationStudio({
       buttonText,
       buttonColor: accentColor,
       buttonRadius: 12,
-      status: "draft",
+      status: currentStepIndex >= 3 ? "published" : (currentInvitation?.status || "draft"),
       eventTitle: designState.eventDetails.title || currentEvent?.title || initialEvent?.title || titleText,
       eventDate: designState.eventDetails.date || currentEvent?.eventDate || initialEvent?.eventDate || null,
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
@@ -2094,6 +2154,31 @@ export default function InvitationStudio({
     if (isPreparingDispatch || isGeneratingSnapshot || isSavingDraft) return;
     setIsPreparingDispatch(true);
     try {
+      // Auto-publish associated event if it is in draft mode so dispatch is never blocked
+      const targetEventId =
+        currentEvent?.id ||
+        initialEvent?.id ||
+        currentInvitation?.eventId ||
+        propSelectedEventId ||
+        (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[prepareAndOpenDispatch] Auto-publish event on fly notice:", pubErr);
+        }
+      }
+
       // Always capture a fresh snapshot so the preview reflects the current canvas state
       const { dataUrl, uploadedUrl } = await generateSnapshot();
       // Save the design (with the snapshot URL) so the backend has the finalized state
@@ -2331,6 +2416,24 @@ export default function InvitationStudio({
         eventDetails: designState.eventDetails,
       };
 
+      // Auto-publish associated event if in draft status so sending is never blocked
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
+        }
+      }
+
       // 3. Dispatch to backend endpoint
       let response: any = null;
       if (activeInvitationId) {
@@ -2353,10 +2456,55 @@ export default function InvitationStudio({
     } catch (err: any) {
       console.error("Payload sent:", payload);
       console.error("400 Response details:", err.response?.data);
-      const errorMsg =
+      const rawErrorMsg =
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
+        "";
+
+      // Self-healing fallback: If draft mode error is encountered, auto-publish and retry once
+      if (
+        typeof rawErrorMsg === "string" &&
+        (rawErrorMsg.toLowerCase().includes("draft") || rawErrorMsg.toLowerCase().includes("publish")) &&
+        targetEventId
+      ) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+
+          let retryRes: any = null;
+          let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+          if (activeInvitationId) {
+            const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+            retryRes = res.data;
+          } else {
+            const res = await API.post(`/invitations/send`, payload);
+            retryRes = res.data;
+          }
+
+          if (retryRes && (retryRes.success || retryRes.recipientCount)) {
+            setToast({
+              message: `✨ Event published & invitation sent to ${retryRes.recipientCount || payload?.recipients?.length || 1} guest(s)!`,
+              type: "success",
+            });
+            setIsDispatchModalOpen(false);
+            return;
+          }
+        } catch (retryErr) {
+          console.error("Auto-publish and retry send failed:", retryErr);
+        }
+      }
+
+      const errorMsg =
+        rawErrorMsg ||
         "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
@@ -4009,6 +4157,7 @@ export default function InvitationStudio({
         {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
         {/* ------------------------------------------------------------- */}
         <InvitationCanvasStage
+          key={canvasKey}
           config={designState}
           readOnly={false}
           selectedTextId={designState.selectedTextId}

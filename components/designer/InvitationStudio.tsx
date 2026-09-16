@@ -2015,7 +2015,7 @@ export default function InvitationStudio({
       buttonText,
       buttonColor: accentColor,
       buttonRadius: 12,
-      status: "draft",
+      status: currentStepIndex >= 3 ? "published" : (currentInvitation?.status || "draft"),
       eventTitle: designState.eventDetails.title || currentEvent?.title || initialEvent?.title || titleText,
       eventDate: designState.eventDetails.date || currentEvent?.eventDate || initialEvent?.eventDate || null,
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
@@ -2207,6 +2207,31 @@ export default function InvitationStudio({
     if (isPreparingDispatch || isGeneratingSnapshot || isSavingDraft) return;
     setIsPreparingDispatch(true);
     try {
+      // Auto-publish associated event if it is in draft mode so dispatch is never blocked
+      const targetEventId =
+        currentEvent?.id ||
+        initialEvent?.id ||
+        currentInvitation?.eventId ||
+        propSelectedEventId ||
+        (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[prepareAndOpenDispatch] Auto-publish event on fly notice:", pubErr);
+        }
+      }
+
       // Always capture a fresh snapshot so the preview reflects the current canvas state
       const { dataUrl, uploadedUrl } = await generateSnapshot();
       // Save the design (with the snapshot URL) so the backend has the finalized state
@@ -2468,6 +2493,24 @@ export default function InvitationStudio({
         effects: designState.effects,
       };
 
+      // Auto-publish associated event if in draft status so sending is never blocked
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
+        }
+      }
+
       // 3. Dispatch to backend endpoint
       let response: any = null;
       if (activeInvitationId) {
@@ -2490,10 +2533,55 @@ export default function InvitationStudio({
     } catch (err: any) {
       console.error("Payload sent:", payload);
       console.error("400 Response details:", err.response?.data);
-      const errorMsg =
+      const rawErrorMsg =
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
+        "";
+
+      // Self-healing fallback: If draft mode error is encountered, auto-publish and retry once
+      if (
+        typeof rawErrorMsg === "string" &&
+        (rawErrorMsg.toLowerCase().includes("draft") || rawErrorMsg.toLowerCase().includes("publish")) &&
+        targetEventId
+      ) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+
+          let retryRes: any = null;
+          let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+          if (activeInvitationId) {
+            const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+            retryRes = res.data;
+          } else {
+            const res = await API.post(`/invitations/send`, payload);
+            retryRes = res.data;
+          }
+
+          if (retryRes && (retryRes.success || retryRes.recipientCount)) {
+            setToast({
+              message: `✨ Event published & invitation sent to ${retryRes.recipientCount || payload?.recipients?.length || 1} guest(s)!`,
+              type: "success",
+            });
+            setIsDispatchModalOpen(false);
+            return;
+          }
+        } catch (retryErr) {
+          console.error("Auto-publish and retry send failed:", retryErr);
+        }
+      }
+
+      const errorMsg =
+        rawErrorMsg ||
         "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
