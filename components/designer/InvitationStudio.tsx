@@ -56,9 +56,10 @@ import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData 
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
-import { deduplicateTextLayers } from "./layoutUtils";
+import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy } from "./layoutUtils";
+import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
-export { deduplicateTextLayers };
+export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
 
 // --- Types & Interfaces ---
 
@@ -1258,6 +1259,10 @@ export default function InvitationStudio({
     setDesignState(next);
   };
 
+  // Isolated pure-data snapshot rendering state and ref (completely decoupled from live canvas)
+  const [isolatedSnapshotData, setIsolatedSnapshotData] = useState<IsolatedInvitationData | null>(null);
+  const isolatedSnapshotRef = useRef<HTMLDivElement>(null);
+
   // Draggable text layer tracking
   const cardCanvasRef = useRef<HTMLDivElement>(null);
   const envelopeStageRef = useRef<HTMLDivElement>(null);
@@ -2140,126 +2145,99 @@ export default function InvitationStudio({
     return null;
   };
 
-  // Capture ONLY the rendered template card snapshot (excluding envelope stage, liners, stamps, and editor UI)
-  const generateSnapshot = async (): Promise<{ dataUrl: string | null; uploadedUrl: string | null }> => {
-    // 1. Direct capture from live Fabric/Window canvas if mounted
-    const liveCanvas =
-      (window as any)?.__fabricCanvas ||
-      (window as any)?.__canvasInstance ||
-      (window as any)?.__fabricCanvasRef?.current;
-
-    if (liveCanvas && typeof liveCanvas.toDataURL === "function") {
-      try {
-        if (typeof liveCanvas.discardActiveObject === "function") {
-          liveCanvas.discardActiveObject();
-        }
-        if (typeof liveCanvas.renderAll === "function") {
-          liveCanvas.renderAll();
-        }
-        const cleanSnapshotUrl = liveCanvas.toDataURL({
-          format: "png",
-          quality: 1,
-          multiplier: 2, // Crisp resolution for Nodemailer CID preview
+  // Helper to ensure all images in a container have finished loading before snapshot capture
+  const waitForImagesLoaded = async (container: HTMLElement): Promise<void> => {
+    const images = Array.from(container.querySelectorAll("img"));
+    if (images.length === 0) return;
+    await Promise.all(
+      images.map((img) => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+          setTimeout(resolve, 1500); // 1.5s timeout safety guard
         });
-        if (cleanSnapshotUrl && cleanSnapshotUrl.startsWith("data:")) {
-          setSnapshotDataUrl(cleanSnapshotUrl);
-          let uploadedUrl: string | null = null;
-          if (user) {
-            try {
-              uploadedUrl = await uploadSnapshotBlob(cleanSnapshotUrl);
-            } catch (uErr) {
-              console.warn("[Canvas Snapshot] Live canvas upload error:", uErr);
-            }
-          }
-          return { dataUrl: cleanSnapshotUrl, uploadedUrl };
-        }
-      } catch (liveSnapErr) {
-        console.warn("[Canvas Snapshot] Live canvas toDataURL fallback to DOM:", liveSnapErr);
-      }
-    }
+      })
+    );
+  };
 
-    const targetNode = cardCanvasRef.current || document.getElementById("invitation-card-container");
-    if (!targetNode) {
-      console.warn("[Canvas Snapshot] Card container ref not found in DOM");
-      return { dataUrl: null, uploadedUrl: null };
-    }
-    // Block the re-hydration effect from injecting template-default layers while the
-    // html-to-image capture pipeline is running.
+  // 100% Decoupled Pure-Data Snapshot Pipeline (Guaranteed zero canvas DOM interference)
+  const generateSnapshot = async (): Promise<{ dataUrl: string | null; uploadedUrl: string | null }> => {
     isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
     try {
-      // Temporarily deselect active text border & drag handles for pristine clean card capture
-      const prevSelected = designState.selectedTextId;
-      setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
+      // Phase 1: Extract clean, deduplicated data snapshot directly from designState
+      // Strictly non-destructive: active canvas DOM is never touched and selectedTextId is never mutated!
+      const cleanData = extractCleanSnapshotData(designState, 600);
 
-      // Multi-stage capture with graceful fallbacks
+      // Phase 2: Mount isolated pure-data card in offscreen container
+      setIsolatedSnapshotData(cleanData);
+
+      // Wait for React to mount the offscreen element into the DOM
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 80)));
+
+      const targetNode =
+        isolatedSnapshotRef.current || document.getElementById("isolated-invitation-card-stage");
+      if (!targetNode) {
+        console.warn("[Isolated Snapshot] Offscreen container ref not found in DOM");
+        setIsolatedSnapshotData(null);
+        return { dataUrl: null, uploadedUrl: null };
+      }
+
+      // Wait for web fonts to finish loading
+      if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+        try {
+          await (document as any).fonts.ready;
+        } catch (_fErr) {}
+      }
+
+      // Wait for all images in the isolated container to settle
+      await waitForImagesLoaded(targetNode);
+
+      // Multi-stage capture strictly on the isolated pure-data container
       let dataUrl: string | null = null;
-      const bgColor = typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("gradient")
-        ? designState.cardBg.value
-        : undefined;
-
-      // Filter function to exclude designer controls, selection boxes, and flip button
-      const snapshotFilter = (node: HTMLElement) => {
-        if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
-        if (node.getAttribute && (
-          node.getAttribute("data-designer-control") === "true" ||
-          node.getAttribute("data-testid") === "canvas-flip-button" ||
-          node.classList?.contains("designer-control")
-        )) {
-          return false;
-        }
-        return true;
-      };
-
-      // Stage 1: High-res 2x capture
       try {
         dataUrl = await toPng(targetNode, {
           quality: 0.95,
           pixelRatio: 2.0,
           cacheBust: true,
-          backgroundColor: bgColor,
-          filter: snapshotFilter,
+          backgroundColor: cleanData.backgroundColor || "#ffffff",
         });
       } catch (e1) {
-        console.warn("[Canvas Snapshot] Stage 1 capture failed, retrying with skipFonts: true and 1.5x pixelRatio:", e1);
+        console.warn("[Isolated Snapshot] High-res 2x capture failed, retrying with skipFonts & 1.5x:", e1);
         try {
-          // Stage 2: Fallback with skipFonts: true (avoids CORS issues on Google fonts stylesheets)
           dataUrl = await toPng(targetNode, {
             quality: 0.9,
             pixelRatio: 1.5,
             skipFonts: true,
             cacheBust: true,
-            backgroundColor: bgColor,
-            filter: snapshotFilter,
+            backgroundColor: cleanData.backgroundColor || "#ffffff",
           });
         } catch (e2) {
-          console.warn("[Canvas Snapshot] Stage 2 capture failed, retrying with safe 1.0x pixelRatio:", e2);
-          // Stage 3: Safe 1.0x fallback
+          console.warn("[Isolated Snapshot] Retrying with safe 1.0x fallback:", e2);
           dataUrl = await toPng(targetNode, {
             quality: 0.85,
             pixelRatio: 1.0,
             skipFonts: true,
             cacheBust: true,
-            backgroundColor: bgColor,
-            filter: snapshotFilter,
+            backgroundColor: cleanData.backgroundColor || "#ffffff",
           });
         }
       }
 
-      setDesignState((prev) => ({ ...prev, selectedTextId: prevSelected }));
+      // Phase 3: Cleanup & Send
+      setIsolatedSnapshotData(null);
 
       if (dataUrl && dataUrl.startsWith("data:")) {
         setSnapshotDataUrl(dataUrl);
 
         // Upload to file storage so the payload sends a lightweight URL instead of raw base64
-        // Skip server upload for guest users (no auth token) to avoid 401 redirect
         let uploadedUrl: string | null = null;
         if (user) {
           try {
             uploadedUrl = await uploadSnapshotBlob(dataUrl);
           } catch (uploadErr) {
-            console.warn("[Canvas Snapshot] Upload blob error:", uploadErr);
+            console.warn("[Isolated Snapshot] Upload blob error:", uploadErr);
           }
         }
 
@@ -2268,8 +2246,8 @@ export default function InvitationStudio({
 
       return { dataUrl: null, uploadedUrl: null };
     } catch (err) {
-      console.error("Failed to generate template card snapshot:", err);
-      // Non-blocking snapshot failure — let user continue without blocking
+      console.error("[Isolated Snapshot] Failed to generate card snapshot:", err);
+      setIsolatedSnapshotData(null);
       return { dataUrl: null, uploadedUrl: null };
     } finally {
       isSnapshotInProgressRef.current = false;
@@ -2610,14 +2588,7 @@ export default function InvitationStudio({
         }
       }
 
-      // Purge any stale canvas text objects before snapshot capture & deduplicate layers
-      teardownCanvasTextLayers();
-      setDesignState((prev) => ({
-        ...prev,
-        textLayers: deduplicateTextLayers(prev.textLayers),
-      }));
-
-      // Always capture a fresh snapshot so the preview reflects the current canvas state
+      // Capture clean isolated snapshot decoupled from active canvas DOM
       const { dataUrl, uploadedUrl } = await generateSnapshot();
       // Save the design (with the snapshot URL) so the backend has the finalized state
       await saveDesign(uploadedUrl || dataUrl);
@@ -5328,6 +5299,32 @@ export default function InvitationStudio({
           }, 300);
         }}
       />
+
+      {/* Offscreen Pure-Data Isolated Snapshot Container */}
+      {isolatedSnapshotData && (
+        <div
+          id="isolated-snapshot-container"
+          data-testid="isolated-snapshot-container"
+          style={{
+            position: "fixed",
+            left: "-9999px",
+            top: "-9999px",
+            width: "600px",
+            height: "840px",
+            pointerEvents: "none",
+            opacity: 1,
+            zIndex: -9999,
+            overflow: "hidden",
+          }}
+          aria-hidden="true"
+        >
+          <IsolatedInvitationCard
+            ref={isolatedSnapshotRef}
+            data={isolatedSnapshotData}
+            cardWidth={600}
+          />
+        </div>
+      )}
     </div>
   );
 }

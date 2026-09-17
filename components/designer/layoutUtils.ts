@@ -268,3 +268,224 @@ export function computeAntiCollisionLayout(
 
   return processed;
 }
+
+/**
+ * Generic deduplication helper by object property
+ */
+export function deduplicateBy<T>(array: T[], key: keyof T): T[] {
+  if (!Array.isArray(array)) return [];
+  const seen = new Set<any>();
+  return array.filter((item) => {
+    if (!item || typeof item !== "object") return false;
+    const val = item[key];
+    if (val === undefined || val === null || val === "") return true;
+    if (seen.has(val)) return false;
+    seen.add(val);
+    return true;
+  });
+}
+
+/**
+ * Clean template SVG resolver: ensures textless -bg.svg is used for templates
+ */
+export function resolveCleanTemplateSvg(url?: string | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  if (url.includes("/assets/templates/") && url.endsWith(".svg")) {
+    if (url.endsWith("-bg.svg")) return url;
+    return url.replace(/\.svg$/, "-bg.svg");
+  }
+  return url;
+}
+
+/**
+ * Checks whether an image URL is a user-uploaded asset
+ */
+export function checkIsUserUploadedImage(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (
+    trimmed === "" ||
+    trimmed.startsWith("#") ||
+    trimmed.includes("snapshot") ||
+    trimmed.includes("canvas_snapshot") ||
+    trimmed.includes("invitation_snapshot")
+  ) {
+    return false;
+  }
+  if (trimmed.includes("/assets/templates/")) return false;
+  if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) return false;
+  return (
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.includes("/uploads/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  );
+}
+
+/**
+ * Extracts a clean, normalized, 100% decoupled data snapshot from studio design state.
+ * Guaranteed zero interactive controls, zero duplicate text layers, and zero canvas DOM dependency.
+ */
+export function extractCleanSnapshotData(designState: any, baseWidth = 600) {
+  if (!designState) {
+    return {
+      templateId: "custom",
+      backgroundImage: null,
+      backgroundColor: "#ffffff",
+      aspectRatio: "5/7",
+      isLandscape: false,
+      cardImageFit: "cover" as const,
+      decorations: [],
+      elements: [],
+    };
+  }
+
+  const isLandscape = Boolean(designState.isLandscape);
+  const cardAspectRatio =
+    designState.innerCardLayer?.aspectRatio ||
+    designState.card?.aspectRatio ||
+    (isLandscape ? "4/3" : "5/7");
+
+  // 1. Resolve Background Artwork / Image
+  const uploadedBg =
+    designState.cardBg?.type === "image" && checkIsUserUploadedImage(designState.cardBg.value)
+      ? designState.cardBg.value
+      : null;
+  const uploadedCard =
+    designState.card?.artworkUrl && checkIsUserUploadedImage(designState.card.artworkUrl)
+      ? designState.card.artworkUrl
+      : null;
+  const userUploadSrc = uploadedBg || uploadedCard;
+
+  const rawCardImage =
+    userUploadSrc ||
+    designState.card?.artworkUrl ||
+    (designState.card as any)?.borderIllustration ||
+    (designState.cardBg?.type === "image" ? designState.cardBg.value : null) ||
+    null;
+
+  // Use clean -bg.svg variant for templates so static text in SVG artwork never renders behind dynamic text
+  const cleanBackgroundImage =
+    rawCardImage && !rawCardImage.startsWith("#")
+      ? resolveCleanTemplateSvg(rawCardImage) || rawCardImage
+      : null;
+
+  // 2. Resolve Background Color
+  const backgroundColor =
+    designState.innerCardLayer?.backgroundColor ||
+    designState.card?.backgroundColor ||
+    (designState.cardBg?.type === "color"
+      ? designState.cardBg.value
+      : designState.cardBg?.type === "image"
+      ? (userUploadSrc ? "#ffffff" : "#faf8f5")
+      : "#ffffff");
+
+  // 3. Resolve Decorations (excluding base artwork)
+  const rawDecos: any[] = userUploadSrc
+    ? []
+    : [
+        ...(designState.card?.decorations || []),
+        ...(designState.decorations || []),
+        ...(designState.card?.decorativeImages || []),
+      ];
+  const decorations = Array.from(
+    new Set(
+      rawDecos
+        .map((d) => (typeof d === "string" ? d : d?.url || d?.src || ""))
+        .filter((src) => src && typeof src === "string" && !src.startsWith("#") && src !== cleanBackgroundImage)
+    )
+  );
+
+  // 4. Compute Clean Text Layout with Anti-Collision
+  const targetDims: ContainerDimensions = {
+    width: baseWidth,
+    height:
+      cardAspectRatio === "1/1" || cardAspectRatio === "square"
+        ? baseWidth
+        : isLandscape || cardAspectRatio === "4/3"
+        ? Math.round((baseWidth * 3) / 4)
+        : Math.round((baseWidth * 7) / 5),
+  };
+
+  const rawLayers: TextLayer[] = Array.isArray(designState.textLayers) ? designState.textLayers : [];
+  const uniqueLayers = deduplicateTextLayers<TextLayer>(rawLayers);
+  const antiCollisionLayers = computeAntiCollisionLayout(
+    uniqueLayers,
+    targetDims,
+    2.5,
+    designState.card?.safeArea
+  );
+
+  // 5. Convert to Normalized Static Elements
+  const seenIds = new Set<string>();
+  const seenSignatures = new Set<string>();
+  const elements: any[] = [];
+
+  antiCollisionLayers.forEach((layer) => {
+    if (!layer || typeof layer !== "object") return;
+    const textContent = (layer.text || "").trim();
+    if (!textContent) return;
+
+    // Strict duplicate ID guard
+    if (layer.id && seenIds.has(layer.id)) return;
+    if (layer.id) seenIds.add(layer.id);
+
+    // Strict content + coordinate signature guard
+    const posX = Math.round(layer.computedLeft !== undefined ? layer.computedLeft : (layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50)));
+    const posY = Math.round(layer.computedTop !== undefined ? layer.computedTop : (layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50)));
+    const sig = `${textContent.toLowerCase()}__${posX}__${posY}`;
+    if (seenSignatures.has(sig)) return;
+    seenSignatures.add(sig);
+
+    elements.push({
+      id: layer.id,
+      type: "text" as const,
+      content: layer.text,
+      text: layer.text,
+      x: layer.computedLeft !== undefined ? layer.computedLeft : posX,
+      y: layer.computedTop !== undefined ? layer.computedTop : posY,
+      fontSize: layer.fontSize || 24,
+      fontFamily: layer.fontFamily || "Inter, sans-serif",
+      color: layer.color || "#000000",
+      rotation: (layer as any).rotation || 0,
+      width: layer.width || 0,
+      height: layer.height || 0,
+      fontWeight: layer.fontWeight || 400,
+      fontStyle: (layer as any).fontStyle || "normal",
+      textAlign: layer.textAlign || layer.align || "center",
+      letterSpacing: layer.letterSpacing,
+      lineHeight: layer.effectiveLineHeight || layer.lineHeight || 1.25,
+      casing: layer.casing,
+      isFoil: layer.isFoil || designState.effects?.foil || null,
+    });
+  });
+
+  // 6. Include Photo Slot Element if configured
+  if (designState.photoSlot && designState.photoSlot.imageUrl) {
+    elements.push({
+      id: "photo-slot-element",
+      type: "image" as const,
+      content: "",
+      src: designState.photoSlot.imageUrl,
+      x: designState.photoSlot.x || 50,
+      y: designState.photoSlot.y || 50,
+      width: designState.photoSlot.width || 140,
+      height: designState.photoSlot.height || 140,
+      borderRadius: designState.photoSlot.borderRadius || "9999px",
+    });
+  }
+
+  return {
+    templateId: designState.activeTemplateId || designState.templateId || "custom",
+    backgroundImage: cleanBackgroundImage,
+    backgroundColor,
+    aspectRatio: cardAspectRatio,
+    isLandscape,
+    cardImageFit: designState.cardImageFit || (userUploadSrc ? "contain" : "cover"),
+    decorations,
+    effects: designState.effects,
+    elements,
+  };
+}
+
