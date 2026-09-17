@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
@@ -27,6 +28,12 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "electric-gradient": "conic-gradient(at top left, #f43f5e, #eab308, #06b6d4, #8b5cf6, #f43f5e)",
   marble: "linear-gradient(120deg, #f1f5f9 0%, #e2e8f0 50%, #ffffff 100%)",
   botanical: "linear-gradient(135deg, #dcfce7, #86efac)",
+  "blush-burgundy-liner": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "/templates/envelopes/blush-burgundy-liner.png": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "something-blue-liner": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "/templates/envelopes/something-blue-liner.png": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "autumn-gingham-liner": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
+  "/templates/envelopes/autumn-gingham-liner.png": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
 };
 
 export const STAMPS_DATA: Record<string, string> = {
@@ -124,8 +131,13 @@ export default function InvitationCanvasStage({
 
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
-    return computeAntiCollisionLayout(deduplicatedLayers, cardDimensions);
-  }, [deduplicatedLayers, cardDimensions]);
+    return computeAntiCollisionLayout(
+      deduplicatedLayers,
+      cardDimensions,
+      2.5,
+      (config.card as any)?.safeArea
+    );
+  }, [deduplicatedLayers, cardDimensions, (config.card as any)?.safeArea]);
 
   const dragSessionRef = useRef<{
     layerId: string;
@@ -226,13 +238,24 @@ export default function InvitationCanvasStage({
   const envelopeOuterColor =
     (config.envelope as any)?.outerColor || config.envelope?.color || "#5384db";
   const envelopeFlapColor =
-    (config.envelope as any)?.flapColor || (config.envelope as any)?.flapBorderColor || "#7ba3e8";
+    (config.envelope as any)?.flapColor || (config.envelope as any)?.outerColor || envelopeOuterColor;
   const linerRaw =
-    (config.envelope as any)?.linerPatternUrl || config.envelope?.liner || "vertical-pink-stripes";
-  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner
+    (config.envelope as any)?.innerLiner ||
+    (config.envelope as any)?.linerPatternUrl ||
+    config.envelope?.liner ||
+    "vertical-pink-stripes";
+  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner OR image URL liner
   const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
+  const isImageLiner = Boolean(
+    linerRaw &&
+      (linerRaw.startsWith("/") ||
+        linerRaw.startsWith("http") ||
+        /\.(png|jpe?g|svg|webp)($|\?)/i.test(linerRaw)) &&
+      !linerRaw.includes("url(")
+  );
   const linerStyle =
     envelopeLinerCss ||
+    (isImageLiner ? `url('${linerRaw}') center / cover no-repeat` : null) ||
     ENVELOPE_LINERS_DATA[linerRaw] ||
     (linerRaw && linerRaw.includes("gradient") ? linerRaw : null) ||
     ENVELOPE_LINERS_DATA["vertical-pink-stripes"];
@@ -274,7 +297,9 @@ export default function InvitationCanvasStage({
   const cardImageRaw =
     uploadedImageSrc ||
     config.card?.artworkUrl ||
+    (config.card as any)?.borderIllustration ||
     (config.cardBg?.type === "image" && config.cardBg.value ? config.cardBg.value : null) ||
+    (fallbackTpl as any)?.card?.borderIllustration ||
     (fallbackTpl as any)?.card?.artworkUrl ||
     fallbackTpl?.decorationImage ||
     null;
@@ -512,8 +537,11 @@ export default function InvitationCanvasStage({
         {/* LAYER 2: Envelope & Liner (z-index: 10) - Open vertical pocket behind card */}
         {/* ========================================================================= */}
         {showEnvelope && (
-          <div
+          <motion.div
             data-layer="2-envelope-container"
+            initial={{ opacity: 0.6, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="absolute pointer-events-none transition-all duration-300 select-none"
             style={{
               zIndex: 10,
@@ -528,21 +556,40 @@ export default function InvitationCanvasStage({
               color={envelopeOuterColor}
               flapColor={envelopeFlapColor}
               liner={linerStyle}
+              innerLiner={(config.envelope as any)?.innerLiner}
+              shadowColor={(config.envelope as any)?.shadowColor}
               stampEmoji={stampEmoji}
               stickerEmoji={stickerEmoji}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* ========================================================================= */}
         {/* LAYER 3: Invitation Card Surface (z-index: 20)                            */}
-        {/* Physical card paper bounding box with 100% clean decorative artwork       */}
+        {/* Evite Card Extraction Animation: slides up out of envelope on mount        */}
         {/* ========================================================================= */}
-        <div
+        <motion.div
           ref={effectiveCardRef}
           id="invitation-card-container"
           data-layer="3-card-surface"
           data-testid="preview-card"
+          initial={{
+            y: 80,
+            x: isCardOnlyMode ? 0 : (isLandscape ? "-1%" : "-1%"),
+            scale: 0.93,
+            opacity: 0.85,
+          }}
+          animate={{
+            y: 0,
+            x: isCardOnlyMode ? 0 : (isLandscape ? "-2%" : "-3%"),
+            scale: 1,
+            opacity: 1,
+          }}
+          transition={{
+            duration: 0.95,
+            ease: [0.16, 1, 0.3, 1],
+            delay: 0.08,
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               if (onCardClick) onCardClick();
@@ -555,7 +602,6 @@ export default function InvitationCanvasStage({
             position: "relative",
             width: isCardOnlyMode ? (isLandscape ? "92%" : "84%") : (isLandscape ? "88%" : "78%"),
             aspectRatio: cardAspectRatio,
-            transform: isCardOnlyMode ? "none" : (isLandscape ? "translateX(-2%)" : "translateX(-3%)"),
             backgroundColor: cardBgColor,
             background:
               (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
@@ -781,7 +827,14 @@ export default function InvitationCanvasStage({
                       textAlign: layer.textAlign || layer.align,
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
-                      letterSpacing: `${layer.letterSpacing || 0}px`,
+                      fontStyle: (layer as any).fontStyle || undefined,
+                      maxHeight: (layer as any).maxHeight || undefined,
+                      letterSpacing:
+                        typeof layer.letterSpacing === "string"
+                          ? layer.letterSpacing
+                          : layer.letterSpacing !== undefined
+                          ? `${layer.letterSpacing}px`
+                          : undefined,
                       minWidth: "180px",
                     }}
                   />
@@ -794,9 +847,16 @@ export default function InvitationCanvasStage({
                       color: foilClass ? undefined : layer.color,
                       textAlign: layer.textAlign || layer.align,
                       textTransform: layer.casing === "none" ? undefined : layer.casing,
-                      letterSpacing: `${layer.letterSpacing || 0}px`,
+                      letterSpacing:
+                        typeof layer.letterSpacing === "string"
+                          ? layer.letterSpacing
+                          : layer.letterSpacing !== undefined
+                          ? `${layer.letterSpacing}px`
+                          : undefined,
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
+                      fontStyle: (layer as any).fontStyle || undefined,
+                      maxHeight: (layer as any).maxHeight || undefined,
                       pointerEvents: "auto",
                     }}
                   >
@@ -818,7 +878,7 @@ export default function InvitationCanvasStage({
           })}
             </>
           )}
-        </div>
+        </motion.div>
 
         {/* Floating Flip Card Pill Button (matching mobile reference preview) */}
         {onFlipCard && (

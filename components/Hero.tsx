@@ -141,10 +141,43 @@ export default function Hero() {
   const [uploadDate, setUploadDate] = useState("");
   const [uploadTime, setUploadTime] = useState("");
 
+  const excludedTitles = useMemo(
+    () =>
+      new Set([
+        "Founders & Tech Connect",
+        "Black Tie Charity Gala",
+        "Sunset Garden Soirée",
+        "Pumpkin & Petals",
+        "Eternal Botanical Garland",
+        "Global Innovation Summit 2026",
+      ]),
+    []
+  );
+
+  const blankBridalTitles = useMemo(
+    () =>
+      new Set([
+        "Floral Elegance",
+        "Floral Arch",
+        "Little Limoncello",
+        "Lovely Blossoms",
+        "Elegant Lace",
+        "Painted Petals",
+        "Hibiscus Blooms",
+        "Chicory Whispers",
+      ]),
+    []
+  );
+
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
-    return list.filter((t) => matchesCategory(t.category, selectedCategory));
-  }, [templates, selectedCategory]);
+    return list.filter(
+      (t) =>
+        !excludedTitles.has(t.name) &&
+        !blankBridalTitles.has(t.name) &&
+        matchesCategory(t.category, selectedCategory)
+    );
+  }, [templates, selectedCategory, excludedTitles, blankBridalTitles]);
 
   const displayedTemplates = useMemo(() => {
     return filteredTemplates;

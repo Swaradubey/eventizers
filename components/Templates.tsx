@@ -60,9 +60,27 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     badge: "Free",
     category: "Birthday",
   },
+  {
+    id: "blush-burgundy-blooms",
+    title: "Blush & Burgundy Blooms",
+    badge: "Premium",
+    category: "Bridal Shower",
+  },
+  {
+    id: "something-blue",
+    title: "Something Blue",
+    badge: "Premium",
+    category: "Bridal Shower",
+  },
+  {
+    id: "autumn-blooms",
+    title: "Autumn Blooms",
+    badge: "Premium",
+    category: "Bridal Shower",
+  },
 ];
 
-const CATEGORIES = ["All", "Wedding", "Birthday"];
+const CATEGORIES = ["All", "Bridal Shower", "Wedding", "Birthday"];
 
 export default function Templates() {
   const { user } = useAuth();
@@ -73,10 +91,48 @@ export default function Templates() {
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
+  const excludedTitles = React.useMemo(
+    () =>
+      new Set([
+        "Founders & Tech Connect",
+        "Black Tie Charity Gala",
+        "Sunset Garden Soirée",
+        "Pumpkin & Petals",
+        "Eternal Botanical Garland",
+        "Global Innovation Summit 2026",
+      ]),
+    []
+  );
+
+  const blankBridalTitles = React.useMemo(
+    () =>
+      new Set([
+        "Floral Elegance",
+        "Floral Arch",
+        "Little Limoncello",
+        "Lovely Blossoms",
+        "Elegant Lace",
+        "Painted Petals",
+        "Hibiscus Blooms",
+        "Chicory Whispers",
+      ]),
+    []
+  );
+
   const filteredTemplates = React.useMemo(() => {
-    if (selectedCategory === "All") return CURATED_TEMPLATES;
-    return CURATED_TEMPLATES.filter((t) => t.category === selectedCategory);
-  }, [selectedCategory]);
+    const base = CURATED_TEMPLATES.filter(
+      (t) => !excludedTitles.has(t.title) && !blankBridalTitles.has(t.title)
+    );
+    if (selectedCategory === "All") return base;
+    const target = selectedCategory.toLowerCase();
+    return base.filter((t) => {
+      const cat = (t.category || "").toLowerCase();
+      if (target === "bridal shower") {
+        return cat.includes("bridal") || cat.includes("shower");
+      }
+      return cat === target || cat.includes(target);
+    });
+  }, [selectedCategory, excludedTitles, blankBridalTitles]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -168,7 +224,7 @@ export default function Templates() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto"
         >
           <AnimatePresence mode="popLayout">
-            {filteredTemplates.map((template) => {
+            {filteredTemplates.slice(0, 10).map((template) => {
               const isFav = favorites.has(template.id);
               const tplConfig = getTemplateConfig(template.id);
 
@@ -187,10 +243,15 @@ export default function Templates() {
                     onClick={() => handleCardClick(template.id)}
                     className="relative w-full bg-[#f3f4f6]/80 hover:bg-[#eceff3] rounded-2xl p-6 sm:p-7 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 min-h-[360px] shadow-xs hover:shadow-md"
                   >
-                    {/* Top Header: Free badge on left, Heart button on right */}
+                    {/* Top Header: Free/Premium badge on left, Heart button on right */}
                     <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
-                      <span className="pointer-events-auto bg-white/95 text-neutral-800 text-[11px] font-medium px-2.5 py-1 rounded-md shadow-2xs">
-                        {template.badge || "Free"}
+                      <span className={`pointer-events-auto text-[11px] px-2.5 py-1 rounded-md shadow-2xs flex items-center gap-1 ${
+                        template.badge?.toLowerCase() === "premium"
+                          ? "bg-[#FAF5EE] text-[#6B2D38] border border-[#E8DCCB] font-semibold"
+                          : "bg-white/95 text-neutral-800 font-medium"
+                      }`}>
+                        {template.badge?.toLowerCase() === "premium" && <span>👑</span>}
+                        <span>{template.badge || "Free"}</span>
                       </span>
                       <button
                         type="button"
@@ -216,7 +277,7 @@ export default function Templates() {
                       <EviteCardPreview
                         template={tplConfig || template}
                         hoverScale={false}
-                        cardOnly={true}
+                        cardOnly={template.category !== "Bridal Shower" && template.category !== "bridal_shower"}
                       />
                     </div>
 

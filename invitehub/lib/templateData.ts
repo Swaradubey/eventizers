@@ -34,7 +34,7 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
   const cat = (itemCategory || "").toLowerCase();
 
   if (target === "baby shower") {
-    return cat.includes("baby shower") || cat.includes("baby") || cat.includes("bridal shower") || cat.includes("bridal");
+    return cat.includes("baby shower") || cat.includes("baby");
   }
   if (target === "corporate") {
     return cat.includes("corporate") || cat.includes("conference") || cat.includes("business") || cat.includes("summit") || cat.includes("enterprise");

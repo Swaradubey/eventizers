@@ -19,6 +19,8 @@ export interface EnvelopeBackdropProps {
   flapColor?: string;
   /** Interior liner pattern (CSS gradient or solid color) - default pink/white vertical stripes */
   liner?: string;
+  innerLiner?: string;
+  shadowColor?: string;
   /** Height of the triangular flap as a % of the container (default "38%") */
   flapHeight?: string;
   /** Top offset of the pocket as a % of the container (default "34%") */
@@ -38,36 +40,50 @@ export const DEFAULT_ENVELOPE_LINER =
 
 export default function EnvelopeBackdrop({
   color = DEFAULT_ENVELOPE_BODY_COLOR,
-  flapColor = DEFAULT_ENVELOPE_FLAP_COLOR,
+  flapColor,
   liner = DEFAULT_ENVELOPE_LINER,
+  innerLiner,
+  shadowColor,
   stampEmoji = null,
   stickerEmoji = null,
   className = "",
 }: EnvelopeBackdropProps) {
-  // Resolve colors with fallbacks
+  // Resolve colors with fallbacks (default flap to body color if unspecified)
   const bodyColor = color || DEFAULT_ENVELOPE_BODY_COLOR;
-  const outerBorderColor = flapColor || DEFAULT_ENVELOPE_FLAP_COLOR;
+  const outerBorderColor = flapColor || color || DEFAULT_ENVELOPE_FLAP_COLOR;
 
-  // Resolve liner gradient
-  let linerPattern = liner || DEFAULT_ENVELOPE_LINER;
-  if (linerPattern === "none") {
-    linerPattern = "rgba(0,0,0,0.02)";
+  // Resolve liner gradient or image
+  let rawLiner = innerLiner || liner || DEFAULT_ENVELOPE_LINER;
+  if (rawLiner === "none") {
+    rawLiner = "rgba(0,0,0,0.02)";
   } else if (
-    linerPattern === "vertical-pink-stripes" ||
-    linerPattern === "pink-stripes" ||
-    !linerPattern ||
-    linerPattern === "sprinkles"
+    rawLiner === "vertical-pink-stripes" ||
+    rawLiner === "pink-stripes" ||
+    !rawLiner ||
+    rawLiner === "sprinkles"
   ) {
-    linerPattern = DEFAULT_ENVELOPE_LINER;
+    rawLiner = DEFAULT_ENVELOPE_LINER;
   }
+
+  const isImageLiner = Boolean(
+    rawLiner &&
+      (rawLiner.startsWith("/") ||
+        rawLiner.startsWith("http") ||
+        /\.(png|jpe?g|svg|webp)($|\?)/i.test(rawLiner)) &&
+      !rawLiner.includes("url(")
+  );
+  const linerPattern = isImageLiner
+    ? `url('${rawLiner}') center / cover no-repeat`
+    : rawLiner;
 
   return (
     <div
       data-testid="open-vertical-envelope-backdrop"
       className={`relative w-full h-full pointer-events-none select-none ${className}`}
       style={{
-        filter:
-          "drop-shadow(0 20px 30px rgba(0, 0, 0, 0.28)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12))",
+        filter: shadowColor
+          ? `drop-shadow(0 20px 30px ${shadowColor}) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12))`
+          : "drop-shadow(0 20px 30px rgba(0, 0, 0, 0.28)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12))",
       }}
     >
       {/* ─── 1. Open Top Triangular Flap (pointing upward) ───────────────── */}

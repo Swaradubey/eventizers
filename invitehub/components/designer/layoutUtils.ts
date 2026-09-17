@@ -64,6 +64,8 @@ export interface ComputedTextLayer extends TextLayer {
   heightPx: number;
   heightPercent: number;
   isShifted: boolean;
+  fontStyle?: string;
+  maxHeight?: string;
   foilGradient?: string;
   [key: string]: any;
 }
@@ -73,7 +75,23 @@ export interface ContainerDimensions {
   height: number;
 }
 
+export interface SafeAreaMargins {
+  top?: string | number;
+  bottom?: string | number;
+  left?: string | number;
+  right?: string | number;
+}
+
 const BASE_CANVAS_WIDTH = 500;
+
+const parseCoordinate = (val: any, fallback: number): number => {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (typeof val === "string") {
+    const parsed = parseFloat(val.replace("%", "").trim());
+    if (!isNaN(parsed)) return parsed;
+  }
+  return fallback;
+};
 
 /**
  * Proportional font scaler:
@@ -92,14 +110,15 @@ export function getContainerScaleFactor(cardWidth: number, baseWidth = BASE_CANV
  * 2. Proportionally scales font size to container width.
  * 3. Accurately estimates multi-line wrapping and explicit line-break heights.
  * 4. Sorts layers vertically and enforces minimum clearance (minGapPercent)
- *    so multi-line blocks (e.g., date, venue) push lower blocks (address, RSVP)
- *    downward without vertical collision or overlapping.
- * 5. Gracefully compresses padding if the content stack approaches bottom bounds.
+ *    so multi-line blocks push lower blocks downward without vertical collision.
+ * 5. Respects safeArea margins (clamping within floral borders).
+ * 6. Gracefully compresses padding if content approaches bottom bounds.
  */
 export function computeAntiCollisionLayout(
   layers: TextLayer[],
   dimensions: ContainerDimensions,
-  minGapPercent = 2.5
+  minGapPercent = 2.5,
+  safeArea?: SafeAreaMargins
 ): ComputedTextLayer[] {
   if (!layers || layers.length === 0) return [];
   const uniqueLayers = deduplicateTextLayers(layers);
@@ -109,17 +128,24 @@ export function computeAntiCollisionLayout(
   const height = Math.max(280, dimensions.height || Math.round(width * 1.4));
   const scaleFactor = getContainerScaleFactor(width, BASE_CANVAS_WIDTH);
 
+  const safeTop = safeArea?.top ? parseCoordinate(safeArea.top, 5) : 5;
+  const safeBottom = safeArea?.bottom ? 100 - parseCoordinate(safeArea.bottom, 5) : 95;
+
   // 1. Initial pass: Calculate scaled typography, line wrapping, and bounding heights
-  const processed: ComputedTextLayer[] = layers.map((layer) => {
-    const rawX = layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50);
-    const rawY = layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50);
+  const processed: ComputedTextLayer[] = uniqueLayers.map((layer) => {
+    const pos = (layer as any).position;
+    const rawValX = pos?.left !== undefined ? pos.left : (layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
+    const rawValY = pos?.top !== undefined ? pos.top : (layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+
+    const rawX = parseCoordinate(rawValX, 50);
+    const rawY = parseCoordinate(rawValY, 50);
 
     const baseFontSize = layer.fontSize || 16;
     const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor * 10) / 10);
     // Use tighter line-height for large display text, looser for body text
     const effectiveLineHeight = layer.lineHeight || (scaledFontSize > 26 ? 1.2 : 1.35);
 
-    // Multi-line estimation with conservative (wider) char width to avoid under-counting lines
+    // Multi-line estimation with conservative char width to avoid under-counting lines
     const text = layer.text || "";
     const paragraphs = text.split("\n");
 
@@ -130,20 +156,17 @@ export function computeAntiCollisionLayout(
 
     for (const p of paragraphs) {
       if (p.trim().length === 0) {
-        // Empty paragraph = blank line
         totalLines += 1;
         continue;
       }
-      // Conservative char width: use 0.62× font size (accounts for wider display/serif glyphs)
-      // Increased from 0.52 to prevent underestimating line count for bold/display fonts
       const charWidthEstimate = scaledFontSize * 0.62;
       const pWidthPx = p.length * charWidthEstimate;
       const wrappedLines = Math.max(1, Math.ceil(pWidthPx / maxTextWidthPx));
       totalLines += wrappedLines;
     }
 
-    // Layer height: total line height + top/bottom padding buffer (12px extra)
-    const heightPx = Math.round(totalLines * scaledFontSize * effectiveLineHeight + 12);
+    // Layer height: total line height + top/bottom padding buffer
+    const heightPx = Math.round(totalLines * scaledFontSize * effectiveLineHeight + 10);
     const heightPercent = (heightPx / height) * 100;
 
     return {
@@ -156,6 +179,8 @@ export function computeAntiCollisionLayout(
       effectiveLineHeight,
       heightPx,
       heightPercent,
+      fontStyle: (layer as any).fontStyle,
+      maxHeight: (layer as any).maxHeight,
       isShifted: false,
     };
   });
@@ -166,8 +191,7 @@ export function computeAntiCollisionLayout(
     .sort((a, b) => processed[a].rawY - processed[b].rawY);
 
   // 3. Forward anti-collision cascade pass
-  // Track the bottom edge (in %) of the previously placed element
-  let prevBottomEdge = 0;
+  let prevBottomEdge = safeTop;
 
   for (let k = 0; k < sortedIndices.length; k++) {
     const idx = sortedIndices[k];
@@ -175,8 +199,8 @@ export function computeAntiCollisionLayout(
     const halfH = item.heightPercent / 2;
 
     if (k === 0) {
-      // First element: clamp to avoid bleeding above top padding
-      item.computedTop = Math.max(halfH + 2.5, item.rawY);
+      // First element: clamp to avoid bleeding into top safe area
+      item.computedTop = Math.max(safeTop + halfH, item.rawY);
     } else {
       // Minimum center Y = previous bottom edge + gap + half of current item's height
       const minRequiredCenterY = prevBottomEdge + minGapPercent + halfH;
@@ -196,16 +220,16 @@ export function computeAntiCollisionLayout(
   const maxBottomReached = prevBottomEdge;
 
   // 4. Safe bottom bounds compression:
-  // If the total pushed stack exceeds 95% of card height, proportionally compress gaps
-  if (maxBottomReached > 95 && sortedIndices.length > 1) {
-    const overflow = maxBottomReached - 95;
-    const compressionPerItem = Math.min(overflow / (sortedIndices.length - 1), 2.5);
+  // If the total pushed stack exceeds safeBottom limit, proportionally compress gaps
+  if (maxBottomReached > safeBottom && sortedIndices.length > 1) {
+    const overflow = maxBottomReached - safeBottom;
+    const compressionPerItem = Math.min(overflow / (sortedIndices.length - 1), 3.0);
 
     for (let k = sortedIndices.length - 1; k >= 1; k--) {
       const idx = sortedIndices[k];
       const shiftBack = compressionPerItem * (k / (sortedIndices.length - 1));
       processed[idx].computedTop = Math.max(
-        processed[idx].heightPercent / 2 + 3,
+        safeTop + processed[idx].heightPercent / 2,
         Math.round((processed[idx].computedTop - shiftBack) * 10) / 10
       );
     }

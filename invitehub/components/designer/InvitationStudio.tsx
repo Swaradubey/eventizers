@@ -40,7 +40,8 @@ import {
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API from "../../services/api";
-import { Invitation } from "../../types/invitationTypes";
+import { Invitation, TextLayer } from "../../types/invitationTypes";
+export type { TextLayer };
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
@@ -84,25 +85,6 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
   }
 };
 
-export interface TextLayer {
-  id: string;
-  key?: string;
-  text: string;
-  x: number; // percentage: 0 to 100
-  y: number; // percentage: 0 to 100
-  top?: number;
-  left?: number;
-  fontSize: number; // px
-  fontFamily: string;
-  color: string;
-  casing?: "uppercase" | "lowercase" | "capitalize" | "none";
-  align?: "left" | "center" | "right";
-  textAlign?: "left" | "center" | "right";
-  letterSpacing?: number; // px
-  lineHeight?: number; // multiplier e.g. 1.2
-  fontWeight: string | number;
-  isFoil?: "gold" | "rose-gold" | "silver" | null;
-}
 
 export const isUserUploadedImage = (url?: string | null): boolean => {
   if (!url || typeof url !== "string") return false;
@@ -207,8 +189,11 @@ export interface StudioDesignState {
   backdropBackground?: string;
   envelope: {
     color: string;
+    flapColor?: string;
     liner: string;
     linerCss?: string;
+    innerLiner?: string;
+    shadowColor?: string;
     stamp: string | null;
     sticker: string | null;
   };
@@ -313,6 +298,9 @@ const ENVELOPE_COLORS = [
   { id: "powderblue", hex: "#9BB4CE", name: "Powder Blue" },
   { id: "warmlinen", hex: "#ECE8E1", name: "Warm Linen" },
   { id: "midnightnavy", hex: "#102A54", name: "Midnight Navy" },
+  { id: "burgundy", hex: "#7A1C28", name: "Deep Burgundy" },
+  { id: "dustyblue", hex: "#8FA9C4", name: "Dusty Soft Blue" },
+  { id: "terracotta", hex: "#C37A3E", name: "Warm Terracotta" },
 ];
 
 const ENVELOPE_LINERS = [
@@ -328,6 +316,9 @@ const ENVELOPE_LINERS = [
   { id: "electric-gradient", name: "Electric Rainbow", style: "conic-gradient(at top left, #f43f5e, #eab308, #06b6d4, #8b5cf6, #f43f5e)" },
   { id: "marble", name: "Carrara Marble", style: "linear-gradient(120deg, #f1f5f9 0%, #e2e8f0 50%, #ffffff 100%)" },
   { id: "botanical", name: "Botanical Florals", style: "linear-gradient(135deg, #dcfce7, #86efac)" },
+  { id: "blush-burgundy-liner", name: "Blush Burgundy Floral", style: "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat" },
+  { id: "something-blue-liner", name: "Blue Hydrangea Floral", style: "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat" },
+  { id: "autumn-gingham-liner", name: "Autumn Terracotta Gingham", style: "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat" },
 ];
 
 const STAMPS = [
@@ -467,9 +458,9 @@ export default function InvitationStudio({
       cardBgValue = invite.background.value;
     }
     // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
-    else if ((tplConfig as any)?.card?.artworkUrl) {
+    else if ((tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl) {
       cardBgType = "image";
-      cardBgValue = (tplConfig as any).card.artworkUrl;
+      cardBgValue = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any).card.artworkUrl;
     }
     // Priority 2: Clean Template Decoration Image (never with baked-in text)
     else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
@@ -515,49 +506,104 @@ export default function InvitationStudio({
     const hasSavedLayers = Boolean(!isExplicitSwitch && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0);
     if (hasSavedLayers) {
       resolvedTextLayers = deduplicateTextLayers((invite!.textElements as TextLayer[]).map((tl) => ({ ...tl })));
+    } else if (!hasSavedLayers && (tplConfig as any)?.defaultTextBlocks && Array.isArray((tplConfig as any).defaultTextBlocks) && (tplConfig as any).defaultTextBlocks.length > 0) {
+      resolvedTextLayers = deduplicateTextLayers(
+        (tplConfig as any).defaultTextBlocks.map((b: any) => {
+          const rawTop = b.position?.top !== undefined ? b.position.top : (b.top !== undefined ? b.top : (b.y !== undefined ? b.y : 50));
+          const rawLeft = b.position?.left !== undefined ? b.position.left : (b.left !== undefined ? b.left : (b.x !== undefined ? b.x : 50));
+          const numTop = typeof rawTop === "number" ? rawTop : parseFloat(String(rawTop));
+          const numLeft = typeof rawLeft === "number" ? rawLeft : parseFloat(String(rawLeft));
+          const align = b.textAlign || b.align || "center";
+          const parsedSpacing = typeof b.letterSpacing === "number" ? b.letterSpacing : (b.letterSpacing ? parseFloat(String(b.letterSpacing)) : 0.5);
+
+          return {
+            id: b.id || `layer-${b.key || "text"}`,
+            key: b.id || b.key,
+            text: b.text,
+            x: isNaN(numLeft) ? 50 : numLeft,
+            y: isNaN(numTop) ? 50 : numTop,
+            top: isNaN(numTop) ? 50 : numTop,
+            left: isNaN(numLeft) ? 50 : numLeft,
+            fontSize: typeof b.fontSize === "number" ? b.fontSize : parseFloat(String(b.fontSize)) || 14,
+            fontFamily: b.fontFamily,
+            fontStyle: b.fontStyle,
+            color: b.color,
+            casing: (b.textTransform || b.casing || "none") as any,
+            align,
+            textAlign: align,
+            letterSpacing: parsedSpacing,
+            lineHeight: typeof b.lineHeight === "number" ? b.lineHeight : (b.lineHeight ? parseFloat(String(b.lineHeight)) : 1.3),
+            fontWeight: String(b.fontWeight || "400"),
+            maxHeight: b.maxHeight,
+            isFoil: null,
+          };
+        })
+      );
     } else if ((tplConfig as any)?.defaultTextLayers && Array.isArray((tplConfig as any).defaultTextLayers) && (tplConfig as any).defaultTextLayers.length > 0) {
       resolvedTextLayers = deduplicateTextLayers(
-        (tplConfig as any).defaultTextLayers.map((tl: any) => ({
-          id: tl.id || `layer-${tl.key || "text"}`,
-          key: tl.key,
-          text: tl.text,
-          x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
-          y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
-          top: tl.top !== undefined ? tl.top : tl.y,
-          left: tl.left !== undefined ? tl.left : tl.x,
-          fontSize: tl.fontSize,
-          fontFamily: tl.fontFamily,
-          color: tl.color,
-          casing: "none" as const,
-          align: tl.textAlign || tl.align || "center",
-          textAlign: tl.textAlign || tl.align || "center",
-          letterSpacing: 0.5,
-          lineHeight: 1.2,
-          fontWeight: String(tl.fontWeight),
-          isFoil: null,
-        }))
+        (tplConfig as any).defaultTextLayers.map((tl: any) => {
+          const rawTop = tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50);
+          const rawLeft = tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50);
+          const numTop = typeof rawTop === "number" ? rawTop : parseFloat(String(rawTop));
+          const numLeft = typeof rawLeft === "number" ? rawLeft : parseFloat(String(rawLeft));
+          const align = tl.textAlign || tl.align || "center";
+          const parsedSpacing = typeof tl.letterSpacing === "number" ? tl.letterSpacing : (tl.letterSpacing ? parseFloat(String(tl.letterSpacing)) : 0.5);
+
+          return {
+            id: tl.id || `layer-${tl.key || "text"}`,
+            key: tl.key,
+            text: tl.text,
+            x: isNaN(numLeft) ? 50 : numLeft,
+            y: isNaN(numTop) ? 50 : numTop,
+            top: isNaN(numTop) ? 50 : numTop,
+            left: isNaN(numLeft) ? 50 : numLeft,
+            fontSize: typeof tl.fontSize === "number" ? tl.fontSize : parseFloat(String(tl.fontSize)) || 14,
+            fontFamily: tl.fontFamily,
+            fontStyle: tl.fontStyle,
+            color: tl.color,
+            casing: (tl.casing || "none") as any,
+            align,
+            textAlign: align,
+            letterSpacing: parsedSpacing,
+            lineHeight: typeof tl.lineHeight === "number" ? tl.lineHeight : (tl.lineHeight ? parseFloat(String(tl.lineHeight)) : 1.2),
+            fontWeight: String(tl.fontWeight || "400"),
+            maxHeight: tl.maxHeight,
+            isFoil: null,
+          };
+        })
       );
     } else if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
       resolvedTextLayers = deduplicateTextLayers(
-        tplConfig.textLayers.map((tl) => ({
-          id: tl.id || `layer-${tl.key || "text"}`,
-          key: tl.key,
-          text: tl.text,
-          x: tl.x !== undefined ? tl.x : (tl.left || 50),
-          y: tl.y !== undefined ? tl.y : (tl.top || 50),
-          top: tl.top !== undefined ? tl.top : tl.y,
-          left: tl.left !== undefined ? tl.left : tl.x,
-          fontSize: tl.fontSize,
-          fontFamily: tl.fontFamily,
-          color: tl.color,
-          casing: tl.casing || "none",
-          align: tl.align || tl.textAlign || "center",
-          textAlign: tl.textAlign || tl.align || "center",
-          letterSpacing: tl.letterSpacing || 0.5,
-          lineHeight: tl.lineHeight || 1.2,
-          fontWeight: String(tl.fontWeight),
-          isFoil: tl.isFoil || null,
-        }))
+        tplConfig.textLayers.map((tl) => {
+          const rawTop = tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50);
+          const rawLeft = tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50);
+          const numTop = typeof rawTop === "number" ? rawTop : parseFloat(String(rawTop));
+          const numLeft = typeof rawLeft === "number" ? rawLeft : parseFloat(String(rawLeft));
+          const align = tl.align || tl.textAlign || "center";
+          const parsedSpacing = typeof tl.letterSpacing === "number" ? tl.letterSpacing : (tl.letterSpacing ? parseFloat(String(tl.letterSpacing)) : 0.5);
+
+          return {
+            id: tl.id || `layer-${tl.key || "text"}`,
+            key: tl.key,
+            text: tl.text,
+            x: isNaN(numLeft) ? 50 : numLeft,
+            y: isNaN(numTop) ? 50 : numTop,
+            top: isNaN(numTop) ? 50 : numTop,
+            left: isNaN(numLeft) ? 50 : numLeft,
+            fontSize: typeof tl.fontSize === "number" ? tl.fontSize : parseFloat(String(tl.fontSize)) || 14,
+            fontFamily: tl.fontFamily,
+            fontStyle: (tl as any).fontStyle,
+            color: tl.color,
+            casing: (tl.casing || "none") as any,
+            align,
+            textAlign: align,
+            letterSpacing: parsedSpacing,
+            lineHeight: typeof tl.lineHeight === "number" ? tl.lineHeight : (tl.lineHeight ? parseFloat(String(tl.lineHeight)) : 1.2),
+            fontWeight: String(tl.fontWeight || "400"),
+            maxHeight: (tl as any).maxHeight,
+            isFoil: tl.isFoil || null,
+          };
+        })
       );
     } else {
       resolvedTextLayers = deduplicateTextLayers([
@@ -659,8 +705,11 @@ export default function InvitationStudio({
 
     const savedEnvelope = invite?.envelope || {
       color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
-      flapColor: (tplConfig as any)?.envelope?.flapColor || "#7ba3e8",
-      liner: (tplConfig as any)?.envelope?.linerPatternUrl || tplConfig?.envelopeLiner || "vertical-pink-stripes",
+      flapColor: (tplConfig as any)?.envelope?.flapColor || (tplConfig as any)?.envelope?.outerColor || "#7ba3e8",
+      liner: (tplConfig as any)?.envelope?.linerPatternUrl || (tplConfig as any)?.envelope?.innerLiner || tplConfig?.envelopeLiner || "vertical-pink-stripes",
+      linerCss: (tplConfig?.envelope as any)?.linerCss,
+      innerLiner: (tplConfig?.envelope as any)?.innerLiner,
+      shadowColor: (tplConfig?.envelope as any)?.shadowColor,
       stamp: "wax",
       sticker: null,
     };
@@ -683,7 +732,9 @@ export default function InvitationStudio({
     const resolvedCard = pendingUploadUrl ? null : {
       ...((tplConfig as any)?.card || {}),
       ...((invite as any)?.card || {}),
-      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      borderIllustration: (invite as any)?.card?.borderIllustration || (tplConfig as any)?.card?.borderIllustration,
+      safeArea: (invite as any)?.card?.safeArea || (tplConfig as any)?.card?.safeArea,
       backgroundColor: tplInnerBg,
       cssConfig: (tplConfig as any)?.card?.cssConfig || (invite as any)?.card?.cssConfig || ((tplConfig as any)?.innerCardLayer ? {
         backgroundColor: (tplConfig as any)?.innerCardLayer?.backgroundColor || "#ffffff",
@@ -748,6 +799,8 @@ export default function InvitationStudio({
       envelope: {
         ...savedEnvelope,
         linerCss: (tplConfig?.envelope as any)?.linerCss || (savedEnvelope as any)?.linerCss,
+        innerLiner: (tplConfig?.envelope as any)?.innerLiner || (savedEnvelope as any)?.innerLiner,
+        shadowColor: (tplConfig?.envelope as any)?.shadowColor || (savedEnvelope as any)?.shadowColor,
       },
       effects: savedEffects,
       backside: savedBackside,
@@ -1753,6 +1806,9 @@ export default function InvitationStudio({
 
     // Hard Teardown Before Ingesting Text Layers:
     teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+
+    // Force remount with Evite-style unboxing extraction animation
+    setCanvasKey((k) => k + 1);
 
     loadedTemplateIdRef.current = templateId;
     const nextState = createDesignStateFromTemplate(

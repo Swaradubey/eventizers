@@ -84,7 +84,8 @@ export interface EviteTemplateSchema {
   id: string;
   title: string;
   name?: string;
-  category: 'Baby Shower' | 'Wedding' | 'Birthday' | 'All';
+  category: 'Baby Shower' | 'Wedding' | 'Birthday' | 'All' | 'bridal_shower' | string;
+  badge?: 'Trending' | 'FREE' | 'Free' | 'PREMIUM' | 'Premium' | string;
   backdrop: {
     type: 'color' | 'texture';
     value: string; // e.g. '#9c7cb6' or a pure CSS gradient string
@@ -94,12 +95,16 @@ export interface EviteTemplateSchema {
   envelope: {
     outerColor: string;
     linerPatternUrl: string; // empty string for pure-CSS templates
+    innerLiner?: string;     // image URL or pattern for liner
+    shadowColor?: string;    // custom shadow color
     linerCss?: string;       // pure CSS gradient/pattern string for liner
     linerPattern?: string;
     isOpen: boolean;
   };
   card: {
     artworkUrl: string;             // '' for pure-CSS templates
+    borderIllustration?: string;    // image illustration frame path
+    safeArea?: { top: string; bottom: string; left: string; right: string }; // safe printable margins
     decorativeBorderSvgUrl?: string;// '' for pure-CSS templates
     backgroundColor: string;
     aspectRatio: '5x7' | 'square' | 'portrait';
@@ -109,6 +114,19 @@ export interface EviteTemplateSchema {
     illustrationLayers?: any[];
     stickerElements?: any[];
   };
+  defaultTextBlocks?: Array<{
+    id: string;
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    lineHeight?: number;
+    fontStyle?: string;
+    letterSpacing?: string;
+    color: string;
+    align: string;
+    position: { top: string; left: string; transform?: string };
+    maxHeight?: string;
+  }>;
   defaultTextLayers: Array<{
     id: string;
     key: string;
@@ -120,9 +138,11 @@ export interface EviteTemplateSchema {
     textAlign: 'left' | 'center' | 'right';
     top: number;  // % percentage coordinate relative to card surface
     left: number; // % percentage coordinate relative to card surface
-    foilGradient?: string;
-    letterSpacing?: number;
+    fontStyle?: string;
+    letterSpacing?: number | string;
     lineHeight?: number;
+    maxHeight?: string;
+    foilGradient?: string;
     casing?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
   }>;
   textLayers?: Array<{
@@ -760,6 +780,349 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         "left": 50
       }
     ]
+  },
+  // 1. Blush & Burgundy Blooms
+  {
+    id: "blush-burgundy-blooms",
+    title: "Blush & Burgundy Blooms",
+    category: "bridal_shower",
+    badge: "Premium",
+    backdrop: {
+      type: "color",
+      value: "linear-gradient(135deg, #FAF7F2 0%, #F5EFEB 100%)",
+      color: "#FAF7F2",
+      gradient: "linear-gradient(135deg, #FAF7F2 0%, #F5EFEB 100%)"
+    },
+    envelope: {
+      outerColor: "#7A1C28", // Deep burgundy
+      innerLiner: "/templates/envelopes/blush-burgundy-liner.png", // Floral liner
+      linerPatternUrl: "/templates/envelopes/blush-burgundy-liner.png",
+      linerCss: "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+      shadowColor: "rgba(0, 0, 0, 0.28)",
+      isOpen: true
+    },
+    card: {
+      backgroundColor: "#FDFBF7",
+      safeArea: { top: "20%", bottom: "16%", left: "22%", right: "22%" }, // prevents floral border collision
+      borderIllustration: "/templates/bridal/blush-burgundy-frame.png",
+      artworkUrl: "/templates/bridal/blush-burgundy-frame.png",
+      decorativeBorderSvgUrl: "/templates/bridal/blush-burgundy-frame.png",
+      aspectRatio: "5x7"
+    },
+    defaultTextBlocks: [
+      {
+        id: "subtitle",
+        text: "Please join us as we shower\nbride-to-be",
+        fontFamily: "Playfair Display, Georgia, serif",
+        fontSize: 15,
+        lineHeight: 1.4,
+        fontStyle: "italic",
+        color: "#5A4A42",
+        align: "center",
+        position: { top: "22%", left: "50%", transform: "translateX(-50%)" },
+        maxHeight: "50px",
+      },
+      {
+        id: "title-name",
+        text: "taylor\nmadison",
+        fontFamily: "Great Vibes, Alex Brush, cursive",
+        fontSize: 42,
+        lineHeight: 1.15,
+        color: "#6B1D28",
+        align: "center",
+        position: { top: "37%", left: "50%", transform: "translateX(-50%)" },
+        maxHeight: "110px",
+      },
+      {
+        id: "details",
+        text: "Sunday, April 3rd at 1 pm\nThe Rosewood Cafe",
+        fontFamily: "Playfair Display, Georgia, serif",
+        fontSize: 14,
+        lineHeight: 1.5,
+        fontStyle: "italic",
+        color: "#5A4A42",
+        align: "center",
+        position: { top: "66%", left: "50%", transform: "translateX(-50%)" },
+        maxHeight: "60px",
+      }
+    ],
+    defaultTextLayers: [
+      {
+        id: "subtitle",
+        key: "subtitle",
+        text: "Please join us as we shower\nbride-to-be",
+        fontFamily: "Playfair Display, Georgia, serif",
+        fontSize: 15,
+        lineHeight: 1.4,
+        fontStyle: "italic",
+        color: "#5A4A42",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 22,
+        left: 50,
+        maxHeight: "50px",
+      },
+      {
+        id: "title-name",
+        key: "title",
+        text: "taylor\nmadison",
+        fontFamily: "Great Vibes, Alex Brush, cursive",
+        fontSize: 42,
+        lineHeight: 1.15,
+        color: "#6B1D28",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 37,
+        left: 50,
+        maxHeight: "110px",
+      },
+      {
+        id: "details",
+        key: "datetime",
+        text: "Sunday, April 3rd at 1 pm\nThe Rosewood Cafe",
+        fontFamily: "Playfair Display, Georgia, serif",
+        fontSize: 14,
+        lineHeight: 1.5,
+        fontStyle: "italic",
+        color: "#5A4A42",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 66,
+        left: 50,
+        maxHeight: "60px",
+      }
+    ]
+  },
+  // 2. Something Blue
+  {
+    id: "something-blue",
+    title: "Something Blue",
+    category: "bridal_shower",
+    badge: "Premium",
+    backdrop: {
+      type: "color",
+      value: "linear-gradient(135deg, #F2F6FA 0%, #E6EEF5 100%)",
+      color: "#F2F6FA",
+      gradient: "linear-gradient(135deg, #F2F6FA 0%, #E6EEF5 100%)"
+    },
+    envelope: {
+      outerColor: "#8FA9C4", // Dusty soft blue
+      innerLiner: "/templates/envelopes/something-blue-liner.png",
+      linerPatternUrl: "/templates/envelopes/something-blue-liner.png",
+      linerCss: "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+      shadowColor: "rgba(0, 0, 0, 0.22)",
+      isOpen: true
+    },
+    card: {
+      backgroundColor: "#FFFFFF",
+      safeArea: { top: "18%", bottom: "15%", left: "20%", right: "20%" },
+      borderIllustration: "/templates/bridal/something-blue-frame.png",
+      artworkUrl: "/templates/bridal/something-blue-frame.png",
+      decorativeBorderSvgUrl: "/templates/bridal/something-blue-frame.png",
+      aspectRatio: "5x7"
+    },
+    defaultTextBlocks: [
+      {
+        id: "title-ribbon",
+        text: "Something Blue\nBEFORE \"I DO\"",
+        fontFamily: "Cormorant Garamond, serif",
+        fontSize: 24,
+        lineHeight: 1.25,
+        letterSpacing: "2px",
+        color: "#355B82",
+        align: "center",
+        position: { top: "24%", left: "50%", transform: "translateX(-50%)" },
+      },
+      {
+        id: "subtitle",
+        text: "Please join us for a\nhonoring",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: "#5C768D",
+        align: "center",
+        position: { top: "42%", left: "50%", transform: "translateX(-50%)" },
+      },
+      {
+        id: "title-name",
+        text: "Andrea Ross",
+        fontFamily: "Great Vibes, cursive",
+        fontSize: 38,
+        lineHeight: 1.2,
+        color: "#2D5175",
+        align: "center",
+        position: { top: "50%", left: "50%", transform: "translateX(-50%)" },
+      },
+      {
+        id: "details",
+        text: "Saturday, May 14th at 2 pm\nThe Glasshouse",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: "#5C768D",
+        align: "center",
+        position: { top: "68%", left: "50%", transform: "translateX(-50%)" },
+      }
+    ],
+    defaultTextLayers: [
+      {
+        id: "title-ribbon",
+        key: "headline",
+        text: "Something Blue\nBEFORE \"I DO\"",
+        fontFamily: "Cormorant Garamond, serif",
+        fontSize: 24,
+        lineHeight: 1.25,
+        letterSpacing: 2,
+        color: "#355B82",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 24,
+        left: 50,
+      },
+      {
+        id: "subtitle",
+        key: "subtitle",
+        text: "Please join us for a\nhonoring",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: "#5C768D",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 42,
+        left: 50,
+      },
+      {
+        id: "title-name",
+        key: "title",
+        text: "Andrea Ross",
+        fontFamily: "Great Vibes, cursive",
+        fontSize: 38,
+        lineHeight: 1.2,
+        color: "#2D5175",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 50,
+        left: 50,
+      },
+      {
+        id: "details",
+        key: "datetime",
+        text: "Saturday, May 14th at 2 pm\nThe Glasshouse",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: "#5C768D",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 68,
+        left: 50,
+      }
+    ]
+  },
+  // 3. Autumn Blooms
+  {
+    id: "autumn-blooms",
+    title: "Autumn Blooms",
+    category: "bridal_shower",
+    badge: "Premium",
+    backdrop: {
+      type: "color",
+      value: "linear-gradient(135deg, #FBF8F2 0%, #F5EDE2 100%)",
+      color: "#FBF8F2",
+      gradient: "linear-gradient(135deg, #FBF8F2 0%, #F5EDE2 100%)"
+    },
+    envelope: {
+      outerColor: "#C37A3E", // Warm terracotta / pumpkin spice
+      innerLiner: "/templates/envelopes/autumn-gingham-liner.png", // Gingham/floral liner
+      linerPatternUrl: "/templates/envelopes/autumn-gingham-liner.png",
+      linerCss: "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
+      shadowColor: "rgba(0, 0, 0, 0.25)",
+      isOpen: true
+    },
+    card: {
+      backgroundColor: "#FCFAF6",
+      safeArea: { top: "18%", bottom: "22%", left: "20%", right: "20%" },
+      borderIllustration: "/templates/bridal/autumn-blooms-frame.png",
+      artworkUrl: "/templates/bridal/autumn-blooms-frame.png",
+      decorativeBorderSvgUrl: "/templates/bridal/autumn-blooms-frame.png",
+      aspectRatio: "5x7"
+    },
+    defaultTextBlocks: [
+      {
+        id: "subtitle",
+        text: "Fall in love",
+        fontFamily: "Great Vibes, cursive",
+        fontSize: 32,
+        color: "#B4652A",
+        align: "center",
+        position: { top: "28%", left: "50%", transform: "translateX(-50%)" },
+      },
+      {
+        id: "title-name",
+        text: "JENNIFER\nHAYWARD",
+        fontFamily: "Cinzel, Cormorant Garamond, serif",
+        fontSize: 22,
+        letterSpacing: "3px",
+        lineHeight: 1.3,
+        color: "#6D4427",
+        align: "center",
+        position: { top: "40%", left: "50%", transform: "translateX(-50%)" },
+      },
+      {
+        id: "details",
+        text: "OCTOBER 15TH AT 4:00 PM\nOAK GROVE ESTATE",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 11,
+        lineHeight: 1.6,
+        letterSpacing: "1.5px",
+        color: "#8B6B55",
+        align: "center",
+        position: { top: "54%", left: "50%", transform: "translateX(-50%)" },
+      }
+    ],
+    defaultTextLayers: [
+      {
+        id: "subtitle",
+        key: "subtitle",
+        text: "Fall in love",
+        fontFamily: "Great Vibes, cursive",
+        fontSize: 32,
+        color: "#B4652A",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 28,
+        left: 50,
+      },
+      {
+        id: "title-name",
+        key: "title",
+        text: "JENNIFER\nHAYWARD",
+        fontFamily: "Cinzel, Cormorant Garamond, serif",
+        fontSize: 22,
+        letterSpacing: 3,
+        lineHeight: 1.3,
+        color: "#6D4427",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 40,
+        left: 50,
+      },
+      {
+        id: "details",
+        key: "datetime",
+        text: "OCTOBER 15TH AT 4:00 PM\nOAK GROVE ESTATE",
+        fontFamily: "Montserrat, sans-serif",
+        fontSize: 11,
+        lineHeight: 1.6,
+        letterSpacing: 1.5,
+        color: "#8B6B55",
+        fontWeight: "500",
+        textAlign: "center",
+        top: 54,
+        left: 50,
+      }
+    ]
   }
 ];
 
@@ -794,10 +1157,15 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     align: l.textAlign,
     textAlign: l.textAlign,
     casing: (l as any).casing || 'none',
-    letterSpacing: (l as any).letterSpacing !== undefined ? (l as any).letterSpacing : 0.5,
+    letterSpacing: typeof (l as any).letterSpacing === "number" ? (l as any).letterSpacing : (l as any).letterSpacing ? parseFloat(String((l as any).letterSpacing)) : 0.5,
     lineHeight: (l as any).lineHeight || 1.2,
     foilGradient: (l as any).foilGradient,
   }));
+
+  const borderIllustration = (ev.card as any)?.borderIllustration || ev.card.artworkUrl;
+  const safeArea = (ev.card as any)?.safeArea;
+  const innerLiner = (ev.envelope as any)?.innerLiner || (ev.envelope as any)?.linerCss || (ev.envelope as any)?.linerPatternUrl;
+  const shadowColor = (ev.envelope as any)?.shadowColor;
 
   return {
     id: ev.id,
@@ -805,7 +1173,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     category: ev.category,
     tags: [ev.category, 'All'],
     title: ev.title,
-    badge: 'Free',
+    badge: ev.badge || 'Free',
     subtitle: subLayer ? subLayer.text : ev.title,
     date: dateLayer ? dateLayer.text : 'Upcoming',
     time: '4:00 PM',
@@ -813,9 +1181,9 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     venue: venueLayer ? venueLayer.text : 'Venue TBD',
     gradient: ev.backdrop.value,
     accentColor: titleLayer ? titleLayer.color : '#C9A84C',
-    emoji: ev.category === 'Wedding' ? '💍' : ev.category === 'Baby Shower' ? '🍼' : '🎉',
-    image: ev.card.artworkUrl,
-    decorationImage: ev.card.artworkUrl,
+    emoji: ev.category === 'Wedding' ? '💍' : ev.category === 'bridal_shower' ? '💐' : ev.category === 'Baby Shower' ? '🍼' : '🎉',
+    image: borderIllustration || ev.card.artworkUrl,
+    decorationImage: borderIllustration || ev.card.artworkUrl,
     description: subLayer ? subLayer.text : `Join us for ${ev.title}`,
     backgroundColor: ev.card.backgroundColor,
     textColor: titleLayer ? titleLayer.color : '#1e293b',
@@ -831,7 +1199,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     isLandscape: false,
     swatches: [ev.envelope.outerColor, ev.card.backgroundColor],
     envelopeColor: ev.envelope?.outerColor || "#5384db",
-    envelopeLiner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+    envelopeLiner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
     textLayers,
     photoSlot: null,
     isPureCss: ev.isPureCss || false,
@@ -843,22 +1211,27 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     },
     envelope: {
       outerColor: ev.envelope?.outerColor || "#5384db",
-      flapColor: (ev.envelope as any)?.flapColor || "#7ba3e8",
-      liner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
-      linerPattern: ev.envelope?.linerPatternUrl || "vertical-pink-stripes",
-      linerPatternUrl: ev.envelope?.linerPatternUrl || "vertical-pink-stripes",
+      flapColor: (ev.envelope as any)?.flapColor || (ev.envelope as any)?.outerColor || "#7ba3e8",
+      innerLiner,
+      shadowColor,
+      liner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+      linerPattern: ev.envelope?.linerPatternUrl || (ev.envelope as any)?.innerLiner || "vertical-pink-stripes",
+      linerPatternUrl: ev.envelope?.linerPatternUrl || (ev.envelope as any)?.innerLiner || "vertical-pink-stripes",
       linerCss: (ev.envelope as any)?.linerCss || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
       isOpen: true,
     },
     card: {
       backgroundColor: ev.card.backgroundColor,
       border: (ev.card as any)?.border || ((ev.card as any)?.cssConfig?.border ? `${(ev.card as any).cssConfig.border.thickness || 1}px solid ${(ev.card as any).cssConfig.border.color || '#D4AF37'}` : '1px solid rgba(0,0,0,0.08)'),
-      artworkUrl: ev.card.artworkUrl,
-      decorativeBorderSvgUrl: ev.card.decorativeBorderSvgUrl || ev.card.artworkUrl,
+      artworkUrl: borderIllustration || ev.card.artworkUrl,
+      borderIllustration,
+      safeArea,
+      decorativeBorderSvgUrl: borderIllustration || ev.card.decorativeBorderSvgUrl || ev.card.artworkUrl,
       aspectRatio: ev.card.aspectRatio === 'square' ? 'square' : 'portrait',
       cssConfig: (ev.card as any)?.cssConfig,
     },
     defaultTextLayers: ev.defaultTextLayers,
+    defaultTextBlocks: (ev as any).defaultTextBlocks,
   };
 });
 
@@ -936,6 +1309,13 @@ export const getEviteCardTemplate = (templateId?: string | null): EviteCardTempl
   if (!templateId) return null;
   const t = getTemplateConfig(templateId);
   if (!t) return null;
+  const rawLayers = (t as any).defaultTextBlocks && (t as any).defaultTextBlocks.length > 0
+    ? (t as any).defaultTextBlocks
+    : (t.defaultTextLayers || t.textLayers || []);
+
+  const borderIllustration = (t.card as any)?.borderIllustration || (t.card as any)?.decorativeBorderSvgUrl || (t.card as any)?.artworkUrl || t.decorationImage || t.image;
+  const innerLiner = (t.envelope as any)?.innerLiner || (t.envelope as any)?.linerCss || (t.envelope as any)?.linerPatternUrl || t.envelopeLiner || "gold-foil";
+
   return {
     id: t.id,
     name: t.title,
@@ -947,28 +1327,41 @@ export const getEviteCardTemplate = (templateId?: string | null): EviteCardTempl
     },
     envelope: {
       outerColor: (t.envelope as any)?.outerColor || t.envelopeColor || "#781d60",
-      linerPattern: (t.envelope as any)?.linerPattern || (t.envelope as any)?.linerPatternUrl || t.envelopeLiner || "gold-foil",
-      linerPatternUrl: (t.envelope as any)?.linerPatternUrl || t.envelopeLiner || "gold-foil",
+      linerPattern: innerLiner,
+      linerPatternUrl: innerLiner,
+      innerLiner,
+      shadowColor: (t.envelope as any)?.shadowColor,
       isOpen: true,
-    },
+    } as any,
     card: {
       backgroundColor: (t.card as any)?.backgroundColor || t.backgroundColor || "#FAF8F5",
-      decorativeBorderSvgUrl: (t.card as any)?.decorativeBorderSvgUrl || (t.card as any)?.artworkUrl || t.decorationImage || t.image,
-      artworkUrl: (t.card as any)?.artworkUrl || t.decorationImage || t.image,
+      decorativeBorderSvgUrl: borderIllustration,
+      artworkUrl: borderIllustration,
+      borderIllustration,
+      safeArea: (t.card as any)?.safeArea,
       aspectRatio: (t.card as any)?.aspectRatio === "square" ? "square" : "portrait",
-    },
-    textLayers: (t.defaultTextLayers || t.textLayers || []).map((tl: any) => ({
-      id: tl.id,
-      key: tl.key || "title",
-      text: tl.text,
-      fontFamily: tl.fontFamily,
-      fontSize: tl.fontSize,
-      fontWeight: tl.fontWeight,
-      color: tl.color,
-      textAlign: tl.textAlign || tl.align || "center",
-      top: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
-      left: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
-    })),
+    } as any,
+    textLayers: rawLayers.map((tl: any) => {
+      const rawTop = tl.position?.top !== undefined ? tl.position.top : (tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50));
+      const rawLeft = tl.position?.left !== undefined ? tl.position.left : (tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50));
+      const topNum = typeof rawTop === "string" ? parseFloat(rawTop.replace("%", "")) : rawTop;
+      const leftNum = typeof rawLeft === "string" ? parseFloat(rawLeft.replace("%", "")) : rawLeft;
+      return {
+        id: tl.id,
+        key: tl.key || tl.id || "title",
+        text: tl.text,
+        fontFamily: tl.fontFamily,
+        fontSize: tl.fontSize,
+        fontWeight: tl.fontWeight || 500,
+        fontStyle: tl.fontStyle,
+        color: tl.color,
+        textAlign: tl.textAlign || tl.align || "center",
+        top: isNaN(topNum) ? 50 : topNum,
+        left: isNaN(leftNum) ? 50 : leftNum,
+        letterSpacing: typeof tl.letterSpacing === "string" ? parseFloat(tl.letterSpacing) : tl.letterSpacing,
+        lineHeight: tl.lineHeight,
+      };
+    }),
   };
 };
 

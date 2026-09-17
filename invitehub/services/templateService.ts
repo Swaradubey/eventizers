@@ -12,44 +12,34 @@ export interface Template {
 }
 
 export const getTemplates = async (): Promise<Template[]> => {
+  const localTemplates: Template[] = templateCards.map((tc) => ({
+    id: tc.id,
+    name: tc.title,
+    category: tc.category || tc.type,
+    badge: tc.badge || "Free",
+    content: JSON.stringify({
+      gradient: tc.gradient,
+      accentColor: tc.accentColor,
+      emoji: tc.emoji,
+      host: tc.host,
+      venue: tc.venue,
+      description: tc.description,
+      image: tc.image,
+    }),
+    isPremium: (tc.badge || "").toUpperCase() === "PREMIUM",
+  }));
+
   try {
     const response = await API.get<Template[]>("/templates");
-    if (response.data && Array.isArray(response.data) && response.data.length === templateCards.length) {
-      return response.data;
+    if (response.data && Array.isArray(response.data)) {
+      const backendTemplates = response.data;
+      const backendIds = new Set(backendTemplates.map((t) => t.id));
+      const missingLocalTemplates = localTemplates.filter((t) => !backendIds.has(t.id));
+      return [...backendTemplates, ...missingLocalTemplates];
     }
-    return templateCards.map((tc) => ({
-      id: tc.id,
-      name: tc.title,
-      category: tc.category || tc.type,
-      badge: tc.badge || "Free",
-      content: JSON.stringify({
-        gradient: tc.gradient,
-        accentColor: tc.accentColor,
-        emoji: tc.emoji,
-        host: tc.host,
-        venue: tc.venue,
-        description: tc.description,
-        image: tc.image,
-      }),
-      isPremium: false,
-    }));
+    return localTemplates;
   } catch (err) {
-    return templateCards.map((tc) => ({
-      id: tc.id,
-      name: tc.title,
-      category: tc.category || tc.type,
-      badge: tc.badge || "Free",
-      content: JSON.stringify({
-        gradient: tc.gradient,
-        accentColor: tc.accentColor,
-        emoji: tc.emoji,
-        host: tc.host,
-        venue: tc.venue,
-        description: tc.description,
-        image: tc.image,
-      }),
-      isPremium: false,
-    }));
+    return localTemplates;
   }
 };
 

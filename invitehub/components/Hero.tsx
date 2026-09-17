@@ -51,7 +51,7 @@ const fallbackTemplates: Template[] = templateCards.map((tc) => ({
     description: tc.description,
     image: tc.image
   }),
-  isPremium: tc.badge === "PREMIUM"
+  isPremium: (tc.badge || "").toUpperCase() === "PREMIUM"
 }));
 
 const getDefaultEventDate = () => {
@@ -142,10 +142,43 @@ export default function Hero() {
   const [uploadDate, setUploadDate] = useState("");
   const [uploadTime, setUploadTime] = useState("");
 
+  const excludedTitles = useMemo(
+    () =>
+      new Set([
+        "Founders & Tech Connect",
+        "Black Tie Charity Gala",
+        "Sunset Garden Soirée",
+        "Pumpkin & Petals",
+        "Eternal Botanical Garland",
+        "Global Innovation Summit 2026",
+      ]),
+    []
+  );
+
+  const blankBridalTitles = useMemo(
+    () =>
+      new Set([
+        "Floral Elegance",
+        "Floral Arch",
+        "Little Limoncello",
+        "Lovely Blossoms",
+        "Elegant Lace",
+        "Painted Petals",
+        "Hibiscus Blooms",
+        "Chicory Whispers",
+      ]),
+    []
+  );
+
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
-    return list.filter((t) => matchesCategory(t.category, selectedCategory));
-  }, [templates, selectedCategory]);
+    return list.filter(
+      (t) =>
+        !excludedTitles.has(t.name) &&
+        !blankBridalTitles.has(t.name) &&
+        matchesCategory(t.category, selectedCategory)
+    );
+  }, [templates, selectedCategory, excludedTitles, blankBridalTitles]);
 
   const displayedTemplates = useMemo(() => {
     return filteredTemplates;
@@ -175,34 +208,38 @@ export default function Hero() {
   ];
 
   // Fetch templates when Template tab is activated
+  // NOTE: templates.length === 0 was a dead guard (fallbackTemplates is always pre-populated).
+  // Use loadingTemplates flag instead so the fetch fires exactly once per session.
   useEffect(() => {
-    if (activeTab === 1 && templates.length === 0) {
+    if (activeTab === 1 && !loadingTemplates) {
       const fetchTemplates = async () => {
         setLoadingTemplates(true);
         setErrorMsg(null);
         try {
           const data = await templateService.getTemplates();
+          // Seed map with ALL local fallback templates (includes newly added ones)
           const mergedMap = new Map<string, Template>();
           fallbackTemplates.forEach(t => mergedMap.set(t.id, t));
+          // Backend data overrides matching IDs (but local-only entries are preserved)
           if (data && data.length > 0) {
             data.forEach(t => mergedMap.set(t.id, t));
           }
           const combined = Array.from(mergedMap.values());
           setTemplates(combined);
-          if (combined.length > 0) {
+          if (combined.length > 0 && !selectedTemplateId) {
             setSelectedTemplateId(combined[0].id);
           }
         } catch (err: any) {
           console.error("Failed to load templates:", err);
           setTemplates(fallbackTemplates);
-          setSelectedTemplateId(fallbackTemplates[0].id);
         } finally {
           setLoadingTemplates(false);
         }
       };
       fetchTemplates();
     }
-  }, [activeTab, templates.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Restore pending template selection and draft data on login
   useEffect(() => {
@@ -1398,7 +1435,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     ? "bg-rose-500/90 text-white border-rose-400/90"
                                     : badgeText.toUpperCase() === "POPULAR"
                                     ? "bg-indigo-500/90 text-white border-indigo-400/90"
-                                    : isPremium || badgeText.toUpperCase() === "FEATURED"
+                                    : isPremium || badgeText.toUpperCase() === "PREMIUM" || badgeText.toUpperCase() === "FEATURED"
                                     ? "bg-amber-500/95 text-white border-amber-400/90"
                                     : "bg-white/90 text-gray-800 border-white/70"
                                 }`}>

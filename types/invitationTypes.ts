@@ -40,6 +40,7 @@ export interface TextLayer {
   left?: number; // alias for x
   fontSize: number; // px
   fontFamily: string;
+  fontStyle?: string;
   color: string;
   casing?: "uppercase" | "lowercase" | "capitalize" | "none";
   align?: "left" | "center" | "right";
@@ -47,6 +48,7 @@ export interface TextLayer {
   letterSpacing?: number; // px
   lineHeight?: number; // multiplier e.g. 1.2
   fontWeight: string | number;
+  maxHeight?: string;
   isFoil?: "gold" | "rose-gold" | "silver" | null;
   width?: number; // percentage or px width
   height?: number; // computed height

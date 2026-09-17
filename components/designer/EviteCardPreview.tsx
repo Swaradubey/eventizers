@@ -53,6 +53,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   const activeInteractive = isInteractive || interactive;
   const handleTextSelect = onSelectText || onTextClick;
+  const [imgError, setImgError] = React.useState(false);
 
   // 1. Resolve Backdrop color or gradient
   const backdropBg =
@@ -69,6 +70,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     "#1A1A1A";
 
   const envelopeLiner =
+    resolvedTemplate.envelope?.innerLiner ||
     resolvedTemplate.envelope?.liner ||
     resolvedTemplate.envelope?.linerCss ||
     resolvedTemplate.envelope?.linerPatternUrl ||
@@ -105,8 +107,10 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   // Artwork resolution
   const cardArtwork =
+    cardData.borderIllustration ||
     cardData.artworkUrl ||
     cardData.decorativeBorderSvgUrl ||
+    resolvedTemplate.borderIllustration ||
     resolvedTemplate.artworkUrl ||
     resolvedTemplate.decorationImage ||
     (!resolvedTemplate.isPureCss ? resolvedTemplate.image || resolvedTemplate.imageUrl : null);
@@ -133,6 +137,8 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const rawBaseLayers: any[] =
     overrideTextLayers && overrideTextLayers.length > 0
       ? overrideTextLayers
+      : resolvedTemplate.defaultTextBlocks && resolvedTemplate.defaultTextBlocks.length > 0
+      ? resolvedTemplate.defaultTextBlocks
       : resolvedTemplate.textLayers && resolvedTemplate.textLayers.length > 0
       ? resolvedTemplate.textLayers
       : resolvedTemplate.defaultTextLayers && resolvedTemplate.defaultTextLayers.length > 0
@@ -286,7 +292,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
         )}
 
         {/* Background Artwork / Vector SVG */}
-        {displayArtwork && (
+        {displayArtwork && !imgError && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={displayArtwork}
@@ -294,6 +300,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
             loading="lazy"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             style={{ zIndex: 0 }}
+            onError={() => setImgError(true)}
           />
         )}
 
@@ -314,18 +321,11 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                   const baseFontSize = layer.fontSize || 14;
                   // Proportional scale factor for card preview container
                   const fontScale = Math.max(7.5, Math.round(baseFontSize * 0.52));
-                  const topPct =
-                    layer.top !== undefined
-                      ? layer.top
-                      : layer.y !== undefined
-                      ? layer.y
-                      : 50;
-                  const leftPct =
-                    layer.left !== undefined
-                      ? layer.left
-                      : layer.x !== undefined
-                      ? layer.x
-                      : 50;
+                  const pos = layer.position;
+                  const rawTop = pos?.top !== undefined ? pos.top : (layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+                  const rawLeft = pos?.left !== undefined ? pos.left : (layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
+                  const topPct = typeof rawTop === "string" ? parseFloat(rawTop.replace("%", "")) : rawTop;
+                  const leftPct = typeof rawLeft === "string" ? parseFloat(rawLeft.replace("%", "")) : rawLeft;
 
                   return (
                     <div
@@ -335,14 +335,15 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                         activeInteractive ? "cursor-pointer hover:opacity-80" : ""
                       }`}
                       style={{
-                        top: `${topPct}%`,
-                        left: `${leftPct}%`,
+                        top: `${isNaN(topPct) ? 50 : topPct}%`,
+                        left: `${isNaN(leftPct) ? 50 : leftPct}%`,
                         transform: "translate(-50%, -50%)",
                         maxWidth: "88%",
                         width: "max-content",
                         fontFamily: layer.fontFamily || "serif",
                         fontSize: `${fontScale}px`,
                         fontWeight: layer.fontWeight || 500,
+                        fontStyle: layer.fontStyle || undefined,
                         color: layer.color || "#111827",
                         background: isFoil
                           ? layer.foilGradient ||
@@ -351,7 +352,9 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                         WebkitBackgroundClip: isFoil ? "text" : undefined,
                         WebkitTextFillColor: isFoil ? "transparent" : undefined,
                         letterSpacing:
-                          layer.letterSpacing !== undefined
+                          typeof layer.letterSpacing === "string"
+                            ? layer.letterSpacing
+                            : layer.letterSpacing !== undefined
                             ? `${layer.letterSpacing}px`
                             : "normal",
                         textAlign: layer.textAlign || layer.align || "center",

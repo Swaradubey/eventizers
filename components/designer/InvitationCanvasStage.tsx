@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useRef, useCallback, useState, useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
-import EnvelopeBackdrop from "./EnvelopeBackdrop";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
+import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "vertical-pink-stripes":
@@ -27,6 +28,12 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "electric-gradient": "conic-gradient(at top left, #f43f5e, #eab308, #06b6d4, #8b5cf6, #f43f5e)",
   marble: "linear-gradient(120deg, #f1f5f9 0%, #e2e8f0 50%, #ffffff 100%)",
   botanical: "linear-gradient(135deg, #dcfce7, #86efac)",
+  "blush-burgundy-liner": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "/templates/envelopes/blush-burgundy-liner.png": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "something-blue-liner": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "/templates/envelopes/something-blue-liner.png": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "autumn-gingham-liner": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
+  "/templates/envelopes/autumn-gingham-liner.png": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
 };
 
 export const STAMPS_DATA: Record<string, string> = {
@@ -49,7 +56,6 @@ export interface InvitationCanvasStageProps {
   selectedTextId?: string | null;
   onSelectLayer?: (id: string) => void;
   onUpdateLayer?: (id: string, updates: Partial<TextLayer>) => void;
-  onComputedLayersChange?: (layers: { id: string; x: number; y: number; left: number; top: number }[]) => void;
   editingTextId?: string | null;
   setEditingTextId?: (id: string | null) => void;
   stageRef?: any;
@@ -72,7 +78,6 @@ export default function InvitationCanvasStage({
   selectedTextId = null,
   onSelectLayer,
   onUpdateLayer,
-  onComputedLayersChange,
   editingTextId = null,
   setEditingTextId,
   stageRef,
@@ -126,31 +131,13 @@ export default function InvitationCanvasStage({
 
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
-    return computeAntiCollisionLayout(deduplicatedLayers, cardDimensions);
-  }, [deduplicatedLayers, cardDimensions]);
-
-  // Sync computed (anti-collision adjusted) positions back to parent state
-  // so that saved positions match rendered positions and overlap doesn't reappear on reload
-  const callbackRef = useRef(onComputedLayersChange);
-  callbackRef.current = onComputedLayersChange;
-  const lastSyncedRef = useRef<string>("");
-  useLayoutEffect(() => {
-    if (readOnly || !callbackRef.current) return;
-    const hasAnyShift = computedLayers.some((l) => l.isShifted);
-    if (!hasAnyShift) return;
-    const syncKey = computedLayers.map((l) => `${l.id}:${Math.round(l.computedTop)}:${Math.round(l.computedLeft)}`).join("|");
-    if (syncKey === lastSyncedRef.current) return;
-    lastSyncedRef.current = syncKey;
-    callbackRef.current(
-      computedLayers.map((cl) => ({
-        id: cl.id,
-        x: Math.round(cl.computedLeft),
-        y: Math.round(cl.computedTop),
-        left: Math.round(cl.computedLeft),
-        top: Math.round(cl.computedTop),
-      }))
+    return computeAntiCollisionLayout(
+      deduplicatedLayers,
+      cardDimensions,
+      2.5,
+      (config.card as any)?.safeArea
     );
-  });
+  }, [deduplicatedLayers, cardDimensions, (config.card as any)?.safeArea]);
 
   const dragSessionRef = useRef<{
     layerId: string;
@@ -248,17 +235,27 @@ export default function InvitationCanvasStage({
   );
 
   // Resolve Envelope Outer Color, Flap Color & Liner Style
-  // User-selected `color` takes precedence over template-default `outerColor`
   const envelopeOuterColor =
-    config.envelope?.color || (config.envelope as any)?.outerColor || "#5384db";
+    (config.envelope as any)?.outerColor || config.envelope?.color || "#5384db";
   const envelopeFlapColor =
-    (config.envelope as any)?.flapColor || (config.envelope as any)?.flapBorderColor || "#7ba3e8";
+    (config.envelope as any)?.flapColor || (config.envelope as any)?.outerColor || envelopeOuterColor;
   const linerRaw =
-    config.envelope?.liner || (config.envelope as any)?.linerPatternUrl || "vertical-pink-stripes";
-  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner
+    (config.envelope as any)?.innerLiner ||
+    (config.envelope as any)?.linerPatternUrl ||
+    config.envelope?.liner ||
+    "vertical-pink-stripes";
+  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner OR image URL liner
   const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
+  const isImageLiner = Boolean(
+    linerRaw &&
+      (linerRaw.startsWith("/") ||
+        linerRaw.startsWith("http") ||
+        /\.(png|jpe?g|svg|webp)($|\?)/i.test(linerRaw)) &&
+      !linerRaw.includes("url(")
+  );
   const linerStyle =
     envelopeLinerCss ||
+    (isImageLiner ? `url('${linerRaw}') center / cover no-repeat` : null) ||
     ENVELOPE_LINERS_DATA[linerRaw] ||
     (linerRaw && linerRaw.includes("gradient") ? linerRaw : null) ||
     ENVELOPE_LINERS_DATA["vertical-pink-stripes"];
@@ -300,7 +297,9 @@ export default function InvitationCanvasStage({
   const cardImageRaw =
     uploadedImageSrc ||
     config.card?.artworkUrl ||
+    (config.card as any)?.borderIllustration ||
     (config.cardBg?.type === "image" && config.cardBg.value ? config.cardBg.value : null) ||
+    (fallbackTpl as any)?.card?.borderIllustration ||
     (fallbackTpl as any)?.card?.artworkUrl ||
     fallbackTpl?.decorationImage ||
     null;
@@ -310,11 +309,11 @@ export default function InvitationCanvasStage({
   // Collect decorative illustrations (balloons, cake, party hats, candles, gifts) only for non-upload templates
   const rawDecorations: any[] = isUserUpload ? [] : [
     ...((config.card as any)?.decorations || []),
-    ...((config.card as any)?.decorations || []),
-    ...((config.card as any)?.template?.decorations || []),
+    ...((config as any)?.decorations || []),
+    ...((config as any)?.template?.decorations || []),
     ...((fallbackTpl as any)?.card?.decorations || []),
     ...((config.card as any)?.decorativeImages || []),
-    ...((config.card as any)?.background?.decorativeImages || []),
+    ...((config as any)?.background?.decorativeImages || []),
   ];
 
   const decorationItems = Array.from(
@@ -327,28 +326,16 @@ export default function InvitationCanvasStage({
 
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
   const [hasImgError, setHasImgError] = useState(false);
-  const triedFallbacksRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setImgSrc(cleanCardImage);
     setHasImgError(false);
-    triedFallbacksRef.current = new Set();
   }, [cleanCardImage]);
 
   const handleImageError = () => {
-    if (!imgSrc) {
-      setHasImgError(true);
-      return;
-    }
-    // Track which URLs we've already tried to prevent infinite loops
-    triedFallbacksRef.current.add(imgSrc);
-
     // If -bg.svg clean variant failed to load, fallback to cardImageRaw
-    if (cardImageRaw && imgSrc !== cardImageRaw && !triedFallbacksRef.current.has(cardImageRaw)) {
+    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw) {
       setImgSrc(cardImageRaw);
-    } else if (fallbackTpl?.card?.artworkUrl && fallbackTpl.card.artworkUrl !== imgSrc && !triedFallbacksRef.current.has(fallbackTpl.card.artworkUrl)) {
-      // Try template config artwork URL as last resort before giving up
-      setImgSrc(fallbackTpl.card.artworkUrl);
     } else {
       setHasImgError(true);
     }
@@ -424,18 +411,26 @@ export default function InvitationCanvasStage({
       : "0 22px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)";
 
   // ── PURE-CSS TEMPLATE FAST PATH ──────────────────────────────────────────
-  // If the active template has cssConfig, use EvitePureCssStage mode="interactive"
-  // to render a pure-CSS zero-image card. (Bypassed if user uploaded an image).
+  // Only use EvitePureCssStage when the template is explicitly a pure-CSS design
+  // (isPureCss: true) OR has a real CSS border config with a border type defined.
+  // Templates that have artworkUrl images MUST fall through to the image render path.
   const rawCssConfig = (config.card as any)?.cssConfig;
   const innerBorder = (config as any).innerCardLayer?.border;
   const innerShadow = (config as any).innerCardLayer?.boxShadow;
-  const cssConfig = rawCssConfig || innerBorder ? {
+  // Fix: wrap condition in parens to avoid operator-precedence bug
+  const cssConfig = (rawCssConfig || innerBorder) ? {
     ...(rawCssConfig || {}),
     ...(innerBorder ? { border: innerBorder } : {}),
     ...(innerShadow ? { paperShadow: innerShadow } : {}),
   } : null;
 
-  if (!isUserUpload && (cssConfig || (config as any).isPureCss)) {
+  // Only route to pure-CSS stage when explicitly flagged OR cssConfig has an actual border type.
+  // This prevents image-based templates from being incorrectly swallowed by the CSS path.
+  const hasRealCssBorder = Boolean(cssConfig?.border?.type && cssConfig.border.type !== "none");
+  const isExplicitPureCss = Boolean((config as any).isPureCss);
+  const hasArtworkImage = Boolean(cleanCardImage);
+
+  if (!isUserUpload && !hasArtworkImage && (isExplicitPureCss || hasRealCssBorder)) {
     // Build a minimal template-like object from the config for EvitePureCssStage
     const pureCssTpl = {
       id: (config as any).templateId || config.activeTemplateId || "unknown",
@@ -469,7 +464,6 @@ export default function InvitationCanvasStage({
         template={pureCssTpl}
         overrideTextLayers={deduplicatedLayers as any}
         mode={readOnly ? "preview" : "interactive"}
-        aspectRatio={cardAspectRatio === "5/7" ? "5x7" : cardAspectRatio as any}
         selectedTextId={selectedTextId}
         editingTextId={editingTextId}
         stageRef={stageRef}
@@ -543,8 +537,11 @@ export default function InvitationCanvasStage({
         {/* LAYER 2: Envelope & Liner (z-index: 10) - Open vertical pocket behind card */}
         {/* ========================================================================= */}
         {showEnvelope && (
-          <div
+          <motion.div
             data-layer="2-envelope-container"
+            initial={{ opacity: 0.6, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="absolute pointer-events-none transition-all duration-300 select-none"
             style={{
               zIndex: 10,
@@ -559,21 +556,40 @@ export default function InvitationCanvasStage({
               color={envelopeOuterColor}
               flapColor={envelopeFlapColor}
               liner={linerStyle}
+              innerLiner={(config.envelope as any)?.innerLiner}
+              shadowColor={(config.envelope as any)?.shadowColor}
               stampEmoji={stampEmoji}
               stickerEmoji={stickerEmoji}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* ========================================================================= */}
         {/* LAYER 3: Invitation Card Surface (z-index: 20)                            */}
-        {/* Physical card paper bounding box with 100% clean decorative artwork       */}
+        {/* Evite Card Extraction Animation: slides up out of envelope on mount        */}
         {/* ========================================================================= */}
-        <div
+        <motion.div
           ref={effectiveCardRef}
           id="invitation-card-container"
           data-layer="3-card-surface"
           data-testid="preview-card"
+          initial={{
+            y: 80,
+            x: isCardOnlyMode ? 0 : (isLandscape ? "-1%" : "-1%"),
+            scale: 0.93,
+            opacity: 0.85,
+          }}
+          animate={{
+            y: 0,
+            x: isCardOnlyMode ? 0 : (isLandscape ? "-2%" : "-3%"),
+            scale: 1,
+            opacity: 1,
+          }}
+          transition={{
+            duration: 0.95,
+            ease: [0.16, 1, 0.3, 1],
+            delay: 0.08,
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               if (onCardClick) onCardClick();
@@ -586,7 +602,6 @@ export default function InvitationCanvasStage({
             position: "relative",
             width: isCardOnlyMode ? (isLandscape ? "92%" : "84%") : (isLandscape ? "88%" : "78%"),
             aspectRatio: cardAspectRatio,
-            transform: isCardOnlyMode ? "none" : (isLandscape ? "translateX(-2%)" : "translateX(-3%)"),
             backgroundColor: cardBgColor,
             background:
               (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
@@ -596,7 +611,6 @@ export default function InvitationCanvasStage({
                 ? config.cardBg.value
                 : undefined,
             boxShadow: cardShadowStyle,
-            borderRadius: (cssConfig as any)?.borderRadius || undefined,
           }}
         >
           {showingBackside ? (
@@ -632,10 +646,10 @@ export default function InvitationCanvasStage({
             </div>
           ) : (
             <>
-              {/* 3A: Pure-CSS Border Overlay (matching catalog card borders) */}
+              {/* Border Overlay if defined by cssConfig or innerCardLayer */}
               {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
-              {/* 3B: Clean Decorative Artwork / User Uploaded Base Layer */}
+              {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
               {imgSrc && !hasImgError && (
                 <img
                   src={imgSrc}
@@ -813,7 +827,14 @@ export default function InvitationCanvasStage({
                       textAlign: layer.textAlign || layer.align,
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
-                      letterSpacing: `${layer.letterSpacing || 0}px`,
+                      fontStyle: (layer as any).fontStyle || undefined,
+                      maxHeight: (layer as any).maxHeight || undefined,
+                      letterSpacing:
+                        typeof layer.letterSpacing === "string"
+                          ? layer.letterSpacing
+                          : layer.letterSpacing !== undefined
+                          ? `${layer.letterSpacing}px`
+                          : undefined,
                       minWidth: "180px",
                     }}
                   />
@@ -826,9 +847,16 @@ export default function InvitationCanvasStage({
                       color: foilClass ? undefined : layer.color,
                       textAlign: layer.textAlign || layer.align,
                       textTransform: layer.casing === "none" ? undefined : layer.casing,
-                      letterSpacing: `${layer.letterSpacing || 0}px`,
+                      letterSpacing:
+                        typeof layer.letterSpacing === "string"
+                          ? layer.letterSpacing
+                          : layer.letterSpacing !== undefined
+                          ? `${layer.letterSpacing}px`
+                          : undefined,
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
+                      fontStyle: (layer as any).fontStyle || undefined,
+                      maxHeight: (layer as any).maxHeight || undefined,
                       pointerEvents: "auto",
                     }}
                   >
@@ -850,7 +878,7 @@ export default function InvitationCanvasStage({
           })}
             </>
           )}
-        </div>
+        </motion.div>
 
         {/* Floating Flip Card Pill Button (matching mobile reference preview) */}
         {onFlipCard && (
