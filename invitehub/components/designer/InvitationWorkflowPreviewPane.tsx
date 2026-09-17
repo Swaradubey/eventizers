@@ -20,8 +20,9 @@ export default function InvitationWorkflowPreviewPane({
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
 
-  // Explicit preview canvas purge / reset before rendering preview text objects
-  // Prevents stale canvas text objects or ghost layers from stacking over the preview card
+  // Strict Canvas Object Purge Before Render on Step 4:
+  // Purges only stale canvas text objects before preview rendering to prevent text duplication ("JJEEIINNNNIFFEEERR")
+  // IMPORTANT: Never wipe background images, frame artwork, borders, or decorative illustrations.
   useEffect(() => {
     teardownCanvasTextLayers();
   }, [designState.activeTemplateId, designState.templateId]);

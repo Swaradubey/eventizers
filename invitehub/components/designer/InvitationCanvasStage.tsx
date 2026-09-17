@@ -126,9 +126,15 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
-  // Purge any stale canvas text objects before rendering or switching templates
+  // Strict Canvas Object Purge Before Render:
+  // Purge only text objects before adding new/updated ones to eliminate text overlap ("JJEEIINNNNIFFEEERR")
+  // IMPORTANT: Never wipe background images, frame artwork, borders, or decorative illustrations.
   useEffect(() => {
-    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    teardownCanvasTextLayers(
+      (window as any)?.__fabricCanvas ||
+      (window as any)?.__canvasInstance ||
+      (window as any)?.__fabricCanvasRef?.current
+    );
   }, [config.activeTemplateId, (config as any).templateId]);
 
   // Deduplicate incoming text layers before layout and rendering

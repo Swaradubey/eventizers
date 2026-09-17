@@ -67,7 +67,7 @@ export { deduplicateTextLayers };
  * ingesting text layers on canvas load, event switch, or template switch.
  */
 export const teardownCanvasTextLayers = (canvas?: any) => {
-  const target =
+  const canvasInstance =
     canvas ||
     (typeof window !== "undefined"
       ? (window as any)?.__fabricCanvas ||
@@ -75,48 +75,38 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
         (window as any)?.__fabricCanvasRef?.current
       : null);
 
-  if (target && typeof target.getObjects === "function") {
+  if (canvasInstance && typeof canvasInstance.getObjects === "function") {
     try {
       // Retain background image to prevent wiping out canvas template artwork
-      const savedBgImage = target.backgroundImage;
+      const savedBgImage = canvasInstance.backgroundImage;
 
-      const isTextObject = (obj: any): boolean => {
-        if (!obj) return false;
-        // Explicitly preserve background images, SVG groups, static artwork, or frames
-        if (
-          obj.isBackground ||
-          obj.data?.isBackground ||
-          obj.type === "image" ||
-          obj.type === "group" ||
-          obj.type === "path" ||
-          obj.data?.isFrame ||
-          obj.data?.isArtwork
-        ) {
+      // 1. Remove ONLY text objects — preserve background image, frame artwork, borders, and decorations
+      const staleTextObjects = canvasInstance
+        .getObjects()
+        .filter((obj: any) => {
+          // Strictly match text-typed objects only
+          if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') return true;
+          // Match objects explicitly flagged as text blocks via data attribute
+          if (obj.data?.isTextBlock) return true;
+          // Exclude image objects, background frames, and non-text decorative elements
+          if (obj.type === 'image' || obj.type === 'rect' || obj.type === 'circle' || obj.type === 'path') return false;
+          // Exclude anything with customId that is NOT a text block (e.g. background-frame)
+          if (obj.customId && obj.customId !== 'background-frame' && obj.type === 'i-text') return true;
           return false;
-        }
-        const type = (obj.type || "").toLowerCase();
-        return (
-          type === "textbox" ||
-          type === "i-text" ||
-          type === "text" ||
-          Boolean(obj.isTextElement) ||
-          Boolean(obj.data?.isTextElement)
-        );
-      };
+        });
 
-      const existing = target.getObjects().filter(isTextObject);
-      existing.forEach((obj: any) => target.remove(obj));
+      staleTextObjects.forEach((obj: any) => canvasInstance.remove(obj));
 
       // Restore background image if it was cleared
-      if (savedBgImage && !target.backgroundImage && typeof target.setBackgroundImage === "function") {
-        target.backgroundImage = savedBgImage;
+      if (savedBgImage && !canvasInstance.backgroundImage && typeof canvasInstance.setBackgroundImage === "function") {
+        canvasInstance.backgroundImage = savedBgImage;
       }
 
-      if (typeof target.discardActiveObject === "function") {
-        target.discardActiveObject();
+      if (typeof canvasInstance.discardActiveObject === "function") {
+        canvasInstance.discardActiveObject();
       }
-      if (typeof target.requestRenderAll === "function") {
-        target.requestRenderAll();
+      if (typeof canvasInstance.requestRenderAll === "function") {
+        canvasInstance.requestRenderAll();
       }
     } catch (err) {
       console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
@@ -1873,6 +1863,26 @@ export default function InvitationStudio({
     };
   }, []);
 
+  // Strict Canvas Object Purge when entering Step 4 ("Review") to permanently eliminate text duplication ("JJEEIINNNNIFFEEERR")
+  // Also force-remount the canvas when navigating back to Step 1 (Design) so stale text DOM nodes
+  // from the previous step are fully cleared before the correct layers repaint.
+  useEffect(() => {
+    if (currentStepIndex === 3) {
+      teardownCanvasTextLayers();
+    }
+    if (currentStepIndex === 0) {
+      // Tear down any orphan Fabric/canvas text objects first
+      teardownCanvasTextLayers();
+      // Bump canvasKey so InvitationCanvasStage fully unmounts/remounts, clearing
+      // stale text layer DOM nodes that can cause the "ghost text" duplication.
+      setCanvasKey((k) => k + 1);
+      // Allow the re-hydration effect to run so the correct saved layers re-paint.
+      // We set isHydratingRef to false (not hasInitialHydratedRef) so the guard
+      // still blocks the very first mount but allows this explicit navigation remount.
+      isHydratingRef.current = false;
+    }
+  }, [currentStepIndex]);
+
   // Apply new template from in-studio template switcher
   const handleSelectTemplate = (templateId: string) => {
     const config = getTemplateConfig(templateId);
@@ -2543,7 +2553,7 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Review" step (step 3): check auth before dispatching
+    // When on "Review" step (step 3): check auth and directly dispatch invitations
     if (currentStepIndex === 3) {
       if (!user) {
         // Persist draft locally before showing auth modal
@@ -2555,8 +2565,201 @@ export default function InvitationStudio({
         setIsAuthModalOpen(true);
         return;
       }
-      await prepareAndOpenDispatch();
+      await handleDirectSendInvitations();
       return;
+    }
+  };
+
+  // Direct email dispatch from Step 4 ("Review") without intermediary modal
+  const handleDirectSendInvitations = async () => {
+    if (isSendingEmails || isPreparingDispatch || isGeneratingSnapshot || isSavingDraft) return;
+
+    if (!user) {
+      try {
+        const draftPayload = constructPayload(null);
+        localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
+        localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
+      } catch (e) {}
+      setToast({ message: "Sign in to send your invitations.", type: "success" });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    const targetEventId =
+      currentEvent?.id ||
+      initialEvent?.id ||
+      currentInvitation?.eventId ||
+      propSelectedEventId ||
+      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+    if (!targetEventId && !currentInvitation?.id && !initialInvitation?.id) {
+      setToast({ message: "Please associate this design with an event first.", type: "error" });
+      return;
+    }
+
+    // 1. Prepare recipients
+    const manualEmails = guestEmailsInput
+      .split(/[\n,;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e && e.includes("@"));
+
+    let activeGuestIds = [...selectedGuestIds];
+    if (activeGuestIds.length === 0 && eventGuests.length > 0) {
+      activeGuestIds = eventGuests.map((g) => g.id);
+      setSelectedGuestIds(activeGuestIds);
+    }
+
+    const guestListRecipients = eventGuests
+      .filter((g) => activeGuestIds.includes(g.id))
+      .map((g) => ({ email: g.email, guestId: g.id, name: g.name }));
+
+    const allRecipients = [
+      ...guestListRecipients,
+      ...manualEmails.map((email) => ({ email, guestId: null, name: "" })),
+    ];
+
+    if (allRecipients.length === 0) {
+      setToast({ message: "Please select at least one guest before sending invitations.", type: "error" });
+      setIsGuestSelectionModalOpen(true);
+      return;
+    }
+
+    setIsSendingEmails(true);
+    let payload: any = null;
+    try {
+      // Auto-publish associated event if in draft mode so dispatch is never blocked
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[handleDirectSendInvitations] Auto-publish event notice:", pubErr);
+        }
+      }
+
+      // Strict Canvas Object Purge Before Render & Snapshot capture
+      teardownCanvasTextLayers();
+      setDesignState((prev) => ({
+        ...prev,
+        textLayers: deduplicateTextLayers(prev.textLayers),
+      }));
+
+      // Always capture a fresh snapshot so the email reflects current canvas state
+      const snap = await generateSnapshot();
+      const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
+      const activeUploadedUrl = snap.uploadedUrl;
+
+      // Save design with finalized snapshot
+      let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+      const saved = await saveDesign(activeUploadedUrl || activeSnapshotDataUrl);
+      if (saved && saved.id) {
+        activeInvitationId = saved.id;
+      }
+
+      // Prepare payload
+      payload = {
+        invitationId: activeInvitationId,
+        eventId: targetEventId,
+        templateId: templateIdQuery || designState.activeTemplateId || "custom",
+        title:
+          designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
+          designState.eventDetails.title?.trim() ||
+          currentEvent?.title?.trim() ||
+          initialEvent?.title?.trim() ||
+          "Party Invitation",
+        recipients: allRecipients,
+        guestIds: activeGuestIds,
+        snapshot: activeSnapshotDataUrl,
+        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
+        cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
+        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
+        eventDetails: designState.eventDetails,
+      };
+
+      // Dispatch to backend endpoint
+      let response: any = null;
+      if (activeInvitationId) {
+        const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+        response = res.data;
+      } else {
+        const res = await API.post(`/invitations/send`, payload);
+        response = res.data;
+      }
+
+      if (response && (response.success || response.recipientCount)) {
+        setToast({
+          message: `✨ Invitation sent to ${response.recipientCount || allRecipients.length} guest(s)!`,
+          type: "success",
+        });
+      } else {
+        throw new Error(response?.error || response?.message || "Failed to dispatch email");
+      }
+    } catch (err: any) {
+      console.error("[handleDirectSendInvitations] Error:", err);
+      const rawErrorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "";
+
+      // Self-healing fallback: If draft mode error is encountered, auto-publish and retry once
+      if (
+        typeof rawErrorMsg === "string" &&
+        (rawErrorMsg.toLowerCase().includes("draft") || rawErrorMsg.toLowerCase().includes("publish")) &&
+        targetEventId &&
+        payload
+      ) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+
+          let retryRes: any = null;
+          let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+          if (activeInvitationId) {
+            const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+            retryRes = res.data;
+          } else {
+            const res = await API.post(`/invitations/send`, payload);
+            retryRes = res.data;
+          }
+
+          if (retryRes && (retryRes.success || retryRes.recipientCount)) {
+            setToast({
+              message: `✨ Event published & invitation sent to ${retryRes.recipientCount || payload?.recipients?.length || 1} guest(s)!`,
+              type: "success",
+            });
+            return;
+          }
+        } catch (retryErr) {
+          console.error("Auto-publish and retry send failed:", retryErr);
+        }
+      }
+
+      const errorMsg =
+        rawErrorMsg ||
+        "Failed to send invitation emails. Please check server settings.";
+      setToast({
+        message: errorMsg,
+        type: "error",
+      });
+    } finally {
+      setIsSendingEmails(false);
     }
   };
 
@@ -2886,23 +3089,23 @@ export default function InvitationStudio({
             <span>WhatsApp</span>
           </button>
 
-          {/* Send Invitations button (visible on large displays) */}
+          {/* Send → button: directly dispatches invitations via handleDirectSendInvitations */}
           <button
             type="button"
-            onClick={prepareAndOpenDispatch}
-            disabled={isGeneratingSnapshot || isSavingDraft || isPreparingDispatch}
+            onClick={handleDirectSendInvitations}
+            disabled={isSendingEmails || isGeneratingSnapshot || isSavingDraft || isPreparingDispatch}
             className="hidden 2xl:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-xs shadow-blue-500/20 focus:outline-none disabled:opacity-50 cursor-pointer shrink-0"
-            title="Distribute Invitations to Guests"
+            title="Send invitations directly to selected guests"
           >
-            {isPreparingDispatch ? (
+            {isSendingEmails ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Preparing...</span>
+                <span>Sending...</span>
               </>
             ) : (
               <>
                 <Send className="w-3.5 h-3.5 text-white" />
-                <span>Send ({selectedGuestIds.length})</span>
+                <span>Send →</span>
               </>
             )}
           </button>
@@ -2940,11 +3143,20 @@ export default function InvitationStudio({
           <button
             type="button"
             onClick={handleProceedNext}
-            disabled={isGeneratingSnapshot || isSavingDraft || isPreparingDispatch}
+            disabled={isGeneratingSnapshot || isSavingDraft || isPreparingDispatch || isSendingEmails}
             className="flex items-center gap-1 sm:gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#3e5622] hover:bg-[#32481b] text-white text-xs font-bold tracking-wide shadow-sm hover:shadow transition-all active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
           >
-            <span>{currentStepIndex >= 3 ? "Send" : "Next"}</span>
-            <span className="text-xs">→</span>
+            {isSendingEmails && currentStepIndex >= 3 ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Sending...</span>
+              </>
+            ) : (
+              <>
+                <span>{currentStepIndex >= 3 ? "Send" : "Next"}</span>
+                <span className="text-xs">→</span>
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -4513,8 +4725,9 @@ export default function InvitationStudio({
           personalFunds={personalFunds}
           selectedGuestCount={selectedGuestIds.length}
           totalGuestCount={eventGuests.length}
-          onSendInvitations={prepareAndOpenDispatch}
           onJumpToStep={(idx) => setCurrentStepIndex(idx)}
+          onDesignStateChange={setDesignState}
+          onHostDetailsChange={setHostDetails}
         />
       </div>
     </div>
