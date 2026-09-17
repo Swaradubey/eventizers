@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="hydrangea-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F9FBFD"/>
+    </linearGradient>
+
+    <!-- 4-Petal Hydrangea Floret Symbol -->
+    <g id="floret-blue">
+      <ellipse cx="-5" cy="0" rx="5" ry="3.5" fill="#7BA4D5" transform="rotate(-15)"/>
+      <ellipse cx="5" cy="0" rx="5" ry="3.5" fill="#8BB3E2" transform="rotate(15)"/>
+      <ellipse cx="0" cy="-5" rx="3.5" ry="5" fill="#90B9E5"/>
+      <ellipse cx="0" cy="5" rx="3.5" ry="5" fill="#6794CB"/>
+      <circle cx="0" cy="0" r="1.5" fill="#F4F8FD"/>
+    </g>
+    <g id="floret-light">
+      <ellipse cx="-5" cy="0" rx="5" ry="3.5" fill="#A8CCF0" transform="rotate(-15)"/>
+      <ellipse cx="5" cy="0" rx="5" ry="3.5" fill="#B9D7F6" transform="rotate(15)"/>
+      <ellipse cx="0" cy="-5" rx="3.5" ry="5" fill="#C5DFF9"/>
+      <ellipse cx="0" cy="5" rx="3.5" ry="5" fill="#9CC3EB"/>
+      <circle cx="0" cy="0" r="1.5" fill="#FFFFFF"/>
+    </g>
+    <g id="floret-dark">
+      <ellipse cx="-5" cy="0" rx="5" ry="3.5" fill="#4B77B0" transform="rotate(-15)"/>
+      <ellipse cx="5" cy="0" rx="5" ry="3.5" fill="#5A86BF" transform="rotate(15)"/>
+      <ellipse cx="0" cy="-5" rx="3.5" ry="5" fill="#6591C9"/>
+      <ellipse cx="0" cy="5" rx="3.5" ry="5" fill="#3D69A1"/>
+      <circle cx="0" cy="0" r="1.5" fill="#E2EDF9"/>
+    </g>
+  </defs>
+
+  <!-- Clean card base -->
+  <rect width="600" height="800" rx="16" fill="url(#hydrangea-bg)"/>
+  <rect x="18" y="18" width="564" height="764" rx="10" fill="none" stroke="#E3E8EE" stroke-width="1.2"/>
+
+  <!-- Climbing vine along right edge -->
+  <g id="right-vines">
+    <path d="M 540 650 Q 565 520 545 420 Q 535 370 548 320" fill="none" stroke="#526E50" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- Leaves -->
+    <path d="M 545 420 Q 565 405 575 422 Q 558 430 545 420" fill="#62855F"/>
+    <path d="M 540 460 Q 520 445 515 465 Q 530 472 540 460" fill="#547551"/>
+    <path d="M 548 370 Q 570 355 578 375 Q 560 382 548 370" fill="#6B9168"/>
+    <path d="M 548 320 Q 535 305 528 325 Q 540 332 548 320" fill="#759E72"/>
+  </g>
+
+  <!-- Big Watercolor Hydrangea Mopheads (Bottom) -->
+  <g id="hydrangea-mass">
+    <!-- Big Hydrangea Leaves in background -->
+    <path d="M 120 580 Q 70 520 20 560 Q 50 630 120 580" fill="#4B6949" opacity="0.9"/>
+    <path d="M 240 550 Q 200 480 140 510 Q 170 580 240 550" fill="#587A56" opacity="0.85"/>
+    <path d="M 380 540 Q 360 460 300 480 Q 320 560 380 540" fill="#4B6949" opacity="0.9"/>
+    <path d="M 480 550 Q 540 480 590 520 Q 550 590 480 550" fill="#587A56" opacity="0.85"/>
+
+    <!-- Left Hydrangea Head (Centered ~80, 680) -->
+    <g transform="translate(60, 670)">
+      <circle cx="0" cy="0" r="110" fill="#6794CB" opacity="0.4"/>
+      <!-- Dense florets grid -->
+      <use href="#floret-dark" x="-50" y="-40"/>
+      <use href="#floret-blue" x="-25" y="-60"/>
+      <use href="#floret-light" x="10" y="-70"/>
+      <use href="#floret-blue" x="45" y="-55"/>
+      <use href="#floret-dark" x="70" y="-30"/>
+      <use href="#floret-blue" x="-65" y="-10"/>
+      <use href="#floret-light" x="-35" y="-20"/>
+      <use href="#floret-dark" x="0" y="-30"/>
+      <use href="#floret-light" x="35" y="-25"/>
+      <use href="#floret-blue" x="75" y="5"/>
+      <use href="#floret-dark" x="-70" y="25"/>
+      <use href="#floret-blue" x="-35" y="15"/>
+      <use href="#floret-light" x="5" y="5"/>
+      <use href="#floret-blue" x="45" y="15"/>
+      <use href="#floret-dark" x="85" y="35"/>
+      <use href="#floret-blue" x="-45" y="55"/>
+      <use href="#floret-light" x="-10" y="45"/>
+      <use href="#floret-dark" x="25" y="45"/>
+      <use href="#floret-blue" x="65" y="65"/>
+    </g>
+
+    <!-- Center-Left Hydrangea Head (Centered ~230, 700) -->
+    <g transform="translate(230, 700)">
+      <circle cx="0" cy="0" r="120" fill="#7BA4D5" opacity="0.45"/>
+      <use href="#floret-light" x="-60" y="-60"/>
+      <use href="#floret-blue" x="-20" y="-75"/>
+      <use href="#floret-dark" x="25" y="-70"/>
+      <use href="#floret-blue" x="65" y="-50"/>
+      <use href="#floret-dark" x="-75" y="-25"/>
+      <use href="#floret-blue" x="-35" y="-35"/>
+      <use href="#floret-light" x="5" y="-40"/>
+      <use href="#floret-dark" x="45" y="-30"/>
+      <use href="#floret-light" x="80" y="-15"/>
+      <use href="#floret-blue" x="-80" y="15"/>
+      <use href="#floret-light" x="-40" y="5"/>
+      <use href="#floret-dark" x="0" y="-5"/>
+      <use href="#floret-blue" x="40" y="5"/>
+      <use href="#floret-light" x="80" y="20"/>
+      <use href="#floret-dark" x="-50" y="45"/>
+      <use href="#floret-blue" x="-10" y="35"/>
+      <use href="#floret-light" x="30" y="40"/>
+      <use href="#floret-dark" x="70" y="55"/>
+    </g>
+
+    <!-- Center-Right Hydrangea Head (Centered ~400, 710) -->
+    <g transform="translate(400, 710)">
+      <circle cx="0" cy="0" r="125" fill="#6591C9" opacity="0.45"/>
+      <use href="#floret-blue" x="-65" y="-65"/>
+      <use href="#floret-light" x="-25" y="-80"/>
+      <use href="#floret-blue" x="20" y="-75"/>
+      <use href="#floret-dark" x="60" y="-60"/>
+      <use href="#floret-light" x="-80" y="-25"/>
+      <use href="#floret-dark" x="-40" y="-35"/>
+      <use href="#floret-light" x="0" y="-40"/>
+      <use href="#floret-blue" x="40" y="-35"/>
+      <use href="#floret-dark" x="80" y="-20"/>
+      <use href="#floret-blue" x="-75" y="15"/>
+      <use href="#floret-light" x="-35" y="5"/>
+      <use href="#floret-dark" x="5" y="-5"/>
+      <use href="#floret-light" x="45" y="5"/>
+      <use href="#floret-blue" x="85" y="20"/>
+      <use href="#floret-dark" x="-45" y="45"/>
+      <use href="#floret-blue" x="-5" y="35"/>
+      <use href="#floret-light" x="35" y="40"/>
+    </g>
+
+    <!-- Far Right Hydrangea Head (Centered ~530, 680) -->
+    <g transform="translate(530, 680)">
+      <circle cx="0" cy="0" r="105" fill="#7BA4D5" opacity="0.4"/>
+      <use href="#floret-dark" x="-55" y="-50"/>
+      <use href="#floret-blue" x="-20" y="-65"/>
+      <use href="#floret-light" x="20" y="-55"/>
+      <use href="#floret-dark" x="-65" y="-15"/>
+      <use href="#floret-light" x="-25" y="-25"/>
+      <use href="#floret-blue" x="15" y="-20"/>
+      <use href="#floret-dark" x="55" y="-10"/>
+      <use href="#floret-blue" x="-60" y="25"/>
+      <use href="#floret-light" x="-20" y="15"/>
+      <use href="#floret-dark" x="20" y="20"/>
+    </g>
+  </g>
+</svg>

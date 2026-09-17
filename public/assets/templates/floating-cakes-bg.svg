@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;family=Cormorant+Garamond:wght@400;500;600;700&amp;family=Inter:wght@400;500&amp;display=swap');
+      .serif-title { font-family: 'Playfair Display', Georgia, serif; fill: #2B2D31; }
+      .serif-num { font-family: 'Playfair Display', Georgia, serif; font-size: 52px; font-weight: 700; fill: #2B2D31; }
+      .serif-sub { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 16px; font-style: italic; fill: #4A4D53; }
+      .serif-details { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 14px; fill: #2B2D31; letter-spacing: 0.5px; }
+      .cake-outline { stroke: #D8D2C8; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <!-- Clean Off-White Warm Card Background -->
+  <rect width="600" height="800" rx="16" fill="#FAF8F5" />
+
+  <!-- Delicate subtle confetti sprinkles & petals floating -->
+  <g opacity="0.65">
+    <circle cx="90" cy="120" r="2.5" fill="#F4A261"/>
+    <circle cx="280" cy="80" r="2" fill="#E76F51"/>
+    <circle cx="490" cy="130" r="2.5" fill="#E9C46A"/>
+    <circle cx="80" cy="380" r="2" fill="#58A4B0"/>
+    <circle cx="530" cy="360" r="2" fill="#E76F51"/>
+    <circle cx="100" cy="620" r="2.5" fill="#E9C46A"/>
+    <circle cx="500" cy="640" r="2" fill="#F4A261"/>
+    <circle cx="280" cy="740" r="2.5" fill="#58A4B0"/>
+  </g>
+
+  <!-- Top-Left Floating Tier Cake -->
+  <g transform="translate(45, 65)">
+    <!-- Plate -->
+    <ellipse cx="45" cy="80" rx="35" ry="5" fill="#EAE5DC" />
+    <!-- Bottom Tier -->
+    <rect x="20" y="50" width="50" height="28" rx="2" fill="#FDF2F4" class="cake-outline" />
+    <!-- Cream dots / cherries -->
+    <circle cx="28" cy="48" r="3" fill="#E56B6F"/>
+    <circle cx="45" cy="48" r="3" fill="#E56B6F"/>
+    <circle cx="62" cy="48" r="3" fill="#E56B6F"/>
+    <!-- Top Tier -->
+    <rect x="30" y="28" width="30" height="20" rx="2" fill="#FFF9E6" class="cake-outline" />
+    <!-- Birthday candles -->
+    <rect x="37" y="14" width="3" height="14" fill="#6D98BA" rx="1"/>
+    <rect x="49" y="14" width="3" height="14" fill="#E56B6F" rx="1"/>
+    <path d="M 38.5 7 Q 41 11 38.5 13 Q 36 11 38.5 7" fill="#F4A261"/>
+    <path d="M 50.5 7 Q 53 11 50.5 13 Q 48 11 50.5 7" fill="#F4A261"/>
+  </g>
+
+  <!-- Top Center-Left Cupcake with Cherry -->
+  <g transform="translate(170, 75)">
+    <polygon points="12,28 6,48 34,48 28,28" fill="#F4E8C1" class="cake-outline"/>
+    <ellipse cx="20" cy="24" rx="16" ry="12" fill="#FFF" class="cake-outline"/>
+    <circle cx="20" cy="12" r="5" fill="#E56B6F"/>
+    <path d="M 22 8 Q 28 4 30 2" stroke="#6D98BA" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- Top Center-Right Checker Layer Cake Slice -->
+  <g transform="translate(360, 60)">
+    <rect x="10" y="25" width="48" height="34" rx="3" fill="#FBF0D9" class="cake-outline"/>
+    <rect x="10" y="36" width="48" height="6" fill="#F4A261"/>
+    <circle cx="20" cy="20" r="3" fill="#E56B6F"/>
+    <circle cx="34" cy="20" r="3" fill="#E56B6F"/>
+    <circle cx="48" cy="20" r="3" fill="#E56B6F"/>
+    <rect x="32" y="5" width="4" height="16" fill="#E56B6F" rx="1"/>
+    <circle cx="34" cy="4" r="2.5" fill="#F4A261"/>
+  </g>
+
+  <!-- Top Right Floating Yellow Birthday Cake -->
+  <g transform="translate(480, 70)">
+    <ellipse cx="40" cy="65" rx="32" ry="5" fill="#EAE5DC" />
+    <rect x="15" y="32" width="50" height="32" rx="2" fill="#FFF4D2" class="cake-outline"/>
+    <!-- Scalloped icing -->
+    <path d="M 15 32 Q 23 40 31 32 Q 39 40 47 32 Q 55 40 65 32" stroke="#E56B6F" stroke-width="2" fill="none"/>
+    <rect x="38" y="14" width="4" height="18" fill="#58A4B0" rx="1.5"/>
+    <path d="M 40 5 Q 43 10 40 13 Q 37 10 40 5" fill="#F4A261"/>
+  </g>
+
+  <!-- Left Side: Floating Cherry Pastry -->
+  <g transform="translate(40, 320)">
+    <ellipse cx="30" cy="45" rx="22" ry="14" fill="#FDF2F4" class="cake-outline"/>
+    <ellipse cx="30" cy="35" rx="18" ry="10" fill="#FFF" class="cake-outline"/>
+    <circle cx="26" cy="26" r="4" fill="#E56B6F"/>
+    <circle cx="36" cy="28" r="4" fill="#E56B6F"/>
+    <path d="M 28 22 Q 32 14 36 12" stroke="#4A7C59" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- Right Side: Tiered Strawberry Tart Cake -->
+  <g transform="translate(490, 310)">
+    <rect x="10" y="30" width="52" height="30" rx="2" fill="#FFF9E6" class="cake-outline"/>
+    <rect x="10" y="42" width="52" height="4" fill="#E56B6F"/>
+    <!-- Strawberries on top -->
+    <path d="M 20 20 L 25 30 L 15 30 Z" fill="#E56B6F"/>
+    <path d="M 36 20 L 41 30 L 31 30 Z" fill="#E56B6F"/>
+    <path d="M 52 20 L 57 30 L 47 30 Z" fill="#E56B6F"/>
+  </g>
+
+  <!-- Bottom Left: Floating Birthday Cake on Stand -->
+  <g transform="translate(40, 560)">
+    <ellipse cx="40" cy="72" rx="35" ry="6" fill="#EAE5DC" />
+    <rect x="15" y="35" width="50" height="35" rx="3" fill="#FFF9E6" class="cake-outline"/>
+    <path d="M 15 35 Q 27 45 40 35 Q 53 45 65 35" stroke="#E56B6F" stroke-width="2" fill="none"/>
+    <!-- Multiple thin candles -->
+    <rect x="22" y="16" width="3" height="18" fill="#6D98BA" rx="1"/>
+    <rect x="38" y="14" width="3" height="20" fill="#F4A261" rx="1"/>
+    <rect x="54" y="16" width="3" height="18" fill="#E56B6F" rx="1"/>
+    <circle cx="23.5" cy="13" r="2" fill="#FFEE55"/>
+    <circle cx="39.5" cy="11" r="2" fill="#FFEE55"/>
+    <circle cx="55.5" cy="13" r="2" fill="#FFEE55"/>
+  </g>
+
+  <!-- Bottom Right: Slice of Cake with candles -->
+  <g transform="translate(480, 560)">
+    <rect x="10" y="30" width="55" height="34" rx="2" fill="#FDF2F4" class="cake-outline"/>
+    <rect x="10" y="44" width="55" height="5" fill="#E9C46A"/>
+    <rect x="25" y="12" width="3" height="18" fill="#58A4B0" rx="1"/>
+    <rect x="42" y="12" width="3" height="18" fill="#E56B6F" rx="1"/>
+    <circle cx="26.5" cy="9" r="2" fill="#F4A261"/>
+    <circle cx="43.5" cy="9" r="2" fill="#F4A261"/>
+  </g>
+
+  <!-- Bottom Center: Tiny Birthday Cupcake with glowing candle -->
+  <g transform="translate(270, 680)">
+    <polygon points="18,25 12,45 48,45 42,25" fill="#F4E8C1" class="cake-outline"/>
+    <ellipse cx="30" cy="22" rx="20" ry="12" fill="#FFF" class="cake-outline"/>
+    <circle cx="30" cy="14" r="4" fill="#E56B6F"/>
+    <rect x="28.5" y="4" width="3" height="10" fill="#6D98BA" rx="1"/>
+    <circle cx="30" cy="2" r="2" fill="#FFEE55"/>
+  </g>
+
+  </svg>

@@ -3,7 +3,7 @@
 import React from "react";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
-import { deduplicateTextLayers } from "./layoutUtils";
+import { deduplicateTextLayers, getCleanTemplateSvg } from "./layoutUtils";
 
 export interface EviteCardPreviewProps {
   template?: any;
@@ -106,7 +106,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const accentIcon = cardData.accentIcon || resolvedTemplate.accentIcon;
 
   // Artwork resolution
-  const cardArtwork =
+  const rawCardArtwork =
     cardData.borderIllustration ||
     cardData.artworkUrl ||
     cardData.decorativeBorderSvgUrl ||
@@ -114,6 +114,10 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     resolvedTemplate.artworkUrl ||
     resolvedTemplate.decorationImage ||
     (!resolvedTemplate.isPureCss ? resolvedTemplate.image || resolvedTemplate.imageUrl : null);
+
+  const cleanCardArtwork = rawCardArtwork
+    ? (getCleanTemplateSvg(rawCardArtwork) || rawCardArtwork)
+    : null;
 
   // Check if event or template has a raster snapshot (PNG/JPEG/WebP or dataUrl)
   const candidateSnapshot =
@@ -130,8 +134,21 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
         (/\.(png|jpe?g|webp)($|\?)/i.test(candidateSnapshot) && !candidateSnapshot.endsWith("-bg.svg")))
   );
 
-  // If a finalized snapshot image exists, we can display it directly
-  const displayArtwork = isRasterSnapshot ? candidateSnapshot : cardArtwork;
+  // If dynamic text layers or interactive mode are present, NEVER use snapshot as card background!
+  // Otherwise the snapshot (with baked-in text) renders under dynamic text layers, causing double-text!
+  const hasDynamicLayers = Boolean(
+    (overrideTextLayers && overrideTextLayers.length > 0) ||
+    activeInteractive
+  );
+
+  const isSnapshotUsable = Boolean(
+    isRasterSnapshot &&
+    !hasDynamicLayers &&
+    (!overrideTextLayers || overrideTextLayers.length === 0)
+  );
+
+  // If a finalized snapshot image exists and no dynamic layers are being rendered, we can display it directly
+  const displayArtwork = isSnapshotUsable ? candidateSnapshot : cleanCardArtwork;
 
   // 4. Resolve layers from override, textLayers, or defaultTextLayers
   const rawBaseLayers: any[] =
@@ -305,14 +322,14 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
         )}
 
         {/* Optional Clean Corner/Header Icon (e.g. Champagne Glasses) */}
-        {accentIcon && !isRasterSnapshot && (
+        {accentIcon && !isSnapshotUsable && (
           <div className="relative z-10 text-xl sm:text-2xl text-neutral-800 pointer-events-none mb-1">
             {accentIcon}
           </div>
         )}
 
         {/* 3. Live Scaled Typography Overlay (Hidden if displaying finalized raster snapshot) */}
-        {!isRasterSnapshot && (
+        {!isSnapshotUsable && (
           <>
             {hasCoordinates ? (
               <div className="absolute inset-0 z-20 w-full h-full pointer-events-none">

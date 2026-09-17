@@ -26,6 +26,7 @@ import {
   AlignCenter,
   AlignRight,
   ChevronDown,
+  ChevronUp,
   Loader2,
   Pipette,
   Check,
@@ -41,8 +42,8 @@ import {
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API from "../../services/api";
-import { Invitation, TextLayer } from "../../types/invitationTypes";
-export type { TextLayer };
+import { Invitation, TextLayer, GiftItem, GiftingState } from "../../types/invitationTypes";
+export type { TextLayer, GiftItem, GiftingState };
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
@@ -56,7 +57,7 @@ import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData 
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
-import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy } from "./layoutUtils";
+import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
 export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
@@ -79,6 +80,17 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
 
   if (canvasInstance && typeof canvasInstance.getObjects === "function") {
     try {
+      // Clear 2D context buffer if available to erase any ghost draw frames
+      if (typeof canvasInstance.clearContext === "function") {
+        if (canvasInstance.contextContainer) canvasInstance.clearContext(canvasInstance.contextContainer);
+        if (canvasInstance.contextTop) canvasInstance.clearContext(canvasInstance.contextTop);
+      } else if (canvasInstance.lowerCanvasEl && typeof canvasInstance.lowerCanvasEl.getContext === "function") {
+        const rawCtx = canvasInstance.lowerCanvasEl.getContext("2d");
+        if (rawCtx) {
+          rawCtx.clearRect(0, 0, canvasInstance.getWidth?.() || 600, canvasInstance.getHeight?.() || 840);
+        }
+      }
+
       // Retain background image to prevent wiping out canvas template artwork
       const savedBgImage = canvasInstance.backgroundImage;
 
@@ -227,42 +239,11 @@ export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
 };
 
 export const isUserUploadedImage = (url?: string | null): boolean => {
-  if (!url || typeof url !== "string") return false;
-  const trimmed = url.trim();
-  if (
-    trimmed === "" ||
-    trimmed.startsWith("#") ||
-    trimmed.includes("snapshot") ||
-    trimmed.includes("canvas_snapshot") ||
-    trimmed.includes("invitation_snapshot")
-  ) {
-    return false;
-  }
-  // Any asset under /assets/templates/ is a template asset, NOT a user upload
-  if (trimmed.includes("/assets/templates/")) {
-    return false;
-  }
-  // Auto-generated canvas snapshot data URLs (from html-to-image) are NOT user uploads
-  if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) {
-    return false;
-  }
-  // Base64 user uploads, blob URLs, /uploads/ directory, or external upload URLs
-  return (
-    trimmed.startsWith("data:") ||
-    trimmed.startsWith("blob:") ||
-    (trimmed.includes("/uploads/") && !trimmed.includes("snapshot")) ||
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://")
-  );
+  return checkIsUserUploadedImage(url);
 };
 
 export const getCleanTemplateSvg = (url?: string | null): string | null => {
-  if (!url || typeof url !== "string") return null;
-  if (url.includes("/assets/templates/") && url.endsWith(".svg")) {
-    if (url.endsWith("-bg.svg")) return url;
-    return url.replace(/\.svg$/, "-bg.svg");
-  }
-  return url;
+  return resolveCleanTemplateSvg(url);
 };
 
 export const getPendingOrUploadedImageUrl = (
@@ -362,6 +343,7 @@ export interface StudioDesignState {
   innerCardLayer?: any;
   viewMode?: "card" | "envelope";
   hideEnvelope?: boolean;
+  gifting?: GiftingState;
 }
 
 interface InvitationStudioProps {
@@ -585,53 +567,68 @@ export default function InvitationStudio({
     let cardBgValue = "#faf8f5";
 
     // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
-    if (pendingUploadUrl) {
+    if (pendingUploadUrl && isUserUploadedImage(pendingUploadUrl)) {
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
-    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image)
-    else if (invite?.cardBg && (invite.cardBg.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
+    // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image and NOT a snapshot)
+    else if (
+      invite?.cardBg &&
+      (invite.cardBg.type === "image"
+        ? isUserUploadedImage(invite.cardBg.value) || (typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg"))
+        : !((tplConfig as any)?.card?.artworkUrl))
+    ) {
       cardBgType = invite.cardBg.type;
-      cardBgValue = invite.cardBg.value;
-    } else if (invite?.background && (invite.background.type === "image" || !((tplConfig as any)?.card?.artworkUrl))) {
+      cardBgValue = typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg")
+        ? (getCleanTemplateSvg(invite.cardBg.value) || invite.cardBg.value)
+        : invite.cardBg.value;
+    } else if (
+      invite?.background &&
+      (invite.background.type === "image"
+        ? isUserUploadedImage(invite.background.value) || (typeof invite.background.value === "string" && invite.background.value.endsWith(".svg"))
+        : !((tplConfig as any)?.card?.artworkUrl))
+    ) {
       cardBgType = invite.background.type;
-      cardBgValue = invite.background.value;
+      cardBgValue = typeof invite.background.value === "string" && invite.background.value.endsWith(".svg")
+        ? (getCleanTemplateSvg(invite.background.value) || invite.background.value)
+        : invite.background.value;
     }
     // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
     else if ((tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl) {
       cardBgType = "image";
-      cardBgValue = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any).card.artworkUrl;
+      const rawArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any).card.artworkUrl;
+      cardBgValue = getCleanTemplateSvg(rawArt) || rawArt;
     }
     // Priority 2: Clean Template Decoration Image (never with baked-in text)
     else if (tplConfig?.decorationImage && typeof tplConfig.decorationImage === "string") {
       cardBgType = "image";
-      cardBgValue = tplConfig.decorationImage;
+      cardBgValue = getCleanTemplateSvg(tplConfig.decorationImage) || tplConfig.decorationImage;
     }
     // Priority 3: Preserved color/gradient from invite
-    else if (invite?.cardBg) {
+    else if (invite?.cardBg && invite.cardBg.type !== "image") {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background) {
+    } else if (invite?.background && invite.background.type !== "image") {
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
-    // Priority 3: Template gradient (clean — no text, just colors)
+    // Priority 4: Template gradient (clean — no text, just colors)
     else if (tplConfig?.gradient && typeof tplConfig.gradient === "string") {
       cardBgType = "gradient";
       cardBgValue = tplConfig.gradient;
     }
-    // Priority 4: Template solid background color
+    // Priority 5: Template solid background color
     else if (tplConfig?.backgroundColor && typeof tplConfig.backgroundColor === "string") {
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 5: User-uploaded invitation image (user-chosen, no template text overlap risk)
+    // Priority 6: User-uploaded invitation image (user-chosen, no template text overlap risk)
     else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
-    // Priority 6: Clean template SVG fallback if invitation has a template image URL
-    else if (invite?.imageUrl && invite.imageUrl.includes("/assets/templates/")) {
+    // Priority 7: Clean template SVG fallback if invitation has a template image URL
+    else if (invite?.imageUrl && (invite.imageUrl.includes("/assets/templates/") || invite.imageUrl.endsWith(".svg"))) {
       cardBgType = "image";
       cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
     }
@@ -639,6 +636,28 @@ export default function InvitationStudio({
     else {
       cardBgType = "color";
       cardBgValue = "#faf8f5";
+    }
+
+    // Defensive check: if cardBgType is image, verify that cardBgValue is NOT a snapshot
+    if (cardBgType === "image" && cardBgValue) {
+      if (
+        !isUserUploadedImage(cardBgValue) &&
+        (cardBgValue.includes("snapshot") ||
+          cardBgValue.includes("canvas_snapshot") ||
+          cardBgValue.includes("invitation_snapshot") ||
+          cardBgValue.includes("invitation_cover"))
+      ) {
+        const fallbackArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || tplConfig?.decorationImage;
+        if (fallbackArt) {
+          cardBgValue = getCleanTemplateSvg(fallbackArt) || fallbackArt;
+        } else if (tplConfig?.backgroundColor) {
+          cardBgType = "color";
+          cardBgValue = tplConfig.backgroundColor;
+        } else {
+          cardBgType = "color";
+          cardBgValue = "#faf8f5";
+        }
+      }
     }
 
     // Resolve Text Layers: prioritize saved text elements from draft/invite whenever present
@@ -1117,6 +1136,11 @@ export default function InvitationStudio({
   // effect body twice concurrently (each strict-mode mount fires effects twice in dev).
   const isHydratingRef = useRef(false);
 
+  // Tracks the ID of an invitation saved by this studio session to prevent
+  // the re-hydration effect from reacting to initialInvitation.id change and
+  // overwriting or re-merging template defaults over active canvas state.
+  const lastSavedInvitationIdRef = useRef<string | null>(null);
+
   // Guard: set to true during generateSnapshot() so the re-hydration effect cannot
   // inject fresh template-default layers onto the live canvas while the html-to-image
   // capture is in progress, which was a secondary trigger of the ghost-text bug.
@@ -1181,6 +1205,54 @@ export default function InvitationStudio({
   const [personalFunds, setPersonalFunds] = useState<PersonalFundData[]>(
     initialInvitation?.designData?.personalFunds || []
   );
+
+  // Evite-Style Gifting State (normalized items for wishlists, charities, funds)
+  const [giftingState, setGiftingState] = useState<GiftingState>(() => {
+    if (initialInvitation?.designData?.gifting) {
+      return initialInvitation.designData.gifting;
+    }
+    if ((initialInvitation as any)?.gifting) {
+      return (initialInvitation as any).gifting;
+    }
+    // Transparently migrate existing legacy arrays
+    const legacyW = initialInvitation?.designData?.wishlists || [];
+    const legacyC = initialInvitation?.designData?.charities || [];
+    const legacyF = initialInvitation?.designData?.personalFunds || [];
+
+    const items: GiftItem[] = [
+      ...legacyW.map((w: any): GiftItem => ({
+        id: w.id || `w-${Date.now()}-${Math.random()}`,
+        type: "wishlist",
+        provider: (w.platform?.toLowerCase() === "amazon" ? "amazon" : w.platform?.toLowerCase() === "target" ? "target" : w.platform?.toLowerCase() === "walmart" ? "walmart" : "other"),
+        title: w.title || `${w.platform || "Online"} Wishlist`,
+        url: w.url,
+        enabled: true,
+      })),
+      ...legacyC.map((c: any): GiftItem => ({
+        id: c.id || `c-${Date.now()}-${Math.random()}`,
+        type: "charity",
+        provider: "other",
+        title: c.name || "Charity",
+        description: c.description || "Charity Donation",
+        url: c.url,
+        enabled: true,
+      })),
+      ...legacyF.map((f: any): GiftItem => ({
+        id: f.id || `f-${Date.now()}-${Math.random()}`,
+        type: "fundraiser",
+        provider: "other",
+        title: f.title || "Personal Fund",
+        description: f.goal ? `Goal: ${f.goal}` : "Personal Cause",
+        url: f.url,
+        enabled: true,
+      })),
+    ];
+
+    return {
+      enabled: true,
+      items,
+    };
+  });
 
   // Synchronize Details form fields with Canvas text layers and eventDetails
   const handleDetailsFieldChange = (
@@ -1532,6 +1604,24 @@ export default function InvitationStudio({
   const [currentEvent, setCurrentEvent] = useState<Event | null>(initialEvent);
   const [eventsList, setEventsList] = useState<Event[]>(propEvents || []);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isPreviewDropdownOpen, setIsPreviewDropdownOpen] = useState(false);
+  const [isSendingPreviewEmail, setIsSendingPreviewEmail] = useState(false);
+  const previewDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close preview dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (previewDropdownRef.current && !previewDropdownRef.current.contains(e.target as Node)) {
+        setIsPreviewDropdownOpen(false);
+      }
+    };
+    if (isPreviewDropdownOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isPreviewDropdownOpen]);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [snapshotDataUrl, setSnapshotDataUrl] = useState<string | null>(null);
   const [isGeneratingSnapshot, setIsGeneratingSnapshot] = useState(false);
@@ -1909,6 +1999,17 @@ export default function InvitationStudio({
       return;
     }
 
+    // Guard: if this effect was triggered by our own save action updating initialInvitation.id,
+    // skip rehydration because the live canvas state is already the definitive source of truth.
+    if (
+      lastSavedInvitationIdRef.current &&
+      (initialInvitation?.id === lastSavedInvitationIdRef.current || currentInvitation?.id === lastSavedInvitationIdRef.current)
+    ) {
+      lastSavedInvitationIdRef.current = null;
+      isHydratingRef.current = false;
+      return;
+    }
+
     isHydratingRef.current = true;
 
     // If an uploaded image is active on the canvas or in storage,
@@ -2257,11 +2358,11 @@ export default function InvitationStudio({
 
   // Helper to construct normalized designer payload
   const constructPayload = (snapshotUrl?: string | null) => {
-    const titleLayer = designState.textLayers.find((l) => l.id === "layer-title" || l.id === "layer-names");
-    const dateLayer = designState.textLayers.find((l) => l.id === "layer-datetime" || l.id === "layer-date");
-    const venueLayer = designState.textLayers.find((l) => l.id === "layer-venue");
-    const descLayer = designState.textLayers.find((l) => l.id === "layer-description" || l.id === "layer-rsvp" || l.id === "layer-subtitle");
-    const hostLayer = designState.textLayers.find((l) => l.id === "layer-host" || l.id === "layer-names");
+    const titleLayer = designState.textLayers.find((l) => l.id === "layer-title" || l.id === "layer-names" || l.key === "title" || l.key === "names");
+    const dateLayer = designState.textLayers.find((l) => l.id === "layer-datetime" || l.id === "layer-date" || l.id === "layer-details" || l.key === "datetime" || l.key === "date");
+    const venueLayer = designState.textLayers.find((l) => l.id === "layer-venue" || l.id === "layer-location" || l.key === "venue" || l.key === "location");
+    const descLayer = designState.textLayers.find((l) => l.id === "layer-description" || l.id === "layer-rsvp" || l.id === "layer-subtitle" || l.key === "description" || l.key === "subtitle");
+    const hostLayer = designState.textLayers.find((l) => l.id === "layer-host" || l.id === "layer-intro" || l.id === "layer-names" || l.key === "host" || l.key === "intro");
 
     const titleText =
       titleLayer?.text?.trim() ||
@@ -2316,12 +2417,14 @@ export default function InvitationStudio({
       isFoil: l.isFoil || null,
     }));
 
-    const effectiveArtworkUrl =
+    const rawArtworkCandidate =
       (designState.card as any)?.artworkUrl ||
       (tplConfig as any)?.card?.artworkUrl ||
       (designState.cardBg?.type === "image" && !isUserUploadedImage(designState.cardBg.value) ? designState.cardBg.value : null) ||
       (tplConfig as any)?.decorationImage ||
       null;
+
+    const effectiveArtworkUrl = rawArtworkCandidate ? (getCleanTemplateSvg(rawArtworkCandidate) || rawArtworkCandidate) : null;
 
     const decorativeImages: string[] = Array.from(
       new Set(
@@ -2409,7 +2512,9 @@ export default function InvitationStudio({
         wishlists,
         charities,
         personalFunds,
+        gifting: giftingState,
       },
+      gifting: giftingState,
       rsvpSettings: {
         rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
         rsvpDeadlineDate:
@@ -2487,6 +2592,9 @@ export default function InvitationStudio({
       }
 
       if (saved) {
+        lastSavedInvitationIdRef.current = saved.id || payload.id || null;
+        setCanvasKey((k) => k + 1);
+
         // Non-destructive state merge: retain complete card artwork, templateId, decorations
         const mergedInvite: Invitation = {
           ...currentInvitation,
@@ -3111,6 +3219,184 @@ export default function InvitationStudio({
     }
   };
 
+  // Evite-Style "Email me a preview" dispatch handler
+  const handleEmailPreview = async () => {
+    if (isSendingPreviewEmail || isGeneratingSnapshot || isSavingDraft || isPreparingDispatch) return;
+
+    // Detect target host email from authenticated user or form state
+    const recipientEmail = user?.email || (hostDetails?.phone?.includes("@") ? hostDetails.phone : null);
+
+    if (!user && !recipientEmail) {
+      setToast({
+        message: "Please sign in to send a preview to your email.",
+        type: "error",
+      });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (!recipientEmail) {
+      setToast({
+        message: "No host email address found to send a preview.",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsSendingPreviewEmail(true);
+    setToast({
+      message: `Sending sample preview to ${recipientEmail}... ✉️`,
+      type: "success",
+    });
+
+    const targetEventId =
+      currentEvent?.id ||
+      initialEvent?.id ||
+      currentInvitation?.eventId ||
+      propSelectedEventId ||
+      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+    let payload: any = null;
+    try {
+      // Auto-publish event if currently in draft so the host's email CTA links work seamlessly
+      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+        } catch (pubErr) {
+          console.warn("[handleEmailPreview] Auto-publish event notice:", pubErr);
+        }
+      }
+
+      // Generate clean card snapshot from canvas
+      const snap = await generateSnapshot();
+      const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
+      const activeUploadedUrl = snap.uploadedUrl;
+
+      // Save design to backend with finalized snapshot
+      let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+      const saved = await saveDesign(activeUploadedUrl || activeSnapshotDataUrl);
+      if (saved && saved.id) {
+        activeInvitationId = saved.id;
+      }
+
+      payload = {
+        invitationId: activeInvitationId,
+        eventId: targetEventId,
+        templateId: templateIdQuery || designState.activeTemplateId || "custom",
+        title:
+          designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
+          designState.eventDetails.title?.trim() ||
+          currentEvent?.title?.trim() ||
+          initialEvent?.title?.trim() ||
+          "Party Invitation Preview",
+        recipients: [
+          {
+            email: recipientEmail,
+            name: user?.name || hostDetails.name || "Host",
+            guestId: null,
+          },
+        ],
+        guestIds: [],
+        snapshot: activeSnapshotDataUrl,
+        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
+        cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
+        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
+        eventDetails: designState.eventDetails,
+        envelope: designState.envelope,
+        card: designState.card,
+        cardBg: designState.cardBg,
+        textElements: designState.textLayers,
+        decorations: designState.decorations,
+        gifting: giftingState,
+      };
+
+      let response: any = null;
+      if (activeInvitationId) {
+        const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+        response = res.data;
+      } else {
+        const res = await API.post(`/invitations/send`, payload);
+        response = res.data;
+      }
+
+      if (response && (response.success || response.recipientCount)) {
+        setToast({
+          message: `Preview sent to ${recipientEmail}! Check your inbox. 📬`,
+          type: "success",
+        });
+      } else {
+        throw new Error(response?.error || response?.message || "Failed to dispatch preview email");
+      }
+    } catch (err: any) {
+      console.error("[handleEmailPreview] Error:", err);
+      const rawErrorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "";
+
+      // Self-healing fallback for draft mode validation error
+      if (
+        typeof rawErrorMsg === "string" &&
+        (rawErrorMsg.toLowerCase().includes("draft") || rawErrorMsg.toLowerCase().includes("publish")) &&
+        targetEventId &&
+        payload
+      ) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
+            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
+            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
+            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
+            status: "published",
+          } as any);
+          if (currentEvent) {
+            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+          }
+
+          let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
+          let retryRes: any = null;
+          if (activeInvitationId) {
+            const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
+            retryRes = res.data;
+          } else {
+            const res = await API.post(`/invitations/send`, payload);
+            retryRes = res.data;
+          }
+
+          if (retryRes && (retryRes.success || retryRes.recipientCount)) {
+            setToast({
+              message: `Preview sent to ${recipientEmail}! Check your inbox. 📬`,
+              type: "success",
+            });
+            return;
+          }
+        } catch (retryErr) {
+          console.error("[handleEmailPreview] Retry send error:", retryErr);
+        }
+      }
+
+      const errorMsg =
+        rawErrorMsg ||
+        "Failed to send preview email. Please check email server settings.";
+      setToast({
+        message: errorMsg,
+        type: "error",
+      });
+    } finally {
+      setIsSendingPreviewEmail(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-[#0f172a] text-slate-100 font-sans select-none overflow-hidden">
       {/* Toast Notification */}
@@ -3284,15 +3570,22 @@ export default function InvitationStudio({
             )}
           </button>
 
-          {/* Preview button */}
+          {/* Preview Button */}
           <button
             type="button"
-            onClick={() => setIsPreviewModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0"
-            title="Preview full screen"
+            disabled={isSendingPreviewEmail}
+            onClick={() => handleEmailPreview()}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95 disabled:opacity-50"
+            title="Email me a preview"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Preview</span>
+            {isSendingPreviewEmail ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3e5622]" />
+            ) : (
+              <Eye className="w-3.5 h-3.5 text-[#3e5622]" />
+            )}
+            <span className="hidden sm:inline">
+              {isSendingPreviewEmail ? "Sending..." : "Preview"}
+            </span>
           </button>
 
           {/* Premium Badge */}
@@ -4875,6 +5168,11 @@ export default function InvitationStudio({
       </div>
       <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
         <InvitationWorkflowGifting
+          gifting={giftingState}
+          onUpdateGifting={(next) => {
+            setGiftingState(next);
+            setDesignState((prev) => ({ ...prev, gifting: next }));
+          }}
           wishlists={wishlists}
           charities={charities}
           personalFunds={personalFunds}

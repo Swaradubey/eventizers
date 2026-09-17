@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ivory-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDFBF7"/>
+      <stop offset="100%" stop-color="#F7F3EC"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Textured Warm Ivory Card Base -->
+  <rect width="600" height="800" rx="16" fill="url(#ivory-bg)" />
+  <rect x="16" y="16" width="568" height="768" rx="10" fill="none" stroke="#EFE9DE" stroke-width="1.2" />
+
+  <!-- Hanging Twine Lines -->
+  <g stroke="#9C8B77" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85">
+    <!-- Top Twine Swag -->
+    <path d="M 40 90 Q 170 125 300 110 T 560 90" />
+    <!-- Lower Twine Swag -->
+    <path d="M 40 120 Q 180 155 300 138 T 560 118" />
+  </g>
+
+  <!-- Twine Bows at Anchors -->
+  <g fill="none" stroke="#8A7761" stroke-width="1.5" stroke-linecap="round">
+    <!-- Left Bow -->
+    <path d="M 40 90 C 25 80 20 95 38 92 C 55 90 45 80 40 90" />
+    <path d="M 38 92 Q 32 108 30 118 M 40 92 Q 44 106 48 116" />
+    <!-- Center Bow -->
+    <path d="M 300 110 C 285 98 280 114 298 112 C 316 110 310 98 300 110" />
+    <path d="M 298 112 Q 292 128 290 138 M 302 112 Q 306 128 310 136" />
+    <!-- Right Bow -->
+    <path d="M 560 90 C 545 80 540 95 558 92 C 575 90 568 80 560 90" />
+    <path d="M 558 92 Q 552 108 550 118 M 560 92 Q 564 106 568 116" />
+  </g>
+
+  <!-- Hanging Wildflower Botanical Garland -->
+  <g id="hanging-flowers">
+    <!-- Stem 1: Far Left Pink Poppy / Daisy -->
+    <g transform="translate(60, 95)">
+      <path d="M 0 0 Q -5 45 -2 80" fill="none" stroke="#7A8F70" stroke-width="1.4" />
+      <path d="M -3 30 Q -12 25 -14 38 Q -8 40 -3 33" fill="#88A07C" />
+      <path d="M -1 55 Q 8 50 10 62 Q 4 64 -1 57" fill="#88A07C" />
+      <!-- Blossom -->
+      <g transform="translate(-2, 80)">
+        <ellipse cx="-12" cy="0" rx="10" ry="5" fill="#E88282" transform="rotate(-30)" />
+        <ellipse cx="12" cy="0" rx="10" ry="5" fill="#E88282" transform="rotate(30)" />
+        <ellipse cx="0" cy="-12" rx="5" ry="10" fill="#F29999" />
+        <ellipse cx="0" cy="12" rx="5" ry="10" fill="#E88282" />
+        <ellipse cx="-8" cy="-8" rx="8" ry="5" fill="#EE9090" transform="rotate(-45)" />
+        <ellipse cx="8" cy="-8" rx="8" ry="5" fill="#EE9090" transform="rotate(45)" />
+        <ellipse cx="-8" cy="8" rx="8" ry="5" fill="#DE7676" transform="rotate(45)" />
+        <ellipse cx="8" cy="8" rx="8" ry="5" fill="#DE7676" transform="rotate(-45)" />
+        <circle cx="0" cy="0" r="5" fill="#F4D06F" stroke="#DCA838" stroke-width="0.8" />
+      </g>
+    </g>
+
+    <!-- Stem 2: Bluebells -->
+    <g transform="translate(105, 115)">
+      <path d="M 0 0 Q 8 60 5 125" fill="none" stroke="#6E8564" stroke-width="1.3" />
+      <path d="M 2 35 Q 12 30 14 42 Q 8 44 2 37" fill="#7A9470" />
+      <path d="M 5 75 Q -5 70 -6 82 Q 0 84 5 77" fill="#7A9470" />
+      <!-- Bell 1 -->
+      <path d="M 3 60 C 14 62 18 72 15 80 C 12 76 6 74 3 65 Z" fill="#8EA8DB" />
+      <!-- Bell 2 -->
+      <path d="M 5 95 C 18 97 22 108 18 116 C 14 112 8 110 5 100 Z" fill="#7B97CE" />
+      <!-- Terminal Bell -->
+      <path d="M 5 125 C -5 130 -4 142 4 145 C 8 140 7 132 5 125 Z" fill="#9CB4E4" />
+    </g>
+
+    <!-- Stem 3: Yellow Buttercup Garland -->
+    <g transform="translate(150, 118)">
+      <path d="M 0 0 Q -6 40 -3 95" fill="none" stroke="#7A8F70" stroke-width="1.3" />
+      <path d="M -2 25 Q -10 18 -12 28 Q -6 30 -2 27" fill="#88A07C" />
+      <path d="M -1 50 Q 8 44 9 54 Q 4 56 -1 52" fill="#88A07C" />
+      <!-- Yellow Flower -->
+      <g transform="translate(-3, 95)">
+        <circle cx="0" cy="-9" r="6" fill="#F6D55C" />
+        <circle cx="9" cy="-3" r="6" fill="#F6D55C" />
+        <circle cx="6" cy="7" r="6" fill="#F3C942" />
+        <circle cx="-6" cy="7" r="6" fill="#F3C942" />
+        <circle cx="-9" cy="-3" r="6" fill="#F6D55C" />
+        <circle cx="0" cy="0" r="4.5" fill="#E89B38" />
+      </g>
+    </g>
+
+    <!-- Stem 4: Pink Daisies Cluster -->
+    <g transform="translate(200, 128)">
+      <path d="M 0 0 Q 10 55 6 150" fill="none" stroke="#6E8564" stroke-width="1.5" />
+      <path d="M 4 45 Q 15 40 18 52 Q 10 54 4 47" fill="#7A9470" />
+      <path d="M 6 90 Q -4 85 -6 97 Q 0 99 6 92" fill="#7A9470" />
+      <!-- Big Pink Daisy -->
+      <g transform="translate(6, 150)">
+        <ellipse cx="0" cy="-16" rx="5" ry="12" fill="#F49EAF" />
+        <ellipse cx="11" cy="-11" rx="5" ry="12" fill="#F49EAF" transform="rotate(45, 11, -11)" />
+        <ellipse cx="16" cy="0" rx="5" ry="12" fill="#EF879C" transform="rotate(90, 16, 0)" />
+        <ellipse cx="11" cy="11" rx="5" ry="12" fill="#EF879C" transform="rotate(135, 11, 11)" />
+        <ellipse cx="0" cy="16" rx="5" ry="12" fill="#E8768D" />
+        <ellipse cx="-11" cy="11" rx="5" ry="12" fill="#E8768D" transform="rotate(-135, -11, 11)" />
+        <ellipse cx="-16" cy="0" rx="5" ry="12" fill="#F49EAF" transform="rotate(-90, -16, 0)" />
+        <ellipse cx="-11" cy="-11" rx="5" ry="12" fill="#F49EAF" transform="rotate(-45, -11, -11)" />
+        <circle cx="0" cy="0" r="7" fill="#F9D462" stroke="#E5B236" stroke-width="1" />
+      </g>
+    </g>
+
+    <!-- Stem 5: Lavender / Lilac Sprig -->
+    <g transform="translate(250, 115)">
+      <path d="M 0 0 Q -4 35 0 85" fill="none" stroke="#7A8F70" stroke-width="1.2" />
+      <circle cx="-5" cy="40" r="4" fill="#B39DDB" />
+      <circle cx="4" cy="48" r="4" fill="#9575CD" />
+      <circle cx="-4" cy="56" r="3.5" fill="#B39DDB" />
+      <circle cx="4" cy="64" r="3.5" fill="#9575CD" />
+      <circle cx="-3" cy="72" r="3" fill="#B39DDB" />
+      <circle cx="3" cy="78" r="3" fill="#7E57C2" />
+      <circle cx="0" cy="85" r="2.5" fill="#7E57C2" />
+    </g>
+
+    <!-- Stem 6: Center Trailing Leaves & Yellow Bloom -->
+    <g transform="translate(300, 110)">
+      <path d="M 0 0 Q 5 45 -2 105" fill="none" stroke="#6E8564" stroke-width="1.4" />
+      <path d="M 2 20 Q 12 15 14 26 Q 7 28 2 22" fill="#7A9470" />
+      <path d="M 0 45 Q -10 40 -12 52 Q -6 54 0 47" fill="#88A07C" />
+      <path d="M 1 70 Q 11 65 13 76 Q 6 78 1 72" fill="#7A9470" />
+      <!-- Soft Cream-Yellow Flower -->
+      <g transform="translate(-2, 105)">
+        <ellipse cx="0" cy="-10" rx="4" ry="8" fill="#FCE588" />
+        <ellipse cx="8" cy="-5" rx="4" ry="8" fill="#FCE588" transform="rotate(45, 8, -5)" />
+        <ellipse cx="8" cy="5" rx="4" ry="8" fill="#F9D462" transform="rotate(110, 8, 5)" />
+        <ellipse cx="-3" cy="9" rx="4" ry="8" fill="#F9D462" transform="rotate(160, -3, 9)" />
+        <ellipse cx="-9" cy="0" rx="4" ry="8" fill="#FCE588" transform="rotate(-80, -9, 0)" />
+        <circle cx="0" cy="0" r="4.5" fill="#E89B38" />
+      </g>
+    </g>
+
+    <!-- Stem 7: Deep Pink Star Flower -->
+    <g transform="translate(350, 118)">
+      <path d="M 0 0 Q -8 50 -4 140" fill="none" stroke="#7A8F70" stroke-width="1.4" />
+      <path d="M -4 35 Q -14 30 -16 42 Q -9 44 -4 37" fill="#88A07C" />
+      <path d="M -6 80 Q 5 75 7 86 Q 1 88 -6 82" fill="#88A07C" />
+      <!-- Blossom -->
+      <g transform="translate(-4, 140)">
+        <ellipse cx="-13" cy="0" rx="11" ry="5" fill="#E26D85" transform="rotate(-25)" />
+        <ellipse cx="13" cy="0" rx="11" ry="5" fill="#E26D85" transform="rotate(25)" />
+        <ellipse cx="0" cy="-13" rx="5" ry="11" fill="#F08A9E" />
+        <ellipse cx="0" cy="13" rx="5" ry="11" fill="#D4566F" />
+        <ellipse cx="-9" cy="-9" rx="9" ry="5" fill="#F08A9E" transform="rotate(-45)" />
+        <ellipse cx="9" cy="-9" rx="9" ry="5" fill="#F08A9E" transform="rotate(45)" />
+        <ellipse cx="-9" cy="9" rx="9" ry="5" fill="#D4566F" transform="rotate(45)" />
+        <ellipse cx="9" cy="9" rx="9" ry="5" fill="#D4566F" transform="rotate(-45)" />
+        <circle cx="0" cy="0" r="5.5" fill="#FCE588" stroke="#DCA838" stroke-width="1" />
+      </g>
+    </g>
+
+    <!-- Stem 8: Blue Bells Sprig -->
+    <g transform="translate(400, 125)">
+      <path d="M 0 0 Q 6 45 2 110" fill="none" stroke="#6E8564" stroke-width="1.3" />
+      <path d="M 3 25 Q 12 20 14 30 Q 8 32 3 27" fill="#7A9470" />
+      <path d="M 3 55 Q -6 50 -8 60 Q -2 62 3 57" fill="#7A9470" />
+      <!-- Drooping Bells -->
+      <path d="M 3 50 C 13 52 16 62 14 70 C 10 66 5 64 3 55 Z" fill="#8EA8DB" />
+      <path d="M 2 85 C 15 87 18 97 15 105 C 11 101 6 100 2 90 Z" fill="#7B97CE" />
+      <path d="M 2 110 C -6 115 -5 125 3 128 C 6 123 5 117 2 110 Z" fill="#9CB4E4" />
+    </g>
+
+    <!-- Stem 9: Yellow Daisy -->
+    <g transform="translate(455, 118)">
+      <path d="M 0 0 Q -5 40 -1 90" fill="none" stroke="#7A8F70" stroke-width="1.3" />
+      <path d="M -2 25 Q -11 18 -13 29 Q -7 31 -2 27" fill="#88A07C" />
+      <path d="M -1 55 Q 8 50 9 60 Q 4 62 -1 57" fill="#88A07C" />
+      <g transform="translate(-1, 90)">
+        <circle cx="0" cy="-8" r="5.5" fill="#F6D55C" />
+        <circle cx="8" cy="-2" r="5.5" fill="#F6D55C" />
+        <circle cx="5" cy="7" r="5.5" fill="#F3C942" />
+        <circle cx="-5" cy="7" r="5.5" fill="#F3C942" />
+        <circle cx="-8" cy="-2" r="5.5" fill="#F6D55C" />
+        <circle cx="0" cy="0" r="4.5" fill="#D97706" />
+      </g>
+    </g>
+
+    <!-- Stem 10: Far Right Pink Daisy -->
+    <g transform="translate(515, 95)">
+      <path d="M 0 0 Q 6 40 2 85" fill="none" stroke="#6E8564" stroke-width="1.4" />
+      <path d="M 2 25 Q 11 20 13 30 Q 7 32 2 27" fill="#7A9470" />
+      <path d="M 3 50 Q -6 45 -8 55 Q -2 57 3 52" fill="#7A9470" />
+      <g transform="translate(2, 85)">
+        <ellipse cx="-10" cy="0" rx="9" ry="4.5" fill="#E88282" transform="rotate(-25)" />
+        <ellipse cx="10" cy="0" rx="9" ry="4.5" fill="#E88282" transform="rotate(25)" />
+        <ellipse cx="0" cy="-10" rx="4.5" ry="9" fill="#F29999" />
+        <ellipse cx="0" cy="10" rx="4.5" ry="9" fill="#E88282" />
+        <ellipse cx="-7" cy="-7" rx="7" ry="4.5" fill="#EE9090" transform="rotate(-45)" />
+        <ellipse cx="7" cy="-7" rx="7" ry="4.5" fill="#EE9090" transform="rotate(45)" />
+        <circle cx="0" cy="0" r="4.5" fill="#F4D06F" stroke="#DCA838" stroke-width="0.8" />
+      </g>
+    </g>
+  </g>
+</svg>

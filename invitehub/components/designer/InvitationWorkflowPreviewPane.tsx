@@ -75,7 +75,7 @@ export default function InvitationWorkflowPreviewPane({
           <div className="w-full max-w-[460px] flex items-center justify-center my-auto transition-all duration-300">
             <div className="w-full shadow-2xl rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
               <InvitationCanvasStage
-                key={`workflow-preview-desktop-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}`}
+                key={`workflow-preview-desktop-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
                 config={cleanConfig}
                 readOnly={true}
                 maxW={460}
@@ -92,7 +92,7 @@ export default function InvitationWorkflowPreviewPane({
             <div className="w-24 h-4 bg-slate-800 rounded-full mx-auto mb-2" />
             <div className="rounded-[26px] overflow-hidden bg-white max-h-[520px] overflow-y-auto">
               <InvitationCanvasStage
-                key={`workflow-preview-mobile-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}`}
+                key={`workflow-preview-mobile-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
                 config={cleanConfig}
                 readOnly={true}
                 maxW={300}

@@ -437,17 +437,33 @@ export default function InvitationCanvasStage({
   const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
   const fallbackTpl = (!isUserUpload && activeTplId) ? getTemplateConfig(activeTplId) : null;
 
+  // Helper to filter out snapshot / raster captures from being used as card background artwork
+  const sanitizeBackgroundCandidate = (url?: string | null): string | null => {
+    if (!url || typeof url !== "string") return null;
+    const trimmed = url.trim();
+    if (
+      trimmed === "" ||
+      trimmed.startsWith("#") ||
+      trimmed.includes("snapshot") ||
+      trimmed.includes("canvas_snapshot") ||
+      trimmed.includes("invitation_snapshot") ||
+      trimmed.includes("invitation_cover")
+    ) {
+      return null;
+    }
+    return trimmed;
+  };
+
   // Resolve Clean Card Artwork: user uploaded image takes absolute precedence over template defaults
   const rawCardBg: any = config.cardBg;
   const rawBg: any = (config as any)?.background;
-  const bgImg =
-    (rawCardBg?.type === "image" && rawCardBg.value ? rawCardBg.value : null) ||
-    (typeof rawCardBg === "string" && (rawCardBg.startsWith("http") || rawCardBg.startsWith("/") || rawCardBg.startsWith("data:")) ? rawCardBg : null) ||
-    (rawBg?.type === "image" && rawBg.value ? rawBg.value : null) ||
-    (rawBg?.image ? rawBg.image : null) ||
-    (rawBg?.url ? rawBg.url : null) ||
-    (typeof rawBg === "string" && (rawBg.startsWith("http") || rawBg.startsWith("/") || rawBg.startsWith("data:")) ? rawBg : null) ||
-    null;
+  const rawCardBgValue = rawCardBg?.type === "image" ? rawCardBg.value : (typeof rawCardBg === "string" ? rawCardBg : null);
+  const rawBgValue = rawBg?.type === "image" ? rawBg.value : (rawBg?.image || rawBg?.url || (typeof rawBg === "string" ? rawBg : null));
+
+  const validBgVal = isUserUploadedImage(rawCardBgValue) ? rawCardBgValue : sanitizeBackgroundCandidate(rawCardBgValue);
+  const validFallbackBgVal = isUserUploadedImage(rawBgValue) ? rawBgValue : sanitizeBackgroundCandidate(rawBgValue);
+
+  const bgImg = validBgVal || validFallbackBgVal || null;
 
   const cardImageRaw =
     uploadedImageSrc ||

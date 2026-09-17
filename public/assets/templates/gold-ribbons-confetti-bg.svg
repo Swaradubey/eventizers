@@ -12,7 +12,6 @@
       <stop offset="100%" stop-color="#0A0A0A"/>
     </linearGradient>
 
-    <!-- Star Sparkle -->
     <g id="sparkle-star">
       <path d="M 0,-12 Q 1,-2 10,0 Q 1,2 0,12 Q -1,2 -10,0 Q -1,-2 0,-12 Z" fill="#D4AF37"/>
     </g>
@@ -21,11 +20,8 @@
     </g>
   </defs>
 
-  <!-- Crisp White Card Surface -->
   <rect width="500" height="700" fill="#FFFFFF" rx="4"/>
 
-  <!-- Confetti Dots & Stars in Corners and Borders -->
-  <!-- Left Side Confetti -->
   <circle cx="50" cy="80" r="4.5" fill="#D4AF37"/>
   <circle cx="35" cy="130" r="3" fill="#1A1A1A"/>
   <circle cx="65" cy="180" r="4" fill="#E5C066"/>
@@ -37,7 +33,6 @@
   <circle cx="38" cy="590" r="5" fill="#D4AF37"/>
   <circle cx="65" cy="640" r="3" fill="#E5C066"/>
 
-  <!-- Right Side Confetti -->
   <circle cx="445" cy="90" r="4" fill="#1A1A1A"/>
   <circle cx="465" cy="140" r="5" fill="#D4AF37"/>
   <circle cx="430" cy="200" r="3" fill="#E5C066"/>
@@ -48,7 +43,6 @@
   <circle cx="465" cy="550" r="3.5" fill="#D4AF37"/>
   <circle cx="435" cy="620" r="4.5" fill="#E5C066"/>
 
-  <!-- Stars Sparkles -->
   <g transform="translate(65, 110)"><use href="#sparkle-star"/></g>
   <g transform="translate(425, 120)"><use href="#sparkle-star"/></g>
   <g transform="translate(35, 200)"><use href="#sparkle-star-sm"/></g>
@@ -62,33 +56,23 @@
   <g transform="translate(40, 640)"><use href="#sparkle-star"/></g>
   <g transform="translate(450, 650)"><use href="#sparkle-star"/></g>
 
-  <!-- Bold Curling Streamers - Left Side -->
-  <!-- Upper Left Gold Ribbon -->
   <path d="M 30,30 C 50,45 80,60 65,95 C 50,130 15,115 35,160 C 55,200 85,210 60,250"
         stroke="url(#gold-ribbon)" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <!-- Upper Left Black Ribbon Intertwined -->
   <path d="M 60,40 C 30,70 15,110 40,140 C 65,170 50,210 30,230 C 15,250 25,290 50,320"
         stroke="url(#black-ribbon)" stroke-width="6" fill="none" stroke-linecap="round"/>
 
-  <!-- Mid-Lower Left Gold Ribbon -->
   <path d="M 50,330 C 80,360 70,410 40,430 C 10,450 20,500 55,530 C 85,555 70,610 35,640"
         stroke="url(#gold-ribbon)" stroke-width="7.5" fill="none" stroke-linecap="round"/>
-  <!-- Lower Left Black Ribbon Spiral -->
   <path d="M 35,440 C 15,470 30,520 60,540 C 90,560 75,620 40,660"
         stroke="url(#black-ribbon)" stroke-width="6" fill="none" stroke-linecap="round"/>
 
-  <!-- Bold Curling Streamers - Right Side -->
-  <!-- Upper Right Black Ribbon -->
   <path d="M 470,30 C 450,45 420,60 435,95 C 450,130 485,115 465,160 C 445,200 415,210 440,250"
         stroke="url(#black-ribbon)" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <!-- Upper Right Gold Ribbon Intertwined -->
   <path d="M 440,40 C 470,70 485,110 460,140 C 435,170 450,210 470,230 C 485,250 475,290 450,320"
         stroke="url(#gold-ribbon)" stroke-width="7" fill="none" stroke-linecap="round"/>
 
-  <!-- Mid-Lower Right Black Ribbon -->
   <path d="M 450,330 C 420,360 430,410 460,430 C 490,450 480,500 445,530 C 415,555 430,610 465,640"
         stroke="url(#black-ribbon)" stroke-width="6.5" fill="none" stroke-linecap="round"/>
-  <!-- Lower Right Gold Ribbon Spiral -->
   <path d="M 465,440 C 485,470 470,520 440,540 C 410,560 425,620 460,660"
         stroke="url(#gold-ribbon)" stroke-width="7.5" fill="none" stroke-linecap="round"/>
 </svg>

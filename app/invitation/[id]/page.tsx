@@ -20,6 +20,11 @@ import {
   Plus,
   UtensilsCrossed,
   AlarmClock,
+  Gift,
+  HeartHandshake,
+  Camera,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import invitationService from "@/services/invitationService";
@@ -80,6 +85,27 @@ export default function PublicInvitationPage() {
 
   // Cover image error state for graceful fallback
   const [coverImgError, setCoverImgError] = useState(false);
+
+  // Shared album photos
+  const [albumPhotos, setAlbumPhotos] = useState<string[]>([
+    "https://images.unsplash.com/photo-1519741497674-611481863552?w=600&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=600&auto=format&fit=crop&q=80",
+  ]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        if (uploadEvent.target?.result) {
+          setAlbumPhotos((prev) => [uploadEvent.target!.result as string, ...prev]);
+        }
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  };
 
   useEffect(() => {
     if (!invitationId) return;
@@ -745,6 +771,164 @@ export default function PublicInvitationPage() {
               </div>
             )}
           </div>
+
+          {/* 5. [Shared Album Section (Evite-Style)] */}
+          <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 space-y-4 text-left shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700 shadow-sm border border-purple-100">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">Shared Album</h3>
+                  <p className="text-xs text-gray-500">Capture the moments! View and share event photos.</p>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Add Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Photo Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              {albumPhotos.map((photoUrl, idx) => (
+                <div
+                  key={idx}
+                  className="aspect-square rounded-xl overflow-hidden bg-gray-100 border border-black/5 relative group cursor-pointer shadow-2xs hover:shadow-md transition-all"
+                >
+                  <img
+                    src={photoUrl}
+                    alt={`Event memory ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                    <span>View</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. [Event Gifting & Registries (Evite-Style)] */}
+          {(() => {
+            const rawGifts = (() => {
+              if (invitation?.designData?.gifting?.items) {
+                return invitation.designData.gifting.items.filter((i: any) => i.enabled !== false && i.url);
+              }
+              if (invitation?.gifting?.items) {
+                return invitation.gifting.items.filter((i: any) => i.enabled !== false && i.url);
+              }
+              const w = (invitation?.designData?.wishlists || []).map((x: any) => ({
+                id: x.id,
+                type: "wishlist",
+                provider: (x.platform?.toLowerCase() === "amazon" ? "amazon" : x.platform?.toLowerCase() === "target" ? "target" : x.platform?.toLowerCase() === "walmart" ? "walmart" : "other"),
+                title: x.title || `${x.platform} Wishlist`,
+                url: x.url,
+                enabled: true,
+              }));
+              const c = (invitation?.designData?.charities || []).map((x: any) => ({
+                id: x.id,
+                type: "charity",
+                provider: "other",
+                title: x.name || "Charity",
+                description: x.description || "Charity Donation",
+                url: x.url,
+                enabled: true,
+              }));
+              const r = (eventData?.registries || []).map((x: any) => ({
+                id: x.id,
+                type: x.type === "DONATION" ? "charity" : "wishlist",
+                provider: "other",
+                title: x.title,
+                description: x.description,
+                url: x.externalUrl || "#",
+                enabled: true,
+              }));
+              return [...w, ...c, ...r].filter((i: any) => i.url);
+            })();
+
+            if (!rawGifts || rawGifts.length === 0) return null;
+
+            return (
+              <div className="bg-[#FAF8F5] border border-black/5 rounded-2xl p-6 sm:p-8 space-y-4 text-left shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 shadow-sm border border-amber-100">
+                    <Gift className="w-5 h-5" style={{ color: accentColor }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">Gift Registries &amp; Causes</h3>
+                    <p className="text-xs text-gray-500">
+                      The host has suggested the following registries and causes for this event:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  {rawGifts.map((gift: any) => (
+                    <div
+                      key={gift.id}
+                      className="p-4 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-center justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
+                            gift.provider === "amazon"
+                              ? "bg-amber-100 text-amber-900"
+                              : gift.provider === "target"
+                              ? "bg-red-100 text-red-800"
+                              : gift.provider === "walmart"
+                              ? "bg-blue-100 text-blue-800"
+                              : gift.type === "charity"
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {gift.provider === "amazon"
+                            ? "Amz"
+                            : gift.provider === "target"
+                            ? "Tgt"
+                            : gift.provider === "walmart"
+                            ? "Wmt"
+                            : gift.type === "charity"
+                            ? "❤️"
+                            : "🎁"}
+                        </span>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-gray-900 truncate">
+                            {gift.title}
+                          </p>
+                          {gift.description && (
+                            <p className="text-[11px] text-gray-500 truncate">
+                              {gift.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <a
+                        href={gift.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-1.5 rounded-full text-white text-[11px] font-bold shrink-0 shadow-2xs transition-all flex items-center gap-1"
+                        style={{ backgroundColor: buttonColor }}
+                      >
+                        <span>{gift.type === "charity" ? "Donate" : "Shop"}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Action buttons (Add to Calendar, Share Link) */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

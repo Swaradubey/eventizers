@@ -129,6 +129,23 @@ export interface CanvasStageConfig {
   showingBackside?: boolean;
   viewMode?: "card" | "envelope";
   hideEnvelope?: boolean;
+  gifting?: GiftingState;
+}
+
+export interface GiftItem {
+  id: string;
+  type: 'wishlist' | 'charity' | 'fundraiser' | 'custom';
+  provider: 'amazon' | 'walmart' | 'target' | 'other';
+  title: string;
+  description?: string;
+  url: string;
+  logoUrl?: string;
+  enabled: boolean;
+}
+
+export interface GiftingState {
+  enabled: boolean;
+  items: GiftItem[];
 }
 
 export interface Invitation {
@@ -180,6 +197,7 @@ export interface Invitation {
   effects?: EffectsConfig;
   isLandscape?: boolean;
   designData?: any;
+  gifting?: GiftingState;
 }
 
 export interface InvitationPayload {
@@ -217,6 +235,7 @@ export interface InvitationPayload {
   effects?: EffectsConfig;
   isLandscape?: boolean;
   designData?: any;
+  gifting?: GiftingState;
 }
 
 export interface InvitationResponse {

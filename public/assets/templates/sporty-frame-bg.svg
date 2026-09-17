@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&amp;family=Inter:wght@600;700;800&amp;display=swap');
+      .txt-sport-blue { font-family: 'Montserrat', sans-serif; font-weight: 900; fill: #0284C7; letter-spacing: 2px; }
+      .txt-sport-navy { font-family: 'Inter', sans-serif; font-weight: 700; fill: #0F172A; letter-spacing: 1.5px; }
+      .ball-border { stroke: #1E293B; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <!-- Clean Stadium Card Background -->
+  <rect width="600" height="800" rx="16" fill="#FAF9F5" />
+
+  <!-- SPORTS EQUIPMENT BORDER -->
+  <!-- 1. TOP-LEFT: Soccer Ball -->
+  <g transform="translate(90, 85)">
+    <circle cx="0" cy="0" r="38" fill="#FFF" stroke="#1E293B" stroke-width="2.5"/>
+    <!-- Center black pentagon -->
+    <polygon points="0,-12 11,-4 7,10 -7,10 -11,-4" fill="#1E293B"/>
+    <!-- Outer radiating lines and pentagons -->
+    <line x1="0" y1="-12" x2="0" y2="-28" stroke="#1E293B" stroke-width="2"/>
+    <line x1="11" y1="-4" x2="26" y2="-12" stroke="#1E293B" stroke-width="2"/>
+    <line x1="7" y1="10" x2="22" y2="24" stroke="#1E293B" stroke-width="2"/>
+    <line x1="-7" y1="10" x2="-22" y2="24" stroke="#1E293B" stroke-width="2"/>
+    <line x1="-11" y1="-4" x2="-26" y2="-12" stroke="#1E293B" stroke-width="2"/>
+  </g>
+
+  <!-- Red Dodgeball (near soccer ball) -->
+  <g transform="translate(85, 175)">
+    <circle cx="0" cy="0" r="14" fill="#EF4444" stroke="#B91C1C" stroke-width="2"/>
+    <circle cx="-3" cy="-3" r="1.5" fill="#FECA57"/>
+    <circle cx="3" cy="2" r="1.5" fill="#FECA57"/>
+  </g>
+
+  <!-- 2. TOP-CENTER: Orange Basketball -->
+  <g transform="translate(230, 95)">
+    <circle cx="0" cy="0" r="38" fill="#EA580C" stroke="#1E293B" stroke-width="2.5"/>
+    <!-- Ribs of basketball -->
+    <line x1="-38" y1="0" x2="38" y2="0" stroke="#1E293B" stroke-width="2.5"/>
+    <line x1="0" y1="-38" x2="0" y2="38" stroke="#1E293B" stroke-width="2.5"/>
+    <path d="M -24 -29 Q 0 0 -24 29" stroke="#1E293B" stroke-width="2.5" fill="none"/>
+    <path d="M 24 -29 Q 0 0 24 29" stroke="#1E293B" stroke-width="2.5" fill="none"/>
+  </g>
+
+  <!-- Baseball near Basketball -->
+  <g transform="translate(290, 140)">
+    <circle cx="0" cy="0" r="18" fill="#FFF" stroke="#1E293B" stroke-width="2"/>
+    <!-- Red stitches -->
+    <path d="M -8 -15 Q -2 0 -8 15" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+    <path d="M 8 -15 Q 2 0 8 15" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+  </g>
+
+  <!-- 3. TOP-RIGHT: Green Tennis Racket & Yellow Tennis Ball -->
+  <g transform="translate(480, 110)">
+    <!-- Tennis Ball -->
+    <g transform="translate(-75, 5)">
+      <circle cx="0" cy="0" r="18" fill="#CCFF00" stroke="#84CC16" stroke-width="2"/>
+      <path d="M -12 -12 Q 0 0 -12 12" stroke="#FFF" stroke-width="2" fill="none"/>
+      <path d="M 12 -12 Q 0 0 12 12" stroke="#FFF" stroke-width="2" fill="none"/>
+    </g>
+    <!-- Tennis Racket -->
+    <g transform="rotate(35)">
+      <!-- Head / Rim -->
+      <ellipse cx="0" cy="-30" rx="35" ry="46" fill="none" stroke="#047857" stroke-width="8"/>
+      <!-- Strings -->
+      <line x1="-22" y1="-50" x2="-22" y2="-10" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="-11" y1="-65" x2="-11" y2="5" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="0" y1="-74" x2="0" y2="14" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="11" y1="-65" x2="11" y2="5" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="22" y1="-50" x2="22" y2="-10" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="-30" y1="-45" x2="30" y2="-45" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="-34" y1="-30" x2="34" y2="-30" stroke="#A7F3D0" stroke-width="1.5"/>
+      <line x1="-30" y1="-15" x2="30" y2="-15" stroke="#A7F3D0" stroke-width="1.5"/>
+      <!-- Throat & Shaft -->
+      <path d="M -8 14 L -6 65 L 6 65 L 8 14 Z" fill="#047857"/>
+      <!-- Handle Grip -->
+      <rect x="-7" y="65" width="14" height="40" rx="2" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    </g>
+  </g>
+
+  <!-- 4. LEFT SIDE: American Football & Striped Paddle -->
+  <!-- Football -->
+  <g transform="translate(85, 340)">
+    <g transform="rotate(-30)">
+      <path d="M -38 0 C -38 -26 38 -26 38 0 C 38 26 -38 26 -38 0 Z" fill="#92400E" stroke="#1E293B" stroke-width="2"/>
+      <!-- White stripes -->
+      <path d="M -22 -16 L -22 16" stroke="#FFF" stroke-width="3"/>
+      <path d="M 22 -16 L 22 16" stroke="#FFF" stroke-width="3"/>
+      <!-- Laces -->
+      <line x1="-12" y1="0" x2="12" y2="0" stroke="#FFF" stroke-width="2.5"/>
+      <line x1="-8" y1="-5" x2="-8" y2="5" stroke="#FFF" stroke-width="2"/>
+      <line x1="0" y1="-5" x2="0" y2="5" stroke="#FFF" stroke-width="2"/>
+      <line x1="8" y1="-5" x2="8" y2="5" stroke="#FFF" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- Striped Paddle / Cricket Bat -->
+  <g transform="translate(95, 500) rotate(15)">
+    <!-- Bat Body with green stripes -->
+    <rect x="-18" y="-45" width="36" height="75" rx="8" fill="#FFF" stroke="#1E293B" stroke-width="2"/>
+    <rect x="-17" y="-40" width="7" height="68" fill="#047857"/>
+    <rect x="-3" y="-40" width="6" height="68" fill="#047857"/>
+    <rect x="10" y="-40" width="7" height="68" fill="#047857"/>
+    <!-- Handle -->
+    <rect x="-5" y="30" width="10" height="35" rx="3" fill="#D97706" stroke="#1E293B" stroke-width="1.5"/>
+  </g>
+
+  <!-- 5. RIGHT SIDE: Soccer Ball & Wooden Baseball Bat -->
+  <!-- Soccer Ball -->
+  <g transform="translate(515, 375)">
+    <circle cx="0" cy="0" r="34" fill="#FFF" stroke="#1E293B" stroke-width="2"/>
+    <polygon points="0,-10 10,-3 6,9 -6,9 -10,-3" fill="#1E293B"/>
+    <line x1="0" y1="-10" x2="0" y2="-24" stroke="#1E293B" stroke-width="1.5"/>
+    <line x1="10" y1="-3" x2="22" y2="-10" stroke="#1E293B" stroke-width="1.5"/>
+    <line x1="6" y1="9" x2="18" y2="20" stroke="#1E293B" stroke-width="1.5"/>
+    <line x1="-6" y1="9" x2="-18" y2="20" stroke="#1E293B" stroke-width="1.5"/>
+    <line x1="-10" y1="-3" x2="-22" y2="-10" stroke="#1E293B" stroke-width="1.5"/>
+  </g>
+
+  <!-- Baseball below Soccer Ball -->
+  <g transform="translate(525, 455)">
+    <circle cx="0" cy="0" r="16" fill="#FFF" stroke="#1E293B" stroke-width="2"/>
+    <path d="M -7 -13 Q -2 0 -7 13" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+    <path d="M 7 -13 Q 2 0 7 13" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+  </g>
+
+  <!-- Wooden Baseball Bat (Angled down) -->
+  <g transform="translate(485, 570) rotate(-40)">
+    <path d="M -6 -70 C -12 -70 -14 -60 -12 20 L -6 70 L 6 70 L 12 20 C 14 -60 12 -70 6 -70 Z" fill="#FDE68A" stroke="#B45309" stroke-width="1.5"/>
+    <!-- Handle tape -->
+    <rect x="-7" y="40" width="14" height="28" fill="#EF4444"/>
+    <circle cx="0" cy="72" r="8" fill="#B45309"/>
+  </g>
+
+  <!-- 6. BOTTOM: Basketball, Tennis Ball, Football -->
+  <!-- Orange Basketball (Bottom Left) -->
+  <g transform="translate(110, 660)">
+    <circle cx="0" cy="0" r="36" fill="#EA580C" stroke="#1E293B" stroke-width="2.5"/>
+    <line x1="-36" y1="0" x2="36" y2="0" stroke="#1E293B" stroke-width="2"/>
+    <line x1="0" y1="-36" x2="0" y2="36" stroke="#1E293B" stroke-width="2"/>
+    <path d="M -22 -28 Q 0 0 -22 28" stroke="#1E293B" stroke-width="2" fill="none"/>
+    <path d="M 22 -28 Q 0 0 22 28" stroke="#1E293B" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Yellow Tennis Ball -->
+  <g transform="translate(160, 660)">
+    <circle cx="0" cy="0" r="16" fill="#CCFF00" stroke="#84CC16" stroke-width="2"/>
+    <path d="M -10 -10 Q 0 0 -10 10" stroke="#FFF" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Brown Football (Bottom Center) -->
+  <g transform="translate(270, 680) rotate(15)">
+    <path d="M -36 0 C -36 -24 36 -24 36 0 C 36 24 -36 24 -36 0 Z" fill="#92400E" stroke="#1E293B" stroke-width="2"/>
+    <path d="M -20 -15 L -20 15" stroke="#FFF" stroke-width="2.5"/>
+    <path d="M 20 -15 L 20 15" stroke="#FFF" stroke-width="2.5"/>
+    <line x1="-10" y1="0" x2="10" y2="0" stroke="#FFF" stroke-width="2"/>
+    <line x1="-6" y1="-4" x2="-6" y2="4" stroke="#FFF" stroke-width="1.5"/>
+    <line x1="0" y1="-4" x2="0" y2="4" stroke="#FFF" stroke-width="1.5"/>
+    <line x1="6" y1="-4" x2="6" y2="4" stroke="#FFF" stroke-width="1.5"/>
+  </g>
+
+  <!-- Baseball (Bottom Right) -->
+  <g transform="translate(485, 680)">
+    <circle cx="0" cy="0" r="18" fill="#FFF" stroke="#1E293B" stroke-width="2"/>
+    <path d="M -8 -15 Q -2 0 -8 15" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+    <path d="M 8 -15 Q 2 0 8 15" stroke="#DC2626" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+  </g>
+
+  <!-- Little green ball near baseball -->
+  <circle cx="410" cy="510" r="9" fill="#10B981" stroke="#047857" stroke-width="1.5"/>
+
+  </svg>

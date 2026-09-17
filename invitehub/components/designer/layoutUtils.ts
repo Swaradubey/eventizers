@@ -16,22 +16,33 @@ export const deduplicateTextLayers = <
     left?: number;
     x?: number;
     y?: number;
+    [key: string]: any;
   }
 >(
   layers: T[]
 ): T[] => {
   if (!Array.isArray(layers) || layers.length === 0) return [];
   const seenIds = new Set<string>();
-  const seenKeys = new Set<string>();
+  const seenCanonicalRoles = new Set<string>();
   const seenTexts = new Set<string>();
-  const seenContent = new Set<string>();
+  const seenPositions: Array<{ x: number; y: number; text: string }> = [];
+
+  // Helper to map layer id or key into canonical role
+  const getCanonicalRole = (id?: string, key?: string): string | null => {
+    const combined = `${id || ""} ${key || ""}`.toLowerCase();
+    if (combined.includes("title") || combined.includes("names")) return "title";
+    if (combined.includes("datetime") || combined.includes("date") || combined.includes("details")) return "datetime";
+    if (combined.includes("venue") || combined.includes("location") || combined.includes("address")) return "venue";
+    if (combined.includes("intro") || combined.includes("subtitle")) return "subtitle_intro";
+    if (combined.includes("host")) return "host";
+    if (combined.includes("rsvp")) return "rsvp";
+    return null;
+  };
 
   return layers.filter((layer) => {
     if (!layer || typeof layer !== "object") return false;
 
     // Preserve non-text layers untouched:
-    // Only deduplicate text layers (type is 'text', 'textbox', 'i-text', or undefined/default text role)
-    // Any background, illustration, border, or decorative layers passed in MUST be passed through untouched
     const rawType = (layer as any).type ? String((layer as any).type).toLowerCase() : "";
     const isNonTextLayer =
       (rawType !== "" && rawType !== "text" && rawType !== "textbox" && rawType !== "i-text") ||
@@ -46,34 +57,45 @@ export const deduplicateTextLayers = <
       return true;
     }
 
-    // 1. Check ID uniqueness
-    if (layer.id) {
-      if (seenIds.has(layer.id)) return false;
-      seenIds.add(layer.id);
-      if (layer.key) seenIds.add(`key:${layer.key}`);
-    }
-
-    // 2. Check Key/Role uniqueness (e.g., 'title', 'subtitle', etc.)
-    if (layer.key) {
-      const normalizedKey = layer.key.toLowerCase().trim().replace(/^key:/, "");
-      if (seenKeys.has(normalizedKey)) return false;
-      seenKeys.add(normalizedKey);
-    }
-
-    // 3. Content + coordinate signature guard
-    // Prevents identical text blocks (e.g. "DAVE'S TURNING") from being double-rendered
-    // directly stacked over themselves at the exact same coordinates while allowing
-    // duplicated or independently positioned text blocks to render.
     const trimmedText = (layer.text || "").trim();
-    if (trimmedText) {
-      const normalizedText = trimmedText.toLowerCase().replace(/\s+/g, " ");
-      const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
-      const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
-      const contentSignature = `${normalizedText}__${posX}__${posY}`;
-      if (seenContent.has(contentSignature)) return false;
-      seenContent.add(contentSignature);
+    const normalizedText = trimmedText.toLowerCase().replace(/\s+/g, " ");
+
+    // 1. Strict ID uniqueness
+    if (layer.id) {
+      const normalizedId = layer.id.trim().toLowerCase();
+      if (seenIds.has(normalizedId)) return false;
+      seenIds.add(normalizedId);
     }
 
+    // 2. Canonical role uniqueness (e.g. only one title, one datetime, one venue, one intro)
+    const canonicalRole = getCanonicalRole(layer.id, layer.key);
+    if (canonicalRole) {
+      if (seenCanonicalRoles.has(canonicalRole)) {
+        return false;
+      }
+      seenCanonicalRoles.add(canonicalRole);
+    }
+
+    // 3. Exact matching content text guard:
+    // Prevents duplicate phrases (e.g. "Please join us to celebrate..." or "Brittany Moore & Daniel Rodriguez")
+    // from rendering multiple times even if coordinates or IDs vary slightly
+    if (normalizedText && normalizedText.length > 3) {
+      if (seenTexts.has(normalizedText)) return false;
+      seenTexts.add(normalizedText);
+    }
+
+    // 4. Positional Proximity Guard:
+    // If two text elements are positioned virtually on top of each other (within 4% x and y),
+    // drop the second one to permanently eliminate ghosting
+    const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
+    const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+
+    const isOverlappingExisting = seenPositions.some(
+      (pos) => Math.abs(pos.x - posX) < 4 && Math.abs(pos.y - posY) < 4
+    );
+    if (isOverlappingExisting) return false;
+
+    seenPositions.push({ x: posX, y: posY, text: normalizedText });
     return true;
   });
 };
@@ -290,15 +312,25 @@ export function deduplicateBy<T>(array: T[], key: keyof T): T[] {
  */
 export function resolveCleanTemplateSvg(url?: string | null): string | null {
   if (!url || typeof url !== "string") return null;
-  if (url.includes("/assets/templates/") && url.endsWith(".svg")) {
-    if (url.endsWith("-bg.svg")) return url;
-    return url.replace(/\.svg$/, "-bg.svg");
+  // If already clean
+  if (url.includes("-bg.svg")) return url;
+  // Match any template SVG path (.svg with optional query params)
+  const svgMatch = url.match(/^(.*?)([^/]+)\.svg(\?.*)?$/i);
+  if (svgMatch) {
+    const prefix = svgMatch[1];
+    const baseName = svgMatch[2];
+    const query = svgMatch[3] || "";
+    if (baseName.endsWith("-bg")) return url;
+    return `${prefix}${baseName}-bg.svg${query}`;
   }
   return url;
 }
 
+export const getCleanTemplateSvg = resolveCleanTemplateSvg;
+
 /**
  * Checks whether an image URL is a user-uploaded asset
+ * Strictly excludes any snapshot URLs, template SVGs, or system render captures
  */
 export function checkIsUserUploadedImage(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -308,11 +340,12 @@ export function checkIsUserUploadedImage(url?: string | null): boolean {
     trimmed.startsWith("#") ||
     trimmed.includes("snapshot") ||
     trimmed.includes("canvas_snapshot") ||
-    trimmed.includes("invitation_snapshot")
+    trimmed.includes("invitation_snapshot") ||
+    trimmed.includes("invitation_cover")
   ) {
     return false;
   }
-  if (trimmed.includes("/assets/templates/")) return false;
+  if (trimmed.includes("/assets/templates/") || trimmed.endsWith(".svg")) return false;
   if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) return false;
   return (
     trimmed.startsWith("data:") ||
@@ -322,6 +355,8 @@ export function checkIsUserUploadedImage(url?: string | null): boolean {
     trimmed.startsWith("https://")
   );
 }
+
+export const isUserUploadedImage = checkIsUserUploadedImage;
 
 /**
  * Extracts a clean, normalized, 100% decoupled data snapshot from studio design state.
