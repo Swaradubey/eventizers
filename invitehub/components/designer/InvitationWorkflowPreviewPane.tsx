@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Monitor, Smartphone } from "lucide-react";
 import InvitationCanvasStage from "./InvitationCanvasStage";
-import { StudioDesignState } from "./InvitationStudio";
+import { StudioDesignState, teardownCanvasTextLayers } from "./InvitationStudio";
+import { deduplicateTextLayers } from "./layoutUtils";
 
 interface InvitationWorkflowPreviewPaneProps {
   designState: StudioDesignState;
@@ -19,8 +20,20 @@ export default function InvitationWorkflowPreviewPane({
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
 
+  // Explicit preview canvas purge / reset before rendering preview text objects
+  // Prevents stale canvas text objects or ghost layers from stacking over the preview card
+  useEffect(() => {
+    teardownCanvasTextLayers();
+  }, [designState.activeTemplateId, designState.templateId]);
+
+  // Ensure textLayers are thoroughly deduplicated before passing to the preview stage
+  const cleanConfig = useMemo(() => ({
+    ...designState,
+    textLayers: deduplicateTextLayers(designState.textLayers || []),
+  }), [designState]);
+
   // If allowMaybe is toggled off while currently selected, reset selection
-  React.useEffect(() => {
+  useEffect(() => {
     if (!allowMaybe && selectedRsvp === "maybe") {
       setSelectedRsvp(null);
     }
@@ -68,7 +81,8 @@ export default function InvitationWorkflowPreviewPane({
           <div className="w-full max-w-[460px] flex items-center justify-center my-auto transition-all duration-300">
             <div className="w-full shadow-2xl rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
               <InvitationCanvasStage
-                config={designState}
+                key={`workflow-preview-desktop-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}`}
+                config={cleanConfig}
                 readOnly={true}
                 maxW={460}
                 zoom={100}
@@ -84,7 +98,8 @@ export default function InvitationWorkflowPreviewPane({
             <div className="w-24 h-4 bg-slate-800 rounded-full mx-auto mb-2" />
             <div className="rounded-[26px] overflow-hidden bg-white max-h-[520px] overflow-y-auto">
               <InvitationCanvasStage
-                config={designState}
+                key={`workflow-preview-mobile-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}`}
+                config={cleanConfig}
                 readOnly={true}
                 maxW={300}
                 zoom={90}

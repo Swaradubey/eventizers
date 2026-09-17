@@ -4,11 +4,13 @@ import React, { useRef, useCallback, useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion";
 import { Upload } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
-import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
+import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
+
+export { teardownCanvasTextLayers };
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "vertical-pink-stripes":
@@ -123,6 +125,11 @@ export default function InvitationCanvasStage({
       ro.disconnect();
     };
   }, [effectiveCardRef, maxW, isLandscape]);
+
+  // Purge any stale canvas text objects before rendering or switching templates
+  useEffect(() => {
+    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+  }, [config.activeTemplateId, (config as any).templateId]);
 
   // Deduplicate incoming text layers before layout and rendering
   const deduplicatedLayers = useMemo(() => {
@@ -294,11 +301,22 @@ export default function InvitationCanvasStage({
   const fallbackTpl = (!isUserUpload && activeTplId) ? getTemplateConfig(activeTplId) : null;
 
   // Resolve Clean Card Artwork: user uploaded image takes absolute precedence over template defaults
+  const rawCardBg: any = config.cardBg;
+  const rawBg: any = (config as any)?.background;
+  const bgImg =
+    (rawCardBg?.type === "image" && rawCardBg.value ? rawCardBg.value : null) ||
+    (typeof rawCardBg === "string" && (rawCardBg.startsWith("http") || rawCardBg.startsWith("/") || rawCardBg.startsWith("data:")) ? rawCardBg : null) ||
+    (rawBg?.type === "image" && rawBg.value ? rawBg.value : null) ||
+    (rawBg?.image ? rawBg.image : null) ||
+    (rawBg?.url ? rawBg.url : null) ||
+    (typeof rawBg === "string" && (rawBg.startsWith("http") || rawBg.startsWith("/") || rawBg.startsWith("data:")) ? rawBg : null) ||
+    null;
+
   const cardImageRaw =
     uploadedImageSrc ||
     config.card?.artworkUrl ||
     (config.card as any)?.borderIllustration ||
-    (config.cardBg?.type === "image" && config.cardBg.value ? config.cardBg.value : null) ||
+    bgImg ||
     (fallbackTpl as any)?.card?.borderIllustration ||
     (fallbackTpl as any)?.card?.artworkUrl ||
     fallbackTpl?.decorationImage ||
@@ -330,7 +348,41 @@ export default function InvitationCanvasStage({
   useEffect(() => {
     setImgSrc(cleanCardImage);
     setHasImgError(false);
-  }, [cleanCardImage]);
+
+    // If Fabric canvas instance is present on window, sync background image and request render
+    if (typeof window !== "undefined") {
+      const activeCanvas =
+        (window as any)?.__fabricCanvas ||
+        (window as any)?.__canvasInstance ||
+        (window as any)?.__fabricCanvasRef?.current;
+      if (activeCanvas) {
+        if (cleanCardImage && typeof activeCanvas.setBackgroundImage === "function") {
+          try {
+            activeCanvas.setBackgroundImage(
+              cleanCardImage,
+              () => {
+                if (typeof activeCanvas.requestRenderAll === "function") {
+                  activeCanvas.requestRenderAll();
+                }
+              },
+              { crossOrigin: "anonymous" }
+            );
+          } catch (_e) {
+            // Ignore fabric background image sync error
+          }
+        } else if (typeof activeCanvas.requestRenderAll === "function") {
+          activeCanvas.requestRenderAll();
+        }
+      }
+    }
+  }, [
+    cleanCardImage,
+    (config as any)?.activeTemplateId,
+    (config as any)?.templateId,
+    config.card?.artworkUrl,
+    config.cardBg,
+    (config as any)?.background,
+  ]);
 
   const handleImageError = () => {
     // If -bg.svg clean variant failed to load, fallback to cardImageRaw

@@ -67,17 +67,56 @@ export { deduplicateTextLayers };
  * ingesting text layers on canvas load, event switch, or template switch.
  */
 export const teardownCanvasTextLayers = (canvas?: any) => {
-  if (canvas && typeof canvas.getObjects === "function") {
+  const target =
+    canvas ||
+    (typeof window !== "undefined"
+      ? (window as any)?.__fabricCanvas ||
+        (window as any)?.__canvasInstance ||
+        (window as any)?.__fabricCanvasRef?.current
+      : null);
+
+  if (target && typeof target.getObjects === "function") {
     try {
-      const existing = canvas.getObjects().filter(
-        (obj: any) => obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox' || obj.data?.isTextElement
-      );
-      existing.forEach((obj: any) => canvas.remove(obj));
-      if (typeof canvas.discardActiveObject === "function") {
-        canvas.discardActiveObject();
+      // Retain background image to prevent wiping out canvas template artwork
+      const savedBgImage = target.backgroundImage;
+
+      const isTextObject = (obj: any): boolean => {
+        if (!obj) return false;
+        // Explicitly preserve background images, SVG groups, static artwork, or frames
+        if (
+          obj.isBackground ||
+          obj.data?.isBackground ||
+          obj.type === "image" ||
+          obj.type === "group" ||
+          obj.type === "path" ||
+          obj.data?.isFrame ||
+          obj.data?.isArtwork
+        ) {
+          return false;
+        }
+        const type = (obj.type || "").toLowerCase();
+        return (
+          type === "textbox" ||
+          type === "i-text" ||
+          type === "text" ||
+          Boolean(obj.isTextElement) ||
+          Boolean(obj.data?.isTextElement)
+        );
+      };
+
+      const existing = target.getObjects().filter(isTextObject);
+      existing.forEach((obj: any) => target.remove(obj));
+
+      // Restore background image if it was cleared
+      if (savedBgImage && !target.backgroundImage && typeof target.setBackgroundImage === "function") {
+        target.backgroundImage = savedBgImage;
       }
-      if (typeof canvas.requestRenderAll === "function") {
-        canvas.requestRenderAll();
+
+      if (typeof target.discardActiveObject === "function") {
+        target.discardActiveObject();
+      }
+      if (typeof target.requestRenderAll === "function") {
+        target.requestRenderAll();
       }
     } catch (err) {
       console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
@@ -1935,6 +1974,8 @@ export default function InvitationStudio({
     // layers onto the canvas, producing the ghost-text / double-render glitch.
     isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
+    // Explicitly purge any stale canvas text objects before capture
+    teardownCanvasTextLayers();
     try {
       // Temporarily deselect active text border & drag handles for pristine clean card capture
       const prevSelected = designState.selectedTextId;
@@ -2058,7 +2099,7 @@ export default function InvitationStudio({
     const rsvpLayer = designState.textLayers.find((l) => l.id === "layer-rsvp" || l.key === "rsvp");
     const buttonText = rsvpLayer?.text?.trim() || currentInvitation?.buttonText || "RSVP Now";
 
-    const normalizedTextLayers = designState.textLayers.map((l) => ({
+    const normalizedTextLayers = deduplicateTextLayers(designState.textLayers).map((l) => ({
       id: l.id,
       key: l.key,
       text: l.text,
@@ -2349,6 +2390,13 @@ export default function InvitationStudio({
           console.warn("[prepareAndOpenDispatch] Auto-publish event on fly notice:", pubErr);
         }
       }
+
+      // Purge any stale canvas text objects before snapshot capture & deduplicate layers
+      teardownCanvasTextLayers();
+      setDesignState((prev) => ({
+        ...prev,
+        textLayers: deduplicateTextLayers(prev.textLayers),
+      }));
 
       // Always capture a fresh snapshot so the preview reflects the current canvas state
       const { dataUrl, uploadedUrl } = await generateSnapshot();

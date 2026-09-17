@@ -67,17 +67,56 @@ export { deduplicateTextLayers };
  * ingesting text layers on canvas load, event switch, or template switch.
  */
 export const teardownCanvasTextLayers = (canvas?: any) => {
-  if (canvas && typeof canvas.getObjects === "function") {
+  const target =
+    canvas ||
+    (typeof window !== "undefined"
+      ? (window as any)?.__fabricCanvas ||
+        (window as any)?.__canvasInstance ||
+        (window as any)?.__fabricCanvasRef?.current
+      : null);
+
+  if (target && typeof target.getObjects === "function") {
     try {
-      const existing = canvas.getObjects().filter(
-        (obj: any) => obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox' || obj.data?.isTextElement
-      );
-      existing.forEach((obj: any) => canvas.remove(obj));
-      if (typeof canvas.discardActiveObject === "function") {
-        canvas.discardActiveObject();
+      // Retain background image to prevent wiping out canvas template artwork
+      const savedBgImage = target.backgroundImage;
+
+      const isTextObject = (obj: any): boolean => {
+        if (!obj) return false;
+        // Explicitly preserve background images, SVG groups, static artwork, or frames
+        if (
+          obj.isBackground ||
+          obj.data?.isBackground ||
+          obj.type === "image" ||
+          obj.type === "group" ||
+          obj.type === "path" ||
+          obj.data?.isFrame ||
+          obj.data?.isArtwork
+        ) {
+          return false;
+        }
+        const type = (obj.type || "").toLowerCase();
+        return (
+          type === "textbox" ||
+          type === "i-text" ||
+          type === "text" ||
+          Boolean(obj.isTextElement) ||
+          Boolean(obj.data?.isTextElement)
+        );
+      };
+
+      const existing = target.getObjects().filter(isTextObject);
+      existing.forEach((obj: any) => target.remove(obj));
+
+      // Restore background image if it was cleared
+      if (savedBgImage && !target.backgroundImage && typeof target.setBackgroundImage === "function") {
+        target.backgroundImage = savedBgImage;
       }
-      if (typeof canvas.requestRenderAll === "function") {
-        canvas.requestRenderAll();
+
+      if (typeof target.discardActiveObject === "function") {
+        target.discardActiveObject();
+      }
+      if (typeof target.requestRenderAll === "function") {
+        target.requestRenderAll();
       }
     } catch (err) {
       console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
@@ -977,6 +1016,11 @@ export default function InvitationStudio({
   // effect body twice concurrently (each strict-mode mount fires effects twice in dev).
   const isHydratingRef = useRef(false);
 
+  // Guard: set to true during generateSnapshot() so the re-hydration effect cannot
+  // inject fresh template-default layers onto the live canvas while the html-to-image
+  // capture is in progress, which was a secondary trigger of the ghost-text bug.
+  const isSnapshotInProgressRef = useRef(false);
+
   // Incrementing key forces InvitationCanvasStage to fully unmount+remount on event switch,
   // which clears all stale text layer DOM nodes before the new event's layers mount.
   const [canvasKey, setCanvasKey] = useState(0);
@@ -1687,6 +1731,11 @@ export default function InvitationStudio({
     // Prevent React StrictMode double-mount from running the body concurrently
     if (isHydratingRef.current) return;
 
+    // Guard: never inject layers while a snapshot capture is in progress. generateSnapshot()
+    // temporarily mutates selectedTextId, causing React to flush a render; if this effect
+    // fires concurrently it writes fresh template-default layers on top of the live canvas.
+    if (isSnapshotInProgressRef.current) return;
+
     // On the very first mount, getInitialDesign() already loaded the correct state.
     // Skip this effect to prevent a second call that would generate template defaults
     // and overlay them on top of the already-correct saved layers.
@@ -1755,17 +1804,42 @@ export default function InvitationStudio({
         mergedInvite as any,
         false
       );
+
+      // Build the set of incoming layer IDs so we can detect whether the live canvas
+      // already holds the same layers. If it does, skip the state write entirely —
+      // this is the primary guard against the ghost-text / double-render bug that
+      // manifests when navigating from step 4/5 back to step 1 (Design).
+      const incomingLayerIds = new Set(
+        (freshState.textLayers || []).map((l) => l.id).filter(Boolean)
+      );
+
       setDesignState((prev) => {
         const nextCard = freshState.card || prev.card;
         const nextCardBg = (freshState.cardBg?.type === "image" || !prev.cardBg || prev.cardBg.type !== "image")
           ? freshState.cardBg
           : prev.cardBg;
+
+        // Idempotency guard: if the live canvas already contains all incoming layer IDs
+        // (i.e. the same layers are already mounted), preserve prev.textLayers as-is.
+        // This prevents a second, identical write that causes the duplicate / ghost text.
+        const prevLayerIds = new Set(
+          (prev.textLayers || []).map((l) => l.id).filter(Boolean)
+        );
+        const layersAlreadyLoaded =
+          incomingLayerIds.size > 0 &&
+          incomingLayerIds.size === prevLayerIds.size &&
+          Array.from(incomingLayerIds).every((id) => prevLayerIds.has(id));
+
         return {
           ...freshState,
           card: nextCard,
           cardBg: nextCardBg,
           decorations: freshState.decorations || prev.decorations || nextCard?.decorations || [],
-          textLayers: deduplicateTextLayers(freshState.textLayers),
+          // Preserve the live layer set when it already matches the incoming one; only
+          // replace when there is a genuine layer-set change (new template or new save).
+          textLayers: layersAlreadyLoaded
+            ? prev.textLayers
+            : deduplicateTextLayers(freshState.textLayers),
         };
       });
       if (typeof window !== "undefined") {
@@ -1893,7 +1967,15 @@ export default function InvitationStudio({
       console.warn("[Canvas Snapshot] Card container ref not found in DOM");
       return { dataUrl: null, uploadedUrl: null };
     }
+    // Block the re-hydration effect from injecting template-default layers while the
+    // html-to-image capture pipeline is running. generateSnapshot() temporarily sets
+    // selectedTextId to null (to hide selection handles) and waits for a repaint; if
+    // the re-hydration effect fires in that window it writes a second copy of the text
+    // layers onto the canvas, producing the ghost-text / double-render glitch.
+    isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
+    // Explicitly purge any stale canvas text objects before capture
+    teardownCanvasTextLayers();
     try {
       // Temporarily deselect active text border & drag handles for pristine clean card capture
       const prevSelected = designState.selectedTextId;
@@ -1971,6 +2053,7 @@ export default function InvitationStudio({
       // Non-blocking snapshot failure — let user continue without blocking
       return { dataUrl: null, uploadedUrl: null };
     } finally {
+      isSnapshotInProgressRef.current = false;
       setIsGeneratingSnapshot(false);
     }
   };
@@ -2016,7 +2099,7 @@ export default function InvitationStudio({
     const rsvpLayer = designState.textLayers.find((l) => l.id === "layer-rsvp" || l.key === "rsvp");
     const buttonText = rsvpLayer?.text?.trim() || currentInvitation?.buttonText || "RSVP Now";
 
-    const normalizedTextLayers = designState.textLayers.map((l) => ({
+    const normalizedTextLayers = deduplicateTextLayers(designState.textLayers).map((l) => ({
       id: l.id,
       key: l.key,
       text: l.text,
@@ -2307,6 +2390,13 @@ export default function InvitationStudio({
           console.warn("[prepareAndOpenDispatch] Auto-publish event on fly notice:", pubErr);
         }
       }
+
+      // Purge any stale canvas text objects before snapshot capture & deduplicate layers
+      teardownCanvasTextLayers();
+      setDesignState((prev) => ({
+        ...prev,
+        textLayers: deduplicateTextLayers(prev.textLayers),
+      }));
 
       // Always capture a fresh snapshot so the preview reflects the current canvas state
       const { dataUrl, uploadedUrl } = await generateSnapshot();

@@ -22,39 +22,57 @@ export const deduplicateTextLayers = <
 ): T[] => {
   if (!Array.isArray(layers) || layers.length === 0) return [];
   const seenIds = new Set<string>();
-  // seenContent is only used for anonymous layers (no id, no key)
+  const seenKeys = new Set<string>();
+  const seenTexts = new Set<string>();
   const seenContent = new Set<string>();
 
   return layers.filter((layer) => {
     if (!layer || typeof layer !== "object") return false;
 
-    // 1. Check ID uniqueness — if the layer carries an explicit ID, that is the
-    //    sole deduplication key. A layer that passes the ID check is definitionally
-    //    unique: do NOT apply the position/content fallback to it. This prevents
-    //    false-positive filtering when anti-collision layout shifts a layer's Y.
+    // Preserve non-text layers untouched:
+    // Only deduplicate text layers (type is 'text', 'textbox', 'i-text', or undefined/default text role)
+    // Any background, illustration, border, or decorative layers passed in MUST be passed through untouched
+    const rawType = (layer as any).type ? String((layer as any).type).toLowerCase() : "";
+    const isNonTextLayer =
+      (rawType !== "" && rawType !== "text" && rawType !== "textbox" && rawType !== "i-text") ||
+      Boolean((layer as any).isBackground) ||
+      Boolean((layer as any).isIllustration) ||
+      Boolean((layer as any).isBorder) ||
+      Boolean((layer as any).isDecorative) ||
+      Boolean((layer as any).data?.isBackground) ||
+      Boolean((layer as any).data?.isIllustration);
+
+    if (isNonTextLayer) {
+      return true;
+    }
+
+    // 1. Check ID uniqueness
     if (layer.id) {
       if (seenIds.has(layer.id)) return false;
       seenIds.add(layer.id);
-      // Register the key as well so key-only lookup also skips this layer
       if (layer.key) seenIds.add(`key:${layer.key}`);
-      return true; // Definitively unique — skip content-signature check
     }
 
-    // 2. For layers with only a key (no id), enforce key uniqueness
+    // 2. Check Key/Role uniqueness (e.g., 'title', 'subtitle', etc.)
     if (layer.key) {
-      const keyId = `key:${layer.key}`;
-      if (seenIds.has(keyId)) return false;
-      seenIds.add(keyId);
-      return true; // Key-identified layer is also definitively unique
+      const normalizedKey = layer.key.toLowerCase().trim().replace(/^key:/, "");
+      if (seenKeys.has(normalizedKey)) return false;
+      seenKeys.add(normalizedKey);
     }
 
-    // 3. Anonymous layer (no id, no key): fall back to content + coordinate signature.
-    //    Only used as a last-resort catch for truly unnamed duplicate blocks.
-    const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
-    const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+    // 3. Check normalized text content uniqueness
+    // Prevents identical text blocks (e.g. "Fall in love", "JENNIFER HAYWARD") from ever
+    // being double-rendered or stacked on top of each other, regardless of differing IDs.
     const trimmedText = (layer.text || "").trim();
     if (trimmedText) {
-      const contentSignature = `${trimmedText}__${posX}__${posY}`;
+      const normalizedText = trimmedText.toLowerCase().replace(/\s+/g, " ");
+      if (seenTexts.has(normalizedText)) return false;
+      seenTexts.add(normalizedText);
+
+      // 4. Content + coordinate signature fallback
+      const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
+      const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+      const contentSignature = `${normalizedText}__${posX}__${posY}`;
       if (seenContent.has(contentSignature)) return false;
       seenContent.add(contentSignature);
     }
@@ -133,6 +151,13 @@ export function computeAntiCollisionLayout(
   const uniqueLayers = deduplicateTextLayers(layers);
   if (uniqueLayers.length === 0) return [];
 
+  // Strictly filter to text layers so non-text layers don't affect typography/collision calculations
+  const textLayers = uniqueLayers.filter((layer) => {
+    const rawType = (layer as any).type ? String((layer as any).type).toLowerCase() : "";
+    return !rawType || rawType === "text" || rawType === "textbox" || rawType === "i-text";
+  });
+  if (textLayers.length === 0) return [];
+
   const width = Math.max(200, dimensions.width || BASE_CANVAS_WIDTH);
   const height = Math.max(280, dimensions.height || Math.round(width * 1.4));
   const scaleFactor = getContainerScaleFactor(width, BASE_CANVAS_WIDTH);
@@ -141,7 +166,7 @@ export function computeAntiCollisionLayout(
   const safeBottom = safeArea?.bottom ? 100 - parseCoordinate(safeArea.bottom, 5) : 95;
 
   // 1. Initial pass: Calculate scaled typography, line wrapping, and bounding heights
-  const processed: ComputedTextLayer[] = uniqueLayers.map((layer) => {
+  const processed: ComputedTextLayer[] = textLayers.map((layer) => {
     const pos = (layer as any).position;
     const rawValX = pos?.left !== undefined ? pos.left : (layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
     const rawValY = pos?.top !== undefined ? pos.top : (layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
