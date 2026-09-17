@@ -22,25 +22,34 @@ export const deduplicateTextLayers = <
 ): T[] => {
   if (!Array.isArray(layers) || layers.length === 0) return [];
   const seenIds = new Set<string>();
+  // seenContent is only used for anonymous layers (no id, no key)
   const seenContent = new Set<string>();
 
   return layers.filter((layer) => {
     if (!layer || typeof layer !== "object") return false;
 
-    // 1. Check ID uniqueness if ID is provided
+    // 1. Check ID uniqueness — if the layer carries an explicit ID, that is the
+    //    sole deduplication key. A layer that passes the ID check is definitionally
+    //    unique: do NOT apply the position/content fallback to it. This prevents
+    //    false-positive filtering when anti-collision layout shifts a layer's Y.
     if (layer.id) {
       if (seenIds.has(layer.id)) return false;
       seenIds.add(layer.id);
+      // Register the key as well so key-only lookup also skips this layer
+      if (layer.key) seenIds.add(`key:${layer.key}`);
+      return true; // Definitively unique — skip content-signature check
     }
 
-    // 2. Check Key uniqueness if defined
+    // 2. For layers with only a key (no id), enforce key uniqueness
     if (layer.key) {
       const keyId = `key:${layer.key}`;
       if (seenIds.has(keyId)) return false;
       seenIds.add(keyId);
+      return true; // Key-identified layer is also definitively unique
     }
 
-    // 3. Content + coordinate signature
+    // 3. Anonymous layer (no id, no key): fall back to content + coordinate signature.
+    //    Only used as a last-resort catch for truly unnamed duplicate blocks.
     const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
     const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
     const trimmedText = (layer.text || "").trim();
