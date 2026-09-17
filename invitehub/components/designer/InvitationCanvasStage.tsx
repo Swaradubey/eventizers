@@ -6,7 +6,7 @@ import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
-import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
@@ -117,10 +117,15 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
+  // Deduplicate incoming text layers before layout and rendering
+  const deduplicatedLayers = useMemo(() => {
+    return deduplicateTextLayers(config.textLayers || []);
+  }, [config.textLayers]);
+
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
-    return computeAntiCollisionLayout(config.textLayers || [], cardDimensions);
-  }, [config.textLayers, cardDimensions]);
+    return computeAntiCollisionLayout(deduplicatedLayers, cardDimensions);
+  }, [deduplicatedLayers, cardDimensions]);
 
   const dragSessionRef = useRef<{
     layerId: string;
@@ -425,14 +430,14 @@ export default function InvitationCanvasStage({
         decorativeBorderSvgUrl: "",
         aspectRatio: cardAspectRatio,
       },
-      textLayers: config.textLayers,
-      defaultTextLayers: config.textLayers,
+      textLayers: deduplicatedLayers,
+      defaultTextLayers: deduplicatedLayers,
     };
 
     return (
       <EvitePureCssStage
         template={pureCssTpl}
-        overrideTextLayers={config.textLayers as any}
+        overrideTextLayers={deduplicatedLayers as any}
         mode={readOnly ? "preview" : "interactive"}
         selectedTextId={selectedTextId}
         editingTextId={editingTextId}

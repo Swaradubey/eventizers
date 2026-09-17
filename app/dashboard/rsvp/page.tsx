@@ -139,7 +139,7 @@ export default function RsvpPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 force-georgia">
                 My RSVPs
               </h1>
               <p className="text-sm text-slate-500 mt-1">View and respond to your event invitations</p>

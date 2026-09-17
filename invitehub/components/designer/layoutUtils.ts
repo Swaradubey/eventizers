@@ -1,5 +1,59 @@
 import { TextLayer } from "../../types/invitationTypes";
 
+/**
+ * Robust deduplication helper for text layers.
+ * Deduplicates based on:
+ * 1. Explicit layer ID uniqueness (e.g. 'layer-title', 'layer-venue')
+ * 2. Predefined layer key uniqueness (e.g. 'key:title', 'key:subtitle', 'key:datetime', 'key:venue')
+ * 3. Exact matching content text + coordinate position signature
+ */
+export const deduplicateTextLayers = <
+  T extends {
+    id?: string;
+    key?: string;
+    text?: string;
+    top?: number;
+    left?: number;
+    x?: number;
+    y?: number;
+  }
+>(
+  layers: T[]
+): T[] => {
+  if (!Array.isArray(layers) || layers.length === 0) return [];
+  const seenIds = new Set<string>();
+  const seenContent = new Set<string>();
+
+  return layers.filter((layer) => {
+    if (!layer || typeof layer !== "object") return false;
+
+    // 1. Check ID uniqueness if ID is provided
+    if (layer.id) {
+      if (seenIds.has(layer.id)) return false;
+      seenIds.add(layer.id);
+    }
+
+    // 2. Check Key uniqueness if defined
+    if (layer.key) {
+      const keyId = `key:${layer.key}`;
+      if (seenIds.has(keyId)) return false;
+      seenIds.add(keyId);
+    }
+
+    // 3. Content + coordinate signature
+    const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
+    const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
+    const trimmedText = (layer.text || "").trim();
+    if (trimmedText) {
+      const contentSignature = `${trimmedText}__${posX}__${posY}`;
+      if (seenContent.has(contentSignature)) return false;
+      seenContent.add(contentSignature);
+    }
+
+    return true;
+  });
+};
+
 export interface ComputedTextLayer extends TextLayer {
   rawX: number;
   rawY: number;
@@ -34,12 +88,13 @@ export function getContainerScaleFactor(cardWidth: number, baseWidth = BASE_CANV
 
 /**
  * Computes dynamic anti-collision layout for text layers:
- * 1. Proportionally scales font size to container width.
- * 2. Accurately estimates multi-line wrapping and explicit line-break heights.
- * 3. Sorts layers vertically and enforces minimum clearance (minGapPercent)
+ * 1. Deduplicates layers to prevent stacked/overlapping duplicate text objects.
+ * 2. Proportionally scales font size to container width.
+ * 3. Accurately estimates multi-line wrapping and explicit line-break heights.
+ * 4. Sorts layers vertically and enforces minimum clearance (minGapPercent)
  *    so multi-line blocks (e.g., date, venue) push lower blocks (address, RSVP)
  *    downward without vertical collision or overlapping.
- * 4. Gracefully compresses padding if the content stack approaches bottom bounds.
+ * 5. Gracefully compresses padding if the content stack approaches bottom bounds.
  */
 export function computeAntiCollisionLayout(
   layers: TextLayer[],
@@ -47,6 +102,8 @@ export function computeAntiCollisionLayout(
   minGapPercent = 2.5
 ): ComputedTextLayer[] {
   if (!layers || layers.length === 0) return [];
+  const uniqueLayers = deduplicateTextLayers(layers);
+  if (uniqueLayers.length === 0) return [];
 
   const width = Math.max(200, dimensions.width || BASE_CANVAS_WIDTH);
   const height = Math.max(280, dimensions.height || Math.round(width * 1.4));

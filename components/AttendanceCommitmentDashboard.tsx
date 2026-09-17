@@ -453,7 +453,7 @@ export default function AttendanceCommitmentDashboard({
             </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 truncate">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 truncate force-georgia">
                   Attendance Commitment
                 </h1>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full shrink-0">

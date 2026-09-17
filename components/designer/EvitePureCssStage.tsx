@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
-import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -432,16 +432,16 @@ export default function EvitePureCssStage({
   const cssConfig: CssCardConfig | null = cardData.cssConfig || null;
   const isPureCss = Boolean(template.isPureCss) || Boolean(cssConfig);
 
-  const cardBgColor = cssConfig?.backgroundColor || cardData.backgroundColor || template.backgroundColor || "#ffffff";
-  const resolvedAspect = aspectRatio || (cardData.aspectRatio === "square" ? "square" : "portrait");
-  const cssAspectRatio = resolvedAspect === "square" ? "1 / 1" : resolvedAspect === "5x7" ? "5 / 7" : "3 / 4";
+  const cardBgColor = cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || cardData.backgroundColor || "#ffffff";
+  const resolvedAspect = aspectRatio || (cardData.aspectRatio === "square" ? "square" : "5x7");
 
-  const textLayers: StageTextLayer[] = (
+  const rawTextLayers = (
     overrideTextLayers && overrideTextLayers.length > 0 ? overrideTextLayers
     : template.textLayers && template.textLayers.length > 0 ? template.textLayers
     : template.defaultTextLayers && template.defaultTextLayers.length > 0 ? template.defaultTextLayers
     : []
-  ) as StageTextLayer[];
+  );
+  const textLayers = deduplicateTextLayers(rawTextLayers as any) as StageTextLayer[];
 
   const envelopeOuter = template?.envelope?.outerColor || template?.envelopeColor || "#888888";
   const linerCss = template?.envelope?.linerCss || template?.envelope?.linerPatternUrl || "linear-gradient(135deg, #f5f5f5, #e0e0e0)";
@@ -453,10 +453,10 @@ export default function EvitePureCssStage({
     "radial-gradient(circle, #2d3238 0%, #181a1d 100%)";
 
   const cardInlineStyle: React.CSSProperties = {
-    backgroundColor: cssConfig?.backgroundColor || cardBgColor,
+    backgroundColor: cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || "#ffffff",
     background: cssConfig?.backgroundGradient || undefined,
     boxShadow: cssConfig?.paperShadow || "0 10px 25px rgba(0,0,0,0.15)",
-    borderRadius: cssConfig?.borderRadius,
+    borderRadius: cssConfig?.borderRadius || (template as any)?.innerCardLayer?.borderRadius || "14px",
     clipPath: cssConfig?.clipPath,
   };
 
@@ -466,7 +466,7 @@ export default function EvitePureCssStage({
       <div
         data-testid={`evite-css-card-${template.id}`}
         className={`relative w-full overflow-hidden select-none ${hoverScale ? "transition-transform duration-500 group-hover:scale-[1.03]" : ""} ${className}`}
-        style={{ aspectRatio: cssAspectRatio, containerType: "inline-size", ...cardInlineStyle }}
+        style={{ aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7", containerType: "inline-size", ...cardInlineStyle }}
       >
         {isPureCss && cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
         {!isPureCss && cardData.decorativeBorderSvgUrl && (
@@ -482,7 +482,7 @@ export default function EvitePureCssStage({
     return (
       <div
         data-testid={`evite-css-stationery-${template.id}`}
-        className={`relative w-full h-[330px] sm:h-[350px] flex items-end justify-center select-none ${className}`}
+        className={`relative w-full h-[330px] sm:h-[350px] flex items-end justify-start select-none ${className}`}
       >
         {/* Layer 2: Open Envelope & Liner Behind */}
         <div
@@ -499,13 +499,13 @@ export default function EvitePureCssStage({
           <EnvelopeBackdrop color={envelopeOuter} liner={linerCss} />
         </div>
 
-        {/* Layer 3: Pure CSS Invitation Card in Front (Centered over Envelope) */}
+        {/* Layer 3: Pure CSS Invitation Card in Front */}
         <div
-          className={`relative z-10 w-[70%] sm:w-[72%] mb-2 rounded-lg overflow-hidden transition-all duration-300 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)] ${
+          className={`relative z-10 w-[70%] sm:w-[72%] ml-1.5 sm:ml-2.5 mb-2 rounded-lg overflow-hidden transition-all duration-300 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)] ${
             hoverScale ? "group-hover:-translate-y-2 group-hover:shadow-[0_18px_35px_-8px_rgba(0,0,0,0.32)]" : ""
           }`}
           style={{
-            aspectRatio: cssAspectRatio,
+            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
             transform: "translateX(-3%)",
             ...cardInlineStyle,
@@ -533,14 +533,19 @@ export default function EvitePureCssStage({
         ref={stageRef as any}
         data-testid="invitation-stage-container"
         className="relative w-full flex flex-col items-center justify-center transition-transform duration-300"
-        style={{ maxWidth: `${maxW}px`, minHeight: "620px", transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined, transformOrigin: "top center" }}
+        style={{
+          maxWidth: `${maxW}px`,
+          aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
+          transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
+          transformOrigin: "center center",
+        }}
       >
-        {/* LAYER 2: Shared Envelope Backdrop positioned behind the card */}
+        {/* LAYER 2: Open Envelope & Liner positioned behind the card */}
         <div
           data-layer="2-envelope-container"
           className="absolute pointer-events-none transition-all duration-300 select-none"
           style={{
-            zIndex: 1,
+            zIndex: 10,
             width: "78%",
             height: "96%",
             left: "56%",
@@ -558,12 +563,14 @@ export default function EvitePureCssStage({
           data-layer="3-card-surface"
           data-testid="preview-card"
           onClick={(e) => { if (e.target === e.currentTarget && onCardClick) onCardClick(); }}
-          className="relative z-10 rounded-xl overflow-hidden transition-all duration-300 shadow-xl"
+          className="relative rounded-2xl overflow-hidden transition-all duration-300"
           style={{
+            zIndex: 20,
             width: "78%",
             transform: "translateX(-3%)",
-            aspectRatio: cssAspectRatio,
+            aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
+            boxShadow: cssConfig?.paperShadow || "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)",
             ...cardInlineStyle,
           }}
         >
@@ -577,3 +584,4 @@ export default function EvitePureCssStage({
     </div>
   );
 }
+

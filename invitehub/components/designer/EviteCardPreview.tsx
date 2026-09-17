@@ -3,6 +3,7 @@
 import React from "react";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
+import { deduplicateTextLayers } from "./layoutUtils";
 
 export interface EviteCardPreviewProps {
   template?: any;
@@ -129,7 +130,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const displayArtwork = isRasterSnapshot ? candidateSnapshot : cardArtwork;
 
   // 4. Resolve layers from override, textLayers, or defaultTextLayers
-  const baseLayers: any[] =
+  const rawBaseLayers: any[] =
     overrideTextLayers && overrideTextLayers.length > 0
       ? overrideTextLayers
       : resolvedTemplate.textLayers && resolvedTemplate.textLayers.length > 0
@@ -137,6 +138,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       : resolvedTemplate.defaultTextLayers && resolvedTemplate.defaultTextLayers.length > 0
       ? resolvedTemplate.defaultTextLayers
       : [];
+  const baseLayers = deduplicateTextLayers(rawBaseLayers);
 
   // Inject customized event values into the text layers
   const rawLayers = baseLayers.map((layer: any) => {

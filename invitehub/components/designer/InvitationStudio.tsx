@@ -54,18 +54,11 @@ import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData 
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
+import { deduplicateTextLayers } from "./layoutUtils";
+
+export { deduplicateTextLayers };
 
 // --- Types & Interfaces ---
-
-export const deduplicateTextLayers = <T extends { id: string }>(layers: T[]): T[] => {
-  if (!Array.isArray(layers) || layers.length === 0) return layers;
-  const seen = new Set<string>();
-  return layers.filter((layer) => {
-    if (seen.has(layer.id)) return false;
-    seen.add(layer.id);
-    return true;
-  });
-};
 
 /**
  * Hard teardown helper for Canvas text objects (Evite-Style Clean Architecture).
@@ -521,51 +514,56 @@ export default function InvitationStudio({
     let resolvedTextLayers: TextLayer[] = [];
     const hasSavedLayers = Boolean(!isExplicitSwitch && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0);
     if (hasSavedLayers) {
-      resolvedTextLayers = (invite!.textElements as TextLayer[]).map((tl) => ({ ...tl }));
+      resolvedTextLayers = deduplicateTextLayers((invite!.textElements as TextLayer[]).map((tl) => ({ ...tl })));
     } else if ((tplConfig as any)?.defaultTextLayers && Array.isArray((tplConfig as any).defaultTextLayers) && (tplConfig as any).defaultTextLayers.length > 0) {
-      resolvedTextLayers = (tplConfig as any).defaultTextLayers.map((tl: any) => ({
-        id: tl.id,
-        key: tl.key,
-        text: tl.text,
-        x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
-        y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
-        top: tl.top !== undefined ? tl.top : tl.y,
-        left: tl.left !== undefined ? tl.left : tl.x,
-        fontSize: tl.fontSize,
-        fontFamily: tl.fontFamily,
-        color: tl.color,
-        casing: "none" as const,
-        align: tl.textAlign || tl.align || "center",
-        textAlign: tl.textAlign || tl.align || "center",
-        letterSpacing: 0.5,
-        lineHeight: 1.2,
-        fontWeight: String(tl.fontWeight),
-        isFoil: null,
-      }));
+      resolvedTextLayers = deduplicateTextLayers(
+        (tplConfig as any).defaultTextLayers.map((tl: any) => ({
+          id: tl.id || `layer-${tl.key || "text"}`,
+          key: tl.key,
+          text: tl.text,
+          x: tl.left !== undefined ? tl.left : (tl.x !== undefined ? tl.x : 50),
+          y: tl.top !== undefined ? tl.top : (tl.y !== undefined ? tl.y : 50),
+          top: tl.top !== undefined ? tl.top : tl.y,
+          left: tl.left !== undefined ? tl.left : tl.x,
+          fontSize: tl.fontSize,
+          fontFamily: tl.fontFamily,
+          color: tl.color,
+          casing: "none" as const,
+          align: tl.textAlign || tl.align || "center",
+          textAlign: tl.textAlign || tl.align || "center",
+          letterSpacing: 0.5,
+          lineHeight: 1.2,
+          fontWeight: String(tl.fontWeight),
+          isFoil: null,
+        }))
+      );
     } else if (tplConfig?.textLayers && tplConfig.textLayers.length > 0) {
-      resolvedTextLayers = tplConfig.textLayers.map((tl) => ({
-        id: tl.id,
-        key: tl.key,
-        text: tl.text,
-        x: tl.x !== undefined ? tl.x : (tl.left || 50),
-        y: tl.y !== undefined ? tl.y : (tl.top || 50),
-        top: tl.top !== undefined ? tl.top : tl.y,
-        left: tl.left !== undefined ? tl.left : tl.x,
-        fontSize: tl.fontSize,
-        fontFamily: tl.fontFamily,
-        color: tl.color,
-        casing: tl.casing || "none",
-        align: tl.align || tl.textAlign || "center",
-        textAlign: tl.textAlign || tl.align || "center",
-        letterSpacing: tl.letterSpacing || 0.5,
-        lineHeight: tl.lineHeight || 1.2,
-        fontWeight: String(tl.fontWeight),
-        isFoil: tl.isFoil || null,
-      }));
+      resolvedTextLayers = deduplicateTextLayers(
+        tplConfig.textLayers.map((tl) => ({
+          id: tl.id || `layer-${tl.key || "text"}`,
+          key: tl.key,
+          text: tl.text,
+          x: tl.x !== undefined ? tl.x : (tl.left || 50),
+          y: tl.y !== undefined ? tl.y : (tl.top || 50),
+          top: tl.top !== undefined ? tl.top : tl.y,
+          left: tl.left !== undefined ? tl.left : tl.x,
+          fontSize: tl.fontSize,
+          fontFamily: tl.fontFamily,
+          color: tl.color,
+          casing: tl.casing || "none",
+          align: tl.align || tl.textAlign || "center",
+          textAlign: tl.textAlign || tl.align || "center",
+          letterSpacing: tl.letterSpacing || 0.5,
+          lineHeight: tl.lineHeight || 1.2,
+          fontWeight: String(tl.fontWeight),
+          isFoil: tl.isFoil || null,
+        }))
+      );
     } else {
-      resolvedTextLayers = [
+      resolvedTextLayers = deduplicateTextLayers([
         {
           id: "layer-title",
+          key: "title",
           text: titleText.toUpperCase(),
           x: 50,
           y: 32,
@@ -580,6 +578,7 @@ export default function InvitationStudio({
         },
         {
           id: "layer-datetime",
+          key: "datetime",
           text: dateText,
           x: 50,
           y: 50,
@@ -594,6 +593,7 @@ export default function InvitationStudio({
         },
         {
           id: "layer-venue",
+          key: "venue",
           text: venueText,
           x: 50,
           y: 60,
@@ -608,6 +608,7 @@ export default function InvitationStudio({
         },
         {
           id: "layer-description",
+          key: "description",
           text: descriptionText,
           x: 50,
           y: 70,
@@ -622,6 +623,7 @@ export default function InvitationStudio({
         },
         {
           id: "layer-host",
+          key: "host",
           text: hostText,
           x: 50,
           y: 80,
@@ -634,8 +636,9 @@ export default function InvitationStudio({
           lineHeight: 1.2,
           fontWeight: "500",
         },
-      ];
+      ]);
     }
+    resolvedTextLayers = deduplicateTextLayers(resolvedTextLayers);
 
     const defaultSelectedId =
       resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
@@ -839,7 +842,7 @@ export default function InvitationStudio({
             baseState.cardBg = { type: "color", value: sd.cardBgColor };
           }
           if (Array.isArray(sd.textElements) && sd.textElements.length > 0) {
-            baseState.textLayers = sd.textElements.map((el: any, idx: number) => ({
+            const aiLayers = sd.textElements.map((el: any, idx: number) => ({
               id: el.id || `ai-layer-${idx}`,
               key: el.role || el.id || `layer-${idx}`,
               text: el.text || "",
@@ -857,6 +860,7 @@ export default function InvitationStudio({
               lineHeight: el.lineHeight ?? 1.2,
               casing: (el.casing || "none") as "uppercase" | "lowercase" | "capitalize" | "none",
             }));
+            baseState.textLayers = deduplicateTextLayers(aiLayers);
             baseState.selectedTextId = baseState.textLayers[0]?.id || "layer-title";
           }
         } catch (e) {
@@ -865,6 +869,7 @@ export default function InvitationStudio({
       }
     }
 
+    baseState.textLayers = deduplicateTextLayers(baseState.textLayers);
     return baseState;
   };
 
@@ -998,7 +1003,7 @@ export default function InvitationStudio({
       } else if (field === "dateTime") {
         nextDetails.date = value;
         nextLayers = nextLayers.map((l) =>
-          l.id === "layer-date" || l.key === "dateTime"
+          l.id === "layer-date" || l.id === "layer-datetime" || l.key === "dateTime" || l.key === "datetime" || l.key === "date"
             ? { ...l, text: value }
             : l
         );
@@ -1013,7 +1018,7 @@ export default function InvitationStudio({
       } else if (field === "hostNote") {
         nextDetails.description = value;
         nextLayers = nextLayers.map((l) =>
-          l.id === "layer-description" || l.id === "layer-rsvp"
+          l.id === "layer-description" || l.id === "layer-rsvp" || l.key === "description"
             ? { ...l, text: value }
             : l
         );
@@ -1022,7 +1027,7 @@ export default function InvitationStudio({
       return {
         ...prev,
         eventDetails: nextDetails,
-        textLayers: nextLayers,
+        textLayers: deduplicateTextLayers(nextLayers),
       };
     });
   };
@@ -1166,9 +1171,10 @@ export default function InvitationStudio({
       lineHeight: 1.2,
       fontWeight: "700",
     };
+    const nextLayers = deduplicateTextLayers([...designState.textLayers, newLayer]);
     pushStateToHistory({
       ...designState,
-      textLayers: [...designState.textLayers, newLayer],
+      textLayers: nextLayers,
       selectedTextId: newId,
     });
     setActiveTab("text");
@@ -1383,6 +1389,10 @@ export default function InvitationStudio({
       false
     );
 
+    const targetTextLayers = (targetInvite.textElements && targetInvite.textElements.length > 0)
+      ? targetInvite.textElements
+      : freshState.textLayers;
+
     // 6. Set current invitation and full canvas design state
     setCurrentInvitation(targetInvite.id ? targetInvite : null);
     setDesignState({
@@ -1390,9 +1400,7 @@ export default function InvitationStudio({
       card: targetInvite.card || freshState.card,
       cardBg: targetInvite.cardBg || targetInvite.background || freshState.cardBg,
       decorations: targetInvite.decorations || targetInvite.card?.decorations || freshState.decorations || [],
-      textLayers: (targetInvite.textElements && targetInvite.textElements.length > 0)
-        ? targetInvite.textElements
-        : freshState.textLayers,
+      textLayers: deduplicateTextLayers(targetTextLayers),
       eventDetails: {
         ...freshState.eventDetails,
         title: foundEvt.title || targetInvite.eventTitle || targetInvite.title || freshState.eventDetails.title,
@@ -1704,6 +1712,7 @@ export default function InvitationStudio({
           card: nextCard,
           cardBg: nextCardBg,
           decorations: freshState.decorations || prev.decorations || nextCard?.decorations || [],
+          textLayers: deduplicateTextLayers(freshState.textLayers),
         };
       });
       if (typeof window !== "undefined") {
@@ -1730,6 +1739,13 @@ export default function InvitationStudio({
     templateIdQuery,
   ]);
 
+  // Handle unmount cleanup to avoid memory leaks or duplicate instances
+  useEffect(() => {
+    return () => {
+      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    };
+  }, []);
+
   // Apply new template from in-studio template switcher
   const handleSelectTemplate = (templateId: string) => {
     const config = getTemplateConfig(templateId);
@@ -1745,8 +1761,12 @@ export default function InvitationStudio({
       currentInvitation || initialInvitation,
       true
     );
-    setDesignState(nextState);
-    pushStateToHistory(nextState);
+    const dedupedState = {
+      ...nextState,
+      textLayers: deduplicateTextLayers(nextState.textLayers),
+    };
+    setDesignState(dedupedState);
+    pushStateToHistory(dedupedState);
 
     // Update URL query param to reflect new template
     if (typeof window !== "undefined") {

@@ -139,6 +139,18 @@ body {
   font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
 }
 
+/* Dashboard Page Headings: Force Georgia */
+.force-georgia,
+.dashboard-page h1,
+main h1 {
+  font-family: Georgia, 'Times New Roman', Times, serif !important;
+}
+
+/* High-specificity utility for dashboard page titles - prevents OAuth redirect styling reset */
+.dashboard-page-title {
+  font-family: Georgia, 'Times New Roman', Times, serif !important;
+}
+
 /* Gold shimmer effect */
 .gold-shimmer {
   background: linear-gradient(
@@ -565,6 +577,7 @@ body {
   overflow: hidden;
   white-space: nowrap;
   line-height: 1;
+  font-family: Georgia, serif;
 }
 
 /* ─── Tooltip (collapsed state) ─── */

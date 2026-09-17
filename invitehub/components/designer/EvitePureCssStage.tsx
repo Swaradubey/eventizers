@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
-import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -435,12 +435,13 @@ export default function EvitePureCssStage({
   const cardBgColor = cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || cardData.backgroundColor || "#ffffff";
   const resolvedAspect = aspectRatio || (cardData.aspectRatio === "square" ? "square" : "5x7");
 
-  const textLayers: StageTextLayer[] = (
+  const rawTextLayers = (
     overrideTextLayers && overrideTextLayers.length > 0 ? overrideTextLayers
     : template.textLayers && template.textLayers.length > 0 ? template.textLayers
     : template.defaultTextLayers && template.defaultTextLayers.length > 0 ? template.defaultTextLayers
     : []
-  ) as StageTextLayer[];
+  );
+  const textLayers = deduplicateTextLayers(rawTextLayers as any) as StageTextLayer[];
 
   const envelopeOuter = template?.envelope?.outerColor || template?.envelopeColor || "#888888";
   const linerCss = template?.envelope?.linerCss || template?.envelope?.linerPatternUrl || "linear-gradient(135deg, #f5f5f5, #e0e0e0)";

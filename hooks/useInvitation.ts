@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import invitationService from "../services/invitationService";
 import eventService, { Event } from "../services/eventService";
 import { Invitation, InvitationPayload } from "../types/invitationTypes";
+import { deduplicateTextLayers } from "../components/designer/layoutUtils";
 
 import { NEW_TEMPLATES_CONFIG } from "../lib/newTemplatesData";
 
@@ -330,17 +331,7 @@ export const useInvitation = (eventId: string | null) => {
                 const parsed = JSON.parse(rawCache);
                 if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
                 if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
-                if (parsed.textElements) {
-                  // Deduplicate text layers by ID to prevent duplicate entries from stale cache
-                  const seen = new Set<string>();
-                  fetchedInvitation.textElements = (parsed.textElements as any[]).filter((item: any) => {
-                    if (!item?.id || seen.has(item.id)) return false;
-                    seen.add(item.id);
-                    return true;
-                  });
-                }
-                if (parsed.card) (fetchedInvitation as any).card = parsed.card;
-                if (parsed.decorations) (fetchedInvitation as any).decorations = parsed.decorations;
+                if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
                 if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
                 if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
                 if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
@@ -350,7 +341,6 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
                 if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
                 if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
-                if (parsed.backside) (fetchedInvitation as any).backside = parsed.backside;
                 if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
               }
             } catch (e) {}
@@ -362,13 +352,14 @@ export const useInvitation = (eventId: string | null) => {
 
           setInvitation(fetchedInvitation);
         } else {
-          // Initialize a default draft using selectedTemplateId if present
-          const tplKey = eventRes.event.selectedTemplateId;
-          const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+          const urlTplId = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("templateId") || sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")) : null;
+          const tplKey = eventRes.event.selectedTemplateId || urlTplId;
+          const tplConfig = tplKey ? (TEMPLATES_CONFIG[tplKey] || (NEW_TEMPLATES_CONFIG as any)[tplKey]) : null;
 
           // Comprehensive fallback: clean template image > event image fields
           const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
           const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
+          const innerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
 
           const defaultInvitation: Invitation = {
             id: "", // empty indicates it's unsaved/new
@@ -378,7 +369,7 @@ export const useInvitation = (eventId: string | null) => {
             subtitle: tplConfig ? (eventRes.event.venue || "TBD") : "You are cordially invited to celebrate with us.",
             mainText: tplConfig?.description || "Join us for an unforgettable experience filled with joy and celebration. Please RSVP using the button below to secure your spot.",
             accentColor: tplConfig?.accentColor || "#5B5FEF",
-            backgroundColor: tplConfig?.backgroundColor || "#FAF8F5",
+            backgroundColor: innerBg,
             textColor: tplConfig?.textColor || "#2D1B3D",
             titleSize: tplConfig?.titleSize || 48,
             fontWeight: tplConfig?.fontWeight || "700",
@@ -389,26 +380,34 @@ export const useInvitation = (eventId: string | null) => {
             buttonColor: tplConfig?.buttonColor || "#5B5FEF",
             buttonRadius: tplConfig?.buttonRadius || 12,
             status: "draft",
+            card: (tplConfig as any)?.card ? { ...(tplConfig as any).card, backgroundColor: innerBg } : undefined,
+            backgroundLayer: (tplConfig as any)?.backgroundLayer,
+            frameLayers: (tplConfig as any)?.frameLayers,
+            innerCardLayer: (tplConfig as any)?.innerCardLayer,
+            textElements: deduplicateTextLayers((tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers || []),
           };
           setInvitation(defaultInvitation);
         }
       } catch (err: any) {
         // If API returns 404/error and no invitation exists, create a default local state
-        const tplKey = eventRes.event.selectedTemplateId;
-        const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
+        const urlTplId = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("templateId") || sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")) : null;
+        const tplKey = eventRes.event.selectedTemplateId || urlTplId;
+        const tplConfig = tplKey ? (TEMPLATES_CONFIG[tplKey] || (NEW_TEMPLATES_CONFIG as any)[tplKey]) : null;
 
         // Comprehensive fallback: clean template image > event image fields
         const evtImgFallback = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
         const cleanDefaultImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImgFallback;
+        const innerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
 
         const defaultInvitation: Invitation = {
           id: "",
           eventId: eventId,
+          templateId: tplKey || undefined,
           title: `Invitation to ${eventRes.event.title}`,
           subtitle: tplConfig ? (eventRes.event.venue || "TBD") : "You are cordially invited to celebrate with us.",
           mainText: tplConfig?.description || "Join us for an unforgettable experience filled with joy and celebration. Please RSVP using the button below to secure your spot.",
           accentColor: tplConfig?.accentColor || "#5B5FEF",
-          backgroundColor: tplConfig?.backgroundColor || "#FAF8F5",
+          backgroundColor: innerBg,
           textColor: tplConfig?.textColor || "#2D1B3D",
           titleSize: tplConfig?.titleSize || 48,
           fontWeight: tplConfig?.fontWeight || "700",
@@ -419,6 +418,11 @@ export const useInvitation = (eventId: string | null) => {
           buttonColor: tplConfig?.buttonColor || "#5B5FEF",
           buttonRadius: tplConfig?.buttonRadius || 12,
           status: "draft",
+          card: (tplConfig as any)?.card ? { ...(tplConfig as any).card, backgroundColor: innerBg } : undefined,
+          backgroundLayer: (tplConfig as any)?.backgroundLayer,
+          frameLayers: (tplConfig as any)?.frameLayers,
+          innerCardLayer: (tplConfig as any)?.innerCardLayer,
+          textElements: deduplicateTextLayers((tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers || []),
         };
         setInvitation(defaultInvitation);
       }
@@ -485,22 +489,10 @@ export const useInvitation = (eventId: string | null) => {
       // Cache 4-layer and template state in localStorage for persistent parity across studio & designer
       if (typeof window !== "undefined" && targetEventId) {
         try {
-          // Deduplicate text elements before caching to prevent stale duplicates
-          const rawTextElements = formData.textElements || invitation?.textElements;
-          const dedupedTextElements = Array.isArray(rawTextElements)
-            ? (() => {
-                const seen = new Set<string>();
-                return rawTextElements.filter((item: any) => {
-                  if (!item?.id || seen.has(item.id)) return false;
-                  seen.add(item.id);
-                  return true;
-                });
-              })()
-            : rawTextElements;
           const cachePayload = {
             templateId: formData.templateId || invitation?.templateId,
             templateName: (formData as any).templateName || (invitation as any)?.templateName,
-            textElements: dedupedTextElements,
+            textElements: formData.textElements || invitation?.textElements,
             envelope: formData.envelope || invitation?.envelope,
             stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
             card: (formData as any).card || (invitation as any)?.card,
@@ -519,21 +511,10 @@ export const useInvitation = (eventId: string | null) => {
       }
 
       // Merge rich 4-layer state back into savedInvite - preserve card and decorative layers
-      const rawTextElements = formData.textElements || invitation?.textElements;
-      const dedupedTextElements = Array.isArray(rawTextElements)
-        ? (() => {
-            const seen = new Set<string>();
-            return rawTextElements.filter((item: any) => {
-              if (!item?.id || seen.has(item.id)) return false;
-              seen.add(item.id);
-              return true;
-            });
-          })()
-        : rawTextElements;
       const fullSavedInvite: Invitation = {
         ...savedInvite,
         templateId: formData.templateId || savedInvite.templateId || invitation?.templateId,
-        textElements: dedupedTextElements,
+        textElements: formData.textElements || invitation?.textElements,
         envelope: formData.envelope || invitation?.envelope,
         stageBackdrop: formData.stageBackdrop || invitation?.stageBackdrop,
         card: (formData as any).card || (invitation as any)?.card,

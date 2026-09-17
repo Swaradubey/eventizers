@@ -3,6 +3,7 @@
 import { useSyncExternalStore, useCallback } from "react";
 import { getTemplateConfig, NewTemplateData } from "../lib/newTemplatesData";
 import { StageTextLayer } from "../components/designer/EvitePureCssStage";
+import { deduplicateTextLayers } from "../components/designer/layoutUtils";
 
 export interface InvitationStoreState {
   activeTemplateId: string;
@@ -31,12 +32,13 @@ const DEFAULT_TEMPLATE_ID = "tpl-golden-milestone";
 
 function createInitialState(templateId = DEFAULT_TEMPLATE_ID): InvitationStoreState {
   const tpl = getTemplateConfig(templateId);
-  const layers: StageTextLayer[] = (
+  const rawLayers = (
     tpl?.defaultTextLayers && tpl.defaultTextLayers.length > 0 ? tpl.defaultTextLayers
     : tpl?.textLayers && tpl.textLayers.length > 0 ? tpl.textLayers
     : []
-  ).map((l: any) => ({
-    id: l.id,
+  );
+  const layers: StageTextLayer[] = deduplicateTextLayers(rawLayers as any[]).map((l: any) => ({
+    id: l.id || `layer-${l.key || Math.random().toString(36).substring(2, 7)}`,
     key: l.key,
     text: l.text,
     fontFamily: l.fontFamily,

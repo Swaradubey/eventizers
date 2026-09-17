@@ -7,7 +7,7 @@ import { getCleanTemplateSvg, isUserUploadedImage } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
-import { computeAntiCollisionLayout, ContainerDimensions } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "vertical-pink-stripes":
@@ -119,10 +119,15 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
+  // Deduplicate incoming text layers before layout and rendering
+  const deduplicatedLayers = useMemo(() => {
+    return deduplicateTextLayers(config.textLayers || []);
+  }, [config.textLayers]);
+
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
-    return computeAntiCollisionLayout(config.textLayers || [], cardDimensions);
-  }, [config.textLayers, cardDimensions]);
+    return computeAntiCollisionLayout(deduplicatedLayers, cardDimensions);
+  }, [deduplicatedLayers, cardDimensions]);
 
   // Sync computed (anti-collision adjusted) positions back to parent state
   // so that saved positions match rendered positions and overlap doesn't reappear on reload
@@ -455,14 +460,14 @@ export default function InvitationCanvasStage({
         decorativeBorderSvgUrl: "",
         aspectRatio: cardAspectRatio,
       },
-      textLayers: config.textLayers,
-      defaultTextLayers: config.textLayers,
+      textLayers: deduplicatedLayers,
+      defaultTextLayers: deduplicatedLayers,
     };
 
     return (
       <EvitePureCssStage
         template={pureCssTpl}
-        overrideTextLayers={config.textLayers as any}
+        overrideTextLayers={deduplicatedLayers as any}
         mode={readOnly ? "preview" : "interactive"}
         aspectRatio={cardAspectRatio === "5/7" ? "5x7" : cardAspectRatio as any}
         selectedTextId={selectedTextId}

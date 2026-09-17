@@ -392,7 +392,7 @@ function RegistriesPageContent() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight force-georgia">
                 Registries
               </h1>
               <p className="text-slate-500 text-sm mt-1">

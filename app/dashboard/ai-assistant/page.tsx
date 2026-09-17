@@ -913,7 +913,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
           {/* Main Heading */}
           <h1
-            className="font-bold font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
+            className="font-bold font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap force-georgia"
             style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.9rem, 4vw, 3.75rem)" }}
           >
             Create Any Event in Under 60 Seconds

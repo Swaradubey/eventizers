@@ -264,7 +264,7 @@ function GuestPortalPageContent() {
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-['Georgia',serif] force-georgia">
                   Guest Experience Portal
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">

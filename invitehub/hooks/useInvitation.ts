@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import invitationService from "../services/invitationService";
 import eventService, { Event } from "../services/eventService";
 import { Invitation, InvitationPayload } from "../types/invitationTypes";
+import { deduplicateTextLayers } from "../components/designer/layoutUtils";
 
 import { NEW_TEMPLATES_CONFIG } from "../lib/newTemplatesData";
 
@@ -383,7 +384,7 @@ export const useInvitation = (eventId: string | null) => {
             backgroundLayer: (tplConfig as any)?.backgroundLayer,
             frameLayers: (tplConfig as any)?.frameLayers,
             innerCardLayer: (tplConfig as any)?.innerCardLayer,
-            textElements: (tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers,
+            textElements: deduplicateTextLayers((tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers || []),
           };
           setInvitation(defaultInvitation);
         }
@@ -421,7 +422,7 @@ export const useInvitation = (eventId: string | null) => {
           backgroundLayer: (tplConfig as any)?.backgroundLayer,
           frameLayers: (tplConfig as any)?.frameLayers,
           innerCardLayer: (tplConfig as any)?.innerCardLayer,
-          textElements: (tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers,
+          textElements: deduplicateTextLayers((tplConfig as any)?.textElements || (tplConfig as any)?.defaultTextLayers || []),
         };
         setInvitation(defaultInvitation);
       }

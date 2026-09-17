@@ -245,7 +245,10 @@ export default function AdminDashboardPage() {
             </button>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
+                <h1
+                  className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-georgia main-page-title"
+                  style={{ fontFamily: "Georgia, Cambria, 'Times New Roman', Times, serif" }}
+                >
                   Admin Dashboard
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100/80 text-blue-700 border border-blue-200 shadow-2xs">

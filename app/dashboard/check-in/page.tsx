@@ -721,7 +721,7 @@ function CheckInPageContent() {
               <Menu className="w-5 h-5 text-slate-800" />
             </button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A] font-sans tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A] tracking-tight force-georgia">
                 Check-In
               </h1>
               <p className="text-sm text-slate-500 mt-1 font-sans">
