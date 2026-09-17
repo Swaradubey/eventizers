@@ -60,16 +60,13 @@ export const deduplicateTextLayers = <
       seenKeys.add(normalizedKey);
     }
 
-    // 3. Check normalized text content uniqueness
-    // Prevents identical text blocks (e.g. "Fall in love", "JENNIFER HAYWARD") from ever
-    // being double-rendered or stacked on top of each other, regardless of differing IDs.
+    // 3. Content + coordinate signature guard
+    // Prevents identical text blocks (e.g. "DAVE'S TURNING") from being double-rendered
+    // directly stacked over themselves at the exact same coordinates while allowing
+    // duplicated or independently positioned text blocks to render.
     const trimmedText = (layer.text || "").trim();
     if (trimmedText) {
       const normalizedText = trimmedText.toLowerCase().replace(/\s+/g, " ");
-      if (seenTexts.has(normalizedText)) return false;
-      seenTexts.add(normalizedText);
-
-      // 4. Content + coordinate signature fallback
       const posX = Math.round(layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
       const posY = Math.round(layer.top !== undefined ? layer.top : (layer.y !== undefined ? layer.y : 50));
       const contentSignature = `${normalizedText}__${posX}__${posY}`;

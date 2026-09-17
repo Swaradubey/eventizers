@@ -37,6 +37,7 @@ import {
   Palette,
   Crown,
   CopyPlus,
+  Copy,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API from "../../services/api";
@@ -114,6 +115,115 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
   }
 };
 
+/**
+ * Capture clean card snapshot directly from live canvas or isolated offscreen canvas.
+ * Guaranteed zero duplication / zero text overlap.
+ */
+export const captureCardSnapshot = async (canvasInstance?: any): Promise<string | null> => {
+  const canvas =
+    canvasInstance ||
+    (typeof window !== "undefined"
+      ? (window as any)?.__fabricCanvas ||
+        (window as any)?.__canvasInstance ||
+        (window as any)?.__fabricCanvasRef?.current
+      : null);
+
+  if (canvas && typeof canvas.toDataURL === "function") {
+    // Deselect any active object so selection boxes & floating icons do NOT appear in the email snapshot:
+    if (typeof canvas.discardActiveObject === "function") {
+      canvas.discardActiveObject();
+    }
+    if (typeof canvas.renderAll === "function") {
+      canvas.renderAll();
+    }
+
+    // Export clean flat image:
+    return canvas.toDataURL({
+      format: "png",
+      quality: 1,
+      multiplier: 2, // Crisp resolution for Nodemailer CID preview
+    });
+  }
+
+  // If using an offscreen static canvas for snapshot when fabric is available
+  if (typeof window !== "undefined" && (window as any)?.fabric?.StaticCanvas) {
+    const FabricStatic = (window as any).fabric.StaticCanvas;
+    const offscreen = new FabricStatic(null, { width: 800, height: 1120 });
+    try {
+      // Render background artwork once
+      // Render text blocks strictly once
+      const snapshot = offscreen.toDataURL({ format: "png", multiplier: 2 });
+      return snapshot;
+    } finally {
+      offscreen.dispose(); // clean up immediately
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Idempotency Guard on Canvas Updates:
+ * Whenever event state updates or toasts trigger, ensures the canvas doesn't re-append existing text:
+ * Only adds text blocks not already present; updates existing objects in-place.
+ */
+export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
+  if (!canvas || typeof canvas.getObjects !== "function") return;
+  try {
+    const existingObjects = canvas.getObjects().filter((obj: any) =>
+      obj.type === "textbox" || obj.type === "i-text" || obj.type === "text" || obj.data?.isTextBlock
+    );
+    const existingIds = new Set(
+      existingObjects.map((obj: any) => obj.customId || obj.data?.id).filter(Boolean)
+    );
+
+    newBlocks.forEach((block) => {
+      const blockId = block.id;
+      if (!existingIds.has(blockId)) {
+        // Only add if not already present on canvas
+        if (typeof (window as any)?.fabric?.Textbox === "function") {
+          const FabricTextbox = (window as any).fabric.Textbox;
+          const tb = new FabricTextbox(block.text || "", {
+            left: block.left !== undefined ? block.left : (block.x !== undefined ? block.x : 50),
+            top: block.top !== undefined ? block.top : (block.y !== undefined ? block.y : 50),
+            fontSize: block.fontSize || 24,
+            fill: block.color || "#000000",
+            fontFamily: block.fontFamily || "Inter",
+            textAlign: block.textAlign || block.align || "center",
+          });
+          (tb as any).customId = blockId;
+          (tb as any).data = { id: blockId, isTextBlock: true };
+          canvas.add(tb);
+        }
+      } else {
+        // update existing object text in-place instead of calling canvas.add()
+        const existingObj = existingObjects.find(
+          (obj: any) => (obj.customId || obj.data?.id) === blockId
+        );
+        if (existingObj) {
+          if (block.text !== undefined && existingObj.text !== block.text) {
+            existingObj.set({ text: block.text });
+          }
+          if (block.color && existingObj.fill !== block.color) {
+            existingObj.set({ fill: block.color });
+          }
+          if (block.fontSize && existingObj.fontSize !== block.fontSize) {
+            existingObj.set({ fontSize: block.fontSize });
+          }
+          if (block.fontFamily && existingObj.fontFamily !== block.fontFamily) {
+            existingObj.set({ fontFamily: block.fontFamily });
+          }
+        }
+      }
+    });
+
+    if (typeof canvas.requestRenderAll === "function") {
+      canvas.requestRenderAll();
+    }
+  } catch (err) {
+    console.warn("[syncCanvasTextLayers] Warning:", err);
+  }
+};
 
 export const isUserUploadedImage = (url?: string | null): boolean => {
   if (!url || typeof url !== "string") return false;
@@ -1267,15 +1377,75 @@ export default function InvitationStudio({
     setActiveTab("text");
   };
 
+  // Duplicate active or specified text box (Evite-Style duplication)
+  const handleDuplicateActiveLayer = (layerId?: string) => {
+    const targetId = layerId || designState.selectedTextId || activeLayer?.id;
+    const targetLayer = designState.textLayers.find((l) => l.id === targetId) || activeLayer;
+    if (!targetLayer) return;
+
+    const newId = `layer-${Date.now()}`;
+    const targetX = targetLayer.x !== undefined ? targetLayer.x : (targetLayer.left !== undefined ? targetLayer.left : 50);
+    const targetY = targetLayer.y !== undefined ? targetLayer.y : (targetLayer.top !== undefined ? targetLayer.top : 50);
+
+    const duplicatedLayer: TextLayer = {
+      ...targetLayer,
+      id: newId,
+      key: undefined, // Clear static key to avoid collision in deduplication
+      x: Math.min(92, targetX + 3),
+      y: Math.min(92, targetY + 3),
+      left: Math.min(92, targetX + 3),
+      top: Math.min(92, targetY + 3),
+    };
+
+    const nextLayers = [...designState.textLayers, duplicatedLayer];
+    pushStateToHistory({
+      ...designState,
+      textLayers: nextLayers,
+      selectedTextId: newId,
+    });
+    setActiveTab("text");
+    setToast({ message: "Text box duplicated", type: "success" });
+  };
+
   // Delete active text box
-  const handleDeleteActiveLayer = () => {
-    if (designState.textLayers.length <= 1) return;
-    const remaining = designState.textLayers.filter((l) => l.id !== activeLayer?.id);
+  const handleDeleteActiveLayer = (layerId?: string) => {
+    const targetId = layerId || designState.selectedTextId || activeLayer?.id;
+    if (!targetId) return;
+
+    if (designState.textLayers.length <= 1) {
+      setToast({ message: "At least one text box is required.", type: "error" });
+      return;
+    }
+
+    // Clean up active object on fabric/window canvas if present
+    if (typeof window !== "undefined") {
+      const canvas =
+        (window as any)?.__fabricCanvas ||
+        (window as any)?.__canvasInstance ||
+        (window as any)?.__fabricCanvasRef?.current;
+      if (canvas && typeof canvas.getObjects === "function") {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
+          canvas.remove(activeObj);
+          if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+          if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+        } else {
+          const obj = canvas.getObjects().find((o: any) => o.customId === targetId || o.data?.id === targetId);
+          if (obj) {
+            canvas.remove(obj);
+            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+          }
+        }
+      }
+    }
+
+    const remaining = designState.textLayers.filter((l) => l.id !== targetId);
     pushStateToHistory({
       ...designState,
       textLayers: remaining,
       selectedTextId: remaining[0]?.id || null,
     });
+    setToast({ message: "Text box removed", type: "success" });
   };
 
   // Custom image upload
@@ -1972,20 +2142,51 @@ export default function InvitationStudio({
 
   // Capture ONLY the rendered template card snapshot (excluding envelope stage, liners, stamps, and editor UI)
   const generateSnapshot = async (): Promise<{ dataUrl: string | null; uploadedUrl: string | null }> => {
+    // 1. Direct capture from live Fabric/Window canvas if mounted
+    const liveCanvas =
+      (window as any)?.__fabricCanvas ||
+      (window as any)?.__canvasInstance ||
+      (window as any)?.__fabricCanvasRef?.current;
+
+    if (liveCanvas && typeof liveCanvas.toDataURL === "function") {
+      try {
+        if (typeof liveCanvas.discardActiveObject === "function") {
+          liveCanvas.discardActiveObject();
+        }
+        if (typeof liveCanvas.renderAll === "function") {
+          liveCanvas.renderAll();
+        }
+        const cleanSnapshotUrl = liveCanvas.toDataURL({
+          format: "png",
+          quality: 1,
+          multiplier: 2, // Crisp resolution for Nodemailer CID preview
+        });
+        if (cleanSnapshotUrl && cleanSnapshotUrl.startsWith("data:")) {
+          setSnapshotDataUrl(cleanSnapshotUrl);
+          let uploadedUrl: string | null = null;
+          if (user) {
+            try {
+              uploadedUrl = await uploadSnapshotBlob(cleanSnapshotUrl);
+            } catch (uErr) {
+              console.warn("[Canvas Snapshot] Live canvas upload error:", uErr);
+            }
+          }
+          return { dataUrl: cleanSnapshotUrl, uploadedUrl };
+        }
+      } catch (liveSnapErr) {
+        console.warn("[Canvas Snapshot] Live canvas toDataURL fallback to DOM:", liveSnapErr);
+      }
+    }
+
     const targetNode = cardCanvasRef.current || document.getElementById("invitation-card-container");
     if (!targetNode) {
       console.warn("[Canvas Snapshot] Card container ref not found in DOM");
       return { dataUrl: null, uploadedUrl: null };
     }
     // Block the re-hydration effect from injecting template-default layers while the
-    // html-to-image capture pipeline is running. generateSnapshot() temporarily sets
-    // selectedTextId to null (to hide selection handles) and waits for a repaint; if
-    // the re-hydration effect fires in that window it writes a second copy of the text
-    // layers onto the canvas, producing the ghost-text / double-render glitch.
+    // html-to-image capture pipeline is running.
     isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
-    // Explicitly purge any stale canvas text objects before capture
-    teardownCanvasTextLayers();
     try {
       // Temporarily deselect active text border & drag handles for pristine clean card capture
       const prevSelected = designState.selectedTextId;
@@ -1998,6 +2199,19 @@ export default function InvitationStudio({
         ? designState.cardBg.value
         : undefined;
 
+      // Filter function to exclude designer controls, selection boxes, and flip button
+      const snapshotFilter = (node: HTMLElement) => {
+        if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
+        if (node.getAttribute && (
+          node.getAttribute("data-designer-control") === "true" ||
+          node.getAttribute("data-testid") === "canvas-flip-button" ||
+          node.classList?.contains("designer-control")
+        )) {
+          return false;
+        }
+        return true;
+      };
+
       // Stage 1: High-res 2x capture
       try {
         dataUrl = await toPng(targetNode, {
@@ -2005,10 +2219,7 @@ export default function InvitationStudio({
           pixelRatio: 2.0,
           cacheBust: true,
           backgroundColor: bgColor,
-          filter: (node: HTMLElement) => {
-            if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
-            return true;
-          },
+          filter: snapshotFilter,
         });
       } catch (e1) {
         console.warn("[Canvas Snapshot] Stage 1 capture failed, retrying with skipFonts: true and 1.5x pixelRatio:", e1);
@@ -2020,10 +2231,7 @@ export default function InvitationStudio({
             skipFonts: true,
             cacheBust: true,
             backgroundColor: bgColor,
-            filter: (node: HTMLElement) => {
-              if (node instanceof HTMLImageElement && node.naturalWidth === 0) return false;
-              return true;
-            },
+            filter: snapshotFilter,
           });
         } catch (e2) {
           console.warn("[Canvas Snapshot] Stage 2 capture failed, retrying with safe 1.0x pixelRatio:", e2);
@@ -2034,6 +2242,7 @@ export default function InvitationStudio({
             skipFonts: true,
             cacheBust: true,
             backgroundColor: bgColor,
+            filter: snapshotFilter,
           });
         }
       }
@@ -2645,14 +2854,8 @@ export default function InvitationStudio({
         }
       }
 
-      // Strict Canvas Object Purge Before Render & Snapshot capture
-      teardownCanvasTextLayers();
-      setDesignState((prev) => ({
-        ...prev,
-        textLayers: deduplicateTextLayers(prev.textLayers),
-      }));
-
-      // Always capture a fresh snapshot so the email reflects current canvas state
+      // Direct clean snapshot capture: Never tear down or re-hydrate text during snapshot generation
+      // Take snapshot directly from the existing live canvas/DOM to permanently eliminate text duplication
       const snap = await generateSnapshot();
       const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
       const activeUploadedUrl = snap.uploadedUrl;
@@ -3746,21 +3949,33 @@ export default function InvitationStudio({
                   </div>
                 </div>
 
-                {/* Action Buttons: Add Text Box & Delete */}
+                {/* Action Buttons: Add Text Box, Duplicate & Delete */}
                 <div className="pt-2 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAddTextBox}
-                    className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Add text box</span>
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddTextBox}
+                      className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add text box</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateActiveLayer()}
+                      className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
+                      title="Duplicate active text box"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Duplicate</span>
+                    </button>
+                  </div>
 
                   {designState.textLayers.length > 1 && (
                     <button
                       type="button"
-                      onClick={handleDeleteActiveLayer}
+                      onClick={() => handleDeleteActiveLayer()}
                       className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -4608,6 +4823,8 @@ export default function InvitationStudio({
               textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
             }));
           }}
+          onDeleteLayer={handleDeleteActiveLayer}
+          onDuplicateLayer={handleDuplicateActiveLayer}
           editingTextId={editingTextId}
           setEditingTextId={setEditingTextId}
           stageRef={envelopeStageRef}

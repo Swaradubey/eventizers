@@ -2,7 +2,7 @@
 
 import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers } from "./InvitationStudio";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
@@ -58,6 +58,8 @@ export interface InvitationCanvasStageProps {
   selectedTextId?: string | null;
   onSelectLayer?: (id: string) => void;
   onUpdateLayer?: (id: string, updates: Partial<TextLayer>) => void;
+  onDeleteLayer?: (id: string) => void;
+  onDuplicateLayer?: (id: string) => void;
   editingTextId?: string | null;
   setEditingTextId?: (id: string | null) => void;
   stageRef?: any;
@@ -80,6 +82,8 @@ export default function InvitationCanvasStage({
   selectedTextId = null,
   onSelectLayer,
   onUpdateLayer,
+  onDeleteLayer,
+  onDuplicateLayer,
   editingTextId = null,
   setEditingTextId,
   stageRef,
@@ -246,6 +250,133 @@ export default function InvitationCanvasStage({
     },
     [readOnly, onSelectLayer, editingTextId, setEditingTextId, onUpdateLayer, effectiveCardRef]
   );
+
+  // Floating toolbar actions for Delete and Duplicate
+  const handleDeleteActiveTextbox = useCallback(
+    (layerId?: string) => {
+      const targetId = layerId || selectedTextId;
+      if (!targetId) return;
+
+      // Clean up active object on fabric/window canvas if present
+      if (typeof window !== "undefined") {
+        const canvas =
+          (window as any)?.__fabricCanvas ||
+          (window as any)?.__canvasInstance ||
+          (window as any)?.__fabricCanvasRef?.current;
+        if (canvas && typeof canvas.getActiveObject === "function") {
+          const activeObj = canvas.getActiveObject();
+          if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
+            canvas.remove(activeObj);
+            if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+          }
+        }
+      }
+
+      if (onDeleteLayer) {
+        onDeleteLayer(targetId);
+      }
+    },
+    [selectedTextId, onDeleteLayer]
+  );
+
+  const handleDuplicateActiveTextbox = useCallback(
+    (layerId?: string) => {
+      const targetId = layerId || selectedTextId;
+      if (!targetId) return;
+
+      // Duplicate on fabric/window canvas if present
+      if (typeof window !== "undefined") {
+        const canvas =
+          (window as any)?.__fabricCanvas ||
+          (window as any)?.__canvasInstance ||
+          (window as any)?.__fabricCanvasRef?.current;
+        if (canvas && typeof canvas.getActiveObject === "function") {
+          const activeObj = canvas.getActiveObject();
+          if (
+            activeObj &&
+            (activeObj.customId === targetId || activeObj.data?.id === targetId) &&
+            typeof activeObj.clone === "function"
+          ) {
+            activeObj.clone((cloned: any) => {
+              cloned.set({
+                left: (activeObj.left || 0) + 20,
+                top: (activeObj.top || 0) + 20,
+                evented: true,
+              });
+              const newCustomId = `text-${Date.now()}`;
+              cloned.customId = newCustomId;
+              if (cloned.data) cloned.data.id = newCustomId;
+              canvas.add(cloned);
+              canvas.setActiveObject(cloned);
+              if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+              if (onDuplicateLayer) onDuplicateLayer(newCustomId);
+            });
+            return;
+          }
+        }
+      }
+
+      if (onDuplicateLayer) {
+        onDuplicateLayer(targetId);
+      }
+    },
+    [selectedTextId, onDuplicateLayer]
+  );
+
+  // Floating toolbar coordinates for external / fabric canvas tracking
+  const [toolbarPosition, setToolbarPosition] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const canvas =
+      (window as any)?.__fabricCanvas ||
+      (window as any)?.__canvasInstance ||
+      (window as any)?.__fabricCanvasRef?.current;
+    if (!canvas || typeof canvas.on !== "function") return;
+
+    const updateFromCanvas = () => {
+      const activeObj = canvas.getActiveObject();
+      if (!activeObj || activeObj.type === "image") {
+        setToolbarPosition((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
+      const bound = typeof activeObj.getBoundingRect === "function" ? activeObj.getBoundingRect() : null;
+      if (bound) {
+        setToolbarPosition({
+          x: bound.left + bound.width / 2,
+          y: bound.top,
+          visible: true,
+        });
+      }
+    };
+
+    const clearToolbar = () => {
+      setToolbarPosition((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+    };
+
+    canvas.on("selection:created", updateFromCanvas);
+    canvas.on("selection:updated", updateFromCanvas);
+    canvas.on("selection:cleared", clearToolbar);
+    canvas.on("object:moving", updateFromCanvas);
+    canvas.on("object:scaling", updateFromCanvas);
+    canvas.on("object:rotating", updateFromCanvas);
+
+    return () => {
+      if (typeof canvas.off === "function") {
+        canvas.off("selection:created", updateFromCanvas);
+        canvas.off("selection:updated", updateFromCanvas);
+        canvas.off("selection:cleared", clearToolbar);
+        canvas.off("object:moving", updateFromCanvas);
+        canvas.off("object:scaling", updateFromCanvas);
+        canvas.off("object:rotating", updateFromCanvas);
+      }
+    };
+  }, []);
 
   // Resolve Envelope Outer Color, Flap Color & Liner Style
   const envelopeOuterColor =
@@ -922,14 +1053,67 @@ export default function InvitationCanvasStage({
                   </div>
                 )}
 
-                {/* Drag Handles (Visible when selected in interactive Studio mode) */}
+                {/* Evite-Style Floating Textbox Controls (Delete & Duplicate) */}
                 {isSelected && !isEditing && !readOnly && (
-                  <>
-                    <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                    <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-blue-600 border border-white rounded-full shadow-xs pointer-events-none" />
-                  </>
+                  <div
+                    data-designer-control="true"
+                    className="absolute z-50 flex items-center gap-1.5 p-1 bg-white rounded-full shadow-lg border border-slate-200 pointer-events-auto transform -translate-x-1/2 -translate-y-full select-none"
+                    style={{
+                      left: "50%",
+                      top: "-12px", // anchored slightly above the top border
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
+                    {/* Delete Textbox Button */}
+                    <button
+                      type="button"
+                      title="Delete text box"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteActiveTextbox(layer.id);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <Trash2Icon className="w-3.5 h-3.5" />
+                    </button>
+
+                    <span className="w-px h-3.5 bg-slate-200" />
+
+                    {/* Duplicate Textbox Button */}
+                    <button
+                      type="button"
+                      title="Duplicate text box"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDuplicateActiveTextbox(layer.id);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <CopyIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Evite-Style Selection Handles & Rotation (Visible when selected in interactive Studio mode) */}
+                {isSelected && !isEditing && !readOnly && (
+                  <div data-designer-control="true" className="pointer-events-none">
+                    {/* Corner Dots */}
+                    <div className="absolute -top-1.5 -left-1.5 w-2.5 h-2.5 bg-white border-2 border-blue-500 rounded-full shadow-xs" />
+                    <div className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-white border-2 border-blue-500 rounded-full shadow-xs" />
+                    <div className="absolute -bottom-1.5 -left-1.5 w-2.5 h-2.5 bg-white border-2 border-blue-500 rounded-full shadow-xs" />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-2.5 h-2.5 bg-white border-2 border-blue-500 rounded-full shadow-xs" />
+
+                    {/* Left & Right Edge Handles (matching Evite) */}
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1.5 h-3.5 bg-white border border-blue-500 rounded-xs shadow-2xs" />
+                    <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-1.5 h-3.5 bg-white border border-blue-500 rounded-xs shadow-2xs" />
+
+                    {/* Evite-Style Rotation Handle (Below Center) */}
+                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-5 h-5 bg-white border border-slate-300 rounded-full shadow-md flex items-center justify-center pointer-events-auto cursor-grab hover:bg-slate-50 transition-colors">
+                      <RotateCw className="w-2.5 h-2.5 text-slate-600" />
+                    </div>
+                  </div>
                 )}
               </div>
             );
@@ -937,6 +1121,39 @@ export default function InvitationCanvasStage({
             </>
           )}
         </motion.div>
+
+        {/* Floating Toolbar for Fabric / Window Canvas when active */}
+        {toolbarPosition.visible && !readOnly && (
+          <div
+            data-designer-control="true"
+            className="absolute z-50 flex items-center gap-1.5 p-1 bg-white rounded-full shadow-lg border border-slate-200 pointer-events-auto transform -translate-x-1/2 -translate-y-full select-none"
+            style={{
+              left: `${toolbarPosition.x}px`,
+              top: `${toolbarPosition.y - 12}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              title="Delete text box"
+              onClick={() => handleDeleteActiveTextbox()}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <Trash2Icon className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-px h-3.5 bg-slate-200" />
+            <button
+              type="button"
+              title="Duplicate text box"
+              onClick={() => handleDuplicateActiveTextbox()}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <CopyIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Floating Flip Card Pill Button (matching mobile reference preview) */}
         {onFlipCard && (
