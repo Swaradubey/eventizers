@@ -30,6 +30,7 @@ import {
   Pipette,
   Check,
   MapPin,
+  User,
   UserPlus,
   Tag,
   Share2,
@@ -40,13 +41,14 @@ import {
   Copy,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
-import API from "../../services/api";
+import API, { getApiErrorMessage } from "../../services/api";
 import { Invitation, TextLayer, GiftItem, GiftingState } from "../../types/invitationTypes";
 export type { TextLayer, GiftItem, GiftingState };
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
+import FullScreenCardPreview from "./FullScreenCardPreview";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
 import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
@@ -209,17 +211,17 @@ export const getPendingOrUploadedImageUrl = (
         urlParams.get("customBackgroundUrl") ||
         urlParams.get("imageUrl");
       if (paramUrl && isUserUploadedImage(paramUrl)) return paramUrl;
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const sessionUpload = sessionStorage.getItem("pending_upload_invite");
       if (sessionUpload && isUserUploadedImage(sessionUpload)) return sessionUpload;
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const localUpload = localStorage.getItem("pending_upload_invite");
       if (localUpload && isUserUploadedImage(localUpload)) return localUpload;
-    } catch (_) {}
+    } catch (_) { }
   }
   if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
     return invite.imageUrl;
@@ -920,11 +922,11 @@ export default function InvitationStudio({
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
-            ...(savedBackdrop || {}),
-            type: (savedBackdrop as any)?.type || (tplConfig as any)?.backdrop?.type || "color",
-            value: initialBackdropValue,
-            gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
-          },
+          ...(savedBackdrop || {}),
+          type: (savedBackdrop as any)?.type || (tplConfig as any)?.backdrop?.type || "color",
+          value: initialBackdropValue,
+          gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
+        },
       canvasWorkspaceBg: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       backdropBackground: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       envelope: {
@@ -966,7 +968,7 @@ export default function InvitationStudio({
           const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
           if (raw) cachedDraft = JSON.parse(raw);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const mergedInvite = {
@@ -980,12 +982,12 @@ export default function InvitationStudio({
     const effectiveTemplateId = isUploadedSession
       ? null
       : (templateIdQuery ||
-         cachedDraft?.templateId ||
-         mergedInvite?.templateId ||
-         initialEvent?.selectedTemplateId ||
-         (typeof window !== "undefined"
-           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
-           : null));
+        cachedDraft?.templateId ||
+        mergedInvite?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+          : null));
 
     const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, mergedInvite as any);
 
@@ -1235,34 +1237,157 @@ export default function InvitationStudio({
     };
   });
 
-  // Synchronize Details form fields with eventDetails only — card text layers stay clean (Evite style)
+  // Synchronize Details form fields with eventDetails AND card text layers (bidirectional sync)
   const handleDetailsFieldChange = (
     field: "title" | "eventDate" | "eventTime" | "dateTime" | "location" | "hostNote",
     value: string
   ) => {
     setDesignState((prev) => {
       const nextDetails = { ...prev.eventDetails };
+      let nextLayers = prev.textLayers;
 
       if (field === "title") {
         nextDetails.title = value;
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-title" ? { ...l, text: value.toUpperCase() } : l
+        );
       } else if (field === "eventDate") {
         nextDetails.date = value;
+        const dateFormatted = value
+          ? new Date(value + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            }).toUpperCase()
+          : "";
+        const timeStr = nextDetails.time ? ` AT ${nextDetails.time}` : "";
+        const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+        );
       } else if (field === "eventTime") {
         nextDetails.time = value;
+        const dateFormatted = nextDetails.date
+          ? new Date(nextDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            }).toUpperCase()
+          : "";
+        const newDateText = dateFormatted ? `${dateFormatted} AT ${value}` : value ? `AT ${value}` : "";
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+        );
       } else if (field === "dateTime") {
         nextDetails.date = value;
       } else if (field === "location") {
         nextDetails.venue = value;
         nextDetails.address = value;
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-venue" ? { ...l, text: value } : l
+        );
       } else if (field === "hostNote") {
         nextDetails.description = value;
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-description" ? { ...l, text: value } : l
+        );
       }
 
       return {
         ...prev,
         eventDetails: nextDetails,
+        textLayers: nextLayers,
       };
     });
+  };
+
+  // Helper: given a prev designState and changed eventDetails, produce synced textLayers
+  const syncTextLayersFromEventDetails = (
+    prevDesignState: StudioDesignState,
+    nextDetails: StudioDesignState["eventDetails"]
+  ): TextLayer[] => {
+    return prevDesignState.textLayers.map((l) => {
+      if (l.id === "layer-title" && prevDesignState.eventDetails.title !== nextDetails.title) {
+        return { ...l, text: nextDetails.title.toUpperCase() };
+      }
+      if (l.id === "layer-venue" && prevDesignState.eventDetails.venue !== nextDetails.venue) {
+        return { ...l, text: nextDetails.venue };
+      }
+      if (l.id === "layer-description" && prevDesignState.eventDetails.description !== nextDetails.description) {
+        return { ...l, text: nextDetails.description || "" };
+      }
+      if (l.id === "layer-host" && prevDesignState.eventDetails.host !== nextDetails.host) {
+        return { ...l, text: nextDetails.host };
+      }
+      if (l.id === "layer-datetime") {
+        const dateChanged = prevDesignState.eventDetails.date !== nextDetails.date;
+        const timeChanged = prevDesignState.eventDetails.time !== nextDetails.time;
+        if (dateChanged || timeChanged) {
+          const dateFormatted = nextDetails.date
+            ? new Date(nextDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
+              }).toUpperCase()
+            : "";
+          const newDateText = dateFormatted
+            ? nextDetails.time
+              ? `${dateFormatted} AT ${nextDetails.time}`
+              : dateFormatted
+            : nextDetails.time
+              ? `AT ${nextDetails.time}`
+              : "";
+          return newDateText ? { ...l, text: newDateText } : l;
+        }
+      }
+      return l;
+    });
+  };
+
+  // Wrapper for Review step: intercepts setDesignState calls and syncs textLayers from eventDetails changes
+  const handleReviewDesignStateChange = (
+    updater: (prev: StudioDesignState) => StudioDesignState
+  ) => {
+    setDesignState((prev) => {
+      const next = updater(prev);
+      // Only sync textLayers if eventDetails actually changed
+      if (next.eventDetails !== prev.eventDetails) {
+        return { ...next, textLayers: syncTextLayersFromEventDetails(prev, next.eventDetails) };
+      }
+      return next;
+    });
+  };
+
+  // Wrapper for Review step host details: when host name changes, also update layer-host text layer
+  const handleReviewHostDetailsChange = (
+    updater: (prev: HostDetailsData) => HostDetailsData
+  ) => {
+    setHostDetails((prevHost) => {
+      const nextHost = updater(prevHost);
+      // Sync host name to card text layer if it changed
+      if (prevHost.name !== nextHost.name) {
+        setDesignState((ds) => ({
+          ...ds,
+          eventDetails: { ...ds.eventDetails, host: nextHost.name },
+          textLayers: ds.textLayers.map((l) =>
+            l.id === "layer-host" ? { ...l, text: nextHost.name } : l
+          ),
+        }));
+      }
+      return nextHost;
+    });
+  };
+
+  // Wrapper for Details step host details: when host name changes, also sync to eventDetails + layer-host
+  const handleDetailsHostChange = (details: HostDetailsData) => {
+    setHostDetails(details);
+    setDesignState((prev) => ({
+      ...prev,
+      eventDetails: { ...prev.eventDetails, host: details.name },
+      textLayers: prev.textLayers.map((l) =>
+        l.id === "layer-host" ? { ...l, text: details.name } : l
+      ),
+    }));
   };
 
   // Tracks whether we are in the process of generating a snapshot + saving before opening dispatch
@@ -1660,7 +1785,7 @@ export default function InvitationStudio({
       try {
         const raw = localStorage.getItem(`invitation_4layer_${eventId}`);
         if (raw) cachedDraft = JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 2. Fetch saved invitation draft from backend API
@@ -1813,8 +1938,8 @@ export default function InvitationStudio({
       const dateStr = designState.eventDetails.date
         ? `\n📅 *Date:* ${designState.eventDetails.date}${designState.eventDetails.time ? ` at ${designState.eventDetails.time}` : ""}`
         : currentEvent?.eventDate
-        ? `\n📅 *Date:* ${new Date(currentEvent.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`
-        : "";
+          ? `\n📅 *Date:* ${new Date(currentEvent.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`
+          : "";
       const venueStr = (designState.eventDetails.venue || currentEvent?.venue)
         ? `\n📍 *Location:* ${designState.eventDetails.venue || currentEvent?.venue}`
         : "";
@@ -1995,7 +2120,7 @@ export default function InvitationStudio({
       try {
         const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
         if (raw) cachedDraft = JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const mergedInvite = {
@@ -2080,7 +2205,7 @@ export default function InvitationStudio({
         try {
           sessionStorage.removeItem("pending_template_id");
           localStorage.removeItem("pending_template_id");
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -2168,7 +2293,7 @@ export default function InvitationStudio({
         const url = new URL(window.location.href);
         url.searchParams.set("templateId", templateId);
         window.history.replaceState({}, "", url.toString());
-      } catch (e) {}
+      } catch (e) { }
     }
 
     setToast({
@@ -2267,7 +2392,7 @@ export default function InvitationStudio({
       if (typeof document !== "undefined" && (document as any).fonts?.ready) {
         try {
           await (document as any).fonts.ready;
-        } catch (_fErr) {}
+        } catch (_fErr) { }
       }
 
       // Wait for all images in the isolated container to settle
@@ -2647,7 +2772,7 @@ export default function InvitationStudio({
                 designData: payload.designData,
               })
             );
-          } catch (e) {}
+          } catch (e) { }
         }
         return mergedInvite;
       }
@@ -2721,7 +2846,7 @@ export default function InvitationStudio({
         const draftPayload = constructPayload(null);
         localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
         localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-      } catch (e) {}
+      } catch (e) { }
       setToast({ message: "Sign in to save your design permanently.", type: "success" });
       setIsAuthModalOpen(true);
       return;
@@ -2778,7 +2903,7 @@ export default function InvitationStudio({
                   backside: designState.backside,
                 })
               );
-            } catch (e) {}
+            } catch (e) { }
           }
           if (window.location.pathname !== "/dashboard/invitations") {
             router.push(`/dashboard/invitations?${url.searchParams.toString()}`);
@@ -2812,7 +2937,7 @@ export default function InvitationStudio({
           const draftPayload = constructPayload(null);
           localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
           localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-        } catch (e) {}
+        } catch (e) { }
         setToast({ message: "Sign in to save your design and continue.", type: "success" });
         setIsAuthModalOpen(true);
         return;
@@ -2854,7 +2979,7 @@ export default function InvitationStudio({
           const draftPayload = constructPayload(null);
           localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
           localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-        } catch (e) {}
+        } catch (e) { }
         setIsAuthModalOpen(true);
         return;
       }
@@ -2872,7 +2997,7 @@ export default function InvitationStudio({
         const draftPayload = constructPayload(null);
         localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
         localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-      } catch (e) {}
+      } catch (e) { }
       setToast({ message: "Sign in to send your invitations.", type: "success" });
       setIsAuthModalOpen(true);
       return;
@@ -3076,10 +3201,7 @@ export default function InvitationStudio({
       }
 
       const errorMsg =
-        rawErrorMsg ||
-        (err?.message === "Network Error"
-          ? "Network Error: Could not connect to backend. Please verify server status."
-          : "Failed to send invitation emails. Please check server settings.");
+        rawErrorMsg || getApiErrorMessage(err) || "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
         type: "error",
@@ -3278,10 +3400,7 @@ export default function InvitationStudio({
       }
 
       const errorMsg =
-        rawErrorMsg ||
-        (err?.message === "Network Error"
-          ? "Network Error: Could not connect to backend. Please verify server status."
-          : "Failed to send invitation emails. Please check server settings.");
+        rawErrorMsg || getApiErrorMessage(err) || "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
         type: "error",
@@ -3382,22 +3501,20 @@ export default function InvitationStudio({
                       setCurrentStepIndex(idx);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : isCompleted
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${isActive
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : isCompleted
                       ? "text-slate-700 hover:text-slate-900 hover:bg-white/80"
                       : "text-slate-500 hover:text-slate-800 hover:bg-white/60"
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      isActive
-                        ? "bg-white text-slate-900"
-                        : isCompleted
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive
+                      ? "bg-white text-slate-900"
+                      : isCompleted
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-slate-200 text-slate-600"
-                    }`}
+                      }`}
                   >
                     {isCompleted ? "✓" : idx + 1}
                   </span>
@@ -3532,22 +3649,20 @@ export default function InvitationStudio({
                     setCurrentStepIndex(idx);
                   }
                 }}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : isCompleted
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${isActive
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : isCompleted
                     ? "text-slate-700 bg-white/70"
                     : "text-slate-500 hover:text-slate-800"
-                }`}
+                  }`}
               >
                 <span
-                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                    isActive
-                      ? "bg-white text-slate-900"
-                      : isCompleted
+                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${isActive
+                    ? "bg-white text-slate-900"
+                    : isCompleted
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-slate-200 text-slate-600"
-                  }`}
+                    }`}
                 >
                   {isCompleted ? "✓" : idx + 1}
                 </span>
@@ -3564,638 +3679,311 @@ export default function InvitationStudio({
       {currentStepIndex === 0 && (
         <>
           <div className="h-10 bg-white border-b border-slate-200/80 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 z-20 flex-shrink-0 shadow-2xs overflow-x-auto [&::-webkit-scrollbar]:hidden">
-        {/* Aspect Ratio / Size Presets */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
-          {CANVAS_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleSelectPreset(p.id)}
-              className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${canvasPreset === p.id
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                }`}
-              title={p.label}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+            {/* Aspect Ratio / Size Presets */}
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
+              {CANVAS_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(p.id)}
+                  className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${canvasPreset === p.id
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                    }`}
+                  title={p.label}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
 
-        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            disabled={canvasZoom <= 50}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
-            title="Zoom Out"
-          >
-            −
-          </button>
-          <div className="min-w-[48px] h-6 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700 select-none px-1.5">
-            {canvasZoom}%
-          </div>
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            disabled={canvasZoom >= 150}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
-            title="Zoom In"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => setCanvasZoom(100)}
-            className={`ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${canvasZoom !== 100
-              ? "text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
-              : "text-slate-400 border border-transparent"
-              }`}
-            title="Reset Zoom to 100%"
-          >
-            Reset
-          </button>
-        </div>
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={canvasZoom <= 50}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+                title="Zoom Out"
+              >
+                −
+              </button>
+              <div className="min-w-[48px] h-6 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700 select-none px-1.5">
+                {canvasZoom}%
+              </div>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={canvasZoom >= 150}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+                title="Zoom In"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanvasZoom(100)}
+                className={`ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${canvasZoom !== 100
+                  ? "text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+                  : "text-slate-400 border border-transparent"
+                  }`}
+                title="Reset Zoom to 100%"
+              >
+                Reset
+              </button>
+            </div>
 
-        {/* Fit / Fill toggle for image backgrounds */}
-        {designState.cardBg?.type === "image" && (
-          <>
+            {/* Fit / Fill toggle for image backgrounds */}
+            {designState.cardBg?.type === "image" && (
+              <>
+                <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">Fit</span>
+                  <button
+                    type="button"
+                    onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "contain" }))}
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.cardImageFit || "contain") === "contain"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                      }`}
+                    title="Fit 1:1 without cropping"
+                  >
+                    Fit (1:1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "cover" }))}
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${designState.cardImageFit === "cover"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                      }`}
+                    title="Fill entire card"
+                  >
+                    Fill (Cover)
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* View Mode Switcher: Standalone Card Only vs Card + Envelope Presentation */}
             <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">Fit</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">View</span>
               <button
                 type="button"
-                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "contain" }))}
-                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.cardImageFit || "contain") === "contain"
+                onClick={() => {
+                  setDesignState((prev) => ({
+                    ...prev,
+                    viewMode: "card",
+                    hideEnvelope: true,
+                  }));
+                }}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.viewMode === "card" || designState.hideEnvelope)
                   ? "bg-slate-900 text-white shadow-xs"
                   : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                   }`}
-                title="Fit 1:1 without cropping"
+                title="Standalone Card Only View"
               >
-                Fit (1:1)
+                Card Only
               </button>
               <button
                 type="button"
-                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "cover" }))}
-                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${designState.cardImageFit === "cover"
+                onClick={() => {
+                  setDesignState((prev) => ({
+                    ...prev,
+                    viewMode: "envelope",
+                    hideEnvelope: false,
+                  }));
+                }}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(!designState.hideEnvelope && designState.viewMode !== "card")
                   ? "bg-slate-900 text-white shadow-xs"
                   : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                   }`}
-                title="Fill entire card"
+                title="Card + Envelope Presentation View"
               >
-                Fill (Cover)
+                Envelope View
               </button>
             </div>
-          </>
-        )}
-
-        {/* View Mode Switcher: Standalone Card Only vs Card + Envelope Presentation */}
-        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">View</span>
-          <button
-            type="button"
-            onClick={() => {
-              setDesignState((prev) => ({
-                ...prev,
-                viewMode: "card",
-                hideEnvelope: true,
-              }));
-            }}
-            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.viewMode === "card" || designState.hideEnvelope)
-              ? "bg-slate-900 text-white shadow-xs"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
-            title="Standalone Card Only View"
-          >
-            Card Only
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDesignState((prev) => ({
-                ...prev,
-                viewMode: "envelope",
-                hideEnvelope: false,
-              }));
-            }}
-            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(!designState.hideEnvelope && designState.viewMode !== "card")
-              ? "bg-slate-900 text-white shadow-xs"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
-            title="Card + Envelope Presentation View"
-          >
-            Envelope View
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
-      {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
-        {/* ------------------------------------------------------------- */}
-        {/* MULTI-TAB SIDEBAR (Left on desktop, Bottom dock on mobile)   */}
-        {/* ------------------------------------------------------------- */}
-        <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
-          {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
-          <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
-            {/* 1. Text Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "text" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("text");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "text"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <span className="text-base lg:text-lg font-bold font-serif leading-none">T</span>
-              <span className="text-[10px] tracking-tight">Text</span>
-            </button>
-
-            {/* 2. Backgrounds Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "backgrounds" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("backgrounds");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="20" x2="20" y2="4" />
-                <line x1="8" y1="20" x2="20" y2="8" />
-                <line x1="14" y1="20" x2="20" y2="14" />
-                <line x1="4" y1="14" x2="14" y2="4" />
-              </svg>
-              <span className="text-[10px] tracking-tight">Backgrounds</span>
-            </button>
-
-            {/* 3. Effects Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "effects" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("effects");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "effects"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Effects</span>
-            </button>
-
-            {/* 4. Envelope Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "envelope" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("envelope");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <Mail className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Envelope</span>
-            </button>
-
-            {/* 5. Backside Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "backside" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("backside");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backside"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <CopyPlus className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Backside</span>
-            </button>
           </div>
 
-          {/* Sub-Panel Content Area (Drawer on mobile/tablet, Sidebar on desktop) */}
-          <div className={`${mobileToolsOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:md:w-88 max-h-[48vh] lg:max-h-none h-auto lg:h-full overflow-y-auto p-4 sm:p-5 space-y-6 flex-col text-slate-700 bg-white border-b lg:border-b-0 border-slate-200 custom-scrollbar`}>
-            {/* Mobile close bar */}
-            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {activeTab} Settings
-              </span>
-              <button
-                type="button"
-                onClick={() => setMobileToolsOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                title="Close settings"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {/* -------------------- TAB 1: TEXT -------------------- */}
-            {activeTab === "text" && (
-              activeLayer ? (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {/* Header with Deselect & Clear Buttons */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-                          Text Editor
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                          Active Layer
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-                            setEditingTextId(null);
-                          }}
-                          className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                          title="Deselect active text layer"
-                        >
-                          Deselect
-                        </button>
-                        <span className="text-slate-200">|</span>
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ text: "" })}
-                          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
+          {/* ========================================================================= */}
+          {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
+          {/* ========================================================================= */}
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
+            {/* ------------------------------------------------------------- */}
+            {/* MULTI-TAB SIDEBAR (Left on desktop, Bottom dock on mobile)   */}
+            {/* ------------------------------------------------------------- */}
+            <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
+              {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
+              <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
+                {/* 1. Text Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "text" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("text");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "text"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <span className="text-base lg:text-lg font-bold font-serif leading-none">T</span>
+                  <span className="text-[10px] tracking-tight">Text</span>
+                </button>
 
-                    {/* Active Layer Quick Switcher Chips */}
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {designState.textLayers.map((l) => {
-                        const isSelected = activeLayer?.id === l.id;
-                        const label =
-                          l.id === "layer-title"
-                            ? "Title"
-                            : l.id === "layer-datetime"
-                              ? "Date & Time"
-                              : l.id === "layer-venue"
-                                ? "Venue"
-                                : l.id === "layer-description"
-                                  ? "Description"
-                                  : l.id === "layer-host"
-                                    ? "Host"
-                                    : l.text?.slice(0, 12) || "Layer";
-                        return (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => handleSelectLayer(l.id)}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-slate-900 text-white shadow-xs"
-                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                {/* 2. Backgrounds Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "backgrounds" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("backgrounds");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <svg className="w-4 h-4 lg:w-5 lg:h-5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="4" y1="20" x2="20" y2="4" />
+                    <line x1="8" y1="20" x2="20" y2="8" />
+                    <line x1="14" y1="20" x2="20" y2="14" />
+                    <line x1="4" y1="14" x2="14" y2="4" />
+                  </svg>
+                  <span className="text-[10px] tracking-tight">Backgrounds</span>
+                </button>
 
-                    {/* Textarea */}
-                    <textarea
-                      rows={3}
-                      value={activeLayer.text || ""}
-                      onChange={(e) => updateActiveLayer({ text: e.target.value })}
-                      placeholder="Enter card text here..."
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
-                    />
-                  </div>
+                {/* 3. Effects Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "effects" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("effects");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "effects"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Effects</span>
+                </button>
 
-                  {/* Typography Font Family Dropdown */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Typography
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={activeLayer.fontFamily}
-                        onChange={(e) => {
-                          const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
-                          updateActiveLayer({
-                            fontFamily: e.target.value,
-                            fontWeight: opt?.weight || "700",
-                          });
-                        }}
-                        className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
-                      >
-                        {TYPOGRAPHY_OPTIONS.map((f) => (
-                          <option key={f.name} value={f.value}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
+                {/* 4. Envelope Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "envelope" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("envelope");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <Mail className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Envelope</span>
+                </button>
 
-                  {/* Type Size & Type Color Row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Type Size */}
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                        Type Size
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={activeLayer.fontSize || 42}
-                          onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
-                          className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
-                        >
-                          {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                    </div>
+                {/* 5. Backside Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "backside" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("backside");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backside"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <CopyPlus className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Backside</span>
+                </button>
+              </div>
 
-                    {/* Type Color */}
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                        Type Color
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                          <span
-                            className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
-                            style={{ backgroundColor: activeLayer.color || "#51afff" }}
-                          />
-                          <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
-                            {activeLayer.color || "#51afff"}
-                          </span>
-                        </div>
-                        {/* Color Wheel Trigger */}
-                        <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              background:
-                                "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
-                            }}
-                          />
-                          <input
-                            type="color"
-                            value={activeLayer.color || "#51afff"}
-                            onChange={(e) => updateActiveLayer({ color: e.target.value })}
-                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                          />
-                          <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
-                            <Pipette className="w-2.5 h-2.5 text-slate-700" />
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Letter Casing & Text Alignment Row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Letter Casing */}
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                        Letter Casing
-                      </label>
-                      <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ casing: "uppercase" })}
-                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                            activeLayer.casing === "uppercase"
-                              ? "bg-slate-900 text-white"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          A
-                        </button>
-                        <div className="w-px h-6 bg-slate-200" />
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ casing: "lowercase" })}
-                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                            activeLayer.casing === "lowercase"
-                              ? "bg-slate-900 text-white"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          a
-                        </button>
-                        <div className="w-px h-6 bg-slate-200" />
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ casing: "capitalize" })}
-                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                            activeLayer.casing === "capitalize"
-                              ? "bg-slate-900 text-white"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          Aa
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Text Alignment */}
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                        Text Alignment
-                      </label>
-                      <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ align: "left" })}
-                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            activeLayer.align === "left"
-                              ? "bg-[#d9f99d] text-slate-900"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                          title="Align Left"
-                        >
-                          <AlignLeft className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-6 bg-slate-200" />
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ align: "center" })}
-                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            activeLayer.align === "center"
-                              ? "bg-[#d9f99d] text-slate-900"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                          title="Align Center"
-                        >
-                          <AlignCenter className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-6 bg-slate-200" />
-                        <button
-                          type="button"
-                          onClick={() => updateActiveLayer({ align: "right" })}
-                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            activeLayer.align === "right"
-                              ? "bg-[#d9f99d] text-slate-900"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                          title="Align Right"
-                        >
-                          <AlignRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Letter Spacing & Line Height Sliders */}
-                  <div className="space-y-4 pt-1">
-                    <div>
-                      <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        <span>Letter Spacing</span>
-                        <span className="text-slate-700 font-mono font-medium">{activeLayer.letterSpacing || 0}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={-2}
-                        max={12}
-                        step={0.5}
-                        value={activeLayer.letterSpacing || 0}
-                        onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
-                        className="w-full accent-slate-900 cursor-pointer"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        <span>Line Height</span>
-                        <span className="text-slate-700 font-mono font-medium">
-                          {(activeLayer.lineHeight || 1.2).toFixed(1)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.8}
-                        max={2.2}
-                        step={0.1}
-                        value={activeLayer.lineHeight || 1.2}
-                        onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
-                        className="w-full accent-slate-900 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Action Buttons: Add Text Box, Duplicate & Delete */}
-                  <div className="pt-2 flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleAddTextBox}
-                        className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add text box</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicateActiveLayer()}
-                        className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
-                        title="Duplicate active text box"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Duplicate</span>
-                      </button>
-                    </div>
-
-                    {designState.textLayers.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteActiveLayer()}
-                        className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete this text box</span>
-                      </button>
-                    )}
-                  </div>
+              {/* Sub-Panel Content Area (Drawer on mobile/tablet, Sidebar on desktop) */}
+              <div className={`${mobileToolsOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:md:w-88 max-h-[48vh] lg:max-h-none h-auto lg:h-full overflow-y-auto p-4 sm:p-5 space-y-6 flex-col text-slate-700 bg-white border-b lg:border-b-0 border-slate-200 custom-scrollbar`}>
+                {/* Mobile close bar */}
+                <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    {activeTab} Settings
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileToolsOpen(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Close settings"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              ) : (
-                /* Inactive State: Decoupled when no text layer is selected */
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-                        Text Editor
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">
-                        No Layer Selected
-                      </span>
-                    </div>
-
-                    {/* Friendly Instructional Guide Card */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-2.5 my-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
-                        <Type className="w-5 h-5" />
-                      </div>
+                {/* -------------------- TAB 1: TEXT -------------------- */}
+                {activeTab === "text" && (
+                  activeLayer ? (
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      {/* Header with Deselect & Clear Buttons */}
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">Select text to customize</p>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                          Click any text element directly on the canvas to edit typography, size, and styling, or select a layer below.
-                        </p>
-                      </div>
-                    </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                              Text Editor
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                              Active Layer
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                                setEditingTextId(null);
+                              }}
+                              className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                              title="Deselect active text layer"
+                            >
+                              Deselect
+                            </button>
+                            <span className="text-slate-200">|</span>
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ text: "" })}
+                              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
 
-                    {/* Quick Layer Switcher List */}
-                    {designState.textLayers.length > 0 && (
-                      <div className="mt-4">
-                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
-                          Available Layers ({designState.textLayers.length})
-                        </span>
-                        <div className="flex flex-col gap-1.5">
+                        {/* Active Layer Quick Switcher Chips */}
+                        <div className="flex flex-wrap gap-1.5 mb-3">
                           {designState.textLayers.map((l) => {
+                            const isSelected = activeLayer?.id === l.id;
                             const label =
                               l.id === "layer-title"
                                 ? "Title"
@@ -4207,21 +3995,791 @@ export default function InvitationStudio({
                                       ? "Description"
                                       : l.id === "layer-host"
                                         ? "Host"
-                                        : l.text?.slice(0, 16) || "Layer";
+                                        : l.text?.slice(0, 12) || "Layer";
                             return (
                               <button
                                 key={l.id}
                                 type="button"
                                 onClick={() => handleSelectLayer(l.id)}
-                                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 transition-all text-left cursor-pointer group shadow-2xs"
+                                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSelected
+                                  ? "bg-slate-900 text-white shadow-xs"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                  }`}
                               >
-                                <span className="font-semibold text-slate-800 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-indigo-600 transition-colors" />
-                                  <span>{label}</span>
-                                </span>
-                                <span className="text-[11px] text-slate-400 truncate max-w-[140px] group-hover:text-slate-600">
-                                  {l.text}
-                                </span>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Textarea */}
+                        <textarea
+                          rows={3}
+                          value={activeLayer.text || ""}
+                          onChange={(e) => updateActiveLayer({ text: e.target.value })}
+                          placeholder="Enter card text here..."
+                          className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Typography Font Family Dropdown */}
+                      <div>
+                        <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                          Typography
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={activeLayer.fontFamily}
+                            onChange={(e) => {
+                              const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
+                              updateActiveLayer({
+                                fontFamily: e.target.value,
+                                fontWeight: opt?.weight || "700",
+                              });
+                            }}
+                            className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
+                          >
+                            {TYPOGRAPHY_OPTIONS.map((f) => (
+                              <option key={f.name} value={f.value}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Type Size & Type Color Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Type Size */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Type Size
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={activeLayer.fontSize || 42}
+                              onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
+                              className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
+                            >
+                              {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        {/* Type Color */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Type Color
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                              <span
+                                className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
+                                style={{ backgroundColor: activeLayer.color || "#51afff" }}
+                              />
+                              <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
+                                {activeLayer.color || "#51afff"}
+                              </span>
+                            </div>
+                            {/* Color Wheel Trigger */}
+                            <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
+                              <div
+                                className="absolute inset-0"
+                                style={{
+                                  background:
+                                    "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
+                                }}
+                              />
+                              <input
+                                type="color"
+                                value={activeLayer.color || "#51afff"}
+                                onChange={(e) => updateActiveLayer({ color: e.target.value })}
+                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                              />
+                              <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
+                                <Pipette className="w-2.5 h-2.5 text-slate-700" />
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Letter Casing & Text Alignment Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Letter Casing */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Letter Casing
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ casing: "uppercase" })}
+                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "uppercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                            >
+                              A
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ casing: "lowercase" })}
+                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "lowercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                            >
+                              a
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ casing: "capitalize" })}
+                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "capitalize"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                            >
+                              Aa
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Text Alignment */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Text Alignment
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "left" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "left"
+                                ? "bg-[#d9f99d] text-slate-900"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                              title="Align Left"
+                            >
+                              <AlignLeft className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "center" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "center"
+                                ? "bg-[#d9f99d] text-slate-900"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                              title="Align Center"
+                            >
+                              <AlignCenter className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "right" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "right"
+                                ? "bg-[#d9f99d] text-slate-900"
+                                : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                              title="Align Right"
+                            >
+                              <AlignRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Letter Spacing & Line Height Sliders */}
+                      <div className="space-y-4 pt-1">
+                        <div>
+                          <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            <span>Letter Spacing</span>
+                            <span className="text-slate-700 font-mono font-medium">{activeLayer.letterSpacing || 0}px</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={-2}
+                            max={12}
+                            step={0.5}
+                            value={activeLayer.letterSpacing || 0}
+                            onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
+                            className="w-full accent-slate-900 cursor-pointer"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            <span>Line Height</span>
+                            <span className="text-slate-700 font-mono font-medium">
+                              {(activeLayer.lineHeight || 1.2).toFixed(1)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.8}
+                            max={2.2}
+                            step={0.1}
+                            value={activeLayer.lineHeight || 1.2}
+                            onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
+                            className="w-full accent-slate-900 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons: Add Text Box, Duplicate & Delete */}
+                      <div className="pt-2 flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddTextBox}
+                            className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add text box</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateActiveLayer()}
+                            className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
+                            title="Duplicate active text box"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Duplicate</span>
+                          </button>
+                        </div>
+
+                        {designState.textLayers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteActiveLayer()}
+                            className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete this text box</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Inactive State: Decoupled when no text layer is selected */
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Text Editor
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">
+                            No Layer Selected
+                          </span>
+                        </div>
+
+                        {/* Friendly Instructional Guide Card */}
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-2.5 my-3">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+                            <Type className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">Select text to customize</p>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                              Click any text element directly on the canvas to edit typography, size, and styling, or select a layer below.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quick Layer Switcher List */}
+                        {designState.textLayers.length > 0 && (
+                          <div className="mt-4">
+                            <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
+                              Available Layers ({designState.textLayers.length})
+                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              {designState.textLayers.map((l) => {
+                                const label =
+                                  l.id === "layer-title"
+                                    ? "Title"
+                                    : l.id === "layer-datetime"
+                                      ? "Date & Time"
+                                      : l.id === "layer-venue"
+                                        ? "Venue"
+                                        : l.id === "layer-description"
+                                          ? "Description"
+                                          : l.id === "layer-host"
+                                            ? "Host"
+                                            : l.text?.slice(0, 16) || "Layer";
+                                return (
+                                  <button
+                                    key={l.id}
+                                    type="button"
+                                    onClick={() => handleSelectLayer(l.id)}
+                                    className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 transition-all text-left cursor-pointer group shadow-2xs"
+                                  >
+                                    <span className="font-semibold text-slate-800 flex items-center gap-2">
+                                      <span className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-indigo-600 transition-colors" />
+                                      <span>{label}</span>
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[140px] group-hover:text-slate-600">
+                                      {l.text}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add Text Box Button */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleAddTextBox}
+                          className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add text box</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
+                {activeTab === "backgrounds" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Interactive Photo Slot Manager (for templates with a photo frame) */}
+                    {designState.photoSlot && (
+                      <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl shadow-2xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                            <span>📸</span>
+                            <span>Photo Placeholder</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 uppercase tracking-wider">
+                            Editable Slot
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 leading-relaxed mb-3">
+                          This template includes an interactive circular photo slot. Click below or directly click the photo frame on the canvas to upload your baby photo.
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            onClick={() => photoInputRef.current?.click()}
+                            className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
+                            title="Click to change photo"
+                          >
+                            {designState.photoSlot.imageUrl ? (
+                              <img
+                                src={designState.photoSlot.imageUrl}
+                                alt="Photo preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-amber-600 bg-amber-100">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <Upload className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="flex-1 flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => photoInputRef.current?.click()}
+                              className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Replace Photo</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextState: StudioDesignState = {
+                                  ...designState,
+                                  photoSlot: designState.photoSlot
+                                    ? {
+                                      ...designState.photoSlot,
+                                      imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
+                                    }
+                                    : null,
+                                };
+                                setDesignState(nextState);
+                                pushStateToHistory(nextState);
+                              }}
+                              className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline transition-colors"
+                            >
+                              Reset to placeholder
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Custom Background Upload Area */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
+                        Custom Background
+                      </span>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-slate-50 flex items-center gap-3.5"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                          {isUploading ? (
+                            <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
+                          ) : (
+                            <Upload className="w-5 h-5 text-slate-600" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-800">Upload your own</p>
+                          <p className="text-[11px] text-slate-500">Use any image as your background</p>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Evite Ambient Workspace Backdrops */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
+                        Ambient Workspace Backdrop
+                      </span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {PRESET_STAGE_BACKDROPS.map((stageBg) => {
+                          const isSelected = designState.stageBackdrop.value === stageBg.style;
+                          return (
+                            <button
+                              key={stageBg.id}
+                              type="button"
+                              onClick={() => {
+                                pushStateToHistory({
+                                  ...designState,
+                                  stageBackdrop: {
+                                    type: "pattern",
+                                    value: stageBg.style,
+                                  },
+                                  canvasWorkspaceBg: stageBg.style,
+                                  backdropBackground: stageBg.style,
+                                } as any);
+                              }}
+                              className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
+                                ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                }`}
+                              style={{
+                                background: stageBg.style.startsWith("/")
+                                  ? `url(${stageBg.style}) center/cover no-repeat`
+                                  : stageBg.style,
+                              }}
+                              title={stageBg.label}
+                            >
+                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="text-sm">{stageBg.icon}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Colors Picker Input */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Backdrop Color
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                          <span
+                            className="w-5 h-5 rounded-full border border-black/10 flex-shrink-0"
+                            style={{
+                              background: designState.stageBackdrop.value || "#0f172a",
+                              backgroundColor: designState.stageBackdrop.value?.includes("gradient")
+                                ? undefined
+                                : designState.stageBackdrop.value || "#0f172a",
+                            }}
+                          />
+                          <span className="text-xs font-mono font-semibold text-slate-700 uppercase truncate">
+                            {designState.stageBackdrop.value?.includes("gradient")
+                              ? "Preset Gradient"
+                              : designState.stageBackdrop.value || "#0f172a"}
+                          </span>
+                        </div>
+                        {/* Rainbow color wheel */}
+                        <label className="w-10 h-10 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              background:
+                                "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
+                            }}
+                          />
+                          <input
+                            type="color"
+                            value={
+                              designState.stageBackdrop.value?.startsWith("#")
+                                ? designState.stageBackdrop.value
+                                : "#0f172a"
+                            }
+                            onChange={(e) =>
+                              pushStateToHistory({
+                                ...designState,
+                                stageBackdrop: {
+                                  type: "color",
+                                  value: e.target.value,
+                                  gradient: undefined,
+                                },
+                                canvasWorkspaceBg: e.target.value,
+                                backdropBackground: e.target.value,
+                              } as any)
+                            }
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          />
+                          <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
+                            <Pipette className="w-3 h-3 text-slate-700" />
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* 3-Column Scrollable Grid of Background Presets */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Backdrop Presets
+                      </span>
+                      <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                        {PRESET_BACKGROUNDS.map((bg) => {
+                          const isSelected =
+                            designState.stageBackdrop.value === bg.style ||
+                            designState.stageBackdrop.gradient === bg.style;
+                          return (
+                            <button
+                              key={bg.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  stageBackdrop: {
+                                    type: "pattern",
+                                    value: bg.style,
+                                    gradient: bg.style,
+                                  },
+                                  canvasWorkspaceBg: bg.style,
+                                  backdropBackground: bg.style,
+                                } as any)
+                              }
+                              className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
+                                ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                }`}
+                              style={{ background: bg.style }}
+                              title={bg.label}
+                            >
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-base drop-shadow-sm">{bg.icon}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB 3: ENVELOPE -------------------- */}
+                {activeTab === "envelope" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Sub-tabs: Colors, Liners, Stamps, Stickers */}
+                    <div className="flex items-center p-1 bg-slate-100 rounded-xl">
+                      {(["colors", "liners", "stamps", "stickers"] as const).map((sub) => {
+                        const isActive = envelopeSubTab === sub;
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => setEnvelopeSubTab(sub)}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${isActive
+                              ? "bg-white text-slate-900 shadow-xs font-bold"
+                              : "text-slate-500 hover:text-slate-800"
+                              }`}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Sub-Tab 1: Envelope Flap Colors */}
+                    {envelopeSubTab === "colors" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Envelope Flap Colors
+                        </span>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
+                          {ENVELOPE_COLORS.map((env) => {
+                            const isSelected = designState.envelope.color === env.hex;
+                            return (
+                              <button
+                                key={env.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: { ...designState.envelope, color: env.hex },
+                                  })
+                                }
+                                className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
+                                  ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                  : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                  }`}
+                                style={{ background: env.hex }}
+                                title={env.name}
+                              >
+                                {/* Realistic Envelope Flap SVG Silhouette */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" viewBox="0 0 100 70">
+                                  <polygon points="0,0 100,0 50,42" fill="none" stroke="#000" strokeWidth="2" />
+                                </svg>
+                                {isSelected && (
+                                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5" />
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 2: Liners */}
+                    {envelopeSubTab === "liners" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Interior Liner Patterns
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {ENVELOPE_LINERS.map((liner) => {
+                            const isSelected = designState.envelope.liner === liner.id;
+                            return (
+                              <button
+                                key={liner.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
+                                  })
+                                }
+                                className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <div
+                                  className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
+                                  style={{ background: liner.style }}
+                                />
+                                <span className="text-xs font-semibold text-slate-800 truncate">{liner.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 3: Stamps */}
+                    {envelopeSubTab === "stamps" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Envelope Postal Stamps
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {STAMPS.map((stamp) => {
+                            const isSelected = designState.envelope.stamp === stamp.id;
+                            return (
+                              <button
+                                key={stamp.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: {
+                                      ...designState.envelope,
+                                      stamp: isSelected ? null : stamp.id,
+                                    },
+                                  })
+                                }
+                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <span className="text-2xl">{stamp.emoji}</span>
+                                <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 4: Stickers */}
+                    {envelopeSubTab === "stickers" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Flap Seals & Stickers
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {STICKERS.map((sticker) => {
+                            const isSelected = designState.envelope.sticker === sticker.id;
+                            return (
+                              <button
+                                key={sticker.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: {
+                                      ...designState.envelope,
+                                      sticker: isSelected ? null : sticker.id,
+                                    },
+                                  })
+                                }
+                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <span className="text-2xl">{sticker.emoji}</span>
+                                <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
                               </button>
                             );
                           })}
@@ -4229,1000 +4787,547 @@ export default function InvitationStudio({
                       </div>
                     )}
                   </div>
-
-                  {/* Add Text Box Button */}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={handleAddTextBox}
-                      className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add text box</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
-
-            {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
-            {activeTab === "backgrounds" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Interactive Photo Slot Manager (for templates with a photo frame) */}
-                {designState.photoSlot && (
-                  <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl shadow-2xs">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                        <span>📸</span>
-                        <span>Photo Placeholder</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 uppercase tracking-wider">
-                        Editable Slot
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed mb-3">
-                      This template includes an interactive circular photo slot. Click below or directly click the photo frame on the canvas to upload your baby photo.
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
-                        title="Click to change photo"
-                      >
-                        {designState.photoSlot.imageUrl ? (
-                          <img
-                            src={designState.photoSlot.imageUrl}
-                            alt="Photo preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-amber-600 bg-amber-100">
-                            <Upload className="w-4 h-4" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                          <Upload className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <div className="flex-1 flex flex-col gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => photoInputRef.current?.click()}
-                          className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Replace Photo</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nextState: StudioDesignState = {
-                              ...designState,
-                              photoSlot: designState.photoSlot
-                                ? {
-                                  ...designState.photoSlot,
-                                  imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
-                                }
-                                : null,
-                            };
-                            setDesignState(nextState);
-                            pushStateToHistory(nextState);
-                          }}
-                          className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline transition-colors"
-                        >
-                          Reset to placeholder
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 )}
 
-                {/* Custom Background Upload Area */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
-                    Custom Background
-                  </span>
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-slate-50 flex items-center gap-3.5"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                      {isUploading ? (
-                        <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
-                      ) : (
-                        <Upload className="w-5 h-5 text-slate-600" />
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-bold text-slate-800">Upload your own</p>
-                      <p className="text-[11px] text-slate-500">Use any image as your background</p>
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file);
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Evite Ambient Workspace Backdrops */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
-                    Ambient Workspace Backdrop
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PRESET_STAGE_BACKDROPS.map((stageBg) => {
-                      const isSelected = designState.stageBackdrop.value === stageBg.style;
-                      return (
-                        <button
-                          key={stageBg.id}
-                          type="button"
-                          onClick={() => {
-                            pushStateToHistory({
-                              ...designState,
-                              stageBackdrop: {
-                                type: "pattern",
-                                value: stageBg.style,
-                              },
-                              canvasWorkspaceBg: stageBg.style,
-                              backdropBackground: stageBg.style,
-                            } as any);
-                          }}
-                          className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${
-                            isSelected
-                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                          }`}
-                          style={{
-                            background: stageBg.style.startsWith("/")
-                              ? `url(${stageBg.style}) center/cover no-repeat`
-                              : stageBg.style,
-                          }}
-                          title={stageBg.label}
-                        >
-                          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="text-sm">{stageBg.icon}</span>
-                          </div>
-                          {isSelected && (
-                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Colors Picker Input */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                    Backdrop Color
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                      <span
-                        className="w-5 h-5 rounded-full border border-black/10 flex-shrink-0"
-                        style={{
-                          background: designState.stageBackdrop.value || "#0f172a",
-                          backgroundColor: designState.stageBackdrop.value?.includes("gradient")
-                            ? undefined
-                            : designState.stageBackdrop.value || "#0f172a",
-                        }}
-                      />
-                      <span className="text-xs font-mono font-semibold text-slate-700 uppercase truncate">
-                        {designState.stageBackdrop.value?.includes("gradient")
-                          ? "Preset Gradient"
-                          : designState.stageBackdrop.value || "#0f172a"}
-                      </span>
-                    </div>
-                    {/* Rainbow color wheel */}
-                    <label className="w-10 h-10 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
-                        }}
-                      />
-                      <input
-                        type="color"
-                        value={
-                          designState.stageBackdrop.value?.startsWith("#")
-                            ? designState.stageBackdrop.value
-                            : "#0f172a"
-                        }
-                        onChange={(e) =>
-                          pushStateToHistory({
-                            ...designState,
-                            stageBackdrop: {
-                              type: "color",
-                              value: e.target.value,
-                              gradient: undefined,
-                            },
-                            canvasWorkspaceBg: e.target.value,
-                            backdropBackground: e.target.value,
-                          } as any)
-                        }
-                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                      />
-                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
-                        <Pipette className="w-3 h-3 text-slate-700" />
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 3-Column Scrollable Grid of Background Presets */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Backdrop Presets
-                  </span>
-                  <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                    {PRESET_BACKGROUNDS.map((bg) => {
-                      const isSelected =
-                        designState.stageBackdrop.value === bg.style ||
-                        designState.stageBackdrop.gradient === bg.style;
-                      return (
-                        <button
-                          key={bg.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              stageBackdrop: {
-                                type: "pattern",
-                                value: bg.style,
-                                gradient: bg.style,
-                              },
-                              canvasWorkspaceBg: bg.style,
-                              backdropBackground: bg.style,
-                            } as any)
-                          }
-                          className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
-                            ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                            : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                            }`}
-                          style={{ background: bg.style }}
-                          title={bg.label}
-                        >
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-base drop-shadow-sm">{bg.icon}</span>
-                          </div>
-                          {isSelected && (
-                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB 3: ENVELOPE -------------------- */}
-            {activeTab === "envelope" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Sub-tabs: Colors, Liners, Stamps, Stickers */}
-                <div className="flex items-center p-1 bg-slate-100 rounded-xl">
-                  {(["colors", "liners", "stamps", "stickers"] as const).map((sub) => {
-                    const isActive = envelopeSubTab === sub;
-                    return (
-                      <button
-                        key={sub}
-                        type="button"
-                        onClick={() => setEnvelopeSubTab(sub)}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${isActive
-                          ? "bg-white text-slate-900 shadow-xs font-bold"
-                          : "text-slate-500 hover:text-slate-800"
-                          }`}
-                      >
-                        {sub}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Sub-Tab 1: Envelope Flap Colors */}
-                {envelopeSubTab === "colors" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Envelope Flap Colors
-                    </span>
-                    <div className="grid grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
-                      {ENVELOPE_COLORS.map((env) => {
-                        const isSelected = designState.envelope.color === env.hex;
-                        return (
-                          <button
-                            key={env.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: { ...designState.envelope, color: env.hex },
-                              })
-                            }
-                            className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
-                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                              }`}
-                            style={{ background: env.hex }}
-                            title={env.name}
-                          >
-                            {/* Realistic Envelope Flap SVG Silhouette */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" viewBox="0 0 100 70">
-                              <polygon points="0,0 100,0 50,42" fill="none" stroke="#000" strokeWidth="2" />
-                            </svg>
-                            {isSelected && (
-                              <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 2: Liners */}
-                {envelopeSubTab === "liners" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Interior Liner Patterns
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                       {ENVELOPE_LINERS.map((liner) => {
-                        const isSelected = designState.envelope.liner === liner.id;
-                        return (
-                          <button
-                            key={liner.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
-                              })
-                            }
-                            className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <div
-                              className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
-                              style={{ background: liner.style }}
-                            />
-                            <span className="text-xs font-semibold text-slate-800 truncate">{liner.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 3: Stamps */}
-                {envelopeSubTab === "stamps" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Envelope Postal Stamps
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {STAMPS.map((stamp) => {
-                        const isSelected = designState.envelope.stamp === stamp.id;
-                        return (
-                          <button
-                            key={stamp.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: {
-                                  ...designState.envelope,
-                                  stamp: isSelected ? null : stamp.id,
-                                },
-                              })
-                            }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <span className="text-2xl">{stamp.emoji}</span>
-                            <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 4: Stickers */}
-                {envelopeSubTab === "stickers" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Flap Seals & Stickers
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {STICKERS.map((sticker) => {
-                        const isSelected = designState.envelope.sticker === sticker.id;
-                        return (
-                          <button
-                            key={sticker.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: {
-                                  ...designState.envelope,
-                                  sticker: isSelected ? null : sticker.id,
-                                },
-                              })
-                            }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <span className="text-2xl">{sticker.emoji}</span>
-                            <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* -------------------- TAB 4: EFFECTS -------------------- */}
-            {activeTab === "effects" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Metallic Foil Stamps */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Metallic Foil Stamp
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: null, label: "None" },
-                      { id: "gold", label: "Gold Foil", class: "foil-gold" },
-                      { id: "rose-gold", label: "Rose Gold", class: "foil-rose-gold" },
-                      { id: "silver", label: "Silver Foil", class: "foil-silver" },
-                    ].map((foil) => {
-                      const isSelected = designState.effects.foil === foil.id;
-                      return (
-                        <button
-                          key={foil.label}
-                          type="button"
-                          onClick={() => {
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, foil: foil.id as any },
-                            });
-                          }}
-                          className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          <span className={foil.class || ""}>{foil.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Card Surface Textures */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Card Paper Texture
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "matte", label: "Smooth Matte" },
-                      { id: "cotton-press", label: "Cotton Press" },
-                      { id: "linen", label: "Linen Weave" },
-                      { id: "glossy", label: "Glossy Sheen" },
-                    ].map((tex) => {
-                      const isSelected = designState.effects.texture === tex.id;
-                      return (
-                        <button
-                          key={tex.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, texture: tex.id as any },
-                            })
-                          }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          {tex.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Drop Shadow Toggles */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Card Elevation / Shadow
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "subtle", label: "Subtle" },
-                      { id: "floating", label: "Floating 3D" },
-                      { id: "deep", label: "Deep Luxury" },
-                      { id: "none", label: "Flat" },
-                    ].map((sh) => {
-                      const isSelected = designState.effects.shadow === sh.id;
-                      return (
-                        <button
-                          key={sh.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, shadow: sh.id as any },
-                            })
-                          }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          {sh.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB 5: EVENT DETAILS -------------------- */}
-            {activeTab === "details" && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1">
-                  Card Details & Location
-                </span>
-
-                {/* Event Title */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Event Title</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.title}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, title: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-title" ? { ...l, text: val.toUpperCase() } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Host Name */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Host Name</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.host}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, host: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-host" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Date & Time */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={designState.eventDetails.date}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const dateFormatted = val
-                          ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "short",
-                            day: "numeric",
-                          }).toUpperCase()
-                          : "";
-                        const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
-                        const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
-                        setDesignState((prev) => ({
-                          ...prev,
-                          eventDetails: { ...prev.eventDetails, date: val },
-                          textLayers: prev.textLayers.map((l) =>
-                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
-                          ),
-                        }));
-                      }}
-                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Time</label>
-                    <input
-                      type="time"
-                      value={designState.eventDetails.time}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const dateFormatted = designState.eventDetails.date
-                          ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "short",
-                            day: "numeric",
-                          }).toUpperCase()
-                          : "";
-                        const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
-                        setDesignState((prev) => ({
-                          ...prev,
-                          eventDetails: { ...prev.eventDetails, time: val },
-                          textLayers: prev.textLayers.map((l) =>
-                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
-                          ),
-                        }));
-                      }}
-                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Venue */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Venue Name</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.venue}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, venue: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-venue" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Description / Message</label>
-                  <textarea
-                    rows={2}
-                    value={designState.eventDetails.description || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, description: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-description" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Physical Address</label>
-                  <textarea
-                    rows={2}
-                    value={designState.eventDetails.address}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, address: val },
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB: BACKSIDE -------------------- */}
-            {activeTab === "backside" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Card Backside
-                    </h4>
-                    <p className="text-[11px] text-slate-400">
-                      Add a personal note or sign-off to the reverse side
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDesignState((prev) => ({
-                        ...prev,
-                        backside: {
-                          enabled: !prev.backside?.enabled,
-                          message: prev.backside?.message || "We can't wait to celebrate with you! Please join us for this special occasion.",
-                          signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
-                          photoUrl: prev.backside?.photoUrl || null,
-                        },
-                      }));
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      designState.backside?.enabled ? "bg-slate-900" : "bg-slate-200"
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        designState.backside?.enabled ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Flip Card Preview button */}
-                <button
-                  type="button"
-                  onClick={() => setShowingBackside((prev) => !prev)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{showingBackside ? "View Front Side" : "Flip & View Backside"}</span>
-                </button>
-
-                {designState.backside?.enabled && (
-                  <div className="space-y-4 animate-in fade-in duration-150">
+                {/* -------------------- TAB 4: EFFECTS -------------------- */}
+                {activeTab === "effects" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Metallic Foil Stamps */}
                     <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        Backside Message / Note
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={designState.backside?.message || ""}
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Metallic Foil Stamp
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: null, label: "None" },
+                          { id: "gold", label: "Gold Foil", class: "foil-gold" },
+                          { id: "rose-gold", label: "Rose Gold", class: "foil-rose-gold" },
+                          { id: "silver", label: "Silver Foil", class: "foil-silver" },
+                        ].map((foil) => {
+                          const isSelected = designState.effects.foil === foil.id;
+                          return (
+                            <button
+                              key={foil.label}
+                              type="button"
+                              onClick={() => {
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, foil: foil.id as any },
+                                });
+                              }}
+                              className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              <span className={foil.class || ""}>{foil.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Card Surface Textures */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Card Paper Texture
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: "matte", label: "Smooth Matte" },
+                          { id: "cotton-press", label: "Cotton Press" },
+                          { id: "linen", label: "Linen Weave" },
+                          { id: "glossy", label: "Glossy Sheen" },
+                        ].map((tex) => {
+                          const isSelected = designState.effects.texture === tex.id;
+                          return (
+                            <button
+                              key={tex.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, texture: tex.id as any },
+                                })
+                              }
+                              className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              {tex.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Drop Shadow Toggles */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Card Elevation / Shadow
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: "subtle", label: "Subtle" },
+                          { id: "floating", label: "Floating 3D" },
+                          { id: "deep", label: "Deep Luxury" },
+                          { id: "none", label: "Flat" },
+                        ].map((sh) => {
+                          const isSelected = designState.effects.shadow === sh.id;
+                          return (
+                            <button
+                              key={sh.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, shadow: sh.id as any },
+                                })
+                              }
+                              className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              {sh.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB 5: EVENT DETAILS -------------------- */}
+                {activeTab === "details" && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1">
+                      Card Details & Location
+                    </span>
+
+                    {/* Event Title */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Event Title</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.title}
                         onChange={(e) => {
                           const val = e.target.value;
                           setDesignState((prev) => ({
                             ...prev,
+                            eventDetails: { ...prev.eventDetails, title: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-title" ? { ...l, text: val.toUpperCase() } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Host Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Host Name</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.host}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, host: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-host" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Date & Time */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={designState.eventDetails.date}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const dateFormatted = val
+                              ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
+                                weekday: "long",
+                                month: "short",
+                                day: "numeric",
+                              }).toUpperCase()
+                              : "";
+                            const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
+                            const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
+                            setDesignState((prev) => ({
+                              ...prev,
+                              eventDetails: { ...prev.eventDetails, date: val },
+                              textLayers: prev.textLayers.map((l) =>
+                                l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                              ),
+                            }));
+                          }}
+                          className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={designState.eventDetails.time}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const dateFormatted = designState.eventDetails.date
+                              ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+                                weekday: "long",
+                                month: "short",
+                                day: "numeric",
+                              }).toUpperCase()
+                              : "";
+                            const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
+                            setDesignState((prev) => ({
+                              ...prev,
+                              eventDetails: { ...prev.eventDetails, time: val },
+                              textLayers: prev.textLayers.map((l) =>
+                                l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                              ),
+                            }));
+                          }}
+                          className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Venue */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Venue Name</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.venue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, venue: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-venue" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Description / Message</label>
+                      <textarea
+                        rows={2}
+                        value={designState.eventDetails.description || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, description: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-description" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
+                      />
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Physical Address</label>
+                      <textarea
+                        rows={2}
+                        value={designState.eventDetails.address}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, address: val },
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB: BACKSIDE -------------------- */}
+                {activeTab === "backside" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                          Card Backside
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Add a personal note or sign-off to the reverse side
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDesignState((prev) => ({
+                            ...prev,
                             backside: {
-                              enabled: true,
-                              message: val,
+                              enabled: !prev.backside?.enabled,
+                              message: prev.backside?.message || "We can't wait to celebrate with you! Please join us for this special occasion.",
                               signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
                               photoUrl: prev.backside?.photoUrl || null,
                             },
                           }));
                         }}
-                        placeholder="Write a message to appear on the back of your invitation..."
-                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 resize-none shadow-2xs"
-                      />
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${designState.backside?.enabled ? "bg-slate-900" : "bg-slate-200"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${designState.backside?.enabled ? "translate-x-5" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        Sign-Off / Signature
-                      </label>
-                      <input
-                        type="text"
-                        value={designState.backside?.signOff || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDesignState((prev) => ({
-                            ...prev,
-                            backside: {
-                              enabled: true,
-                              message: prev.backside?.message || "",
-                              signOff: val,
-                              photoUrl: prev.backside?.photoUrl || null,
-                            },
-                          }));
-                        }}
-                        placeholder="e.g. With love, The Smiths"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 shadow-2xs"
-                      />
-                    </div>
+                    {/* Flip Card Preview button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowingBackside((prev) => !prev)}
+                      className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>{showingBackside ? "View Front Side" : "Flip & View Backside"}</span>
+                    </button>
+
+                    {designState.backside?.enabled && (
+                      <div className="space-y-4 animate-in fade-in duration-150">
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            Backside Message / Note
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={designState.backside?.message || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDesignState((prev) => ({
+                                ...prev,
+                                backside: {
+                                  enabled: true,
+                                  message: val,
+                                  signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
+                                  photoUrl: prev.backside?.photoUrl || null,
+                                },
+                              }));
+                            }}
+                            placeholder="Write a message to appear on the back of your invitation..."
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 resize-none shadow-2xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            Sign-Off / Signature
+                          </label>
+                          <input
+                            type="text"
+                            value={designState.backside?.signOff || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDesignState((prev) => ({
+                                ...prev,
+                                backside: {
+                                  enabled: true,
+                                  message: prev.backside?.message || "",
+                                  signOff: val,
+                                  photoUrl: prev.backside?.photoUrl || null,
+                                },
+                              }));
+                            }}
+                            placeholder="e.g. With love, The Smiths"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 shadow-2xs"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
+            {/* ------------------------------------------------------------- */}
+            <InvitationCanvasStage
+              key={canvasKey}
+              config={designState}
+              readOnly={false}
+              selectedTextId={designState.selectedTextId}
+              onSelectLayer={(id) => {
+                if (id) {
+                  handleSelectLayer(id);
+                  setActiveTab("text");
+                  setMobileToolsOpen(true);
+                } else {
+                  setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                  setEditingTextId(null);
+                }
+              }}
+              onUpdateLayer={(id, updates) => {
+                setDesignState((prev) => ({
+                  ...prev,
+                  textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+                }));
+              }}
+              onDeleteLayer={handleDeleteActiveLayer}
+              onDuplicateLayer={handleDuplicateActiveLayer}
+              editingTextId={editingTextId}
+              setEditingTextId={setEditingTextId}
+              stageRef={envelopeStageRef}
+              cardRef={cardCanvasRef}
+              zoom={canvasZoom}
+              maxW={activePreset.maxW}
+              aspectRatio={activePreset.aspect}
+              onPhotoClick={() => photoInputRef.current?.click()}
+              photoInputRef={photoInputRef}
+              onBackdropClick={() => {
+                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                setEditingTextId(null);
+              }}
+              onCardClick={() => {
+                setEditingTextId(null);
+                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+              }}
+              showingBackside={showingBackside}
+              onFlipCard={() => setShowingBackside((prev) => !prev)}
+              className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
+            />
+
+            {/* Hidden file input for photo slot replacement */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSlotUpload}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STEP 1: DETAILS WORKFLOW SCREEN (LIVE PREVIEW PANE + DETAILS FORM)        */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 1 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowDetails
+              title={designState.eventDetails.title}
+              eventDate={designState.eventDetails.date}
+              eventTime={designState.eventDetails.time}
+              location={designState.eventDetails.venue || designState.eventDetails.address}
+              hostNote={designState.eventDetails.description || ""}
+              hostDetails={hostDetails}
+              rsvpOptions={rsvpOptions}
+              additionalSections={additionalSections}
+              onUpdateField={handleDetailsFieldChange}
+              onUpdateHostDetails={handleDetailsHostChange}
+              onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
+              onUpdateAdditionalSections={setAdditionalSections}
+            />
           </div>
         </div>
+      )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
-        {/* ------------------------------------------------------------- */}
-        <InvitationCanvasStage
-          key={canvasKey}
-          config={designState}
-          readOnly={false}
-          selectedTextId={designState.selectedTextId}
-          onSelectLayer={(id) => {
-            if (id) {
-              handleSelectLayer(id);
-              setActiveTab("text");
-              setMobileToolsOpen(true);
-            } else {
-              setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-              setEditingTextId(null);
-            }
-          }}
-          onUpdateLayer={(id, updates) => {
-            setDesignState((prev) => ({
-              ...prev,
-              textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-            }));
-          }}
-          onDeleteLayer={handleDeleteActiveLayer}
-          onDuplicateLayer={handleDuplicateActiveLayer}
-          editingTextId={editingTextId}
-          setEditingTextId={setEditingTextId}
-          stageRef={envelopeStageRef}
-          cardRef={cardCanvasRef}
-          zoom={canvasZoom}
-          maxW={activePreset.maxW}
-          aspectRatio={activePreset.aspect}
-          onPhotoClick={() => photoInputRef.current?.click()}
-          photoInputRef={photoInputRef}
-          onBackdropClick={() => {
-            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-            setEditingTextId(null);
-          }}
-          onCardClick={() => {
-            setEditingTextId(null);
-            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-          }}
-          showingBackside={showingBackside}
-          onFlipCard={() => setShowingBackside((prev) => !prev)}
-          className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
-        />
+      {/* ========================================================================= */}
+      {/* STEP 2: GIFTING WORKFLOW SCREEN (LIVE PREVIEW PANE + GIFTING SECTIONS)    */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 2 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowGifting
+              gifting={giftingState}
+              onUpdateGifting={(next) => {
+                setGiftingState(next);
+                setDesignState((prev) => ({ ...prev, gifting: next }));
+              }}
+              wishlists={wishlists}
+              charities={charities}
+              personalFunds={personalFunds}
+              onAddWishlist={(item) => setWishlists((p) => [...p, item])}
+              onRemoveWishlist={(id) => setWishlists((p) => p.filter((w) => w.id !== id))}
+              onAddCharity={(item) => setCharities((p) => [...p, item])}
+              onRemoveCharity={(id) => setCharities((p) => p.filter((c) => c.id !== id))}
+              onAddPersonalFund={(item) => setPersonalFunds((p) => [...p, item])}
+              onRemovePersonalFund={(id) => setPersonalFunds((p) => p.filter((f) => f.id !== id))}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Hidden file input for photo slot replacement */}
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handlePhotoSlotUpload}
-        />
-      </div>
-    </>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 1: DETAILS WORKFLOW SCREEN (LIVE PREVIEW PANE + DETAILS FORM)        */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 1 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          hostDetails={hostDetails}
-          guestCount={eventGuests.length}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowDetails
-          title={designState.eventDetails.title}
-          eventDate={designState.eventDetails.date}
-          eventTime={designState.eventDetails.time}
-          location={designState.eventDetails.venue || designState.eventDetails.address}
-          hostNote={designState.eventDetails.description || ""}
-          hostDetails={hostDetails}
-          rsvpOptions={rsvpOptions}
-          additionalSections={additionalSections}
-          onUpdateField={handleDetailsFieldChange}
-          onUpdateHostDetails={setHostDetails}
-          onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
-          onUpdateAdditionalSections={setAdditionalSections}
-        />
-      </div>
-    </div>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 2: GIFTING WORKFLOW SCREEN (LIVE PREVIEW PANE + GIFTING SECTIONS)    */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 2 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          hostDetails={hostDetails}
-          guestCount={eventGuests.length}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowGifting
-          gifting={giftingState}
-          onUpdateGifting={(next) => {
-            setGiftingState(next);
-            setDesignState((prev) => ({ ...prev, gifting: next }));
-          }}
-          wishlists={wishlists}
-          charities={charities}
-          personalFunds={personalFunds}
-          onAddWishlist={(item) => setWishlists((p) => [...p, item])}
-          onRemoveWishlist={(id) => setWishlists((p) => p.filter((w) => w.id !== id))}
-          onAddCharity={(item) => setCharities((p) => [...p, item])}
-          onRemoveCharity={(id) => setCharities((p) => p.filter((c) => c.id !== id))}
-          onAddPersonalFund={(item) => setPersonalFunds((p) => [...p, item])}
-          onRemovePersonalFund={(id) => setPersonalFunds((p) => p.filter((f) => f.id !== id))}
-        />
-      </div>
-    </div>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 3: REVIEW WORKFLOW SCREEN (LIVE PREVIEW PANE + REVIEW SUMMARY)       */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 3 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          hostDetails={hostDetails}
-          guestCount={eventGuests.length}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[56%] lg:w-[58%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowReview
-          designState={designState}
-          rsvpOptions={rsvpOptions}
-          hostDetails={hostDetails}
-          wishlists={wishlists}
-          charities={charities}
-          personalFunds={personalFunds}
-          selectedGuestCount={selectedGuestIds.length}
-          totalGuestCount={eventGuests.length}
-          onJumpToStep={(idx) => setCurrentStepIndex(idx)}
-          onDesignStateChange={setDesignState}
-          onHostDetailsChange={setHostDetails}
-        />
-      </div>
-    </div>
-  )}
+      {/* ========================================================================= */}
+      {/* STEP 3: REVIEW WORKFLOW SCREEN (LIVE PREVIEW PANE + REVIEW SUMMARY)       */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 3 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[56%] lg:w-[58%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowReview
+              designState={designState}
+              rsvpOptions={rsvpOptions}
+              hostDetails={hostDetails}
+              wishlists={wishlists}
+              charities={charities}
+              personalFunds={personalFunds}
+              selectedGuestCount={selectedGuestIds.length}
+              totalGuestCount={eventGuests.length}
+              onJumpToStep={(idx) => setCurrentStepIndex(idx)}
+              onDesignStateChange={handleReviewDesignStateChange}
+              onHostDetailsChange={handleReviewHostDetailsChange}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* EMAIL SNAPSHOT & DISPATCH MODAL                                           */}
@@ -5501,75 +5606,20 @@ export default function InvitationStudio({
       {/* ========================================================================= */}
       {/* FULL-SCREEN LIVE PREVIEW MODAL                                            */}
       {/* ========================================================================= */}
-      <AnimatePresence>
-        {isPreviewModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
-            onClick={() => setIsPreviewModalOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative max-w-4xl w-full max-h-[94vh] bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-700"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-5 py-3.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-indigo-400" />
-                  <h3 className="text-sm font-bold text-white">Full-Screen Card Preview</h3>
-                  <span className="hidden sm:inline text-xs text-slate-400 font-medium ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
-                    {activePreset.label}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewModalOpen(false)}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                  title="Close Preview"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-950 min-h-[500px]">
-                <div className="w-full flex items-center justify-center py-2">
-                  <div
-                    className="w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center transition-all"
-                    style={{ maxWidth: `${Math.min(Math.max(activePreset.maxW + 40, 520), 680)}px` }}
-                  >
-                    <InvitationCanvasStage
-                      config={{
-                        ...designState,
-                        selectedTextId: null,
-                      }}
-                      zoom={Math.min(canvasZoom, 100)}
-                      maxW={activePreset.maxW}
-                      aspectRatio={activePreset.aspect}
-                      readOnly={true}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsPreviewModalOpen(false);
-                      prepareAndOpenDispatch();
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Send to Guests ({selectedGuestIds.length})</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FullScreenCardPreview
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        activePreset={activePreset}
+        designState={designState}
+        hostDetails={hostDetails}
+        rsvpOptions={rsvpOptions}
+        selectedGuestIds={selectedGuestIds}
+        canvasZoom={canvasZoom}
+        onSendToGuests={() => {
+          setIsPreviewModalOpen(false);
+          prepareAndOpenDispatch();
+        }}
+      />
 
       {/* Auth Modal for deferred sign-in on Next/Send */}
       <AuthModal

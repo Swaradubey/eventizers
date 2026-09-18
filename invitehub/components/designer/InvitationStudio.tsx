@@ -48,6 +48,7 @@ import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
 import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
+import FullScreenCardPreview from "./FullScreenCardPreview";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
 import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
@@ -5548,75 +5549,20 @@ export default function InvitationStudio({
       {/* ========================================================================= */}
       {/* FULL-SCREEN LIVE PREVIEW MODAL                                            */}
       {/* ========================================================================= */}
-      <AnimatePresence>
-        {isPreviewModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
-            onClick={() => setIsPreviewModalOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative max-w-4xl w-full max-h-[94vh] bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-700"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-5 py-3.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-indigo-400" />
-                  <h3 className="text-sm font-bold text-white">Full-Screen Card Preview</h3>
-                  <span className="hidden sm:inline text-xs text-slate-400 font-medium ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
-                    {activePreset.label}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewModalOpen(false)}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                  title="Close Preview"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-950 min-h-[500px]">
-                <div className="w-full flex items-center justify-center py-2">
-                  <div
-                    className="w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center transition-all"
-                    style={{ maxWidth: `${Math.min(Math.max(activePreset.maxW + 40, 520), 680)}px` }}
-                  >
-                    <InvitationCanvasStage
-                      config={{
-                        ...designState,
-                        selectedTextId: null,
-                      }}
-                      zoom={Math.min(canvasZoom, 100)}
-                      maxW={activePreset.maxW}
-                      aspectRatio={activePreset.aspect}
-                      readOnly={true}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsPreviewModalOpen(false);
-                      prepareAndOpenDispatch();
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Send to Guests ({selectedGuestIds.length})</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FullScreenCardPreview
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        activePreset={activePreset}
+        designState={designState}
+        hostDetails={hostDetails}
+        rsvpOptions={rsvpOptions}
+        selectedGuestIds={selectedGuestIds}
+        canvasZoom={canvasZoom}
+        onSendToGuests={() => {
+          setIsPreviewModalOpen(false);
+          prepareAndOpenDispatch();
+        }}
+      />
 
       {/* Auth Modal for deferred sign-in on Next/Send */}
       <AuthModal
