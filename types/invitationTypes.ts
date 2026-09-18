@@ -172,6 +172,9 @@ export interface Invitation {
   eventDate?: string;
   eventTime?: string;
   eventVenue?: string;
+  // Email template dynamic fields
+  hostNotes?: string;
+  hostName?: string;
   createdAt?: string;
   updatedAt?: string;
   // 4-Layer Evite-style Decoupled State
@@ -224,6 +227,9 @@ export interface InvitationPayload {
   eventDate?: string;
   eventTime?: string;
   eventVenue?: string;
+  // Email template dynamic fields
+  hostNotes?: string;
+  hostName?: string;
   // 4-Layer Evite-style Decoupled State
   textElements?: TextLayer[];
   envelope?: EnvelopeConfig;

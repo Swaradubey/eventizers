@@ -51,7 +51,7 @@ import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
 import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
 import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
-import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
+import InvitationWorkflowDetails, { HostDetailsData, AdditionalSectionsState } from "./InvitationWorkflowDetails";
 import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
@@ -1160,6 +1160,15 @@ export default function InvitationStudio({
     coHost: initialInvitation?.designData?.hostDetails?.coHost || "",
   });
 
+  const [additionalSections, setAdditionalSections] = useState<AdditionalSectionsState>({
+    sharedAlbum: Boolean(initialInvitation?.designData?.additionalSections?.sharedAlbum),
+    hostPhotoGallery: Boolean(initialInvitation?.designData?.additionalSections?.hostPhotoGallery),
+    whereToStay: Boolean(initialInvitation?.designData?.additionalSections?.whereToStay),
+    shareCosts: Boolean(initialInvitation?.designData?.additionalSections?.shareCosts),
+    eventSignUps: Boolean(initialInvitation?.designData?.additionalSections?.eventSignUps),
+    mealOptions: Boolean(initialInvitation?.designData?.additionalSections?.mealOptions),
+  });
+
   const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>(() => {
     const s = initialEvent?.rsvpSettings;
     const r = initialInvitation?.designData?.rsvpOptions;
@@ -1253,50 +1262,32 @@ export default function InvitationStudio({
     };
   });
 
-  // Synchronize Details form fields with Canvas text layers and eventDetails
+  // Synchronize Details form fields with eventDetails only — card text layers stay clean (Evite style)
   const handleDetailsFieldChange = (
-    field: "title" | "dateTime" | "location" | "hostNote",
+    field: "title" | "eventDate" | "eventTime" | "dateTime" | "location" | "hostNote",
     value: string
   ) => {
     setDesignState((prev) => {
       const nextDetails = { ...prev.eventDetails };
-      let nextLayers = [...prev.textLayers];
 
       if (field === "title") {
         nextDetails.title = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-title" || l.key === "title" || l.id === "layer-names"
-            ? { ...l, text: value }
-            : l
-        );
+      } else if (field === "eventDate") {
+        nextDetails.date = value;
+      } else if (field === "eventTime") {
+        nextDetails.time = value;
       } else if (field === "dateTime") {
         nextDetails.date = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-date" || l.id === "layer-datetime" || l.key === "dateTime" || l.key === "datetime" || l.key === "date"
-            ? { ...l, text: value }
-            : l
-        );
       } else if (field === "location") {
         nextDetails.venue = value;
         nextDetails.address = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-venue" || l.key === "venue"
-            ? { ...l, text: value }
-            : l
-        );
       } else if (field === "hostNote") {
         nextDetails.description = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-description" || l.id === "layer-rsvp" || l.key === "description"
-            ? { ...l, text: value }
-            : l
-        );
       }
 
       return {
         ...prev,
         eventDetails: nextDetails,
-        textLayers: deduplicateTextLayers(nextLayers),
       };
     });
   };
@@ -2485,6 +2476,8 @@ export default function InvitationStudio({
       eventDate: designState.eventDetails.date || currentEvent?.eventDate || initialEvent?.eventDate || null,
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
       eventVenue: designState.eventDetails.venue || venueLayer?.text?.trim() || currentEvent?.venue || initialEvent?.venue || null,
+      hostNotes: designState.eventDetails.description || "",
+      hostName: hostDetails.name || "SWARA KUMARI",
       textElements: normalizedTextLayers,
       layers: normalizedTextLayers,
       card: fullCardModel,
@@ -2506,6 +2499,7 @@ export default function InvitationStudio({
       designData: {
         ...(currentInvitation?.designData || {}),
         hostDetails,
+        additionalSections,
         rsvpOptions,
         wishlists,
         charities,
@@ -2977,6 +2971,12 @@ export default function InvitationStudio({
         cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
         cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        eventTitle: designState.eventDetails.title || currentEvent?.title || "",
+        eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
+        eventTime: designState.eventDetails.time || currentEvent?.eventTime || "",
+        eventVenue: designState.eventDetails.venue || designState.eventDetails.address || currentEvent?.venue || "",
+        hostNotes: designState.eventDetails.description || "",
+        hostName: hostDetails.name || "SWARA KUMARI",
         rsvpSettings: {
           rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
           rsvpDeadlineDate: combinedDeadlineIso,
@@ -3153,6 +3153,12 @@ export default function InvitationStudio({
         cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
         cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        eventTitle: designState.eventDetails.title || currentEvent?.title || "",
+        eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
+        eventTime: designState.eventDetails.time || currentEvent?.eventTime || "",
+        eventVenue: designState.eventDetails.venue || designState.eventDetails.address || currentEvent?.venue || "",
+        hostNotes: designState.eventDetails.description || "",
+        hostName: hostDetails.name || "SWARA KUMARI",
         rsvpSettings: {
           rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
           rsvpDeadlineDate: combinedDeadlineIso,
@@ -4998,6 +5004,7 @@ export default function InvitationStudio({
         <InvitationWorkflowPreviewPane
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
+          hostDetails={hostDetails}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -5006,14 +5013,17 @@ export default function InvitationStudio({
       <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
         <InvitationWorkflowDetails
           title={designState.eventDetails.title}
-          dateTime={designState.eventDetails.date}
+          eventDate={designState.eventDetails.date}
+          eventTime={designState.eventDetails.time}
           location={designState.eventDetails.venue || designState.eventDetails.address}
           hostNote={designState.eventDetails.description || ""}
           hostDetails={hostDetails}
           rsvpOptions={rsvpOptions}
+          additionalSections={additionalSections}
           onUpdateField={handleDetailsFieldChange}
           onUpdateHostDetails={setHostDetails}
           onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
+          onUpdateAdditionalSections={setAdditionalSections}
         />
       </div>
     </div>
@@ -5028,6 +5038,7 @@ export default function InvitationStudio({
         <InvitationWorkflowPreviewPane
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
+          hostDetails={hostDetails}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -5063,6 +5074,7 @@ export default function InvitationStudio({
         <InvitationWorkflowPreviewPane
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
+          hostDetails={hostDetails}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
