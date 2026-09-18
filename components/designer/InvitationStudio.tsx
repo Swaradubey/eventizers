@@ -57,6 +57,7 @@ import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
 import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
+import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
 export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
@@ -65,65 +66,13 @@ export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
 
 /**
  * Hard teardown helper for Canvas text objects (Evite-Style Clean Architecture).
- * Synchronously removes all existing text objects from Fabric/Canvas before
+ * Synchronously removes all existing text objects and event listeners from Fabric/Canvas before
  * ingesting text layers on canvas load, event switch, or template switch.
  */
 export const teardownCanvasTextLayers = (canvas?: any) => {
-  const canvasInstance =
-    canvas ||
-    (typeof window !== "undefined"
-      ? (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current
-      : null);
-
-  if (canvasInstance && typeof canvasInstance.getObjects === "function") {
-    try {
-      // Clear 2D context buffer if available to erase any ghost draw frames
-      if (typeof canvasInstance.clearContext === "function") {
-        if (canvasInstance.contextContainer) canvasInstance.clearContext(canvasInstance.contextContainer);
-        if (canvasInstance.contextTop) canvasInstance.clearContext(canvasInstance.contextTop);
-      } else if (canvasInstance.lowerCanvasEl && typeof canvasInstance.lowerCanvasEl.getContext === "function") {
-        const rawCtx = canvasInstance.lowerCanvasEl.getContext("2d");
-        if (rawCtx) {
-          rawCtx.clearRect(0, 0, canvasInstance.getWidth?.() || 600, canvasInstance.getHeight?.() || 840);
-        }
-      }
-
-      // Retain background image to prevent wiping out canvas template artwork
-      const savedBgImage = canvasInstance.backgroundImage;
-
-      // 1. Remove ONLY text objects — preserve background image, frame artwork, borders, and decorations
-      const staleTextObjects = canvasInstance
-        .getObjects()
-        .filter((obj: any) => {
-          // Strictly match text-typed objects only
-          if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') return true;
-          // Match objects explicitly flagged as text blocks via data attribute
-          if (obj.data?.isTextBlock) return true;
-          // Exclude image objects, background frames, and non-text decorative elements
-          if (obj.type === 'image' || obj.type === 'rect' || obj.type === 'circle' || obj.type === 'path') return false;
-          // Exclude anything with customId that is NOT a text block (e.g. background-frame)
-          if (obj.customId && obj.customId !== 'background-frame' && obj.type === 'i-text') return true;
-          return false;
-        });
-
-      staleTextObjects.forEach((obj: any) => canvasInstance.remove(obj));
-
-      // Restore background image if it was cleared
-      if (savedBgImage && !canvasInstance.backgroundImage && typeof canvasInstance.setBackgroundImage === "function") {
-        canvasInstance.backgroundImage = savedBgImage;
-      }
-
-      if (typeof canvasInstance.discardActiveObject === "function") {
-        canvasInstance.discardActiveObject();
-      }
-      if (typeof canvasInstance.requestRenderAll === "function") {
-        canvasInstance.requestRenderAll();
-      }
-    } catch (err) {
-      console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
-    }
+  const canvasInstance = canvas || getFabricCanvas();
+  if (canvasInstance) {
+    cleanFabricCanvas(canvasInstance, { preserveBackground: true });
   }
 };
 
@@ -132,13 +81,7 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
  * Guaranteed zero duplication / zero text overlap.
  */
 export const captureCardSnapshot = async (canvasInstance?: any): Promise<string | null> => {
-  const canvas =
-    canvasInstance ||
-    (typeof window !== "undefined"
-      ? (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current
-      : null);
+  const canvas = canvasInstance || getFabricCanvas();
 
   if (canvas && typeof canvas.toDataURL === "function") {
     // Deselect any active object so selection boxes & floating icons do NOT appear in the email snapshot:
@@ -177,7 +120,8 @@ export const captureCardSnapshot = async (canvasInstance?: any): Promise<string 
 /**
  * Idempotency Guard on Canvas Updates:
  * Whenever event state updates or toasts trigger, ensures the canvas doesn't re-append existing text:
- * Only adds text blocks not already present; updates existing objects in-place.
+ * Do NOT call canvas.add(newText) on re-render or navigation if the template already has stored layers;
+ * updates existing objects in-place instead.
  */
 export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
   if (!canvas || typeof canvas.getObjects !== "function") return;
@@ -189,11 +133,15 @@ export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
       existingObjects.map((obj: any) => obj.customId || obj.data?.id).filter(Boolean)
     );
 
+    // If canvas already has stored layers, update existing ones in place.
+    // Do NOT add new layers on re-render/navigation to prevent ghost duplicates.
+    const hasStoredLayers = existingObjects.length > 0;
+
     newBlocks.forEach((block) => {
       const blockId = block.id;
       if (!existingIds.has(blockId)) {
-        // Only add if not already present on canvas
-        if (typeof (window as any)?.fabric?.Textbox === "function") {
+        // Only call canvas.add if canvas does not already have stored layers (initial hydration)
+        if (!hasStoredLayers && typeof (window as any)?.fabric?.Textbox === "function") {
           const FabricTextbox = (window as any).fabric.Textbox;
           const tb = new FabricTextbox(block.text || "", {
             left: block.left !== undefined ? block.left : (block.x !== undefined ? block.x : 50),
@@ -300,6 +248,7 @@ export interface StudioDesignState {
     type: "color" | "gradient" | "image" | "preset";
     value: string;
   };
+  backgroundImageUrl?: string | null;
   stageBackdrop: {
     type: "color" | "pattern";
     value: string;
@@ -571,26 +520,51 @@ export default function InvitationStudio({
       cardBgValue = pendingUploadUrl;
     }
     // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image and NOT a snapshot)
+    // Accept any saved image URL — not just user uploads or .svg — to survive save/restore round-trips
     else if (
       invite?.cardBg &&
-      (invite.cardBg.type === "image"
-        ? isUserUploadedImage(invite.cardBg.value) || (typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg"))
-        : !((tplConfig as any)?.card?.artworkUrl))
+      invite.cardBg.type === "image" &&
+      typeof invite.cardBg.value === "string" &&
+      invite.cardBg.value.trim() !== "" &&
+      !invite.cardBg.value.includes("snapshot")
     ) {
-      cardBgType = invite.cardBg.type;
-      cardBgValue = typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg")
-        ? (getCleanTemplateSvg(invite.cardBg.value) || invite.cardBg.value)
-        : invite.cardBg.value;
+      cardBgType = "image";
+      cardBgValue = invite.cardBg.value;
     } else if (
       invite?.background &&
-      (invite.background.type === "image"
-        ? isUserUploadedImage(invite.background.value) || (typeof invite.background.value === "string" && invite.background.value.endsWith(".svg"))
-        : !((tplConfig as any)?.card?.artworkUrl))
+      invite.background.type === "image" &&
+      typeof invite.background.value === "string" &&
+      invite.background.value.trim() !== "" &&
+      !invite.background.value.includes("snapshot")
+    ) {
+      cardBgType = "image";
+      cardBgValue = invite.background.value;
+    }
+    // Priority 0b: Dedicated backgroundImageUrl field (explicit round-trip persistence)
+    else if (
+      (invite as any)?.backgroundImageUrl &&
+      typeof (invite as any).backgroundImageUrl === "string" &&
+      (invite as any).backgroundImageUrl.trim() !== "" &&
+      !(invite as any).backgroundImageUrl.includes("snapshot")
+    ) {
+      cardBgType = "image";
+      cardBgValue = (invite as any).backgroundImageUrl;
+    }
+    // Priority 0c: Non-image cardBg (color / gradient) from saved state
+    else if (
+      invite?.cardBg &&
+      invite.cardBg.type !== "image" &&
+      !((tplConfig as any)?.card?.artworkUrl)
+    ) {
+      cardBgType = invite.cardBg.type;
+      cardBgValue = invite.cardBg.value;
+    } else if (
+      invite?.background &&
+      invite.background.type !== "image" &&
+      !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.background.type;
-      cardBgValue = typeof invite.background.value === "string" && invite.background.value.endsWith(".svg")
-        ? (getCleanTemplateSvg(invite.background.value) || invite.background.value)
-        : invite.background.value;
+      cardBgValue = invite.background.value;
     }
     // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
     else if ((tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl) {
@@ -844,10 +818,8 @@ export default function InvitationStudio({
     }
     resolvedTextLayers = deduplicateTextLayers(resolvedTextLayers);
 
-    const defaultSelectedId =
-      resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
-      resolvedTextLayers[0]?.id ||
-      "layer-title";
+    // Decoupled selection: strictly null by default so Text Editor controls only activate on explicit selection
+    const defaultSelectedId = null;
 
     const defaultNeutralBackdrop = "#f8fafc";
     const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || null;
@@ -944,6 +916,7 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
+      backgroundImageUrl: cardBgType === "image" ? cardBgValue : ((invite as any)?.backgroundImageUrl || null),
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
@@ -1072,7 +1045,7 @@ export default function InvitationStudio({
               casing: (el.casing || "none") as "uppercase" | "lowercase" | "capitalize" | "none",
             }));
             baseState.textLayers = deduplicateTextLayers(aiLayers);
-            baseState.selectedTextId = baseState.textLayers[0]?.id || "layer-title";
+            baseState.selectedTextId = null;
           }
         } catch (e) {
           console.warn("Could not apply pending_stationery_design:", e);
@@ -1332,8 +1305,10 @@ export default function InvitationStudio({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const dragStartPos = useRef<{ mouseX: number; mouseY: number; layerX: number; layerY: number } | null>(null);
 
-  // Active selected text layer
-  const activeLayer = designState.textLayers.find((l) => l.id === designState.selectedTextId) || designState.textLayers[0];
+  // Active selected text layer - strictly decoupled: only active when a layer is explicitly selected
+  const activeLayer = designState.selectedTextId
+    ? designState.textLayers.find((l) => l.id === designState.selectedTextId) || null
+    : null;
 
   // Selection handler to activate any text layer and sync with toolbar
   const handleSelectLayer = (layerId: string) => {
@@ -1485,23 +1460,18 @@ export default function InvitationStudio({
     }
 
     // Clean up active object on fabric/window canvas if present
-    if (typeof window !== "undefined") {
-      const canvas =
-        (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current;
-      if (canvas && typeof canvas.getObjects === "function") {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
-          canvas.remove(activeObj);
-          if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+    const canvas = getFabricCanvas();
+    if (canvas && typeof canvas.getObjects === "function") {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
+        canvas.remove(activeObj);
+        if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+        if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+      } else {
+        const obj = canvas.getObjects().find((o: any) => o.customId === targetId || o.data?.id === targetId);
+        if (obj) {
+          canvas.remove(obj);
           if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-        } else {
-          const obj = canvas.getObjects().find((o: any) => o.customId === targetId || o.data?.id === targetId);
-          if (obj) {
-            canvas.remove(obj);
-            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-          }
         }
       }
     }
@@ -1510,7 +1480,7 @@ export default function InvitationStudio({
     pushStateToHistory({
       ...designState,
       textLayers: remaining,
-      selectedTextId: remaining[0]?.id || null,
+      selectedTextId: null,
     });
     setToast({ message: "Text box removed", type: "success" });
   };
@@ -1720,7 +1690,7 @@ export default function InvitationStudio({
 
     // Hard Teardown Before Ingesting Text Layers:
     // Synchronously remove existing text objects from Canvas/Fabric and discard active selection
-    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    teardownCanvasTextLayers();
 
     // 5. Hydrate fresh state from template
     const freshState = createDesignStateFromTemplate(
@@ -1976,6 +1946,7 @@ export default function InvitationStudio({
     if (isHydratingRef.current) return;
 
     // Guard: never inject layers while a snapshot capture is in progress. generateSnapshot()
+    let isMounted = true;
     // temporarily mutates selectedTextId, causing React to flush a render; if this effect
     // fires concurrently it writes fresh template-default layers on top of the live canvas.
     if (isSnapshotInProgressRef.current) return;
@@ -2050,7 +2021,12 @@ export default function InvitationStudio({
     // template has genuinely changed (not just because currentEvent was synced).
     if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
       // Hard Teardown Before Ingesting Text Layers:
-      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+      const canvas = getFabricCanvas();
+      if (canvas) {
+        cleanFabricCanvas(canvas, { preserveBackground: true });
+      } else {
+        teardownCanvasTextLayers();
+      }
 
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
@@ -2067,6 +2043,8 @@ export default function InvitationStudio({
       const incomingLayerIds = new Set(
         (freshState.textLayers || []).map((l) => l.id).filter(Boolean)
       );
+
+      if (!isMounted) return;
 
       setDesignState((prev) => {
         const nextCard = freshState.card || prev.card;
@@ -2095,6 +2073,7 @@ export default function InvitationStudio({
           textLayers: layersAlreadyLoaded
             ? prev.textLayers
             : deduplicateTextLayers(freshState.textLayers),
+          selectedTextId: null,
         };
       });
       if (typeof window !== "undefined") {
@@ -2106,6 +2085,10 @@ export default function InvitationStudio({
     }
 
     isHydratingRef.current = false;
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     initialInvitation?.id,
     initialInvitation?.templateId,
@@ -2124,7 +2107,7 @@ export default function InvitationStudio({
   // Handle unmount cleanup to avoid memory leaks or duplicate instances
   useEffect(() => {
     return () => {
-      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+      teardownCanvasTextLayers();
     };
   }, []);
 
@@ -2154,7 +2137,12 @@ export default function InvitationStudio({
     if (!config) return;
 
     // Hard Teardown Before Ingesting Text Layers:
-    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    const canvas = getFabricCanvas();
+    if (canvas) {
+      cleanFabricCanvas(canvas, { preserveBackground: false });
+    } else {
+      teardownCanvasTextLayers();
+    }
 
     // Force remount with Evite-style unboxing extraction animation
     setCanvasKey((k) => k + 1);
@@ -2169,6 +2157,7 @@ export default function InvitationStudio({
     const dedupedState = {
       ...nextState,
       textLayers: deduplicateTextLayers(nextState.textLayers),
+      selectedTextId: null,
     };
     setDesignState(dedupedState);
     pushStateToHistory(dedupedState);
@@ -2451,6 +2440,13 @@ export default function InvitationStudio({
       artworkUrl: effectiveArtworkUrl,
     };
 
+    // Explicit background image URL for reliable round-trip persistence
+    const explicitBackgroundImageUrl =
+      (designState.cardBg?.type === "image" && designState.cardBg.value) ||
+      effectiveArtworkUrl ||
+      (designState.card as any)?.artworkUrl ||
+      null;
+
     return {
       id: currentInvitation?.id || undefined,
       eventId: targetEventId,
@@ -2487,6 +2483,7 @@ export default function InvitationStudio({
       aspectRatio: activePreset.aspect,
       background: fullBackgroundModel,
       cardBg: fullBackgroundModel,
+      backgroundImageUrl: explicitBackgroundImageUrl,
       stageBackdrop: designState.stageBackdrop,
       backdrop: designState.stageBackdrop,
       canvasWorkspaceBg: designState.stageBackdrop.value,
@@ -2621,6 +2618,7 @@ export default function InvitationStudio({
             ...(prev.card || {}),
             ...payload.card,
           },
+          backgroundImageUrl: payload.backgroundImageUrl || prev.backgroundImageUrl || null,
           decorations: payload.decorations || prev.decorations || [],
         }));
 
@@ -2636,6 +2634,7 @@ export default function InvitationStudio({
                 card: payload.card,
                 cardBg: payload.cardBg,
                 background: payload.background,
+                backgroundImageUrl: payload.backgroundImageUrl || payload.cardBg?.value || null,
                 decorations: payload.decorations,
                 envelope: payload.envelope,
                 stageBackdrop: payload.stageBackdrop,
@@ -3830,312 +3829,420 @@ export default function InvitationStudio({
             </div>
             {/* -------------------- TAB 1: TEXT -------------------- */}
             {activeTab === "text" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Header with Clear Button */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-                      Text Editor
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateActiveLayer({ text: "" })}
-                      className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  {/* Active Layer Quick Switcher Chips */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {designState.textLayers.map((l) => {
-                      const isSelected = activeLayer?.id === l.id;
-                      const label =
-                        l.id === "layer-title"
-                          ? "Title"
-                          : l.id === "layer-datetime"
-                            ? "Date & Time"
-                            : l.id === "layer-venue"
-                              ? "Venue"
-                              : l.id === "layer-description"
-                                ? "Description"
-                                : l.id === "layer-host"
-                                  ? "Host"
-                                  : l.text?.slice(0, 12) || "Layer";
-                      return (
+              activeLayer ? (
+                <div className="space-y-6 animate-in fade-in duration-200">
+                  {/* Header with Deselect & Clear Buttons */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                          Text Editor
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                          Active Layer
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <button
-                          key={l.id}
                           type="button"
-                          onClick={() => handleSelectLayer(l.id)}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSelected
-                            ? "bg-slate-900 text-white shadow-xs"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
+                          onClick={() => {
+                            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                            setEditingTextId(null);
+                          }}
+                          className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                          title="Deselect active text layer"
                         >
-                          {label}
+                          Deselect
                         </button>
-                      );
-                    })}
+                        <span className="text-slate-200">|</span>
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ text: "" })}
+                          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Active Layer Quick Switcher Chips */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {designState.textLayers.map((l) => {
+                        const isSelected = activeLayer?.id === l.id;
+                        const label =
+                          l.id === "layer-title"
+                            ? "Title"
+                            : l.id === "layer-datetime"
+                              ? "Date & Time"
+                              : l.id === "layer-venue"
+                                ? "Venue"
+                                : l.id === "layer-description"
+                                  ? "Description"
+                                  : l.id === "layer-host"
+                                    ? "Host"
+                                    : l.text?.slice(0, 12) || "Layer";
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => handleSelectLayer(l.id)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-slate-900 text-white shadow-xs"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Textarea */}
+                    <textarea
+                      rows={3}
+                      value={activeLayer.text || ""}
+                      onChange={(e) => updateActiveLayer({ text: e.target.value })}
+                      placeholder="Enter card text here..."
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
+                    />
                   </div>
 
-                  {/* Textarea */}
-                  <textarea
-                    rows={3}
-                    value={activeLayer?.text || ""}
-                    onChange={(e) => updateActiveLayer({ text: e.target.value })}
-                    placeholder="Enter card text here..."
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
-                  />
-                </div>
-
-                {/* Typography Font Family Dropdown */}
-                <div>
-                  <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                    Typography
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={activeLayer?.fontFamily}
-                      onChange={(e) => {
-                        const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
-                        updateActiveLayer({
-                          fontFamily: e.target.value,
-                          fontWeight: opt?.weight || "700",
-                        });
-                      }}
-                      className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
-                    >
-                      {TYPOGRAPHY_OPTIONS.map((f) => (
-                        <option key={f.name} value={f.value}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Type Size & Type Color Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Type Size */}
+                  {/* Typography Font Family Dropdown */}
                   <div>
                     <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Type Size
+                      Typography
                     </label>
                     <div className="relative">
                       <select
-                        value={activeLayer?.fontSize || 42}
-                        onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
-                        className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
+                        value={activeLayer.fontFamily}
+                        onChange={(e) => {
+                          const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
+                          updateActiveLayer({
+                            fontFamily: e.target.value,
+                            fontWeight: opt?.weight || "700",
+                          });
+                        }}
+                        className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
                       >
-                        {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
-                          <option key={s} value={s}>
-                            {s}
+                        {TYPOGRAPHY_OPTIONS.map((f) => (
+                          <option key={f.name} value={f.value}>
+                            {f.name}
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
 
-                  {/* Type Color */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Type Color
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                        <span
-                          className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
-                          style={{ backgroundColor: activeLayer?.color || "#51afff" }}
-                        />
-                        <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
-                          {activeLayer?.color || "#51afff"}
+                  {/* Type Size & Type Color Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Type Size */}
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Type Size
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={activeLayer.fontSize || 42}
+                          onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
+                          className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
+                        >
+                          {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Type Color */}
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Type Color
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                          <span
+                            className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
+                            style={{ backgroundColor: activeLayer.color || "#51afff" }}
+                          />
+                          <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
+                            {activeLayer.color || "#51afff"}
+                          </span>
+                        </div>
+                        {/* Color Wheel Trigger */}
+                        <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              background:
+                                "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
+                            }}
+                          />
+                          <input
+                            type="color"
+                            value={activeLayer.color || "#51afff"}
+                            onChange={(e) => updateActiveLayer({ color: e.target.value })}
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          />
+                          <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
+                            <Pipette className="w-2.5 h-2.5 text-slate-700" />
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Letter Casing & Text Alignment Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Letter Casing */}
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Letter Casing
+                      </label>
+                      <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ casing: "uppercase" })}
+                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                            activeLayer.casing === "uppercase"
+                              ? "bg-slate-900 text-white"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          A
+                        </button>
+                        <div className="w-px h-6 bg-slate-200" />
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ casing: "lowercase" })}
+                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                            activeLayer.casing === "lowercase"
+                              ? "bg-slate-900 text-white"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          a
+                        </button>
+                        <div className="w-px h-6 bg-slate-200" />
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ casing: "capitalize" })}
+                          className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                            activeLayer.casing === "capitalize"
+                              ? "bg-slate-900 text-white"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          Aa
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Text Alignment */}
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Text Alignment
+                      </label>
+                      <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ align: "left" })}
+                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            activeLayer.align === "left"
+                              ? "bg-[#d9f99d] text-slate-900"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                          title="Align Left"
+                        >
+                          <AlignLeft className="w-4 h-4" />
+                        </button>
+                        <div className="w-px h-6 bg-slate-200" />
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ align: "center" })}
+                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            activeLayer.align === "center"
+                              ? "bg-[#d9f99d] text-slate-900"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                          title="Align Center"
+                        >
+                          <AlignCenter className="w-4 h-4" />
+                        </button>
+                        <div className="w-px h-6 bg-slate-200" />
+                        <button
+                          type="button"
+                          onClick={() => updateActiveLayer({ align: "right" })}
+                          className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            activeLayer.align === "right"
+                              ? "bg-[#d9f99d] text-slate-900"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                          title="Align Right"
+                        >
+                          <AlignRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Letter Spacing & Line Height Sliders */}
+                  <div className="space-y-4 pt-1">
+                    <div>
+                      <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                        <span>Letter Spacing</span>
+                        <span className="text-slate-700 font-mono font-medium">{activeLayer.letterSpacing || 0}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-2}
+                        max={12}
+                        step={0.5}
+                        value={activeLayer.letterSpacing || 0}
+                        onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
+                        className="w-full accent-slate-900 cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                        <span>Line Height</span>
+                        <span className="text-slate-700 font-mono font-medium">
+                          {(activeLayer.lineHeight || 1.2).toFixed(1)}
                         </span>
                       </div>
-                      {/* Color Wheel Trigger */}
-                      <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
-                          }}
-                        />
-                        <input
-                          type="color"
-                          value={activeLayer?.color || "#51afff"}
-                          onChange={(e) => updateActiveLayer({ color: e.target.value })}
-                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                        />
-                        <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
-                          <Pipette className="w-2.5 h-2.5 text-slate-700" />
-                        </div>
-                      </label>
+                      <input
+                        type="range"
+                        min={0.8}
+                        max={2.2}
+                        step={0.1}
+                        value={activeLayer.lineHeight || 1.2}
+                        onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
+                        className="w-full accent-slate-900 cursor-pointer"
+                      />
                     </div>
+                  </div>
+
+                  {/* Action Buttons: Add Text Box, Duplicate & Delete */}
+                  <div className="pt-2 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddTextBox}
+                        className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add text box</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicateActiveLayer()}
+                        className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
+                        title="Duplicate active text box"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Duplicate</span>
+                      </button>
+                    </div>
+
+                    {designState.textLayers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteActiveLayer()}
+                        className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete this text box</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {/* Letter Casing & Text Alignment Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Letter Casing */}
+              ) : (
+                /* Inactive State: Decoupled when no text layer is selected */
+                <div className="space-y-6 animate-in fade-in duration-200">
                   <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Letter Casing
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "uppercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "uppercase"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        A
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "lowercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "lowercase"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        a
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "capitalize" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "capitalize"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        Aa
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Text Alignment */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Text Alignment
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "left" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "left"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Left"
-                      >
-                        <AlignLeft className="w-4 h-4" />
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "center" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "center"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Center"
-                      >
-                        <AlignCenter className="w-4 h-4" />
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "right" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "right"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Right"
-                      >
-                        <AlignRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Letter Spacing & Line Height Sliders */}
-                <div className="space-y-4 pt-1">
-                  <div>
-                    <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                      <span>Letter Spacing</span>
-                      <span className="text-slate-700 font-mono font-medium">{activeLayer?.letterSpacing || 0}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={-2}
-                      max={12}
-                      step={0.5}
-                      value={activeLayer?.letterSpacing || 0}
-                      onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
-                      className="w-full accent-slate-900 cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                      <span>Line Height</span>
-                      <span className="text-slate-700 font-mono font-medium">
-                        {(activeLayer?.lineHeight || 1.2).toFixed(1)}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                        Text Editor
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">
+                        No Layer Selected
                       </span>
                     </div>
-                    <input
-                      type="range"
-                      min={0.8}
-                      max={2.2}
-                      step={0.1}
-                      value={activeLayer?.lineHeight || 1.2}
-                      onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
-                      className="w-full accent-slate-900 cursor-pointer"
-                    />
-                  </div>
-                </div>
 
-                {/* Action Buttons: Add Text Box, Duplicate & Delete */}
-                <div className="pt-2 flex flex-col gap-2">
-                  <div className="flex gap-2">
+                    {/* Friendly Instructional Guide Card */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-2.5 my-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+                        <Type className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Select text to customize</p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Click any text element directly on the canvas to edit typography, size, and styling, or select a layer below.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Layer Switcher List */}
+                    {designState.textLayers.length > 0 && (
+                      <div className="mt-4">
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
+                          Available Layers ({designState.textLayers.length})
+                        </span>
+                        <div className="flex flex-col gap-1.5">
+                          {designState.textLayers.map((l) => {
+                            const label =
+                              l.id === "layer-title"
+                                ? "Title"
+                                : l.id === "layer-datetime"
+                                  ? "Date & Time"
+                                  : l.id === "layer-venue"
+                                    ? "Venue"
+                                    : l.id === "layer-description"
+                                      ? "Description"
+                                      : l.id === "layer-host"
+                                        ? "Host"
+                                        : l.text?.slice(0, 16) || "Layer";
+                            return (
+                              <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => handleSelectLayer(l.id)}
+                                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 transition-all text-left cursor-pointer group shadow-2xs"
+                              >
+                                <span className="font-semibold text-slate-800 flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-indigo-600 transition-colors" />
+                                  <span>{label}</span>
+                                </span>
+                                <span className="text-[11px] text-slate-400 truncate max-w-[140px] group-hover:text-slate-600">
+                                  {l.text}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add Text Box Button */}
+                  <div className="pt-2">
                     <button
                       type="button"
                       onClick={handleAddTextBox}
-                      className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add text box</span>
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicateActiveLayer()}
-                      className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
-                      title="Duplicate active text box"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Duplicate</span>
-                    </button>
                   </div>
-
-                  {designState.textLayers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteActiveLayer()}
-                      className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete this text box</span>
-                    </button>
-                  )}
                 </div>
-              </div>
+              )
             )}
 
             {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
@@ -4992,6 +5099,7 @@ export default function InvitationStudio({
           }}
           onCardClick={() => {
             setEditingTextId(null);
+            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
           }}
           showingBackside={showingBackside}
           onFlipCard={() => setShowingBackside((prev) => !prev)}

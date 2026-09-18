@@ -94,6 +94,7 @@ export interface CanvasStageConfig {
   isLandscape?: boolean;
   cardImageFit?: "cover" | "contain";
   cardBg: CardBgConfig;
+  backgroundImageUrl?: string | null;
   card?: {
     artworkUrl: string;
     backgroundColor: string;
