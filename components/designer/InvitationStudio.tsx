@@ -2837,8 +2837,12 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Gifting" step (step 2): advance to step 3 ("Review")
+    // When on "Gifting" step (step 2): save gifting state and advance to step 3 ("Review")
     if (currentStepIndex === 2) {
+      const saved = await saveDesign();
+      if (saved) {
+        setToast({ message: "Gifting options saved! ✨", type: "success" });
+      }
       setCurrentStepIndex(3);
       return;
     }
@@ -2977,6 +2981,17 @@ export default function InvitationStudio({
         eventVenue: designState.eventDetails.venue || designState.eventDetails.address || currentEvent?.venue || "",
         hostNotes: designState.eventDetails.description || "",
         hostName: hostDetails.name || "SWARA KUMARI",
+        gifting: giftingState,
+        designData: {
+          ...(currentInvitation?.designData || {}),
+          hostDetails,
+          additionalSections,
+          rsvpOptions,
+          wishlists,
+          charities,
+          personalFunds,
+          gifting: giftingState,
+        },
         rsvpSettings: {
           rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
           rsvpDeadlineDate: combinedDeadlineIso,
@@ -5005,6 +5020,7 @@ export default function InvitationStudio({
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
           hostDetails={hostDetails}
+          guestCount={eventGuests.length}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -5039,6 +5055,7 @@ export default function InvitationStudio({
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
           hostDetails={hostDetails}
+          guestCount={eventGuests.length}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}
@@ -5075,6 +5092,7 @@ export default function InvitationStudio({
           designState={designState}
           allowMaybe={rsvpOptions.allowMaybe}
           hostDetails={hostDetails}
+          guestCount={eventGuests.length}
           onRsvpClick={(status) => {
             setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
           }}

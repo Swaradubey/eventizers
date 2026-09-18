@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Monitor, Smartphone, Calendar, User, Users } from "lucide-react";
+import { Monitor, Smartphone, User, Users, MapPin } from "lucide-react";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import { StudioDesignState, teardownCanvasTextLayers } from "./InvitationStudio";
 import { deduplicateTextLayers } from "./layoutUtils";
@@ -12,6 +12,7 @@ interface InvitationWorkflowPreviewPaneProps {
   allowMaybe?: boolean;
   hostDetails?: HostDetailsData;
   onRsvpClick?: (status: "yes" | "maybe" | "no") => void;
+  guestCount?: number;
 }
 
 export default function InvitationWorkflowPreviewPane({
@@ -19,6 +20,7 @@ export default function InvitationWorkflowPreviewPane({
   allowMaybe = true,
   hostDetails,
   onRsvpClick,
+  guestCount = 0,
 }: InvitationWorkflowPreviewPaneProps) {
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
@@ -145,13 +147,54 @@ export default function InvitationWorkflowPreviewPane({
           {/* Date & Time Section */}
           <div className="bg-white rounded-xl border border-slate-200/80 px-5 py-4 shadow-sm">
             <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1">
-              Date & Time
+              Date &amp; Time
             </p>
             <p className="text-sm font-semibold text-slate-800">
               {displayDateTime || (
-                <span className="text-slate-400 font-normal italic">Pick a date & time</span>
+                <span className="text-slate-400 font-normal italic">Pick a date &amp; time</span>
               )}
             </p>
+            {eventDetails.time && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                Start time: {(() => {
+                  try {
+                    const [h, m] = eventDetails.time.split(":").map(Number);
+                    const ampm = h >= 12 ? "PM" : "AM";
+                    const h12 = h % 12 || 12;
+                    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+                  } catch { return eventDetails.time; }
+                })()}
+              </p>
+            )}
+          </div>
+
+          {/* Location Section */}
+          <div className="bg-white rounded-xl border border-slate-200/80 px-5 py-4 shadow-sm">
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1">
+              Location
+            </p>
+            {displayLocation ? (
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{displayLocation}</p>
+                  {eventDetails.address && eventDetails.venue && eventDetails.address !== eventDetails.venue && (
+                    <p className="text-xs text-slate-500 mt-0.5">{eventDetails.address}</p>
+                  )}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventDetails.address || eventDetails.venue || "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#3e5622] font-semibold hover:underline inline-flex items-center gap-0.5 mt-1"
+                  >
+                    View on map
+                    <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400 font-normal italic text-sm">Add a venue or address</p>
+            )}
           </div>
 
           {/* Host Details Section */}
@@ -175,23 +218,112 @@ export default function InvitationWorkflowPreviewPane({
                 Co-host: {hostDetails.coHost}
               </p>
             )}
+            {designState.eventDetails.description && (
+              <p className="text-xs text-slate-500 mt-1.5 ml-6 italic leading-relaxed">
+                &ldquo;{designState.eventDetails.description}&rdquo;
+              </p>
+            )}
           </div>
 
-          {/* Guest List Section */}
+          {/* Guest List & RSVP Section */}
           <div className="bg-white rounded-xl border border-slate-200/80 px-5 py-4 shadow-sm">
             <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
-              Guest List
+              Guest List &amp; RSVP
             </p>
-            <div className="flex flex-col items-center justify-center py-2 text-center">
-              <Users className="w-5 h-5 text-slate-400 mb-2" />
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Guests will show up here once you add them.
-              </p>
-              <p className="text-[10px] text-slate-400 italic mt-1">
-                (FYI&mdash;that comes at a later step!)
-              </p>
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5 text-slate-400 shrink-0" />
+              <div className="flex-1">
+                {guestCount > 0 ? (
+                  <p className="text-sm font-semibold text-slate-800">
+                    {guestCount} guest{guestCount !== 1 ? "s" : ""} invited
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Guests will appear here once added.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">RSVP:</span>
+              <button
+                type="button"
+                className={`px-4 py-1 rounded-full text-[10px] font-bold transition-all ${
+                  selectedRsvp === "yes"
+                    ? "bg-[#273815] text-white ring-1 ring-[#3e5622]"
+                    : "bg-[#3e5622]/10 text-[#3e5622] hover:bg-[#3e5622]/20"
+                }`}
+                onClick={() => handleRsvp("yes")}
+              >
+                Yes
+              </button>
+              {allowMaybe && (
+                <button
+                  type="button"
+                  className={`px-4 py-1 rounded-full text-[10px] font-bold transition-all ${
+                    selectedRsvp === "maybe"
+                      ? "bg-[#273815] text-white ring-1 ring-[#3e5622]"
+                      : "bg-[#3e5622]/10 text-[#3e5622] hover:bg-[#3e5622]/20"
+                  }`}
+                  onClick={() => handleRsvp("maybe")}
+                >
+                  Maybe
+                </button>
+              )}
+              <button
+                type="button"
+                className={`px-4 py-1 rounded-full text-[10px] font-bold transition-all ${
+                  selectedRsvp === "no"
+                    ? "bg-[#273815] text-white ring-1 ring-[#3e5622]"
+                    : "bg-[#3e5622]/10 text-[#3e5622] hover:bg-[#3e5622]/20"
+                }`}
+                onClick={() => handleRsvp("no")}
+              >
+                No
+              </button>
             </div>
           </div>
+
+          {/* Gifting & Registry Section */}
+          {designState.gifting && designState.gifting.enabled !== false && designState.gifting.items && designState.gifting.items.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200/80 px-5 py-4 shadow-sm">
+              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
+                Gifting &amp; Registry
+              </p>
+              <div className="space-y-2">
+                {designState.gifting.items.filter((item) => item.enabled !== false && item.url).map((item) => {
+                  const providerColors: Record<string, { bg: string; text: string; label: string }> = {
+                    amazon: { bg: "bg-amber-50", text: "text-amber-800", label: "AMZ" },
+                    target: { bg: "bg-red-50", text: "text-red-800", label: "TGT" },
+                    walmart: { bg: "bg-blue-50", text: "text-blue-800", label: "WMT" },
+                    other: { bg: "bg-slate-50", text: "text-slate-700", label: item.type === "charity" ? "♥" : "Gift" },
+                  };
+                  const colors = providerColors[item.provider] || providerColors.other;
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 py-1.5">
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${colors.bg} ${colors.text}`}>
+                        {colors.label}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{item.title}</p>
+                        {item.description && (
+                          <p className="text-[10px] text-slate-500 truncate">{item.description}</p>
+                        )}
+                      </div>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-semibold text-[#3e5622] hover:underline shrink-0"
+                      >
+                        {item.type === "charity" ? "Donate" : "View"} →
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

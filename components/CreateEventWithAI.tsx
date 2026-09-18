@@ -17,19 +17,19 @@ import API from "@/services/api";
 const quickPrompts = [
   {
     label: "Whimsical garden birthday party",
-    promptText: "Plan a whimsical garden birthday party for 25 guests with pastel floral decor, face painting, acoustic fairy music, and kid-friendly treats under string lights on 15th October 2026.",
+    promptText: "Whimsical garden birthday party with pastel floral decor, string lights, and soft pink tones",
   },
   {
     label: "Black-tie wedding reception",
-    promptText: "Plan an outdoor wedding reception on 25th Dec 2026 from 6 PM to 10 PM at Central Park Grand Hall for 120 guests with warm lighting, champagne tower, and live jazz.",
+    promptText: "Elegant black-tie wedding reception with gold accents, warm lighting, and luxurious floral arrangements",
   },
   {
     label: "Tech startup product launch",
-    promptText: "A sleek modern tech startup launch party for 100 guests with craft cocktails, keynote lighting, interactive demo stations, and a DJ lounge.",
+    promptText: "Sleek modern tech startup launch party with neon lighting, minimalist design, and futuristic vibes",
   },
   {
     label: "Intimate anniversary dinner",
-    promptText: "An intimate 25th anniversary celebration dinner for 30 close family and friends with custom menu cards, acoustic violin, warm gold tones, and a photo memory wall.",
+    promptText: "Intimate anniversary dinner with candlelight, rose gold tones, and romantic botanical decor",
   },
 ];
 
@@ -68,62 +68,117 @@ export default function CreateEventWithAI({ onSuccess, className = "" }: CreateE
     try {
       const payload = {
         userPrompt: prompt.trim(),
-        prompt: prompt.trim(),
+        eventType: "Event",
+        title: prompt.trim().substring(0, 80),
+        date: new Date().toISOString().split("T")[0],
+        venue: "Venue",
       };
 
-      const res = await API.post("/ai/generate-event", payload);
+      const res = await API.post("/ai/generate-event-template", payload);
 
-      if (res.data && res.data.success) {
-        const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-abstract-nature-party";
+      if (res.data && res.data.success && res.data.imageUrl) {
+        const imageUrl = res.data.imageUrl;
 
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("pending_template_id", targetTplId);
-          localStorage.setItem("pending_template_id", targetTplId);
-          if (res.data.stationeryDesign) {
-            sessionStorage.setItem("pending_stationery_design", JSON.stringify(res.data.stationeryDesign));
-          }
+          sessionStorage.setItem("pending_upload_invite", imageUrl);
+          localStorage.setItem("pending_upload_invite", imageUrl);
+
+          const details = res.data.details || res.data.meta || {};
+          const title = details.title || prompt.trim().substring(0, 80);
+          sessionStorage.setItem("pending_upload_title", title);
+          localStorage.setItem("pending_upload_title", title);
+
+          const stationeryDesign = {
+            cardBgColor: "#ffffff",
+            textElements: [
+              {
+                id: "layer-title",
+                role: "title",
+                text: (details.title || title || "Celebration").toUpperCase(),
+                x: 50,
+                y: 30,
+                fontSize: 34,
+                fontFamily: "Playfair Display",
+                fontWeight: "800",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 2,
+              },
+              {
+                id: "layer-host",
+                role: "host",
+                text: details.subtitle || "YOU ARE CORDIALLY INVITED TO CELEBRATE",
+                x: 50,
+                y: 42,
+                fontSize: 13,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 1.2,
+                casing: "uppercase",
+              },
+              {
+                id: "layer-datetime",
+                role: "datetime",
+                text: details.date || "Saturday, 25 October • 6:00 PM",
+                x: 50,
+                y: 54,
+                fontSize: 15,
+                fontFamily: "Inter",
+                fontWeight: "700",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 1.5,
+              },
+              {
+                id: "layer-venue",
+                role: "venue",
+                text: details.venue || "The Grand Palace Hall, City Center",
+                x: 50,
+                y: 65,
+                fontSize: 14,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 0.5,
+              },
+            ],
+          };
+          sessionStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
         }
 
-        const redirectDestination = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}&studio=true&templateId=${targetTplId}` : "/dashboard/invitations?studio=true");
+        const studioUrl = `/dashboard/invitations?uploadedImageUrl=${encodeURIComponent(imageUrl)}&studio=true&aiGenerated=1`;
 
-        setSuccessMsg("🎉 Event created successfully with AI! Redirecting to Evite Invitation Studio...");
+        setSuccessMsg("AI invitation template generated! Redirecting to Studio...");
 
-        if (onSuccess && createdEventId) {
-          onSuccess(createdEventId, redirectDestination);
+        if (onSuccess) {
+          onSuccess("ai-generated", studioUrl);
         }
 
         setTimeout(() => {
-          router.push(redirectDestination);
+          router.push(studioUrl);
         }, 800);
       } else {
-        setErrorMsg(res.data?.error || "Failed to generate event with AI. Please try again.");
+        setErrorMsg(res.data?.error || "Failed to generate template. Please try again.");
       }
     } catch (err: any) {
-      console.error("AI Event Generation Failed:", err);
-      const status = err.response?.status;
+      console.error("AI Template Generation Failed:", err);
       const serverError = err.response?.data?.error;
 
       if (
-        status === 429 ||
+        err.response?.status === 429 ||
         (serverError && (
-          serverError.toLowerCase().includes("quota") ||
-          serverError.toLowerCase().includes("unavailable") ||
-          serverError.toLowerCase().includes("rate limit")
+          serverError.toLowerCase().includes("busy") ||
+          serverError.toLowerCase().includes("rate limit") ||
+          serverError.toLowerCase().includes("too many")
         ))
       ) {
         setErrorMsg("AI service is temporarily busy. Please try again in a moment.");
-      } else if (
-        status === 401 ||
-        status === 403 ||
-        (serverError && (
-          serverError.toLowerCase().includes("invalid gemini api key") ||
-          serverError.toLowerCase().includes("unauthorized")
-        ))
-      ) {
-        setErrorMsg("Authentication or API configuration error. Please try again later.");
       } else {
-        setErrorMsg(serverError || err.message || "Failed to generate event with AI. Please try again.");
+        setErrorMsg(serverError || err.message || "Failed to generate template. Please check Replicate configuration.");
       }
     } finally {
       setGenerating(false);
@@ -177,7 +232,7 @@ export default function CreateEventWithAI({ onSuccess, className = "" }: CreateE
               handleGenerate();
             }
           }}
-          placeholder="e.g. Plan an outdoor wedding reception on 25th Dec 2026 from 6 PM to 10 PM at Central Park Grand Hall for 120 guests..."
+          placeholder="e.g. Elegant floral garden wedding, soft pastel tones, gold accents..."
           className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed"
           disabled={generating}
         />
@@ -225,7 +280,7 @@ export default function CreateEventWithAI({ onSuccess, className = "" }: CreateE
         {generating ? (
           <>
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span>Building your event with AI...</span>
+            <span>Generating your invitation template...</span>
           </>
         ) : (
           <>

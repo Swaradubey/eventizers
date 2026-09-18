@@ -292,59 +292,112 @@ export default function Hero() {
     setAiEventData(null);
 
     try {
-      const res = await API.post("/ai/generate-event", {
+      const res = await API.post("/ai/generate-event-template", {
         userPrompt: prompt.trim(),
-        prompt: prompt.trim(),
+        eventType: "Event",
+        title: prompt.trim().substring(0, 80),
+        date: new Date().toISOString().split("T")[0],
+        venue: "Venue",
       });
 
-      if (res.data) {
-        setAiEventData(res.data);
-        const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-abstract-nature-party";
+      if (res.data && res.data.success && res.data.imageUrl) {
+        const imageUrl = res.data.imageUrl;
 
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("pending_template_id", targetTplId);
-          localStorage.setItem("pending_template_id", targetTplId);
-          if (res.data.stationeryDesign) {
-            sessionStorage.setItem("pending_stationery_design", JSON.stringify(res.data.stationeryDesign));
-          }
+          sessionStorage.setItem("pending_upload_invite", imageUrl);
+          localStorage.setItem("pending_upload_invite", imageUrl);
+
+          const details = res.data.details || res.data.meta || {};
+          const title = details.title || prompt.trim().substring(0, 80);
+          sessionStorage.setItem("pending_upload_title", title);
+          localStorage.setItem("pending_upload_title", title);
+
+          const stationeryDesign = {
+            cardBgColor: "#ffffff",
+            textElements: [
+              {
+                id: "layer-title",
+                role: "title",
+                text: (details.title || title || "Celebration").toUpperCase(),
+                x: 50,
+                y: 30,
+                fontSize: 34,
+                fontFamily: "Playfair Display",
+                fontWeight: "800",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 2,
+              },
+              {
+                id: "layer-host",
+                role: "host",
+                text: details.subtitle || "YOU ARE CORDIALLY INVITED TO CELEBRATE",
+                x: 50,
+                y: 42,
+                fontSize: 13,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 1.2,
+                casing: "uppercase",
+              },
+              {
+                id: "layer-datetime",
+                role: "datetime",
+                text: details.date || "Saturday, 25 October • 6:00 PM",
+                x: 50,
+                y: 54,
+                fontSize: 15,
+                fontFamily: "Inter",
+                fontWeight: "700",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 1.5,
+              },
+              {
+                id: "layer-venue",
+                role: "venue",
+                text: details.venue || "The Grand Palace Hall, City Center",
+                x: 50,
+                y: 65,
+                fontSize: 14,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 0.5,
+              },
+            ],
+          };
+          sessionStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
         }
 
-        const redirectUrl = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}&studio=true&templateId=${targetTplId}` : "/dashboard/invitations?studio=true");
-        if (createdEventId) {
-          setSuccessMsg("🎉 AI Event generated! Redirecting to Evite Invitation Studio...");
-          setTimeout(() => {
-            router.push(redirectUrl);
-          }, 800);
-        } else {
-          setSuccessMsg("🎉 AI Event generated and saved to your Dashboard!");
-        }
+        const studioUrl = `/dashboard/invitations?uploadedImageUrl=${encodeURIComponent(imageUrl)}&studio=true&aiGenerated=1`;
+
+        setSuccessMsg("AI invitation template generated! Redirecting to Studio...");
+        setTimeout(() => {
+          router.push(studioUrl);
+        }, 800);
+      } else {
+        setErrorMsg(res.data?.error || "Failed to generate template. Please try again.");
       }
     } catch (err: any) {
-      console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
-      const status = err.response?.status;
+      console.error("AI Template Generation Failed:", err.response?.data || err.message || err);
       const serverError = err.response?.data?.error;
 
       if (
-        status === 429 ||
+        err.response?.status === 429 ||
         (serverError && (
-          serverError.toLowerCase().includes("quota") ||
-          serverError.toLowerCase().includes("unavailable") ||
-          serverError.toLowerCase().includes("rate limit")
+          serverError.toLowerCase().includes("busy") ||
+          serverError.toLowerCase().includes("rate limit") ||
+          serverError.toLowerCase().includes("too many")
         ))
       ) {
-        setErrorMsg("Gemini service is temporarily busy. Please try again in a moment.");
-      } else if (
-        status === 401 ||
-        status === 403 ||
-        (serverError && (
-          serverError.toLowerCase().includes("invalid gemini api key") ||
-          serverError.toLowerCase().includes("unauthorized")
-        ))
-      ) {
-        setErrorMsg("Invalid Gemini API key.");
+        setErrorMsg("AI service is temporarily busy. Please try again in a moment.");
       } else {
-        setErrorMsg(serverError || "Failed to generate event with AI. Please try again.");
+        setErrorMsg(serverError || err.message || "Failed to generate template. Please check Replicate configuration.");
       }
     } finally {
       setGenerating(false);

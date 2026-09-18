@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Calendar, Clock, MapPin, Tag, Info, Sparkles, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Tag, Info, Sparkles, Upload, Image as ImageIcon, Loader2, Wand2, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import eventService, { Event } from "../services/eventService";
+import API from "../services/api";
 import adminService from "../services/adminService";
 import templateService from "../services/templateService";
 import { NEW_TEMPLATES } from "../lib/newTemplatesData";
@@ -65,6 +66,12 @@ export default function EventModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI Template Generation states
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
+  const [aiGeneratedImageUrl, setAiGeneratedImageUrl] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   const handleImageFileUpload = async (file: File) => {
     if (!file) return;
     setError(null);
@@ -90,6 +97,123 @@ export default function EventModal({
       setError("Failed to upload cover image. Please try again.");
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const handleGenerateAITemplate = async () => {
+    setAiError(null);
+    setAiGeneratedImageUrl(null);
+
+    const promptText = aiPrompt.trim() || `${formData.eventType} ${formData.title || 'invitation'}`;
+    if (!formData.title.trim() && !aiPrompt.trim()) {
+      setAiError("Please enter an event title or describe your event to generate a template.");
+      return;
+    }
+
+    setGeneratingTemplate(true);
+
+    try {
+      const res = await API.post("/ai/generate-event-template", {
+        userPrompt: promptText,
+        eventType: formData.eventType,
+        title: formData.title || "Your Event",
+        date: formData.eventDate || new Date().toISOString().split("T")[0],
+        venue: formData.venue || "Venue",
+      });
+
+      if (res.data && res.data.success && res.data.imageUrl) {
+        const imageUrl = res.data.imageUrl;
+        setAiGeneratedImageUrl(imageUrl);
+
+        // Store the generated image for the studio to pick up
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("pending_upload_invite", imageUrl);
+          localStorage.setItem("pending_upload_invite", imageUrl);
+
+          const details = res.data.details || res.data.meta || {};
+          const title = details.title || formData.title || "Your Event";
+          sessionStorage.setItem("pending_upload_title", title);
+          localStorage.setItem("pending_upload_title", title);
+
+          const stationeryDesign = {
+            cardBgColor: "#ffffff",
+            textElements: [
+              {
+                id: "layer-title",
+                role: "title",
+                text: (details.title || title || "Celebration").toUpperCase(),
+                x: 50,
+                y: 30,
+                fontSize: 34,
+                fontFamily: "Playfair Display",
+                fontWeight: "800",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 2,
+              },
+              {
+                id: "layer-host",
+                role: "host",
+                text: details.subtitle || "YOU ARE CORDIALLY INVITED TO CELEBRATE",
+                x: 50,
+                y: 42,
+                fontSize: 13,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 1.2,
+                casing: "uppercase",
+              },
+              {
+                id: "layer-datetime",
+                role: "datetime",
+                text: details.date || formData.eventDate || "Saturday, 25 October • 6:00 PM",
+                x: 50,
+                y: 54,
+                fontSize: 15,
+                fontFamily: "Inter",
+                fontWeight: "700",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 1.5,
+              },
+              {
+                id: "layer-venue",
+                role: "venue",
+                text: details.venue || formData.venue || "The Grand Palace Hall, City Center",
+                x: 50,
+                y: 65,
+                fontSize: 14,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 0.5,
+              },
+            ],
+          };
+          sessionStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
+        }
+
+        // Navigate to invitation studio with the generated image
+        const studioUrl = `/dashboard/invitations?uploadedImageUrl=${encodeURIComponent(imageUrl)}&studio=true&aiGenerated=1`;
+        onClose();
+        router.push(studioUrl);
+      } else {
+        setAiError(res.data?.error || "Failed to generate template. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("AI Template Generation Failed:", err);
+      const serverError = err.response?.data?.error;
+      if (err.response?.status === 429 || (serverError && serverError.toLowerCase().includes("busy"))) {
+        setAiError("AI service is temporarily busy. Please try again in a moment.");
+      } else {
+        setAiError(serverError || err.message || "Failed to generate template. Please check Replicate configuration.");
+      }
+    } finally {
+      setGeneratingTemplate(false);
     }
   };
 
@@ -398,6 +522,109 @@ export default function EventModal({
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* AI Template Generation Section */}
+              {!eventToEdit && (
+                <div className="border border-dashed border-[#7C3AED]/30 rounded-2xl p-4 bg-gradient-to-br from-[#F5F3FF]/60 to-[#EDE9FE]/40">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#A855F7] flex items-center justify-center">
+                      <Wand2 className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-xs font-bold text-[#2D1B3D]">Generate Event with AI</span>
+                    <span className="text-[10px] text-[#7C3AED] font-semibold bg-[#EDE9FE] px-1.5 py-0.5 rounded-full">Replicate</span>
+                  </div>
+                  <p className="text-[11px] text-[#2D1B3D]/50 mb-2.5">
+                    Describe your vision and AI will generate a unique invitation background template.
+                  </p>
+
+                  {aiError && (
+                    <div className="p-2 text-[11px] font-medium bg-red-50 border border-red-200 text-red-700 rounded-xl mb-2.5 flex items-center gap-1.5">
+                      <Info className="w-3 h-3 shrink-0" />
+                      <span>{aiError}</span>
+                      <button onClick={() => setAiError(null)} className="ml-auto text-red-400 hover:text-red-600 cursor-pointer">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="relative bg-white rounded-xl border border-[#E8C4B8]/30 p-2.5 focus-within:border-[#7C3AED]/40 focus-within:ring-1 focus-within:ring-[#7C3AED]/20 transition-all">
+                    <textarea
+                      rows={2}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleGenerateAITemplate();
+                        }
+                      }}
+                      placeholder="e.g. Elegant floral garden wedding, soft pastel tones, gold accents..."
+                      className="w-full bg-transparent text-xs text-[#2D1B3D] placeholder:text-gray-400 focus:outline-none resize-none pr-10 leading-relaxed"
+                      disabled={generatingTemplate}
+                    />
+                    <button
+                      onClick={handleGenerateAITemplate}
+                      disabled={generatingTemplate}
+                      className="absolute right-2 bottom-2 w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] text-white flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      title="Generate with AI"
+                    >
+                      {generatingTemplate ? (
+                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Send className="w-3 h-3 -translate-x-0.5 translate-y-0.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Loading State with Glowing Gradient */}
+                  {generatingTemplate && (
+                    <div className="mt-3 flex items-center justify-center gap-2 py-3">
+                      <div className="relative w-5 h-5">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#A855F7] to-[#7C3AED] animate-spin opacity-60" />
+                        <div className="absolute inset-[3px] rounded-full bg-white" />
+                        <div className="absolute inset-[5px] rounded-full bg-gradient-to-br from-[#7C3AED] to-[#A855F7] animate-pulse" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-[#7C3AED] animate-pulse">
+                        AI is crafting your invitation template...
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Generated Preview */}
+                  {aiGeneratedImageUrl && !generatingTemplate && (
+                    <div className="mt-3 relative rounded-xl overflow-hidden border border-[#7C3AED]/20">
+                      <img
+                        src={aiGeneratedImageUrl}
+                        alt="AI Generated Template"
+                        className="w-full h-32 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                      <div className="absolute bottom-2 left-2 text-white text-[10px] font-semibold">
+                        AI Generated Background
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateAITemplate}
+                    disabled={generatingTemplate}
+                    className="mt-3 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 group"
+                  >
+                    {generatingTemplate ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Generating your template...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-3.5 h-3.5" />
+                        <span>Generate Event with AI</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
 
