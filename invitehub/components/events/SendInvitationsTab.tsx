@@ -138,11 +138,10 @@ export default function SendInvitationsTab({
       }
     } catch (err: any) {
       console.error("Error sending test invite:", err);
-      const errorMsg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to send test invitation.";
+      const isNetworkErr = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
+      const errorMsg = isNetworkErr
+        ? "Network error: Unable to reach server. Please check your connection or try again."
+        : (err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to send test invitation.");
       showToast(errorMsg, "error");
     } finally {
       setSendingTest(false);
@@ -239,9 +238,10 @@ export default function SendInvitationsTab({
         }
       }
 
-      const errorMsg =
-        rawErrorMsg ||
-        "Failed to send invitations.";
+      const isNetworkErr = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
+      const errorMsg = isNetworkErr
+        ? "Network error: Unable to reach server. Please check your connection or try again."
+        : (rawErrorMsg || "Failed to send invitations.");
       showToast(errorMsg, "error");
     } finally {
       setSendingAll(false);

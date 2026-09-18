@@ -89,7 +89,7 @@ const IsolatedInvitationCard = forwardRef<HTMLDivElement, IsolatedInvitationCard
           <img
             src={data.backgroundImage}
             alt="Invitation Card Artwork"
-            crossOrigin="anonymous"
+            crossOrigin={data.backgroundImage.startsWith("http") ? "anonymous" : undefined}
             style={{
               position: "absolute",
               inset: 0,
@@ -111,7 +111,7 @@ const IsolatedInvitationCard = forwardRef<HTMLDivElement, IsolatedInvitationCard
                 key={`isolated-deco-${idx}`}
                 src={decoSrc}
                 alt="Card Decoration"
-                crossOrigin="anonymous"
+                crossOrigin={decoSrc.startsWith("http") ? "anonymous" : undefined}
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -171,7 +171,7 @@ const IsolatedInvitationCard = forwardRef<HTMLDivElement, IsolatedInvitationCard
                   <img
                     src={el.src}
                     alt="Card element"
-                    crossOrigin="anonymous"
+                    crossOrigin={el.src.startsWith("http") ? "anonymous" : undefined}
                     style={{
                       width: "100%",
                       height: "100%",

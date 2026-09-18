@@ -28,10 +28,10 @@ export interface InvitationStoreState {
   };
 }
 
-const DEFAULT_TEMPLATE_ID = "tpl-golden-milestone";
+const DEFAULT_TEMPLATE_ID: string | null = null;
 
-function createInitialState(templateId = DEFAULT_TEMPLATE_ID): InvitationStoreState {
-  const tpl = getTemplateConfig(templateId);
+function createInitialState(templateId: string | null = DEFAULT_TEMPLATE_ID): InvitationStoreState {
+  const tpl = templateId ? getTemplateConfig(templateId) : null;
   const rawLayers = (
     tpl?.defaultTextLayers && tpl.defaultTextLayers.length > 0 ? tpl.defaultTextLayers
     : tpl?.textLayers && tpl.textLayers.length > 0 ? tpl.textLayers
@@ -55,7 +55,7 @@ function createInitialState(templateId = DEFAULT_TEMPLATE_ID): InvitationStoreSt
   }));
 
   return {
-    activeTemplateId: templateId,
+    activeTemplateId: templateId ?? "",
     template: tpl,
     textLayers: layers,
     selectedTextId: layers[0]?.id || null,

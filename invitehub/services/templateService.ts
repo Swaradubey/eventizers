@@ -55,11 +55,7 @@ export const uploadTemplateImage = async (
     url?: string;
     fileUrl?: string;
     message?: string;
-  }>("/templates/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  }>("/templates/upload", formData);
 
   const finalUrl = response.data.url || response.data.fileUrl || "";
   return {

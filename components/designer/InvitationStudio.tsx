@@ -849,17 +849,16 @@ export default function InvitationStudio({
       resolvedTextLayers[0]?.id ||
       "layer-title";
 
-    const defaultAmbientBackdrop = "/assets/backdrops/evite_gold_swirl.jpg";
-    const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || {
-      type: "pattern",
-      value: defaultAmbientBackdrop,
-    };
+    const defaultNeutralBackdrop = "#f8fafc";
+    const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || null;
 
     const initialBackdropValue =
       (invite as any)?.canvasWorkspaceBg ||
       (invite as any)?.backdropBackground ||
-      savedBackdrop.value ||
-      defaultAmbientBackdrop;
+      savedBackdrop?.value ||
+      ((tplConfig as any)?.backdrop as any)?.gradient ||
+      ((tplConfig as any)?.backdrop as any)?.value ||
+      defaultNeutralBackdrop;
 
     const savedEnvelope = invite?.envelope || {
       color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
@@ -948,7 +947,8 @@ export default function InvitationStudio({
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
-            ...savedBackdrop,
+            ...(savedBackdrop || {}),
+            type: (savedBackdrop as any)?.type || (tplConfig as any)?.backdrop?.type || "color",
             value: initialBackdropValue,
             gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
           },
@@ -2297,17 +2297,17 @@ export default function InvitationStudio({
       let dataUrl: string | null = null;
       try {
         dataUrl = await toPng(targetNode, {
-          quality: 0.95,
-          pixelRatio: 2.0,
+          quality: 0.92,
+          pixelRatio: 1.2,
           cacheBust: true,
           backgroundColor: cleanData.backgroundColor || "#ffffff",
         });
       } catch (e1) {
-        console.warn("[Isolated Snapshot] High-res 2x capture failed, retrying with skipFonts & 1.5x:", e1);
+        console.warn("[Isolated Snapshot] 1.2x capture failed, retrying with skipFonts & 1.0x:", e1);
         try {
           dataUrl = await toPng(targetNode, {
-            quality: 0.9,
-            pixelRatio: 1.5,
+            quality: 0.88,
+            pixelRatio: 1.0,
             skipFonts: true,
             cacheBust: true,
             backgroundColor: cleanData.backgroundColor || "#ffffff",
@@ -2546,6 +2546,16 @@ export default function InvitationStudio({
         collectSongRequests: false,
         customQuestions: [],
       },
+      rsvpDeadline:
+        rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+          ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+          : null,
+      rsvpDeadlineDate:
+        rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+          ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+          : null,
+      rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+      rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
     };
   };
 
@@ -2944,6 +2954,11 @@ export default function InvitationStudio({
         activeInvitationId = saved.id;
       }
 
+      const combinedDeadlineIso =
+        rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+          ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+          : null;
+
       // Prepare payload
       payload = {
         invitationId: activeInvitationId,
@@ -2957,11 +2972,26 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: activeGuestIds,
-        snapshot: activeSnapshotDataUrl,
+        snapshot: activeUploadedUrl || undefined,
         snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
+        cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        rsvpSettings: {
+          rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
+          rsvpDeadlineDate: combinedDeadlineIso,
+          rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+          deadlineDate: rsvpOptions.deadlineDate || "",
+          deadlineTime: rsvpOptions.deadlineTime || "",
+          allowAfterDeadline: rsvpOptions.allowAfterDeadline,
+          allowLateRsvp: rsvpOptions.allowAfterDeadline,
+          rsvpDeadline: combinedDeadlineIso,
+        },
+        rsvpOptions,
+        rsvpDeadline: combinedDeadlineIso,
+        rsvpDeadlineDate: combinedDeadlineIso,
+        rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+        rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
       };
 
       // Dispatch to backend endpoint
@@ -3033,7 +3063,9 @@ export default function InvitationStudio({
 
       const errorMsg =
         rawErrorMsg ||
-        "Failed to send invitation emails. Please check server settings.";
+        (err?.message === "Network Error"
+          ? "Network Error: Could not connect to backend. Please verify server status."
+          : "Failed to send invitation emails. Please check server settings.");
       setToast({
         message: errorMsg,
         type: "error",
@@ -3098,6 +3130,11 @@ export default function InvitationStudio({
         }
       }
 
+      const combinedDeadlineIso =
+        rsvpOptions.deadlineEnabled && rsvpOptions.deadlineDate
+          ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
+          : null;
+
       // 2. Prepare payload
       payload = {
         invitationId: activeInvitationId,
@@ -3111,11 +3148,26 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: selectedGuestIds,
-        snapshot: activeSnapshotDataUrl,
+        snapshot: activeUploadedUrl || undefined,
         snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
+        cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        rsvpSettings: {
+          rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
+          rsvpDeadlineDate: combinedDeadlineIso,
+          rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+          deadlineDate: rsvpOptions.deadlineDate || "",
+          deadlineTime: rsvpOptions.deadlineTime || "",
+          allowAfterDeadline: rsvpOptions.allowAfterDeadline,
+          allowLateRsvp: rsvpOptions.allowAfterDeadline,
+          rsvpDeadline: combinedDeadlineIso,
+        },
+        rsvpOptions,
+        rsvpDeadline: combinedDeadlineIso,
+        rsvpDeadlineDate: combinedDeadlineIso,
+        rsvpDeadlineTime: rsvpOptions.deadlineTime || null,
+        rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
       };
 
       // Auto-publish associated event if in draft status so sending is never blocked
@@ -3207,7 +3259,9 @@ export default function InvitationStudio({
 
       const errorMsg =
         rawErrorMsg ||
-        "Failed to send invitation emails. Please check server settings.";
+        (err?.message === "Network Error"
+          ? "Network Error: Could not connect to backend. Please verify server status."
+          : "Failed to send invitation emails. Please check server settings.");
       setToast({
         message: errorMsg,
         type: "error",
@@ -5360,15 +5414,7 @@ export default function InvitationStudio({
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center gap-3 flex-wrap justify-center">
-                  <button
-                    type="button"
-                    onClick={handleWhatsAppShare}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-xl transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Share via WhatsApp</span>
-                  </button>
+                <div className="mt-5 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={() => {

@@ -573,9 +573,7 @@ export default function InvitationCanvasStage({
     config.stageBackdrop?.value ||
     (isCardOnlyMode ? cleanNeutralBg : "#0f172a");
 
-  const backdropValue = isCardOnlyMode
-    ? (rawBackdropValue && !rawBackdropValue.includes("evite_gold_swirl") && !rawBackdropValue.includes("gold-swirl") ? rawBackdropValue : cleanNeutralBg)
-    : rawBackdropValue;
+  const backdropValue = rawBackdropValue || cleanNeutralBg;
 
   const backdropGradient =
     (config as any)?.canvasWorkspaceBg ||
@@ -709,11 +707,9 @@ export default function InvitationCanvasStage({
         backgroundColor: isBackdropGradient
           ? undefined
           : (backdropValue?.startsWith("#") || backdropValue?.startsWith("rgb") ? backdropValue : (isCardOnlyMode ? "#f8fafc" : "#1c1917")),
-        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http")) && !backdropValue.includes("evite_gold_swirl")
+        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http"))
           ? `url('${backdropValue}')`
-          : isBackdropGradient || isCardOnlyMode
-            ? undefined
-            : `url('/assets/backdrops/evite_gold_swirl.jpg')`,
+          : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
