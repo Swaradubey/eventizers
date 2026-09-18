@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import templateService, { Template } from "@/services/templateService";
 import eventService from "@/services/eventService";
-import API from "@/services/api";
+import API, { getApiErrorMessage } from "@/services/api";
 import { getImageUrl } from "@/utils/imageUrl";
 import { compressAndNormalizeImage } from "@/utils/imageCompressor";
 import { templateCards, matchesCategory } from "@/lib/templateData";
@@ -386,19 +386,25 @@ export default function AIAssistantPage() {
       }
     } catch (err: any) {
       console.error("AI Template Generation Failed:", err.response?.data || err.message || err);
-      const serverError = err.response?.data?.error;
+      const errorMsg = getApiErrorMessage(err);
 
       if (
         err.response?.status === 429 ||
-        (serverError && (
-          serverError.toLowerCase().includes("busy") ||
-          serverError.toLowerCase().includes("rate limit") ||
-          serverError.toLowerCase().includes("too many")
+        err.response?.status === 504 ||
+        (typeof errorMsg === "string" && (
+          errorMsg.toLowerCase().includes("busy") ||
+          errorMsg.toLowerCase().includes("rate limit") ||
+          errorMsg.toLowerCase().includes("too many") ||
+          errorMsg.toLowerCase().includes("timed out")
         ))
       ) {
         setErrorMsg("AI service is temporarily busy. Please try again in a moment.");
+      } else if (err.response?.status === 404) {
+        setErrorMsg("AI endpoint not found. Please check the server configuration.");
+      } else if (err.response?.status >= 500) {
+        setErrorMsg(errorMsg || "AI service encountered an error. Please try again later.");
       } else {
-        setErrorMsg(serverError || err.message || "Failed to generate template. Please check Replicate configuration.");
+        setErrorMsg(errorMsg || "Failed to generate template. Please check Replicate configuration.");
       }
     } finally {
       setGenerating(false);
