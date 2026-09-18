@@ -15,6 +15,9 @@ import {
   Mail,
   Phone,
   Calendar,
+  AlertCircle,
+  CheckCircle,
+  Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import guestService from "@/services/guestService";
@@ -52,14 +55,35 @@ export default function GuestSelectionModal({
     new Set(initiallySelectedGuestIds)
   );
 
+  // Inline "Add New Guest" form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addFormName, setAddFormName] = useState("");
+  const [addFormEmail, setAddFormEmail] = useState("");
+  const [addFormPhone, setAddFormPhone] = useState("");
+  const [addFormGroups, setAddFormGroups] = useState<string[]>([]);
+  const [addFormSubmitting, setAddFormSubmitting] = useState(false);
+  const [addFormError, setAddFormError] = useState<string | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
   // Sync initiallySelectedGuestIds when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedIds(new Set(initiallySelectedGuestIds));
       setSearchQuery("");
       setActiveGroup("all");
+      resetAddForm();
     }
   }, [isOpen, initiallySelectedGuestIds]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Load account-wide guests & guest groups when opened
   useEffect(() => {
@@ -288,6 +312,128 @@ export default function GuestSelectionModal({
     });
   };
 
+  // Reset the inline add-guest form
+  const resetAddForm = () => {
+    setShowAddForm(false);
+    setAddFormName("");
+    setAddFormEmail("");
+    setAddFormPhone("");
+    setAddFormGroups([]);
+    setAddFormError(null);
+    setAddFormSubmitting(false);
+  };
+
+  // Toggle a group checkbox in the add form
+  const toggleAddFormGroup = (group: string) => {
+    setAddFormGroups((prev) =>
+      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+    );
+  };
+
+  // Recalculate group counts from the current pool
+  const recalcGroupCounts = (pool: any[]) => {
+    const counts: Record<string, number> = {};
+    availableGroups.forEach((grp) => {
+      counts[grp] = pool.filter((g) => {
+        if (!Array.isArray(g.groups)) return false;
+        return g.groups.some(
+          (item: string) => item && item.toLowerCase() === grp.toLowerCase()
+        );
+      }).length;
+    });
+    setGroupCounts(counts);
+  };
+
+  // Handle inline add-guest submission
+  const handleAddGuestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddFormError(null);
+
+    const name = addFormName.trim();
+    const email = addFormEmail.trim().toLowerCase();
+    const phone = addFormPhone.trim();
+
+    if (!name) {
+      setAddFormError("Guest name is required.");
+      return;
+    }
+    if (!email) {
+      setAddFormError("Email address is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setAddFormError("Please enter a valid email address.");
+      return;
+    }
+
+    // Check for duplicate email in current pool
+    const duplicate = allPoolGuests.some(
+      (g) => g.email && g.email.trim().toLowerCase() === email
+    );
+    if (duplicate) {
+      setAddFormError("A guest with this email already exists in your contacts.");
+      return;
+    }
+
+    setAddFormSubmitting(true);
+    try {
+      const payload = {
+        eventId: currentEventId || "",
+        name,
+        email,
+        phone: phone || null,
+        status: "invited" as const,
+        groups: addFormGroups,
+      };
+
+      const res = await guestService.createGuest(payload);
+
+      if (res && res.success && res.guest) {
+        const newGuest = {
+          ...res.guest,
+          isCurrentEventGuest: res.guest.eventId === currentEventId,
+        };
+
+        // Append to pool and select it
+        const updatedPool = [...allPoolGuests, newGuest];
+        setAllPoolGuests(updatedPool);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (newGuest.id) next.add(newGuest.id);
+          return next;
+        });
+
+        // Update group counts
+        recalcGroupCounts(updatedPool);
+
+        // If the new guest has groups that aren't in availableGroups yet, add them
+        if (Array.isArray(newGuest.groups)) {
+          const newGroups = newGuest.groups.filter(
+            (g: string) => g && !availableGroups.includes(g)
+          );
+          if (newGroups.length > 0) {
+            setAvailableGroups((prev) => [...prev, ...newGroups]);
+          }
+        }
+
+        resetAddForm();
+        setToast({ message: `"${name}" added to contacts and selected!`, type: "success" });
+      } else {
+        setAddFormError(res?.message || "Failed to create guest. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("[GuestSelectionModal] Error creating guest:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to create guest. Please try again.";
+      setAddFormError(msg);
+    } finally {
+      setAddFormSubmitting(false);
+    }
+  };
+
   // Handle Apply
   const handleApply = () => {
     const selectedList = allPoolGuests.filter((g) => selectedIds.has(g.id));
@@ -478,9 +624,159 @@ export default function GuestSelectionModal({
                 >
                   Deselect All
                 </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm((prev) => !prev)}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add New Guest</span>
+                </button>
               </div>
             </div>
           </div>
+
+          {/* 3.5 INLINE ADD NEW GUEST FORM */}
+          <AnimatePresence>
+            {showAddForm && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden border-b border-slate-200 bg-emerald-50/40 flex-shrink-0"
+              >
+                <form onSubmit={handleAddGuestSubmit} className="px-6 py-4 space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-800">Add New Guest</h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetAddForm}
+                      className="p-1 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {addFormError && (
+                    <div className="p-2.5 rounded-lg border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <span>{addFormError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Name */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                        Name <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addFormName}
+                        onChange={(e) => setAddFormName(e.target.value)}
+                        placeholder="John Doe"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                        Email <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={addFormEmail}
+                        onChange={(e) => setAddFormEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600">
+                        Phone <span className="text-slate-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={addFormPhone}
+                        onChange={(e) => setAddFormPhone(e.target.value)}
+                        placeholder="+1 (555) 000-0000"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Group Selection */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-600">
+                      Assign to Groups
+                    </label>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {availableGroups.map((group) => {
+                        const isChecked = addFormGroups.includes(group);
+                        return (
+                          <button
+                            key={group}
+                            type="button"
+                            onClick={() => toggleAddFormGroup(group)}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                              isChecked
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            {isChecked ? (
+                              <CheckSquare className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Square className="w-3 h-3 text-slate-400" />
+                            )}
+                            <span>{group}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Submit */}
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={resetAddForm}
+                      className="px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-slate-800 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={addFormSubmitting}
+                      className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 rounded-xl active:scale-95 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                    >
+                      {addFormSubmitting ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Adding...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add & Select</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 4. GUEST LIST CONTAINER */}
           <div className="flex-1 overflow-y-auto p-6 divide-y divide-slate-100 space-y-2">
@@ -638,6 +934,31 @@ export default function GuestSelectionModal({
           </div>
         </motion.div>
       </div>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-24 right-6 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200"
+          >
+            {toast.type === "success" ? (
+              <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-slate-700 ml-2 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }
