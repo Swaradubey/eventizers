@@ -990,7 +990,27 @@ export default function InvitationStudio({
           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
           : null));
 
-    const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, mergedInvite as any);
+    // After a "Back to Browse" reset, ignore stale initialEvent?.selectedTemplateId
+    // so the canvas opens clean for the user to pick a fresh template from the gallery.
+    const browseReset = typeof window !== "undefined" ? sessionStorage.getItem("canvas_browse_reset") : null;
+    const resolvedTemplateId = (() => {
+      if (!browseReset) return effectiveTemplateId;
+      sessionStorage.removeItem("canvas_browse_reset");
+      // Only strip the fallback if the resolved ID came exclusively from the event's
+      // stale selectedTemplateId (not from URL query, saved draft, or pending storage).
+      if (
+        effectiveTemplateId &&
+        effectiveTemplateId === initialEvent?.selectedTemplateId &&
+        !templateIdQuery &&
+        !cachedDraft?.templateId &&
+        !mergedInvite?.templateId
+      ) {
+        return null;
+      }
+      return effectiveTemplateId;
+    })();
+
+    const baseState = createDesignStateFromTemplate(resolvedTemplateId, initialEvent, mergedInvite as any);
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
@@ -1099,6 +1119,10 @@ export default function InvitationStudio({
       sessionStorage.removeItem("pending_stationery_design");
       sessionStorage.removeItem("pending_prompt");
       sessionStorage.removeItem("pending_event_type");
+
+      // Signal to getInitialDesign on next mount that the user explicitly chose
+      // "Back to Browse" — block fallback to stale initialEvent?.selectedTemplateId
+      sessionStorage.setItem("canvas_browse_reset", "true");
     }
 
     // Reset the external invitation store
@@ -1250,6 +1274,11 @@ export default function InvitationStudio({
   // the re-hydration effect from reacting to initialInvitation.id change and
   // overwriting or re-merging template defaults over active canvas state.
   const lastSavedInvitationIdRef = useRef<string | null>(null);
+
+  // Lock to prevent the re-hydration useEffect from overwriting the state set by an
+  // explicit template switch in handleSelectTemplate. Set before state updates, cleared
+  // by the re-hydration effect's guard check so it only blocks one cycle.
+  const templateSwitchLockRef = useRef(false);
 
   // Incrementing key forces InvitationCanvasStage to fully unmount+remount on event switch,
   // which clears all stale text layer DOM nodes before the new event's layers mount.
@@ -2216,6 +2245,14 @@ export default function InvitationStudio({
       return;
     }
 
+    // Guard: skip re-hydration if an explicit template switch is in progress.
+    // handleSelectTemplate sets this flag before updating state to prevent this
+    // effect from overwriting the fresh template layers with stale cached data.
+    if (templateSwitchLockRef.current) {
+      templateSwitchLockRef.current = false;
+      return;
+    }
+
     // Guard: if this effect was triggered by our own save action updating initialInvitation.id,
     // skip rehydration because the live canvas state is already the definitive source of truth.
     if (
@@ -2393,7 +2430,10 @@ export default function InvitationStudio({
     const config = getTemplateConfig(templateId);
     if (!config) return;
 
-    // Hard Teardown Before Ingesting Text Layers:
+    // Lock re-hydration effect to prevent it from overwriting the new template state
+    templateSwitchLockRef.current = true;
+
+    // Hard Teardown: Clear ALL existing canvas text objects and DOM nodes
     const canvas = getFabricCanvas();
     if (canvas) {
       cleanFabricCanvas(canvas, { preserveBackground: false });
@@ -2401,10 +2441,16 @@ export default function InvitationStudio({
       teardownCanvasTextLayers();
     }
 
-    // Force remount with Evite-style unboxing extraction animation
+    // Force full canvas remount to guarantee zero stale DOM remnants
     setCanvasKey((k) => k + 1);
 
+    // Sync external invitation store so downstream consumers see the new template
+    invitationStore.setTemplate(templateId);
+
     loadedTemplateIdRef.current = templateId;
+
+    // Create fresh design state from the selected template — isExplicitSwitch=true
+    // ensures saved draft layers are IGNORED and only template defaults are used
     const nextState = createDesignStateFromTemplate(
       templateId,
       currentEvent || initialEvent,
@@ -2416,12 +2462,28 @@ export default function InvitationStudio({
       textLayers: deduplicateTextLayers(nextState.textLayers),
       selectedTextId: null,
     };
-    setDesignState(dedupedState);
-    pushStateToHistory(dedupedState);
 
-    // Update URL query param to reflect new template
+    // Atomic state replacement: clear undo/redo history so old template elements
+    // cannot bleed back in via undo/redo, then set the completely fresh state
+    setUndoStack([]);
+    setRedoStack([]);
+    setDesignState(dedupedState);
+
+    // Persist the fresh template payload to localStorage so remounts load the
+    // correct data instead of falling back to stale cached drafts
     if (typeof window !== "undefined") {
       try {
+        const targetEvtId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+        if (targetEvtId) {
+          const draftPayload = {
+            templateId,
+            textElements: dedupedState.textLayers,
+            cardBg: dedupedState.cardBg,
+            envelope: dedupedState.envelope,
+          };
+          localStorage.setItem(`invitation_4layer_${targetEvtId}`, JSON.stringify(draftPayload));
+        }
+        // Update URL query param to reflect new template
         const url = new URL(window.location.href);
         url.searchParams.set("templateId", templateId);
         window.history.replaceState({}, "", url.toString());
@@ -5839,9 +5901,9 @@ export default function InvitationStudio({
                       }}
                       className="group relative flex flex-col rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:bg-slate-50 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
                     >
-                      {/* Preview thumbnail */}
+                      {/* Preview thumbnail with text layers */}
                       <div
-                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden"
+                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden relative"
                         style={{
                           background: tpl.gradient || tpl.backgroundColor || "#f1f5f9",
                         }}
@@ -5856,6 +5918,41 @@ export default function InvitationStudio({
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-4xl">
                             {tpl.emoji || "🎉"}
+                          </div>
+                        )}
+                        {/* Text layer preview overlay */}
+                        {tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0 && (
+                          <div className="absolute inset-0 pointer-events-none p-2">
+                            {tpl.defaultTextLayers.slice(0, 5).map((layer) => {
+                              const casingVal = (layer as any).casing as string | undefined;
+                              const casingStyle: React.CSSProperties =
+                                casingVal === "uppercase" ? { textTransform: "uppercase" }
+                                : casingVal === "lowercase" ? { textTransform: "lowercase" }
+                                : casingVal === "capitalize" ? { textTransform: "capitalize" }
+                                : {};
+                              return (
+                                <div
+                                  key={layer.id}
+                                  className="absolute whitespace-pre-line"
+                                  style={{
+                                    top: `${layer.top}%`,
+                                    left: `${layer.left}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontFamily: layer.fontFamily,
+                                    fontSize: `${Math.max(6, Math.round(layer.fontSize * 0.32))}px`,
+                                    color: layer.color,
+                                    fontWeight: layer.fontWeight,
+                                    textAlign: layer.textAlign,
+                                    lineHeight: (layer as any).lineHeight || 1.2,
+                                    maxWidth: "90%",
+                                    overflow: "hidden",
+                                    ...casingStyle,
+                                  }}
+                                >
+                                  {layer.text}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
