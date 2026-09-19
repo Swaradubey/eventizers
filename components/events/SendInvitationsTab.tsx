@@ -18,6 +18,7 @@ import eventService, {
 } from "@/services/eventService";
 import guestService from "@/services/guestService";
 import { useAuth } from "@/context/AuthContext";
+import { getApiErrorMessage } from "@/services/api";
 
 type DeliveryMethod = "email" | "sms" | "whatsapp" | "all";
 
@@ -138,10 +139,7 @@ export default function SendInvitationsTab({
       }
     } catch (err: any) {
       console.error("Error sending test invite:", err);
-      const isNetworkErr = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
-      const errorMsg = isNetworkErr
-        ? "Network error: Unable to reach server. Please check your connection or try again."
-        : (err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to send test invitation.");
+      const errorMsg = getApiErrorMessage(err);
       showToast(errorMsg, "error");
     } finally {
       setSendingTest(false);
@@ -241,7 +239,7 @@ export default function SendInvitationsTab({
       const isNetworkErr = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
       const errorMsg = isNetworkErr
         ? "Network error: Unable to reach server. Please check your connection or try again."
-        : (rawErrorMsg || "Failed to send invitations.");
+        : (rawErrorMsg || getApiErrorMessage(err) || "Failed to send invitations.");
       showToast(errorMsg, "error");
     } finally {
       setSendingAll(false);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Calendar, Clock, MapPin, Tag, Info, Sparkles, Upload, Image as ImageIcon, Loader2, Wand2, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import eventService, { Event } from "../services/eventService";
-import API from "../services/api";
+import API, { getApiErrorMessage } from "../services/api";
 import adminService from "../services/adminService";
 import templateService from "../services/templateService";
 import { NEW_TEMPLATES } from "../lib/newTemplatesData";
@@ -206,11 +206,22 @@ export default function EventModal({
       }
     } catch (err: any) {
       console.error("AI Template Generation Failed:", err);
-      const serverError = err.response?.data?.error;
-      if (err.response?.status === 429 || (serverError && serverError.toLowerCase().includes("busy"))) {
+      const errorMsg = getApiErrorMessage(err);
+      if (
+        err.response?.status === 429 ||
+        err.response?.status === 504 ||
+        (typeof errorMsg === "string" && (
+          errorMsg.toLowerCase().includes("busy") ||
+          errorMsg.toLowerCase().includes("timed out")
+        ))
+      ) {
         setAiError("AI service is temporarily busy. Please try again in a moment.");
+      } else if (err.response?.status === 404) {
+        setAiError("AI endpoint not found. Please check the server configuration.");
+      } else if (err.response?.status >= 500) {
+        setAiError(errorMsg || "AI service encountered an error. Please try again later.");
       } else {
-        setAiError(serverError || err.message || "Failed to generate template. Please check Replicate configuration.");
+        setAiError(errorMsg || "Failed to generate template. Please check Replicate configuration.");
       }
     } finally {
       setGeneratingTemplate(false);

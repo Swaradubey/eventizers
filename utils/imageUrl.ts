@@ -51,6 +51,14 @@ function normalizeOriginForClient(fullUrl: string): string {
   return fullUrl;
 }
 
+/**
+ * Patterns that identify backend-uploaded files vs. static public assets.
+ * Uploaded files live in `/uploads/` and are served by the backend's
+ * express.static middleware (ephemeral on Vercel).
+ * Static assets live in Next.js `public/` and are served by the CDN.
+ */
+const UPLOAD_PREFIX_RE = /^(template_|upload_|event_cover_|invitation_|snapshot_|guest_).*\.(png|jpe?g|webp|gif|svg|avif|heic)$/i;
+
 export function getImageUrl(url?: string | null): string {
   if (!url || typeof url !== "string") {
     return "";
@@ -61,12 +69,12 @@ export function getImageUrl(url?: string | null): string {
     return "";
   }
 
-  // 1. Data URLs or local Blob preview URLs
+  // 1. Data URLs or local Blob preview URLs — no resolution needed
   if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
     return trimmed;
   }
 
-  // 2. Full HTTPS / HTTP URLs (e.g. Cloudinary, S3, Supabase, external or full backend URLs)
+  // 2. Full HTTPS / HTTP URLs (Cloudinary, S3, Supabase, Unsplash, Replicate, etc.)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return normalizeOriginForClient(trimmed);
   }
@@ -74,7 +82,13 @@ export function getImageUrl(url?: string | null): string {
   // 3. Remove accidental route prefixes like /dashboard/ or dashboard/
   let cleaned = trimmed.replace(/^(\/)?dashboard\//i, "/");
 
-  // 4. Relative uploads path (with or without leading slash)
+  // 4. /templates/* paths — these live in Next.js `public/` (same as /assets/*)
+  if (cleaned.startsWith("/templates/") || cleaned.startsWith("templates/")) {
+    const relativePath = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
+    return relativePath;
+  }
+
+  // 5. Relative /uploads/ path — served by backend's express.static
   if (cleaned.startsWith("/uploads/") || cleaned.startsWith("uploads/")) {
     const relativePath = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
     const origin = getBackendOrigin();
@@ -82,19 +96,20 @@ export function getImageUrl(url?: string | null): string {
     return normalizeOriginForClient(fullUrl);
   }
 
-  // 5. Static public Next.js assets starting with /assets/ or assets/
+  // 6. Static public Next.js assets starting with /assets/ or assets/
   if (cleaned.startsWith("/assets/") || cleaned.startsWith("assets/")) {
     return cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
   }
 
-  // 6. Raw image filename e.g. "template_178239.png" or "photo.jpg"
+  // 7. Raw image filename e.g. "template_178239.png" or "photo.jpg"
+  //    These are backend-uploaded files, resolve to backend /uploads/.
   if (/\.(png|jpe?g|webp|gif|svg|avif|heic)$/i.test(cleaned)) {
     const origin = getBackendOrigin();
     const fullUrl = `${origin}/uploads/${cleaned.replace(/^\/+/, "")}`;
     return normalizeOriginForClient(fullUrl);
   }
 
-  // 7. Fallback: ensure leading slash
+  // 8. Fallback: ensure leading slash
   if (!cleaned.startsWith("/")) {
     cleaned = "/" + cleaned;
   }

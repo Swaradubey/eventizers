@@ -150,6 +150,11 @@ export const invitationStore = {
     storeState = createInitialState(templateId || storeState.activeTemplateId);
     emitChange();
   },
+
+  clearAll: () => {
+    storeState = createInitialState(null);
+    emitChange();
+  },
 };
 
 export function useInvitationStore() {
@@ -167,6 +172,7 @@ export function useInvitationStore() {
   const updateCard = useCallback((updates: Partial<InvitationStoreState["card"]>) => invitationStore.updateCard(updates), []);
   const updateBackdrop = useCallback((updates: Partial<InvitationStoreState["backdrop"]>) => invitationStore.updateBackdrop(updates), []);
   const reset = useCallback((id?: string) => invitationStore.reset(id), []);
+  const clearAll = useCallback(() => invitationStore.clearAll(), []);
 
   return {
     ...state,
@@ -178,6 +184,7 @@ export function useInvitationStore() {
     updateCard,
     updateBackdrop,
     reset,
+    clearAll,
   };
 }
 

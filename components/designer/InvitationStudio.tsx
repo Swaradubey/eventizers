@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,6 +58,7 @@ import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData 
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
+import { invitationStore } from "../../hooks/useInvitationStore";
 import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
 import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
@@ -1066,6 +1067,117 @@ export default function InvitationStudio({
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
+  // Clear all canvas state, localStorage caches, and present the template gallery.
+  // Called ONLY when the user clicks "Back to browse" — never on send.
+  const clearCanvasState = useCallback(() => {
+    const targetEvtId =
+      initialEvent?.id ||
+      propSelectedEventId ||
+      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+    if (typeof window !== "undefined") {
+      // Clear the 4-layer cache for this event
+      if (targetEvtId) {
+        localStorage.removeItem(`invitation_4layer_${targetEvtId}`);
+      }
+      // Clear any pending guest/session storage
+      localStorage.removeItem("guestDraft");
+      localStorage.removeItem("guestDraftTemplateId");
+      localStorage.removeItem("pending_template_id");
+      localStorage.removeItem("pending_upload_invite");
+      localStorage.removeItem("pending_upload_name");
+      localStorage.removeItem("pending_upload_type");
+      localStorage.removeItem("pending_upload_title");
+      localStorage.removeItem("pending_stationery_design");
+      localStorage.removeItem("pending_event_type");
+      localStorage.removeItem("pending_prompt");
+      sessionStorage.removeItem("pending_template_id");
+      sessionStorage.removeItem("pending_upload_invite");
+      sessionStorage.removeItem("pending_upload_name");
+      sessionStorage.removeItem("pending_upload_type");
+      sessionStorage.removeItem("pending_upload_title");
+      sessionStorage.removeItem("pending_stationery_design");
+      sessionStorage.removeItem("pending_prompt");
+      sessionStorage.removeItem("pending_event_type");
+    }
+
+    // Reset the external invitation store
+    invitationStore.clearAll();
+
+    // Reset internal state to a blank slate
+    const emptyState: StudioDesignState = {
+      activeTemplateId: null,
+      templateId: null,
+      isPureCss: false,
+      card: null,
+      decorations: [],
+      cardImageFit: "contain",
+      isLandscape: false,
+      photoSlot: null,
+      textLayers: [],
+      selectedTextId: null,
+      cardBg: { type: "color", value: "#ffffff" },
+      backgroundImageUrl: null,
+      stageBackdrop: { type: "color", value: "#161616" },
+      canvasWorkspaceBg: "#161616",
+      backdropBackground: "#161616",
+      envelope: {
+        color: "#5384db",
+        liner: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+        linerCss: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+        stamp: null,
+        sticker: null,
+      },
+      effects: {
+        foil: null,
+        texture: "matte",
+        shadow: "none",
+      },
+      backside: undefined,
+      backgroundLayer: { type: "color", value: "#161616" },
+      frameLayers: { envelope: null, border: null, artworkUrl: "", decorativeBorderSvgUrl: "" },
+      innerCardLayer: {
+        backgroundColor: "#ffffff",
+        borderRadius: "14px",
+        border: null,
+        paperShadow: null,
+        aspectRatio: "5/7",
+      },
+      viewMode: "envelope",
+      hideEnvelope: false,
+      eventDetails: {
+        title: "",
+        host: "",
+        date: "",
+        time: "",
+        venue: "",
+        address: "",
+        description: "",
+      },
+    };
+    setDesignState(emptyState);
+    setCurrentInvitation(null);
+    setCurrentEvent(null);
+    setUndoStack([]);
+    setRedoStack([]);
+    setCurrentStepIndex(0);
+    setCanvasKey((k) => k + 1);
+
+    // Open the template gallery so user picks a fresh template
+    setIsTemplateGalleryOpen(true);
+
+    // Clear URL query params of event/invitation-specific data
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("eventId");
+        url.searchParams.delete("invitationId");
+        url.searchParams.delete("templateId");
+        window.history.replaceState({}, "", url.pathname);
+      } catch (e) { }
+    }
+  }, [initialEvent?.id, propSelectedEventId]);
+
   // --- Canvas Zoom & Aspect Ratio Controls ---
   const [canvasZoom, setCanvasZoom] = useState(100); // 50-150%
   type CanvasPreset = "portrait-5x7" | "square-5x5" | "story-9x16" | "landscape-4x3";
@@ -1100,6 +1212,25 @@ export default function InvitationStudio({
       ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
       : null)
   );
+
+  // Auto-open template gallery on fresh session (no template, no draft, no event).
+  // This ensures a clean slate when the user re-enters the canvas after sending.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasTemplate = Boolean(
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      designState.activeTemplateId
+    );
+    const hasDraft = Boolean(
+      initialInvitation?.id ||
+      (initialEvent?.id && localStorage.getItem(`invitation_4layer_${initialEvent.id}`))
+    );
+    if (!hasTemplate && !hasDraft) {
+      setIsTemplateGalleryOpen(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Guard: tracks whether the canvas has already been hydrated from getInitialDesign().
   // Prevents the re-hydration useEffect from firing a second time on mount and
@@ -1392,6 +1523,7 @@ export default function InvitationStudio({
 
   // Tracks whether we are in the process of generating a snapshot + saving before opening dispatch
   const [isPreparingDispatch, setIsPreparingDispatch] = useState(false);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
 
   // Undo / Redo History Stacks
   const [undoStack, setUndoStack] = useState<StudioDesignState[]>([]);
@@ -3148,6 +3280,9 @@ export default function InvitationStudio({
           message: `✨ Invitation sent to ${response.recipientCount || allRecipients.length} guest(s)!`,
           type: "success",
         });
+        // NOTE: Canvas state intentionally NOT cleared here.
+        // The template and layers remain visible so the user can review what was sent.
+        // State is only cleared when they explicitly click "Back to browse".
       } else {
         throw new Error(response?.error || response?.message || "Failed to dispatch email");
       }
@@ -3193,6 +3328,7 @@ export default function InvitationStudio({
               message: `✨ Event published & invitation sent to ${retryRes.recipientCount || payload?.recipients?.length || 1} guest(s)!`,
               type: "success",
             });
+            // NOTE: Canvas state intentionally NOT cleared here (same as primary send path).
             return;
           }
         } catch (retryErr) {
@@ -3449,6 +3585,7 @@ export default function InvitationStudio({
           <button
             type="button"
             onClick={() => {
+              clearCanvasState();
               if (onBack) {
                 onBack();
               } else {
@@ -3525,29 +3662,8 @@ export default function InvitationStudio({
           </nav>
         </div>
 
-        {/* Right: Actions Controls (Event Selector, WhatsApp, Send, Preview, Premium Badge, Save, Next) */}
+        {/* Right: Actions Controls (WhatsApp, Send, Preview, Premium Badge, Save, Next) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end">
-          {/* Active Event dropdown selector */}
-          {eventsList.length > 0 && (
-            <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-100/90 hover:bg-slate-200/70 transition-colors px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs shrink-0">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span className="hidden xl:inline text-slate-500 font-semibold shrink-0">Event:</span>
-              <select
-                value={currentEvent?.id || propSelectedEventId || ""}
-                onChange={(e) => handleEventChange(e.target.value)}
-                className="bg-transparent font-bold focus:outline-none text-slate-800 cursor-pointer max-w-[90px] sm:max-w-[130px] truncate text-xs"
-                title="Select active event"
-              >
-                <option value="">Select Event...</option>
-                {eventsList.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Share via WhatsApp button (visible on large displays) */}
           <button
             type="button"
@@ -5670,6 +5786,105 @@ export default function InvitationStudio({
           />
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TEMPLATE GALLERY MODAL — Shown on fresh session / after send cleanup     */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isTemplateGalleryOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsTemplateGalleryOpen(false);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Choose a Template</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Select a design to start creating your invitation</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateGalleryOpen(false)}
+                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                  title="Close template gallery"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Template Grid */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {NEW_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectTemplate(tpl.id);
+                        setIsTemplateGalleryOpen(false);
+                      }}
+                      className="group relative flex flex-col rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:bg-slate-50 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                    >
+                      {/* Preview thumbnail */}
+                      <div
+                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden"
+                        style={{
+                          background: tpl.gradient || tpl.backgroundColor || "#f1f5f9",
+                        }}
+                      >
+                        {tpl.image ? (
+                          <img
+                            src={tpl.image}
+                            alt={tpl.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">
+                            {tpl.emoji || "🎉"}
+                          </div>
+                        )}
+                      </div>
+                      {/* Label */}
+                      <div className="px-3 py-2.5 text-left">
+                        <p className="text-xs font-semibold text-slate-800 truncate">{tpl.title}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] font-medium text-slate-400">{tpl.category}</span>
+                          {tpl.badge && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                              tpl.badge === "PREMIUM"
+                                ? "bg-purple-100 text-purple-700"
+                                : tpl.badge === "Trending"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                            }`}>
+                              {tpl.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
