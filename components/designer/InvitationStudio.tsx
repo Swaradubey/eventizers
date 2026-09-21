@@ -1031,6 +1031,16 @@ export default function InvitationStudio({
         persistentCanvasState?.cardBg ||
         initialInvitation?.cardBg ||
         undefined,
+      background:
+        cachedDraft?.background ||
+        persistentCanvasState?.background ||
+        (initialInvitation as any)?.background ||
+        undefined,
+      backgroundImageUrl:
+        cachedDraft?.backgroundImageUrl ||
+        persistentCanvasState?.backgroundImageUrl ||
+        (initialInvitation as any)?.backgroundImageUrl ||
+        undefined,
       card:
         cachedDraft?.card ||
         persistentCanvasState?.card ||
@@ -1050,6 +1060,21 @@ export default function InvitationStudio({
         cachedDraft?.decorations ||
         persistentCanvasState?.decorations ||
         (initialInvitation as any)?.decorations ||
+        undefined,
+      backgroundLayer:
+        cachedDraft?.backgroundLayer ||
+        persistentCanvasState?.backgroundLayer ||
+        (initialInvitation as any)?.backgroundLayer ||
+        undefined,
+      frameLayers:
+        cachedDraft?.frameLayers ||
+        persistentCanvasState?.frameLayers ||
+        (initialInvitation as any)?.frameLayers ||
+        undefined,
+      innerCardLayer:
+        cachedDraft?.innerCardLayer ||
+        persistentCanvasState?.innerCardLayer ||
+        (initialInvitation as any)?.innerCardLayer ||
         undefined,
     };
 
@@ -1804,7 +1829,7 @@ export default function InvitationStudio({
       top: Math.min(92, targetY + 3),
     };
 
-    const nextLayers = [...designState.textLayers, duplicatedLayer];
+    const nextLayers = deduplicateTextLayers([...designState.textLayers, duplicatedLayer]);
     pushStateToHistory({
       ...designState,
       textLayers: nextLayers,
@@ -2598,10 +2623,11 @@ export default function InvitationStudio({
       // Bump canvasKey so InvitationCanvasStage fully unmounts/remounts, clearing
       // stale text layer DOM nodes that can cause the "ghost text" duplication.
       setCanvasKey((k) => k + 1);
-      // Allow the re-hydration effect to run so the correct saved layers re-paint.
-      // We set isHydratingRef to false (not hasInitialHydratedRef) so the guard
-      // still blocks the very first mount but allows this explicit navigation remount.
-      isHydratingRef.current = false;
+      // IMPORTANT: Do NOT reset isHydratingRef.current here. The canvasKey remount
+      // already forces a clean render with the current designState.textLayers.
+      // Resetting this flag would allow the re-hydration effect to fire and
+      // inject fresh template-default layers on top of the existing saved layers,
+      // causing the duplicate text overlap bug.
     }
   }, [currentStepIndex]);
 
@@ -2786,6 +2812,16 @@ export default function InvitationStudio({
     isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
     try {
+      // Phase 0: Defensive deduplication — ensure designState.textLayers has zero duplicates
+      // before extracting snapshot data. This prevents ghost text in the snapshot image when
+      // layers were inadvertently duplicated by state merges or bidirectional sync.
+      const snapshotLayers = deduplicateTextLayers(designState.textLayers);
+      if (snapshotLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: snapshotLayers }));
+        // Allow React to flush the deduplicated state
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 20)));
+      }
+
       // Phase 1: Extract clean, deduplicated data snapshot directly from designState
       // Strictly non-destructive: active canvas DOM is never touched and selectedTextId is never mutated!
       const cleanData = extractCleanSnapshotData(designState, 600);
@@ -3054,6 +3090,10 @@ export default function InvitationStudio({
         previewUrl: resolvedImageUrl,
         thumbnailUrl: resolvedImageUrl,
         eventDetails: designState.eventDetails,
+        backgroundLayer: designState.backgroundLayer || null,
+        frameLayers: designState.frameLayers || null,
+        innerCardLayer: designState.innerCardLayer || null,
+        backgroundImageUrl: explicitBackgroundImageUrl,
       },
       designData: {
         ...(currentInvitation?.designData || {}),
@@ -3154,6 +3194,16 @@ export default function InvitationStudio({
 
       if (saved) {
         lastSavedInvitationIdRef.current = saved.id || payload.id || null;
+
+        // Deduplicate text layers before canvas remount to prevent ghost/double rendering.
+        // The canvasKey bump forces InvitationCanvasStage to fully unmount+remount;
+        // if stale duplicate layers exist in state, they would briefly render twice during
+        // the React reconciliation window, producing the visible "ghost text" overlap.
+        const dedupedLayers = deduplicateTextLayers(designState.textLayers);
+        if (dedupedLayers.length !== designState.textLayers.length) {
+          setDesignState((prev) => ({ ...prev, textLayers: dedupedLayers }));
+        }
+
         setCanvasKey((k) => k + 1);
 
         // Non-destructive state merge: retain complete card artwork, templateId, decorations
@@ -3206,6 +3256,9 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
+                backgroundLayer: designState.backgroundLayer || null,
+                frameLayers: designState.frameLayers || null,
+                innerCardLayer: designState.innerCardLayer || null,
             };
             const draftJson = JSON.stringify(draftPayload);
             // Template-scoped key prevents cross-template cache collision
@@ -3385,12 +3438,16 @@ export default function InvitationStudio({
                   card: (saved as any)?.card || designState.card,
                   cardBg: (saved as any)?.cardBg || designState.cardBg,
                   background: (saved as any)?.background || designState.cardBg,
+                  backgroundImageUrl: designState.cardBg?.type === "image" ? designState.cardBg.value : ((saved as any)?.backgroundImageUrl || null),
                   decorations: (saved as any)?.decorations || designState.decorations || (designState.card as any)?.decorations || [],
                   envelope: designState.envelope,
                   stageBackdrop: designState.stageBackdrop,
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
+                  backgroundLayer: designState.backgroundLayer || null,
+                  frameLayers: designState.frameLayers || null,
+                  innerCardLayer: designState.innerCardLayer || null,
               };
               const draftJson = JSON.stringify(draftPayload);
               if (activeTplId) {
@@ -3539,6 +3596,15 @@ export default function InvitationStudio({
     setIsSendingEmails(true);
     let payload: any = null;
     try {
+      // Deduplicate text layers BEFORE snapshot capture and payload build to prevent
+      // duplicate/overlapping text from bleeding into the generated snapshot image.
+      const dedupedSendLayers = deduplicateTextLayers(designState.textLayers);
+      if (dedupedSendLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: dedupedSendLayers }));
+        // Wait for React to flush the deduplicated state before snapshot capture
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
+      }
+
       // Direct clean snapshot capture: Never tear down or re-hydrate text during snapshot generation
       // Take snapshot directly from the existing live canvas/DOM to permanently eliminate text duplication
       const snap = await generateSnapshot();
@@ -3760,6 +3826,14 @@ export default function InvitationStudio({
     setIsSendingEmails(true);
     let payload: any = null;
     try {
+      // Deduplicate text layers before snapshot capture and payload build to prevent
+      // duplicate/overlapping text from bleeding into the generated snapshot image.
+      const dedupedDispatchLayers = deduplicateTextLayers(designState.textLayers);
+      if (dedupedDispatchLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: dedupedDispatchLayers }));
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
+      }
+
       // 1. Prepare recipients
       const manualEmails = guestEmailsInput
         .split(/[\n,;]+/)
@@ -3810,8 +3884,8 @@ export default function InvitationStudio({
       const packagedCanvasState = {
         templateId: effectiveTplId,
         activeTemplateId: effectiveTplId,
-        textLayers: designState.textLayers,
-        layers: designState.textLayers,
+        textLayers: dedupedDispatchLayers,
+        layers: dedupedDispatchLayers,
         card: designState.card,
         cardBg: designState.cardBg,
         envelope: designState.envelope,
@@ -3832,8 +3906,8 @@ export default function InvitationStudio({
         templateId: effectiveTplId,
         selectedTemplateId: effectiveTplId,
         canvasState: packagedCanvasState,
-        layers: designState.textLayers,
-        textElements: designState.textLayers,
+        layers: dedupedDispatchLayers,
+        textElements: dedupedDispatchLayers,
         previewUrl: resolvedSnapshot,
         thumbnailUrl: resolvedSnapshot,
         snapshot: resolvedSnapshot,
@@ -6219,7 +6293,10 @@ export default function InvitationStudio({
         }}
       />
 
-      {/* Offscreen Pure-Data Isolated Snapshot Container */}
+      {/* Offscreen Pure-Data Isolated Snapshot Container
+          CRITICAL: CSS containment and stacking context isolation prevent html-to-image's
+          SVG foreignObject serialization from accidentally capturing live canvas DOM nodes
+          or bleeding text layers into the snapshot output. */}
       {isolatedSnapshotData && (
         <div
           id="isolated-snapshot-container"
@@ -6234,6 +6311,8 @@ export default function InvitationStudio({
             opacity: 1,
             zIndex: -9999,
             overflow: "hidden",
+            isolation: "isolate",
+            contain: "strict layout style paint",
           }}
           aria-hidden="true"
         >

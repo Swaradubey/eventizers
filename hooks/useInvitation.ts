@@ -340,6 +340,11 @@ export const useInvitation = (eventId: string | null) => {
             if (persistentCanvasState.effects) fetchedInvitation.effects = persistentCanvasState.effects;
             if (persistentCanvasState.backside) (fetchedInvitation as any).backside = persistentCanvasState.backside;
             if (persistentCanvasState.decorations) (fetchedInvitation as any).decorations = persistentCanvasState.decorations;
+            if (persistentCanvasState.background) (fetchedInvitation as any).background = persistentCanvasState.background;
+            if (persistentCanvasState.backgroundLayer) (fetchedInvitation as any).backgroundLayer = persistentCanvasState.backgroundLayer;
+            if (persistentCanvasState.frameLayers) (fetchedInvitation as any).frameLayers = persistentCanvasState.frameLayers;
+            if (persistentCanvasState.innerCardLayer) (fetchedInvitation as any).innerCardLayer = persistentCanvasState.innerCardLayer;
+            if (persistentCanvasState.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = persistentCanvasState.backgroundImageUrl;
             if (persistentCanvasState.isLandscape !== undefined) fetchedInvitation.isLandscape = persistentCanvasState.isLandscape;
             (fetchedInvitation as any).canvasState = persistentCanvasState;
           }
@@ -357,12 +362,16 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
                 if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
                 if (parsed.background) fetchedInvitation.background = parsed.background;
+                if (parsed.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImageUrl;
                 if (parsed.effects) fetchedInvitation.effects = parsed.effects;
                 if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
                 if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
                 if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
                 if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
                 if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
+                if (parsed.backgroundLayer) (fetchedInvitation as any).backgroundLayer = parsed.backgroundLayer;
+                if (parsed.frameLayers) (fetchedInvitation as any).frameLayers = parsed.frameLayers;
+                if (parsed.innerCardLayer) (fetchedInvitation as any).innerCardLayer = parsed.innerCardLayer;
               }
             } catch (e) {}
           }

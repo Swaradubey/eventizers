@@ -131,9 +131,22 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
-  // Deduplicate incoming text layers before layout and rendering
+  // Deduplicate incoming text layers before layout and rendering.
+  // Two-pass deduplication: first by semantic rules (role, text, position), then by strict
+  // ID uniqueness as a safety net to permanently eliminate ghost/double text rendering.
   const deduplicatedLayers = useMemo(() => {
-    return deduplicateTextLayers(config.textLayers || []);
+    const layers = config.textLayers || [];
+    const semanticallyDeduped = deduplicateTextLayers(layers);
+    // Final safety net: deduplicate by strict ID to catch any remaining duplicates
+    // that may have slipped through semantic deduplication edge cases
+    const seenIds = new Set<string>();
+    return semanticallyDeduped.filter((layer) => {
+      if (!layer?.id) return true;
+      const id = layer.id.trim().toLowerCase();
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
   }, [config.textLayers]);
 
   // Compute container-proportional typography and anti-collision layer positions
