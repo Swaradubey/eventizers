@@ -38,7 +38,14 @@ export interface EventThumbnailEvent {
   thumbnailUrl?: string | null;
   uploadedFileUrl?: string | null;
   previewUrl?: string | null;
+  templatePreviewUrl?: string | null;
   selectedTemplateId?: string | null;
+  templateId?: string | null;
+  template?: {
+    previewUrl?: string | null;
+    thumbnailUrl?: string | null;
+    [key: string]: any;
+  } | null;
   designData?: {
     previewUrl?: string;
     [key: string]: any;
@@ -81,16 +88,19 @@ export default function EventThumbnail({
 }: EventThumbnailProps) {
   const [hasError, setHasError] = useState(false);
 
-  // 1. Resolve raw candidate image from all potential fields
+  // 1. Resolve raw candidate image from all potential fields (prioritizing custom canvas preview & selected template)
   const rawImage =
+    event.previewUrl ||
+    event.templatePreviewUrl ||
+    event.template?.previewUrl ||
+    event.template?.thumbnailUrl ||
     event.imageUrl ||
     event.coverImage ||
     event.thumbnail ||
     event.thumbnailUrl ||
     event.uploadedFileUrl ||
-    event.previewUrl ||
     event.designData?.previewUrl ||
-    getTemplateImage(event.selectedTemplateId) ||
+    getTemplateImage(event.selectedTemplateId || event.templateId) ||
     "";
 
   // 2. Format with URL resolver
@@ -107,7 +117,7 @@ export default function EventThumbnail({
   const currentSizeClass = sizeClasses[size] || sizeClasses.md;
 
   const handleImageClick = (e: React.MouseEvent) => {
-    if (onPreview && (resolvedUrl || event.selectedTemplateId) && !hasError) {
+    if (onPreview && (resolvedUrl || event.selectedTemplateId || event.templateId) && !hasError) {
       e.stopPropagation();
       onPreview(resolvedUrl, eventTitle, event);
     }

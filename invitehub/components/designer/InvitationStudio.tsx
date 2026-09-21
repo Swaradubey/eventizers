@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,11 +26,11 @@ import {
   AlignCenter,
   AlignRight,
   ChevronDown,
-  ChevronUp,
   Loader2,
   Pipette,
   Check,
   MapPin,
+  User,
   UserPlus,
   Tag,
   Share2,
@@ -39,9 +39,12 @@ import {
   Crown,
   CopyPlus,
   Copy,
+  Bold,
+  Italic,
+  Underline,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
-import API from "../../services/api";
+import API, { getApiErrorMessage } from "../../services/api";
 import { Invitation, TextLayer, GiftItem, GiftingState } from "../../types/invitationTypes";
 export type { TextLayer, GiftItem, GiftingState };
 import guestService from "../../services/guestService";
@@ -53,12 +56,14 @@ import InvitationCanvasStage from "./InvitationCanvasStage";
 import EviteCardPreview from "./EviteCardPreview";
 import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
 import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
-import InvitationWorkflowDetails, { HostDetailsData } from "./InvitationWorkflowDetails";
+import InvitationWorkflowDetails, { HostDetailsData, AdditionalSectionsState } from "./InvitationWorkflowDetails";
 import InvitationWorkflowGifting, { WishlistData, CharityData, PersonalFundData } from "./InvitationWorkflowGifting";
 import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
+import { invitationStore } from "../../hooks/useInvitationStore";
 import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
+import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
 export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
@@ -67,65 +72,13 @@ export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
 
 /**
  * Hard teardown helper for Canvas text objects (Evite-Style Clean Architecture).
- * Synchronously removes all existing text objects from Fabric/Canvas before
+ * Synchronously removes all existing text objects and event listeners from Fabric/Canvas before
  * ingesting text layers on canvas load, event switch, or template switch.
  */
 export const teardownCanvasTextLayers = (canvas?: any) => {
-  const canvasInstance =
-    canvas ||
-    (typeof window !== "undefined"
-      ? (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current
-      : null);
-
-  if (canvasInstance && typeof canvasInstance.getObjects === "function") {
-    try {
-      // Clear 2D context buffer if available to erase any ghost draw frames
-      if (typeof canvasInstance.clearContext === "function") {
-        if (canvasInstance.contextContainer) canvasInstance.clearContext(canvasInstance.contextContainer);
-        if (canvasInstance.contextTop) canvasInstance.clearContext(canvasInstance.contextTop);
-      } else if (canvasInstance.lowerCanvasEl && typeof canvasInstance.lowerCanvasEl.getContext === "function") {
-        const rawCtx = canvasInstance.lowerCanvasEl.getContext("2d");
-        if (rawCtx) {
-          rawCtx.clearRect(0, 0, canvasInstance.getWidth?.() || 600, canvasInstance.getHeight?.() || 840);
-        }
-      }
-
-      // Retain background image to prevent wiping out canvas template artwork
-      const savedBgImage = canvasInstance.backgroundImage;
-
-      // 1. Remove ONLY text objects — preserve background image, frame artwork, borders, and decorations
-      const staleTextObjects = canvasInstance
-        .getObjects()
-        .filter((obj: any) => {
-          // Strictly match text-typed objects only
-          if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') return true;
-          // Match objects explicitly flagged as text blocks via data attribute
-          if (obj.data?.isTextBlock) return true;
-          // Exclude image objects, background frames, and non-text decorative elements
-          if (obj.type === 'image' || obj.type === 'rect' || obj.type === 'circle' || obj.type === 'path') return false;
-          // Exclude anything with customId that is NOT a text block (e.g. background-frame)
-          if (obj.customId && obj.customId !== 'background-frame' && obj.type === 'i-text') return true;
-          return false;
-        });
-
-      staleTextObjects.forEach((obj: any) => canvasInstance.remove(obj));
-
-      // Restore background image if it was cleared
-      if (savedBgImage && !canvasInstance.backgroundImage && typeof canvasInstance.setBackgroundImage === "function") {
-        canvasInstance.backgroundImage = savedBgImage;
-      }
-
-      if (typeof canvasInstance.discardActiveObject === "function") {
-        canvasInstance.discardActiveObject();
-      }
-      if (typeof canvasInstance.requestRenderAll === "function") {
-        canvasInstance.requestRenderAll();
-      }
-    } catch (err) {
-      console.warn("[teardownCanvasTextLayers] Canvas teardown warning:", err);
-    }
+  const canvasInstance = canvas || getFabricCanvas();
+  if (canvasInstance) {
+    cleanFabricCanvas(canvasInstance, { preserveBackground: true });
   }
 };
 
@@ -134,13 +87,7 @@ export const teardownCanvasTextLayers = (canvas?: any) => {
  * Guaranteed zero duplication / zero text overlap.
  */
 export const captureCardSnapshot = async (canvasInstance?: any): Promise<string | null> => {
-  const canvas =
-    canvasInstance ||
-    (typeof window !== "undefined"
-      ? (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current
-      : null);
+  const canvas = canvasInstance || getFabricCanvas();
 
   if (canvas && typeof canvas.toDataURL === "function") {
     // Deselect any active object so selection boxes & floating icons do NOT appear in the email snapshot:
@@ -179,7 +126,8 @@ export const captureCardSnapshot = async (canvasInstance?: any): Promise<string 
 /**
  * Idempotency Guard on Canvas Updates:
  * Whenever event state updates or toasts trigger, ensures the canvas doesn't re-append existing text:
- * Only adds text blocks not already present; updates existing objects in-place.
+ * Do NOT call canvas.add(newText) on re-render or navigation if the template already has stored layers;
+ * updates existing objects in-place instead.
  */
 export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
   if (!canvas || typeof canvas.getObjects !== "function") return;
@@ -191,11 +139,15 @@ export const syncCanvasTextLayers = (canvas: any, newBlocks: TextLayer[]) => {
       existingObjects.map((obj: any) => obj.customId || obj.data?.id).filter(Boolean)
     );
 
+    // If canvas already has stored layers, update existing ones in place.
+    // Do NOT add new layers on re-render/navigation to prevent ghost duplicates.
+    const hasStoredLayers = existingObjects.length > 0;
+
     newBlocks.forEach((block) => {
       const blockId = block.id;
       if (!existingIds.has(blockId)) {
-        // Only add if not already present on canvas
-        if (typeof (window as any)?.fabric?.Textbox === "function") {
+        // Only call canvas.add if canvas does not already have stored layers (initial hydration)
+        if (!hasStoredLayers && typeof (window as any)?.fabric?.Textbox === "function") {
           const FabricTextbox = (window as any).fabric.Textbox;
           const tb = new FabricTextbox(block.text || "", {
             left: block.left !== undefined ? block.left : (block.x !== undefined ? block.x : 50),
@@ -263,17 +215,17 @@ export const getPendingOrUploadedImageUrl = (
         urlParams.get("customBackgroundUrl") ||
         urlParams.get("imageUrl");
       if (paramUrl && isUserUploadedImage(paramUrl)) return paramUrl;
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const sessionUpload = sessionStorage.getItem("pending_upload_invite");
       if (sessionUpload && isUserUploadedImage(sessionUpload)) return sessionUpload;
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const localUpload = localStorage.getItem("pending_upload_invite");
       if (localUpload && isUserUploadedImage(localUpload)) return localUpload;
-    } catch (_) {}
+    } catch (_) { }
   }
   if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
     return invite.imageUrl;
@@ -302,6 +254,7 @@ export interface StudioDesignState {
     type: "color" | "gradient" | "image" | "preset";
     value: string;
   };
+  backgroundImageUrl?: string | null;
   stageBackdrop: {
     type: "color" | "pattern";
     value: string;
@@ -573,26 +526,51 @@ export default function InvitationStudio({
       cardBgValue = pendingUploadUrl;
     }
     // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image and NOT a snapshot)
+    // Accept any saved image URL — not just user uploads or .svg — to survive save/restore round-trips
     else if (
       invite?.cardBg &&
-      (invite.cardBg.type === "image"
-        ? isUserUploadedImage(invite.cardBg.value) || (typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg"))
-        : !((tplConfig as any)?.card?.artworkUrl))
+      invite.cardBg.type === "image" &&
+      typeof invite.cardBg.value === "string" &&
+      invite.cardBg.value.trim() !== "" &&
+      !invite.cardBg.value.includes("snapshot")
     ) {
-      cardBgType = invite.cardBg.type;
-      cardBgValue = typeof invite.cardBg.value === "string" && invite.cardBg.value.endsWith(".svg")
-        ? (getCleanTemplateSvg(invite.cardBg.value) || invite.cardBg.value)
-        : invite.cardBg.value;
+      cardBgType = "image";
+      cardBgValue = invite.cardBg.value;
     } else if (
       invite?.background &&
-      (invite.background.type === "image"
-        ? isUserUploadedImage(invite.background.value) || (typeof invite.background.value === "string" && invite.background.value.endsWith(".svg"))
-        : !((tplConfig as any)?.card?.artworkUrl))
+      invite.background.type === "image" &&
+      typeof invite.background.value === "string" &&
+      invite.background.value.trim() !== "" &&
+      !invite.background.value.includes("snapshot")
+    ) {
+      cardBgType = "image";
+      cardBgValue = invite.background.value;
+    }
+    // Priority 0b: Dedicated backgroundImageUrl field (explicit round-trip persistence)
+    else if (
+      (invite as any)?.backgroundImageUrl &&
+      typeof (invite as any).backgroundImageUrl === "string" &&
+      (invite as any).backgroundImageUrl.trim() !== "" &&
+      !(invite as any).backgroundImageUrl.includes("snapshot")
+    ) {
+      cardBgType = "image";
+      cardBgValue = (invite as any).backgroundImageUrl;
+    }
+    // Priority 0c: Non-image cardBg (color / gradient) from saved state
+    else if (
+      invite?.cardBg &&
+      invite.cardBg.type !== "image" &&
+      !((tplConfig as any)?.card?.artworkUrl)
+    ) {
+      cardBgType = invite.cardBg.type;
+      cardBgValue = invite.cardBg.value;
+    } else if (
+      invite?.background &&
+      invite.background.type !== "image" &&
+      !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.background.type;
-      cardBgValue = typeof invite.background.value === "string" && invite.background.value.endsWith(".svg")
-        ? (getCleanTemplateSvg(invite.background.value) || invite.background.value)
-        : invite.background.value;
+      cardBgValue = invite.background.value;
     }
     // Priority 1: Evite decoupled card artwork (pure decorative frame, no baked text)
     else if ((tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl) {
@@ -846,22 +824,19 @@ export default function InvitationStudio({
     }
     resolvedTextLayers = deduplicateTextLayers(resolvedTextLayers);
 
-    const defaultSelectedId =
-      resolvedTextLayers.find((l) => l.id.includes("title") || l.id.includes("names"))?.id ||
-      resolvedTextLayers[0]?.id ||
-      "layer-title";
+    // Decoupled selection: strictly null by default so Text Editor controls only activate on explicit selection
+    const defaultSelectedId = null;
 
-    const defaultAmbientBackdrop = "/assets/backdrops/evite_gold_swirl.jpg";
-    const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || {
-      type: "pattern",
-      value: defaultAmbientBackdrop,
-    };
+    const defaultNeutralBackdrop = "#f8fafc";
+    const savedBackdrop = invite?.stageBackdrop || (invite as any)?.backdrop || (tplConfig as any)?.backdrop || null;
 
     const initialBackdropValue =
       (invite as any)?.canvasWorkspaceBg ||
       (invite as any)?.backdropBackground ||
-      savedBackdrop.value ||
-      defaultAmbientBackdrop;
+      savedBackdrop?.value ||
+      ((tplConfig as any)?.backdrop as any)?.gradient ||
+      ((tplConfig as any)?.backdrop as any)?.value ||
+      defaultNeutralBackdrop;
 
     const savedEnvelope = invite?.envelope || {
       color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
@@ -947,13 +922,15 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
+      backgroundImageUrl: cardBgType === "image" ? cardBgValue : ((invite as any)?.backgroundImageUrl || null),
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
-            ...savedBackdrop,
-            value: initialBackdropValue,
-            gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
-          },
+          ...(savedBackdrop || {}),
+          type: (savedBackdrop as any)?.type || (tplConfig as any)?.backdrop?.type || "color",
+          value: initialBackdropValue,
+          gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
+        },
       canvasWorkspaceBg: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       backdropBackground: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       envelope: {
@@ -995,12 +972,71 @@ export default function InvitationStudio({
           const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
           if (raw) cachedDraft = JSON.parse(raw);
         }
-      } catch (e) {}
+      } catch (e) { }
+    }
+
+    let persistentCanvasState: any = null;
+    const rawEvtCanvasState = (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
+    if (rawEvtCanvasState) {
+      try {
+        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+      } catch (_) {}
     }
 
     const mergedInvite = {
       ...(initialInvitation || {}),
+      ...(persistentCanvasState || {}),
       ...(cachedDraft || {}),
+      textElements:
+        cachedDraft?.textElements ||
+        persistentCanvasState?.textLayers ||
+        persistentCanvasState?.layers ||
+        persistentCanvasState?.textElements ||
+        initialInvitation?.textElements ||
+        undefined,
+      templateId:
+        cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
+        initialInvitation?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
+        undefined,
+      envelope:
+        cachedDraft?.envelope ||
+        persistentCanvasState?.envelope ||
+        initialInvitation?.envelope ||
+        undefined,
+      stageBackdrop:
+        cachedDraft?.stageBackdrop ||
+        persistentCanvasState?.stageBackdrop ||
+        initialInvitation?.stageBackdrop ||
+        undefined,
+      cardBg:
+        cachedDraft?.cardBg ||
+        persistentCanvasState?.cardBg ||
+        initialInvitation?.cardBg ||
+        undefined,
+      card:
+        cachedDraft?.card ||
+        persistentCanvasState?.card ||
+        (initialInvitation as any)?.card ||
+        undefined,
+      effects:
+        cachedDraft?.effects ||
+        persistentCanvasState?.effects ||
+        initialInvitation?.effects ||
+        undefined,
+      backside:
+        cachedDraft?.backside ||
+        persistentCanvasState?.backside ||
+        (initialInvitation as any)?.backside ||
+        undefined,
+      decorations:
+        cachedDraft?.decorations ||
+        persistentCanvasState?.decorations ||
+        (initialInvitation as any)?.decorations ||
+        undefined,
     };
 
     const pendingUploadUrl = getPendingOrUploadedImageUrl(mergedInvite as any, initialEvent, uploadedImageUrl);
@@ -1009,14 +1045,37 @@ export default function InvitationStudio({
     const effectiveTemplateId = isUploadedSession
       ? null
       : (templateIdQuery ||
-         cachedDraft?.templateId ||
-         mergedInvite?.templateId ||
-         initialEvent?.selectedTemplateId ||
-         (typeof window !== "undefined"
-           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
-           : null));
+        cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
+        mergedInvite?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+          : null));
 
-    const baseState = createDesignStateFromTemplate(effectiveTemplateId, initialEvent, mergedInvite as any);
+    // After a "Back to Browse" reset, ignore stale initialEvent?.selectedTemplateId
+    // so the canvas opens clean for the user to pick a fresh template from the gallery.
+    const browseReset = typeof window !== "undefined" ? sessionStorage.getItem("canvas_browse_reset") : null;
+    const resolvedTemplateId = (() => {
+      if (!browseReset) return effectiveTemplateId;
+      sessionStorage.removeItem("canvas_browse_reset");
+      // Only strip the fallback if the resolved ID came exclusively from the event's
+      // stale selectedTemplateId (not from URL query, saved draft, or pending storage).
+      if (
+        effectiveTemplateId &&
+        effectiveTemplateId === initialEvent?.selectedTemplateId &&
+        !templateIdQuery &&
+        !cachedDraft?.templateId &&
+        !mergedInvite?.templateId
+      ) {
+        return null;
+      }
+      return effectiveTemplateId;
+    })();
+
+    const baseState = createDesignStateFromTemplate(resolvedTemplateId, initialEvent, mergedInvite as any);
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
@@ -1074,7 +1133,7 @@ export default function InvitationStudio({
               casing: (el.casing || "none") as "uppercase" | "lowercase" | "capitalize" | "none",
             }));
             baseState.textLayers = deduplicateTextLayers(aiLayers);
-            baseState.selectedTextId = baseState.textLayers[0]?.id || "layer-title";
+            baseState.selectedTextId = null;
           }
         } catch (e) {
           console.warn("Could not apply pending_stationery_design:", e);
@@ -1092,6 +1151,121 @@ export default function InvitationStudio({
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+
+  // Clear all canvas state, localStorage caches, and present the template gallery.
+  // Called ONLY when the user clicks "Back to browse" — never on send.
+  const clearCanvasState = useCallback(() => {
+    const targetEvtId =
+      initialEvent?.id ||
+      propSelectedEventId ||
+      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
+
+    if (typeof window !== "undefined") {
+      // Clear the 4-layer cache for this event
+      if (targetEvtId) {
+        localStorage.removeItem(`invitation_4layer_${targetEvtId}`);
+      }
+      // Clear any pending guest/session storage
+      localStorage.removeItem("guestDraft");
+      localStorage.removeItem("guestDraftTemplateId");
+      localStorage.removeItem("pending_template_id");
+      localStorage.removeItem("pending_upload_invite");
+      localStorage.removeItem("pending_upload_name");
+      localStorage.removeItem("pending_upload_type");
+      localStorage.removeItem("pending_upload_title");
+      localStorage.removeItem("pending_stationery_design");
+      localStorage.removeItem("pending_event_type");
+      localStorage.removeItem("pending_prompt");
+      sessionStorage.removeItem("pending_template_id");
+      sessionStorage.removeItem("pending_upload_invite");
+      sessionStorage.removeItem("pending_upload_name");
+      sessionStorage.removeItem("pending_upload_type");
+      sessionStorage.removeItem("pending_upload_title");
+      sessionStorage.removeItem("pending_stationery_design");
+      sessionStorage.removeItem("pending_prompt");
+      sessionStorage.removeItem("pending_event_type");
+
+      // Signal to getInitialDesign on next mount that the user explicitly chose
+      // "Back to Browse" — block fallback to stale initialEvent?.selectedTemplateId
+      sessionStorage.setItem("canvas_browse_reset", "true");
+    }
+
+    // Reset the external invitation store
+    invitationStore.clearAll();
+
+    // Reset internal state to a blank slate
+    const emptyState: StudioDesignState = {
+      activeTemplateId: null,
+      templateId: null,
+      isPureCss: false,
+      card: null,
+      decorations: [],
+      cardImageFit: "contain",
+      isLandscape: false,
+      photoSlot: null,
+      textLayers: [],
+      selectedTextId: null,
+      cardBg: { type: "color", value: "#ffffff" },
+      backgroundImageUrl: null,
+      stageBackdrop: { type: "color", value: "#161616" },
+      canvasWorkspaceBg: "#161616",
+      backdropBackground: "#161616",
+      envelope: {
+        color: "#5384db",
+        liner: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+        linerCss: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+        stamp: null,
+        sticker: null,
+      },
+      effects: {
+        foil: null,
+        texture: "matte",
+        shadow: "none",
+      },
+      backside: undefined,
+      backgroundLayer: { type: "color", value: "#161616" },
+      frameLayers: { envelope: null, border: null, artworkUrl: "", decorativeBorderSvgUrl: "" },
+      innerCardLayer: {
+        backgroundColor: "#ffffff",
+        borderRadius: "14px",
+        border: null,
+        paperShadow: null,
+        aspectRatio: "5/7",
+      },
+      viewMode: "envelope",
+      hideEnvelope: false,
+      eventDetails: {
+        title: "",
+        host: "",
+        date: "",
+        time: "",
+        venue: "",
+        address: "",
+        description: "",
+      },
+    };
+    setDesignState(emptyState);
+    setCurrentInvitation(null);
+    setCurrentEvent(null);
+    setUndoStack([]);
+    setRedoStack([]);
+    setCurrentStepIndex(0);
+    setCanvasKey((k) => k + 1);
+
+    // Open the template gallery so user picks a fresh template
+    setIsTemplateGalleryOpen(true);
+
+    // Clear URL query params of event/invitation-specific data
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("eventId");
+        url.searchParams.delete("invitationId");
+        url.searchParams.delete("templateId");
+        window.history.replaceState({}, "", url.pathname);
+      } catch (e) { }
+    }
+  }, [initialEvent?.id, propSelectedEventId]);
 
   // --- Canvas Zoom & Aspect Ratio Controls ---
   const [canvasZoom, setCanvasZoom] = useState(100); // 50-150%
@@ -1128,6 +1302,25 @@ export default function InvitationStudio({
       : null)
   );
 
+  // Auto-open template gallery on fresh session (no template, no draft, no event).
+  // This ensures a clean slate when the user re-enters the canvas after sending.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasTemplate = Boolean(
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      designState.activeTemplateId
+    );
+    const hasDraft = Boolean(
+      initialInvitation?.id ||
+      (initialEvent?.id && localStorage.getItem(`invitation_4layer_${initialEvent.id}`))
+    );
+    if (!hasTemplate && !hasDraft) {
+      setIsTemplateGalleryOpen(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Guard: tracks whether the canvas has already been hydrated from getInitialDesign().
   // Prevents the re-hydration useEffect from firing a second time on mount and
   // overlaying template-default text layers on top of correctly loaded saved layers.
@@ -1137,15 +1330,20 @@ export default function InvitationStudio({
   // effect body twice concurrently (each strict-mode mount fires effects twice in dev).
   const isHydratingRef = useRef(false);
 
+  // Guard: set to true during generateSnapshot() so the re-hydration effect cannot
+  // inject fresh template-default layers onto the live canvas while the html-to-image
+  // capture is in progress, which was a secondary trigger of the ghost-text bug.
+  const isSnapshotInProgressRef = useRef(false);
+
   // Tracks the ID of an invitation saved by this studio session to prevent
   // the re-hydration effect from reacting to initialInvitation.id change and
   // overwriting or re-merging template defaults over active canvas state.
   const lastSavedInvitationIdRef = useRef<string | null>(null);
 
-  // Guard: set to true during generateSnapshot() so the re-hydration effect cannot
-  // inject fresh template-default layers onto the live canvas while the html-to-image
-  // capture is in progress, which was a secondary trigger of the ghost-text bug.
-  const isSnapshotInProgressRef = useRef(false);
+  // Lock to prevent the re-hydration useEffect from overwriting the state set by an
+  // explicit template switch in handleSelectTemplate. Set before state updates, cleared
+  // by the re-hydration effect's guard check so it only blocks one cycle.
+  const templateSwitchLockRef = useRef(false);
 
   // Incrementing key forces InvitationCanvasStage to fully unmount+remount on event switch,
   // which clears all stale text layer DOM nodes before the new event's layers mount.
@@ -1160,6 +1358,15 @@ export default function InvitationStudio({
     name: (initialEvent as any)?.host || (initialInvitation?.designData?.hostDetails?.name) || "SWARA KUMARI",
     phone: initialInvitation?.designData?.hostDetails?.phone || "",
     coHost: initialInvitation?.designData?.hostDetails?.coHost || "",
+  });
+
+  const [additionalSections, setAdditionalSections] = useState<AdditionalSectionsState>({
+    sharedAlbum: Boolean(initialInvitation?.designData?.additionalSections?.sharedAlbum),
+    hostPhotoGallery: Boolean(initialInvitation?.designData?.additionalSections?.hostPhotoGallery),
+    whereToStay: Boolean(initialInvitation?.designData?.additionalSections?.whereToStay),
+    shareCosts: Boolean(initialInvitation?.designData?.additionalSections?.shareCosts),
+    eventSignUps: Boolean(initialInvitation?.designData?.additionalSections?.eventSignUps),
+    mealOptions: Boolean(initialInvitation?.designData?.additionalSections?.mealOptions),
   });
 
   const [rsvpOptions, setRsvpOptions] = useState<RsvpOptionsState>(() => {
@@ -1255,56 +1462,162 @@ export default function InvitationStudio({
     };
   });
 
-  // Synchronize Details form fields with Canvas text layers and eventDetails
+  // Synchronize Details form fields with eventDetails AND card text layers (bidirectional sync)
   const handleDetailsFieldChange = (
-    field: "title" | "dateTime" | "location" | "hostNote",
+    field: "title" | "eventDate" | "eventTime" | "dateTime" | "location" | "hostNote",
     value: string
   ) => {
     setDesignState((prev) => {
       const nextDetails = { ...prev.eventDetails };
-      let nextLayers = [...prev.textLayers];
+      let nextLayers = prev.textLayers;
 
       if (field === "title") {
         nextDetails.title = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-title" || l.key === "title" || l.id === "layer-names"
-            ? { ...l, text: value }
-            : l
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-title" ? { ...l, text: value.toUpperCase() } : l
+        );
+      } else if (field === "eventDate") {
+        nextDetails.date = value;
+        const dateFormatted = value
+          ? new Date(value + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            }).toUpperCase()
+          : "";
+        const timeStr = nextDetails.time ? ` AT ${nextDetails.time}` : "";
+        const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+        );
+      } else if (field === "eventTime") {
+        nextDetails.time = value;
+        const dateFormatted = nextDetails.date
+          ? new Date(nextDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            }).toUpperCase()
+          : "";
+        const newDateText = dateFormatted ? `${dateFormatted} AT ${value}` : value ? `AT ${value}` : "";
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
         );
       } else if (field === "dateTime") {
         nextDetails.date = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-date" || l.id === "layer-datetime" || l.key === "dateTime" || l.key === "datetime" || l.key === "date"
-            ? { ...l, text: value }
-            : l
-        );
       } else if (field === "location") {
         nextDetails.venue = value;
         nextDetails.address = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-venue" || l.key === "venue"
-            ? { ...l, text: value }
-            : l
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-venue" ? { ...l, text: value } : l
         );
       } else if (field === "hostNote") {
         nextDetails.description = value;
-        nextLayers = nextLayers.map((l) =>
-          l.id === "layer-description" || l.id === "layer-rsvp" || l.key === "description"
-            ? { ...l, text: value }
-            : l
+        nextLayers = prev.textLayers.map((l) =>
+          l.id === "layer-description" ? { ...l, text: value } : l
         );
       }
 
       return {
         ...prev,
         eventDetails: nextDetails,
-        textLayers: deduplicateTextLayers(nextLayers),
+        textLayers: nextLayers,
       };
     });
   };
 
+  // Helper: given a prev designState and changed eventDetails, produce synced textLayers
+  const syncTextLayersFromEventDetails = (
+    prevDesignState: StudioDesignState,
+    nextDetails: StudioDesignState["eventDetails"]
+  ): TextLayer[] => {
+    return prevDesignState.textLayers.map((l) => {
+      if (l.id === "layer-title" && prevDesignState.eventDetails.title !== nextDetails.title) {
+        return { ...l, text: nextDetails.title.toUpperCase() };
+      }
+      if (l.id === "layer-venue" && prevDesignState.eventDetails.venue !== nextDetails.venue) {
+        return { ...l, text: nextDetails.venue };
+      }
+      if (l.id === "layer-description" && prevDesignState.eventDetails.description !== nextDetails.description) {
+        return { ...l, text: nextDetails.description || "" };
+      }
+      if (l.id === "layer-host" && prevDesignState.eventDetails.host !== nextDetails.host) {
+        return { ...l, text: nextDetails.host };
+      }
+      if (l.id === "layer-datetime") {
+        const dateChanged = prevDesignState.eventDetails.date !== nextDetails.date;
+        const timeChanged = prevDesignState.eventDetails.time !== nextDetails.time;
+        if (dateChanged || timeChanged) {
+          const dateFormatted = nextDetails.date
+            ? new Date(nextDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
+              }).toUpperCase()
+            : "";
+          const newDateText = dateFormatted
+            ? nextDetails.time
+              ? `${dateFormatted} AT ${nextDetails.time}`
+              : dateFormatted
+            : nextDetails.time
+              ? `AT ${nextDetails.time}`
+              : "";
+          return newDateText ? { ...l, text: newDateText } : l;
+        }
+      }
+      return l;
+    });
+  };
+
+  // Wrapper for Review step: intercepts setDesignState calls and syncs textLayers from eventDetails changes
+  const handleReviewDesignStateChange = (
+    updater: (prev: StudioDesignState) => StudioDesignState
+  ) => {
+    setDesignState((prev) => {
+      const next = updater(prev);
+      // Only sync textLayers if eventDetails actually changed
+      if (next.eventDetails !== prev.eventDetails) {
+        return { ...next, textLayers: syncTextLayersFromEventDetails(prev, next.eventDetails) };
+      }
+      return next;
+    });
+  };
+
+  // Wrapper for Review step host details: when host name changes, also update layer-host text layer
+  const handleReviewHostDetailsChange = (
+    updater: (prev: HostDetailsData) => HostDetailsData
+  ) => {
+    setHostDetails((prevHost) => {
+      const nextHost = updater(prevHost);
+      // Sync host name to card text layer if it changed
+      if (prevHost.name !== nextHost.name) {
+        setDesignState((ds) => ({
+          ...ds,
+          eventDetails: { ...ds.eventDetails, host: nextHost.name },
+          textLayers: ds.textLayers.map((l) =>
+            l.id === "layer-host" ? { ...l, text: nextHost.name } : l
+          ),
+        }));
+      }
+      return nextHost;
+    });
+  };
+
+  // Wrapper for Details step host details: when host name changes, also sync to eventDetails + layer-host
+  const handleDetailsHostChange = (details: HostDetailsData) => {
+    setHostDetails(details);
+    setDesignState((prev) => ({
+      ...prev,
+      eventDetails: { ...prev.eventDetails, host: details.name },
+      textLayers: prev.textLayers.map((l) =>
+        l.id === "layer-host" ? { ...l, text: details.name } : l
+      ),
+    }));
+  };
+
   // Tracks whether we are in the process of generating a snapshot + saving before opening dispatch
   const [isPreparingDispatch, setIsPreparingDispatch] = useState(false);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
 
   // Undo / Redo History Stacks
   const [undoStack, setUndoStack] = useState<StudioDesignState[]>([]);
@@ -1343,8 +1656,10 @@ export default function InvitationStudio({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const dragStartPos = useRef<{ mouseX: number; mouseY: number; layerX: number; layerY: number } | null>(null);
 
-  // Active selected text layer
-  const activeLayer = designState.textLayers.find((l) => l.id === designState.selectedTextId) || designState.textLayers[0];
+  // Active selected text layer - strictly decoupled: only active when a layer is explicitly selected
+  const activeLayer = designState.selectedTextId
+    ? designState.textLayers.find((l) => l.id === designState.selectedTextId) || null
+    : null;
 
   // Selection handler to activate any text layer and sync with toolbar
   const handleSelectLayer = (layerId: string) => {
@@ -1496,23 +1811,18 @@ export default function InvitationStudio({
     }
 
     // Clean up active object on fabric/window canvas if present
-    if (typeof window !== "undefined") {
-      const canvas =
-        (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current;
-      if (canvas && typeof canvas.getObjects === "function") {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
-          canvas.remove(activeObj);
-          if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+    const canvas = getFabricCanvas();
+    if (canvas && typeof canvas.getObjects === "function") {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
+        canvas.remove(activeObj);
+        if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+        if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+      } else {
+        const obj = canvas.getObjects().find((o: any) => o.customId === targetId || o.data?.id === targetId);
+        if (obj) {
+          canvas.remove(obj);
           if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-        } else {
-          const obj = canvas.getObjects().find((o: any) => o.customId === targetId || o.data?.id === targetId);
-          if (obj) {
-            canvas.remove(obj);
-            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-          }
         }
       }
     }
@@ -1521,7 +1831,7 @@ export default function InvitationStudio({
     pushStateToHistory({
       ...designState,
       textLayers: remaining,
-      selectedTextId: remaining[0]?.id || null,
+      selectedTextId: null,
     });
     setToast({ message: "Text box removed", type: "success" });
   };
@@ -1606,7 +1916,6 @@ export default function InvitationStudio({
   const [eventsList, setEventsList] = useState<Event[]>(propEvents || []);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isPreviewDropdownOpen, setIsPreviewDropdownOpen] = useState(false);
-  const [isSendingPreviewEmail, setIsSendingPreviewEmail] = useState(false);
   const previewDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close preview dropdown when clicking outside
@@ -1702,7 +2011,7 @@ export default function InvitationStudio({
       try {
         const raw = localStorage.getItem(`invitation_4layer_${eventId}`);
         if (raw) cachedDraft = JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 2. Fetch saved invitation draft from backend API
@@ -1732,7 +2041,7 @@ export default function InvitationStudio({
 
     // Hard Teardown Before Ingesting Text Layers:
     // Synchronously remove existing text objects from Canvas/Fabric and discard active selection
-    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    teardownCanvasTextLayers();
 
     // 5. Hydrate fresh state from template
     const freshState = createDesignStateFromTemplate(
@@ -1855,8 +2164,8 @@ export default function InvitationStudio({
       const dateStr = designState.eventDetails.date
         ? `\n📅 *Date:* ${designState.eventDetails.date}${designState.eventDetails.time ? ` at ${designState.eventDetails.time}` : ""}`
         : currentEvent?.eventDate
-        ? `\n📅 *Date:* ${new Date(currentEvent.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`
-        : "";
+          ? `\n📅 *Date:* ${new Date(currentEvent.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`
+          : "";
       const venueStr = (designState.eventDetails.venue || currentEvent?.venue)
         ? `\n📍 *Location:* ${designState.eventDetails.venue || currentEvent?.venue}`
         : "";
@@ -1988,6 +2297,7 @@ export default function InvitationStudio({
     if (isHydratingRef.current) return;
 
     // Guard: never inject layers while a snapshot capture is in progress. generateSnapshot()
+    let isMounted = true;
     // temporarily mutates selectedTextId, causing React to flush a render; if this effect
     // fires concurrently it writes fresh template-default layers on top of the live canvas.
     if (isSnapshotInProgressRef.current) return;
@@ -1997,6 +2307,14 @@ export default function InvitationStudio({
     // and overlay them on top of the already-correct saved layers.
     if (!hasInitialHydratedRef.current) {
       hasInitialHydratedRef.current = true;
+      return;
+    }
+
+    // Guard: skip re-hydration if an explicit template switch is in progress.
+    // handleSelectTemplate sets this flag before updating state to prevent this
+    // effect from overwriting the fresh template layers with stale cached data.
+    if (templateSwitchLockRef.current) {
+      templateSwitchLockRef.current = false;
       return;
     }
 
@@ -2036,25 +2354,91 @@ export default function InvitationStudio({
       try {
         const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
         if (raw) cachedDraft = JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
+    }
+
+    let persistentCanvasState: any = null;
+    const rawEvtCanvasState = (currentEvent as any)?.canvasState || (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
+    if (rawEvtCanvasState) {
+      try {
+        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+      } catch (_) {}
     }
 
     const mergedInvite = {
       ...(initialInvitation || {}),
+      ...(persistentCanvasState || {}),
       ...(cachedDraft || {}),
+      textElements:
+        cachedDraft?.textElements ||
+        persistentCanvasState?.textLayers ||
+        persistentCanvasState?.layers ||
+        persistentCanvasState?.textElements ||
+        initialInvitation?.textElements ||
+        undefined,
+      templateId:
+        cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
+        initialInvitation?.templateId ||
+        (currentEvent as any)?.selectedTemplateId ||
+        (currentEvent as any)?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
+        undefined,
+      envelope:
+        cachedDraft?.envelope ||
+        persistentCanvasState?.envelope ||
+        initialInvitation?.envelope ||
+        undefined,
+      stageBackdrop:
+        cachedDraft?.stageBackdrop ||
+        persistentCanvasState?.stageBackdrop ||
+        initialInvitation?.stageBackdrop ||
+        undefined,
+      cardBg:
+        cachedDraft?.cardBg ||
+        persistentCanvasState?.cardBg ||
+        initialInvitation?.cardBg ||
+        undefined,
+      card:
+        cachedDraft?.card ||
+        persistentCanvasState?.card ||
+        (initialInvitation as any)?.card ||
+        undefined,
+      effects:
+        cachedDraft?.effects ||
+        persistentCanvasState?.effects ||
+        initialInvitation?.effects ||
+        undefined,
+      backside:
+        cachedDraft?.backside ||
+        persistentCanvasState?.backside ||
+        (initialInvitation as any)?.backside ||
+        undefined,
+      decorations:
+        cachedDraft?.decorations ||
+        persistentCanvasState?.decorations ||
+        (initialInvitation as any)?.decorations ||
+        undefined,
     };
 
     const targetTplId =
       mergedInvite?.templateId ||
       initialInvitation?.templateId ||
       templateIdQuery ||
+      (currentEvent as any)?.selectedTemplateId ||
+      (currentEvent as any)?.templateId ||
       initialEvent?.selectedTemplateId ||
+      (initialEvent as any)?.templateId ||
       (typeof window !== "undefined"
         ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
         : null);
 
     const hasSavedLayers = Boolean(
       (initialInvitation?.textElements && initialInvitation.textElements.length > 0) ||
+      (persistentCanvasState?.textLayers && persistentCanvasState.textLayers.length > 0) ||
+      (persistentCanvasState?.layers && persistentCanvasState.layers.length > 0) ||
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
@@ -2062,7 +2446,12 @@ export default function InvitationStudio({
     // template has genuinely changed (not just because currentEvent was synced).
     if (hasSavedLayers || (targetTplId && targetTplId !== loadedTemplateIdRef.current)) {
       // Hard Teardown Before Ingesting Text Layers:
-      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+      const canvas = getFabricCanvas();
+      if (canvas) {
+        cleanFabricCanvas(canvas, { preserveBackground: true });
+      } else {
+        teardownCanvasTextLayers();
+      }
 
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
@@ -2079,6 +2468,8 @@ export default function InvitationStudio({
       const incomingLayerIds = new Set(
         (freshState.textLayers || []).map((l) => l.id).filter(Boolean)
       );
+
+      if (!isMounted) return;
 
       setDesignState((prev) => {
         const nextCard = freshState.card || prev.card;
@@ -2107,17 +2498,22 @@ export default function InvitationStudio({
           textLayers: layersAlreadyLoaded
             ? prev.textLayers
             : deduplicateTextLayers(freshState.textLayers),
+          selectedTextId: null,
         };
       });
       if (typeof window !== "undefined") {
         try {
           sessionStorage.removeItem("pending_template_id");
           localStorage.removeItem("pending_template_id");
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
     isHydratingRef.current = false;
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     initialInvitation?.id,
     initialInvitation?.templateId,
@@ -2136,7 +2532,7 @@ export default function InvitationStudio({
   // Handle unmount cleanup to avoid memory leaks or duplicate instances
   useEffect(() => {
     return () => {
-      teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+      teardownCanvasTextLayers();
     };
   }, []);
 
@@ -2165,13 +2561,27 @@ export default function InvitationStudio({
     const config = getTemplateConfig(templateId);
     if (!config) return;
 
-    // Hard Teardown Before Ingesting Text Layers:
-    teardownCanvasTextLayers((window as any)?.__fabricCanvas || (window as any)?.__canvasInstance);
+    // Lock re-hydration effect to prevent it from overwriting the new template state
+    templateSwitchLockRef.current = true;
 
-    // Force remount with Evite-style unboxing extraction animation
+    // Hard Teardown: Clear ALL existing canvas text objects and DOM nodes
+    const canvas = getFabricCanvas();
+    if (canvas) {
+      cleanFabricCanvas(canvas, { preserveBackground: false });
+    } else {
+      teardownCanvasTextLayers();
+    }
+
+    // Force full canvas remount to guarantee zero stale DOM remnants
     setCanvasKey((k) => k + 1);
 
+    // Sync external invitation store so downstream consumers see the new template
+    invitationStore.setTemplate(templateId);
+
     loadedTemplateIdRef.current = templateId;
+
+    // Create fresh design state from the selected template — isExplicitSwitch=true
+    // ensures saved draft layers are IGNORED and only template defaults are used
     const nextState = createDesignStateFromTemplate(
       templateId,
       currentEvent || initialEvent,
@@ -2181,17 +2591,34 @@ export default function InvitationStudio({
     const dedupedState = {
       ...nextState,
       textLayers: deduplicateTextLayers(nextState.textLayers),
+      selectedTextId: null,
     };
-    setDesignState(dedupedState);
-    pushStateToHistory(dedupedState);
 
-    // Update URL query param to reflect new template
+    // Atomic state replacement: clear undo/redo history so old template elements
+    // cannot bleed back in via undo/redo, then set the completely fresh state
+    setUndoStack([]);
+    setRedoStack([]);
+    setDesignState(dedupedState);
+
+    // Persist the fresh template payload to localStorage so remounts load the
+    // correct data instead of falling back to stale cached drafts
     if (typeof window !== "undefined") {
       try {
+        const targetEvtId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+        if (targetEvtId) {
+          const draftPayload = {
+            templateId,
+            textElements: dedupedState.textLayers,
+            cardBg: dedupedState.cardBg,
+            envelope: dedupedState.envelope,
+          };
+          localStorage.setItem(`invitation_4layer_${targetEvtId}`, JSON.stringify(draftPayload));
+        }
+        // Update URL query param to reflect new template
         const url = new URL(window.location.href);
         url.searchParams.set("templateId", templateId);
         window.history.replaceState({}, "", url.toString());
-      } catch (e) {}
+      } catch (e) { }
     }
 
     setToast({
@@ -2290,7 +2717,7 @@ export default function InvitationStudio({
       if (typeof document !== "undefined" && (document as any).fonts?.ready) {
         try {
           await (document as any).fonts.ready;
-        } catch (_fErr) {}
+        } catch (_fErr) { }
       }
 
       // Wait for all images in the isolated container to settle
@@ -2463,6 +2890,13 @@ export default function InvitationStudio({
       artworkUrl: effectiveArtworkUrl,
     };
 
+    // Explicit background image URL for reliable round-trip persistence
+    const explicitBackgroundImageUrl =
+      (designState.cardBg?.type === "image" && designState.cardBg.value) ||
+      effectiveArtworkUrl ||
+      (designState.card as any)?.artworkUrl ||
+      null;
+
     return {
       id: currentInvitation?.id || undefined,
       eventId: targetEventId,
@@ -2488,6 +2922,8 @@ export default function InvitationStudio({
       eventDate: designState.eventDetails.date || currentEvent?.eventDate || initialEvent?.eventDate || null,
       eventTime: designState.eventDetails.time || currentEvent?.eventTime || initialEvent?.eventTime || null,
       eventVenue: designState.eventDetails.venue || venueLayer?.text?.trim() || currentEvent?.venue || initialEvent?.venue || null,
+      hostNotes: designState.eventDetails.description || "",
+      hostName: hostDetails.name || "SWARA KUMARI",
       textElements: normalizedTextLayers,
       layers: normalizedTextLayers,
       card: fullCardModel,
@@ -2497,6 +2933,7 @@ export default function InvitationStudio({
       aspectRatio: activePreset.aspect,
       background: fullBackgroundModel,
       cardBg: fullBackgroundModel,
+      backgroundImageUrl: explicitBackgroundImageUrl,
       stageBackdrop: designState.stageBackdrop,
       backdrop: designState.stageBackdrop,
       canvasWorkspaceBg: designState.stageBackdrop.value,
@@ -2506,9 +2943,31 @@ export default function InvitationStudio({
       backside: designState.backside,
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
+      selectedTemplateId: activeTplId,
+      previewUrl: resolvedImageUrl,
+      thumbnailUrl: resolvedImageUrl,
+      canvasState: {
+        templateId: activeTplId,
+        activeTemplateId: activeTplId,
+        textLayers: normalizedTextLayers,
+        layers: normalizedTextLayers,
+        card: fullCardModel,
+        cardBg: fullBackgroundModel,
+        background: fullBackgroundModel,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: decorativeImages,
+        isLandscape: designState.isLandscape,
+        previewUrl: resolvedImageUrl,
+        thumbnailUrl: resolvedImageUrl,
+        eventDetails: designState.eventDetails,
+      },
       designData: {
         ...(currentInvitation?.designData || {}),
         hostDetails,
+        additionalSections,
         rsvpOptions,
         wishlists,
         charities,
@@ -2630,6 +3089,7 @@ export default function InvitationStudio({
             ...(prev.card || {}),
             ...payload.card,
           },
+          backgroundImageUrl: payload.backgroundImageUrl || prev.backgroundImageUrl || null,
           decorations: payload.decorations || prev.decorations || [],
         }));
 
@@ -2645,6 +3105,7 @@ export default function InvitationStudio({
                 card: payload.card,
                 cardBg: payload.cardBg,
                 background: payload.background,
+                backgroundImageUrl: payload.backgroundImageUrl || payload.cardBg?.value || null,
                 decorations: payload.decorations,
                 envelope: payload.envelope,
                 stageBackdrop: payload.stageBackdrop,
@@ -2657,8 +3118,34 @@ export default function InvitationStudio({
                 designData: payload.designData,
               })
             );
-          } catch (e) {}
+          } catch (e) { }
         }
+
+        // Persist templateId, previewUrl, and canvasState to Event record
+        if (payload.eventId) {
+          try {
+            await eventService.updateEvent(payload.eventId, {
+              selectedTemplateId: payload.templateId,
+              templateId: payload.templateId,
+              canvasState: payload.canvasState,
+              previewUrl: payload.previewUrl || payload.imageUrl || null,
+              coverImage: payload.previewUrl || payload.imageUrl || null,
+            } as any);
+            if (currentEvent) {
+              setCurrentEvent((prev) => (prev ? {
+                ...prev,
+                selectedTemplateId: payload.templateId,
+                templateId: payload.templateId,
+                canvasState: payload.canvasState,
+                previewUrl: payload.previewUrl || payload.imageUrl || null,
+                coverImage: payload.previewUrl || payload.imageUrl || null,
+              } : prev));
+            }
+          } catch (evErr) {
+            console.warn("[saveDesign] Could not sync event record with canvasState:", evErr);
+          }
+        }
+
         return mergedInvite;
       }
       return null;
@@ -2731,7 +3218,7 @@ export default function InvitationStudio({
         const draftPayload = constructPayload(null);
         localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
         localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-      } catch (e) {}
+      } catch (e) { }
       setToast({ message: "Sign in to save your design permanently.", type: "success" });
       setIsAuthModalOpen(true);
       return;
@@ -2788,7 +3275,7 @@ export default function InvitationStudio({
                   backside: designState.backside,
                 })
               );
-            } catch (e) {}
+            } catch (e) { }
           }
           if (window.location.pathname !== "/dashboard/invitations") {
             router.push(`/dashboard/invitations?${url.searchParams.toString()}`);
@@ -2822,7 +3309,7 @@ export default function InvitationStudio({
           const draftPayload = constructPayload(null);
           localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
           localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-        } catch (e) {}
+        } catch (e) { }
         setToast({ message: "Sign in to save your design and continue.", type: "success" });
         setIsAuthModalOpen(true);
         return;
@@ -2846,8 +3333,12 @@ export default function InvitationStudio({
       return;
     }
 
-    // When on "Gifting" step (step 2): advance to step 3 ("Review")
+    // When on "Gifting" step (step 2): save gifting state and advance to step 3 ("Review")
     if (currentStepIndex === 2) {
+      const saved = await saveDesign();
+      if (saved) {
+        setToast({ message: "Gifting options saved! ✨", type: "success" });
+      }
       setCurrentStepIndex(3);
       return;
     }
@@ -2860,7 +3351,7 @@ export default function InvitationStudio({
           const draftPayload = constructPayload(null);
           localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
           localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-        } catch (e) {}
+        } catch (e) { }
         setIsAuthModalOpen(true);
         return;
       }
@@ -2878,7 +3369,7 @@ export default function InvitationStudio({
         const draftPayload = constructPayload(null);
         localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
         localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
-      } catch (e) {}
+      } catch (e) { }
       setToast({ message: "Sign in to send your invitations.", type: "success" });
       setIsAuthModalOpen(true);
       return;
@@ -2980,6 +3471,23 @@ export default function InvitationStudio({
         cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
         cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        eventTitle: designState.eventDetails.title || currentEvent?.title || "",
+        eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
+        eventTime: designState.eventDetails.time || currentEvent?.eventTime || "",
+        eventVenue: designState.eventDetails.venue || designState.eventDetails.address || currentEvent?.venue || "",
+        hostNotes: designState.eventDetails.description || "",
+        hostName: hostDetails.name || "SWARA KUMARI",
+        gifting: giftingState,
+        designData: {
+          ...(currentInvitation?.designData || {}),
+          hostDetails,
+          additionalSections,
+          rsvpOptions,
+          wishlists,
+          charities,
+          personalFunds,
+          gifting: giftingState,
+        },
         rsvpSettings: {
           rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
           rsvpDeadlineDate: combinedDeadlineIso,
@@ -3012,6 +3520,9 @@ export default function InvitationStudio({
           message: `✨ Invitation sent to ${response.recipientCount || allRecipients.length} guest(s)!`,
           type: "success",
         });
+        // NOTE: Canvas state intentionally NOT cleared here.
+        // The template and layers remain visible so the user can review what was sent.
+        // State is only cleared when they explicitly click "Back to browse".
       } else {
         throw new Error(response?.error || response?.message || "Failed to dispatch email");
       }
@@ -3057,6 +3568,7 @@ export default function InvitationStudio({
               message: `✨ Event published & invitation sent to ${retryRes.recipientCount || payload?.recipients?.length || 1} guest(s)!`,
               type: "success",
             });
+            // NOTE: Canvas state intentionally NOT cleared here (same as primary send path).
             return;
           }
         } catch (retryErr) {
@@ -3065,10 +3577,7 @@ export default function InvitationStudio({
       }
 
       const errorMsg =
-        rawErrorMsg ||
-        (err?.message === "Network Error"
-          ? "Network Error: Could not connect to backend. Please verify server status."
-          : "Failed to send invitation emails. Please check server settings.");
+        rawErrorMsg || getApiErrorMessage(err) || "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
         type: "error",
@@ -3138,11 +3647,50 @@ export default function InvitationStudio({
           ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
           : null;
 
+      const effectiveTplId = templateIdQuery || designState.activeTemplateId || designState.templateId || "custom";
+      const resolvedSnapshot = activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined) || (activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined);
+
+      const packagedCanvasState = {
+        templateId: effectiveTplId,
+        activeTemplateId: effectiveTplId,
+        textLayers: designState.textLayers,
+        layers: designState.textLayers,
+        card: designState.card,
+        cardBg: designState.cardBg,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: designState.decorations,
+        isLandscape: designState.isLandscape,
+        previewUrl: resolvedSnapshot,
+        thumbnailUrl: resolvedSnapshot,
+        eventDetails: designState.eventDetails,
+      };
+
       // 2. Prepare payload
       payload = {
         invitationId: activeInvitationId,
         eventId: targetEventId,
-        templateId: templateIdQuery || designState.activeTemplateId || "custom",
+        templateId: effectiveTplId,
+        selectedTemplateId: effectiveTplId,
+        canvasState: packagedCanvasState,
+        layers: designState.textLayers,
+        textElements: designState.textLayers,
+        previewUrl: resolvedSnapshot,
+        thumbnailUrl: resolvedSnapshot,
+        snapshot: resolvedSnapshot,
+        snapshotUrl: resolvedSnapshot,
+        cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
+        cardSnapshotUrl: resolvedSnapshot,
+        card: designState.card,
+        cardBg: designState.cardBg,
+        background: designState.cardBg,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: designState.decorations,
         title:
           designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
           designState.eventDetails.title?.trim() ||
@@ -3151,11 +3699,13 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: selectedGuestIds,
-        snapshot: activeUploadedUrl || undefined,
-        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
-        cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
+        eventTitle: designState.eventDetails.title || currentEvent?.title || "",
+        eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
+        eventTime: designState.eventDetails.time || currentEvent?.eventTime || "",
+        eventVenue: designState.eventDetails.venue || designState.eventDetails.address || currentEvent?.venue || "",
+        hostNotes: designState.eventDetails.description || "",
+        hostName: hostDetails.name || "SWARA KUMARI",
         rsvpSettings: {
           rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
           rsvpDeadlineDate: combinedDeadlineIso,
@@ -3173,8 +3723,8 @@ export default function InvitationStudio({
         rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
       };
 
-      // Auto-publish associated event if in draft status so sending is never blocked
-      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+      // Always persist the template, snapshot preview, and canvas state to the event record
+      if (targetEventId) {
         try {
           await eventService.updateEvent(targetEventId, {
             title: currentEvent?.title || designState.eventDetails.title || "Special Event",
@@ -3182,9 +3732,25 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            selectedTemplateId: effectiveTplId,
+            templateId: effectiveTplId,
+            canvasState: packagedCanvasState,
+            previewUrl: resolvedSnapshot,
+            coverImage: resolvedSnapshot,
           } as any);
           if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+            setCurrentEvent((prev) => (prev ? {
+              ...prev,
+              status: "published",
+              selectedTemplateId: effectiveTplId,
+              templateId: effectiveTplId,
+              canvasState: packagedCanvasState,
+              previewUrl: resolvedSnapshot,
+              coverImage: resolvedSnapshot,
+            } : prev));
+          }
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(packagedCanvasState));
           }
         } catch (pubErr) {
           console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
@@ -3261,192 +3827,13 @@ export default function InvitationStudio({
       }
 
       const errorMsg =
-        rawErrorMsg ||
-        "Failed to send invitation emails. Please check server settings.";
+        rawErrorMsg || getApiErrorMessage(err) || "Failed to send invitation emails. Please check server settings.";
       setToast({
         message: errorMsg,
         type: "error",
       });
     } finally {
       setIsSendingEmails(false);
-    }
-  };
-
-  // Evite-Style "Email me a preview" dispatch handler
-  const handleEmailPreview = async () => {
-    if (isSendingPreviewEmail || isGeneratingSnapshot || isSavingDraft || isPreparingDispatch) return;
-
-    // Detect target host email from authenticated user or form state
-    const recipientEmail = user?.email || (hostDetails?.phone?.includes("@") ? hostDetails.phone : null);
-
-    if (!user && !recipientEmail) {
-      setToast({
-        message: "Please sign in to send a preview to your email.",
-        type: "error",
-      });
-      setIsAuthModalOpen(true);
-      return;
-    }
-
-    if (!recipientEmail) {
-      setToast({
-        message: "No host email address found to send a preview.",
-        type: "error",
-      });
-      return;
-    }
-
-    setIsSendingPreviewEmail(true);
-    setToast({
-      message: `Sending sample preview to ${recipientEmail}... ✉️`,
-      type: "success",
-    });
-
-    const targetEventId =
-      currentEvent?.id ||
-      initialEvent?.id ||
-      currentInvitation?.eventId ||
-      propSelectedEventId ||
-      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
-
-    let payload: any = null;
-    try {
-      // Auto-publish event if currently in draft so the host's email CTA links work seamlessly
-      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
-        try {
-          await eventService.updateEvent(targetEventId, {
-            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
-            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
-            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
-            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
-            status: "published",
-          } as any);
-          if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
-          }
-        } catch (pubErr) {
-          console.warn("[handleEmailPreview] Auto-publish event notice:", pubErr);
-        }
-      }
-
-      // Generate clean card snapshot from canvas
-      const snap = await generateSnapshot();
-      const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
-      const activeUploadedUrl = snap.uploadedUrl;
-
-      // Save design to backend with finalized snapshot
-      let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
-      const saved = await saveDesign(activeUploadedUrl || activeSnapshotDataUrl);
-      if (saved && saved.id) {
-        activeInvitationId = saved.id;
-      }
-
-      payload = {
-        invitationId: activeInvitationId,
-        eventId: targetEventId,
-        templateId: templateIdQuery || designState.activeTemplateId || "custom",
-        title:
-          designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
-          designState.eventDetails.title?.trim() ||
-          currentEvent?.title?.trim() ||
-          initialEvent?.title?.trim() ||
-          "Party Invitation Preview",
-        recipients: [
-          {
-            email: recipientEmail,
-            name: user?.name || hostDetails.name || "Host",
-            guestId: null,
-          },
-        ],
-        guestIds: [],
-        snapshot: activeSnapshotDataUrl,
-        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
-        cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || activeSnapshotDataUrl,
-        eventDetails: designState.eventDetails,
-        envelope: designState.envelope,
-        card: designState.card,
-        cardBg: designState.cardBg,
-        textElements: designState.textLayers,
-        decorations: designState.decorations,
-        gifting: giftingState,
-      };
-
-      let response: any = null;
-      if (activeInvitationId) {
-        const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
-        response = res.data;
-      } else {
-        const res = await API.post(`/invitations/send`, payload);
-        response = res.data;
-      }
-
-      if (response && (response.success || response.recipientCount)) {
-        setToast({
-          message: `Preview sent to ${recipientEmail}! Check your inbox. 📬`,
-          type: "success",
-        });
-      } else {
-        throw new Error(response?.error || response?.message || "Failed to dispatch preview email");
-      }
-    } catch (err: any) {
-      console.error("[handleEmailPreview] Error:", err);
-      const rawErrorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "";
-
-      // Self-healing fallback for draft mode validation error
-      if (
-        typeof rawErrorMsg === "string" &&
-        (rawErrorMsg.toLowerCase().includes("draft") || rawErrorMsg.toLowerCase().includes("publish")) &&
-        targetEventId &&
-        payload
-      ) {
-        try {
-          await eventService.updateEvent(targetEventId, {
-            title: currentEvent?.title || designState.eventDetails.title || "Special Event",
-            eventDate: currentEvent?.eventDate || designState.eventDetails.date || new Date().toISOString().split("T")[0],
-            eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
-            venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
-            status: "published",
-          } as any);
-          if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
-          }
-
-          let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
-          let retryRes: any = null;
-          if (activeInvitationId) {
-            const res = await API.post(`/invitations/${activeInvitationId}/send`, payload);
-            retryRes = res.data;
-          } else {
-            const res = await API.post(`/invitations/send`, payload);
-            retryRes = res.data;
-          }
-
-          if (retryRes && (retryRes.success || retryRes.recipientCount)) {
-            setToast({
-              message: `Preview sent to ${recipientEmail}! Check your inbox. 📬`,
-              type: "success",
-            });
-            return;
-          }
-        } catch (retryErr) {
-          console.error("[handleEmailPreview] Retry send error:", retryErr);
-        }
-      }
-
-      const errorMsg =
-        rawErrorMsg ||
-        "Failed to send preview email. Please check email server settings.";
-      setToast({
-        message: errorMsg,
-        type: "error",
-      });
-    } finally {
-      setIsSendingPreviewEmail(false);
     }
   };
 
@@ -3489,6 +3876,7 @@ export default function InvitationStudio({
           <button
             type="button"
             onClick={() => {
+              clearCanvasState();
               if (onBack) {
                 onBack();
               } else {
@@ -3541,22 +3929,20 @@ export default function InvitationStudio({
                       setCurrentStepIndex(idx);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : isCompleted
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${isActive
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : isCompleted
                       ? "text-slate-700 hover:text-slate-900 hover:bg-white/80"
                       : "text-slate-500 hover:text-slate-800 hover:bg-white/60"
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      isActive
-                        ? "bg-white text-slate-900"
-                        : isCompleted
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive
+                      ? "bg-white text-slate-900"
+                      : isCompleted
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-slate-200 text-slate-600"
-                    }`}
+                      }`}
                   >
                     {isCompleted ? "✓" : idx + 1}
                   </span>
@@ -3567,29 +3953,8 @@ export default function InvitationStudio({
           </nav>
         </div>
 
-        {/* Right: Actions Controls (Event Selector, WhatsApp, Send, Preview, Premium Badge, Save, Next) */}
+        {/* Right: Actions Controls (WhatsApp, Send, Preview, Premium Badge, Save, Next) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end">
-          {/* Active Event dropdown selector */}
-          {eventsList.length > 0 && (
-            <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-100/90 hover:bg-slate-200/70 transition-colors px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs shrink-0">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span className="hidden xl:inline text-slate-500 font-semibold shrink-0">Event:</span>
-              <select
-                value={currentEvent?.id || propSelectedEventId || ""}
-                onChange={(e) => handleEventChange(e.target.value)}
-                className="bg-transparent font-bold focus:outline-none text-slate-800 cursor-pointer max-w-[90px] sm:max-w-[130px] truncate text-xs"
-                title="Select active event"
-              >
-                <option value="">Select Event...</option>
-                {eventsList.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Share via WhatsApp button (visible on large displays) */}
           <button
             type="button"
@@ -3626,19 +3991,12 @@ export default function InvitationStudio({
           {/* Preview Button */}
           <button
             type="button"
-            disabled={isSendingPreviewEmail}
-            onClick={() => handleEmailPreview()}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95 disabled:opacity-50"
-            title="Email me a preview"
+            onClick={() => setIsPreviewModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+            title="Card preview"
           >
-            {isSendingPreviewEmail ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3e5622]" />
-            ) : (
-              <Eye className="w-3.5 h-3.5 text-[#3e5622]" />
-            )}
-            <span className="hidden sm:inline">
-              {isSendingPreviewEmail ? "Sending..." : "Preview"}
-            </span>
+            <Eye className="w-3.5 h-3.5 text-[#3e5622]" />
+            <span className="hidden sm:inline">Preview</span>
           </button>
 
           {/* Premium Badge */}
@@ -3698,22 +4056,20 @@ export default function InvitationStudio({
                     setCurrentStepIndex(idx);
                   }
                 }}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : isCompleted
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${isActive
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : isCompleted
                     ? "text-slate-700 bg-white/70"
                     : "text-slate-500 hover:text-slate-800"
-                }`}
+                  }`}
               >
                 <span
-                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                    isActive
-                      ? "bg-white text-slate-900"
-                      : isCompleted
+                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${isActive
+                    ? "bg-white text-slate-900"
+                    : isCompleted
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-slate-200 text-slate-600"
-                  }`}
+                    }`}
                 >
                   {isCompleted ? "✓" : idx + 1}
                 </span>
@@ -3730,1547 +4086,1657 @@ export default function InvitationStudio({
       {currentStepIndex === 0 && (
         <>
           <div className="h-10 bg-white border-b border-slate-200/80 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 z-20 flex-shrink-0 shadow-2xs overflow-x-auto [&::-webkit-scrollbar]:hidden">
-        {/* Aspect Ratio / Size Presets */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
-          {CANVAS_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleSelectPreset(p.id)}
-              className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${canvasPreset === p.id
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                }`}
-              title={p.label}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
-
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            disabled={canvasZoom <= 50}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
-            title="Zoom Out"
-          >
-            −
-          </button>
-          <div className="min-w-[48px] h-6 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700 select-none px-1.5">
-            {canvasZoom}%
-          </div>
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            disabled={canvasZoom >= 150}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
-            title="Zoom In"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => setCanvasZoom(100)}
-            className={`ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${canvasZoom !== 100
-              ? "text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
-              : "text-slate-400 border border-transparent"
-              }`}
-            title="Reset Zoom to 100%"
-          >
-            Reset
-          </button>
-        </div>
-
-        {/* Fit / Fill toggle for image backgrounds */}
-        {designState.cardBg?.type === "image" && (
-          <>
-            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            {/* Aspect Ratio / Size Presets */}
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">Fit</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 select-none">Size</span>
+              {CANVAS_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(p.id)}
+                  className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${canvasPreset === p.id
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                    }`}
+                  title={p.label}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5 select-none">Zoom</span>
               <button
                 type="button"
-                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "contain" }))}
-                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.cardImageFit || "contain") === "contain"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                  }`}
-                title="Fit 1:1 without cropping"
+                onClick={handleZoomOut}
+                disabled={canvasZoom <= 50}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+                title="Zoom Out"
               >
-                Fit (1:1)
+                −
+              </button>
+              <div className="min-w-[48px] h-6 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700 select-none px-1.5">
+                {canvasZoom}%
+              </div>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={canvasZoom >= 150}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm font-bold cursor-pointer"
+                title="Zoom In"
+              >
+                +
               </button>
               <button
                 type="button"
-                onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "cover" }))}
-                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${designState.cardImageFit === "cover"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                onClick={() => setCanvasZoom(100)}
+                className={`ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md transition-all cursor-pointer ${canvasZoom !== 100
+                  ? "text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+                  : "text-slate-400 border border-transparent"
                   }`}
-                title="Fill entire card"
+                title="Reset Zoom to 100%"
               >
-                Fill (Cover)
+                Reset
               </button>
             </div>
-          </>
-        )}
 
-        {/* View Mode Switcher: Standalone Card Only vs Card + Envelope Presentation */}
-        <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">View</span>
-          <button
-            type="button"
-            onClick={() => {
-              setDesignState((prev) => ({
-                ...prev,
-                viewMode: "card",
-                hideEnvelope: true,
-              }));
-            }}
-            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.viewMode === "card" || designState.hideEnvelope)
-              ? "bg-slate-900 text-white shadow-xs"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
-            title="Standalone Card Only View"
-          >
-            Card Only
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDesignState((prev) => ({
-                ...prev,
-                viewMode: "envelope",
-                hideEnvelope: false,
-              }));
-            }}
-            className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(!designState.hideEnvelope && designState.viewMode !== "card")
-              ? "bg-slate-900 text-white shadow-xs"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
-            title="Card + Envelope Presentation View"
-          >
-            Envelope View
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
-      {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
-        {/* ------------------------------------------------------------- */}
-        {/* MULTI-TAB SIDEBAR (Left on desktop, Bottom dock on mobile)   */}
-        {/* ------------------------------------------------------------- */}
-        <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
-          {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
-          <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
-            {/* 1. Text Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "text" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("text");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "text"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <span className="text-base lg:text-lg font-bold font-serif leading-none">T</span>
-              <span className="text-[10px] tracking-tight">Text</span>
-            </button>
-
-            {/* 2. Backgrounds Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "backgrounds" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("backgrounds");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="20" x2="20" y2="4" />
-                <line x1="8" y1="20" x2="20" y2="8" />
-                <line x1="14" y1="20" x2="20" y2="14" />
-                <line x1="4" y1="14" x2="14" y2="4" />
-              </svg>
-              <span className="text-[10px] tracking-tight">Backgrounds</span>
-            </button>
-
-            {/* 3. Effects Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "effects" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("effects");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "effects"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Effects</span>
-            </button>
-
-            {/* 4. Envelope Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "envelope" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("envelope");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <Mail className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Envelope</span>
-            </button>
-
-            {/* 5. Backside Tab */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === "backside" && mobileToolsOpen) {
-                  setMobileToolsOpen(false);
-                } else {
-                  setActiveTab("backside");
-                  setMobileToolsOpen(true);
-                }
-              }}
-              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backside"
-                ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
-                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              <CopyPlus className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-tight">Backside</span>
-            </button>
-          </div>
-
-          {/* Sub-Panel Content Area (Drawer on mobile/tablet, Sidebar on desktop) */}
-          <div className={`${mobileToolsOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:md:w-88 max-h-[48vh] lg:max-h-none h-auto lg:h-full overflow-y-auto p-4 sm:p-5 space-y-6 flex-col text-slate-700 bg-white border-b lg:border-b-0 border-slate-200 custom-scrollbar`}>
-            {/* Mobile close bar */}
-            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {activeTab} Settings
-              </span>
-              <button
-                type="button"
-                onClick={() => setMobileToolsOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                title="Close settings"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {/* -------------------- TAB 1: TEXT -------------------- */}
-            {activeTab === "text" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Header with Clear Button */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-                      Text Editor
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateActiveLayer({ text: "" })}
-                      className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  {/* Active Layer Quick Switcher Chips */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {designState.textLayers.map((l) => {
-                      const isSelected = activeLayer?.id === l.id;
-                      const label =
-                        l.id === "layer-title"
-                          ? "Title"
-                          : l.id === "layer-datetime"
-                            ? "Date & Time"
-                            : l.id === "layer-venue"
-                              ? "Venue"
-                              : l.id === "layer-description"
-                                ? "Description"
-                                : l.id === "layer-host"
-                                  ? "Host"
-                                  : l.text?.slice(0, 12) || "Layer";
-                      return (
-                        <button
-                          key={l.id}
-                          type="button"
-                          onClick={() => handleSelectLayer(l.id)}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSelected
-                            ? "bg-slate-900 text-white shadow-xs"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Textarea */}
-                  <textarea
-                    rows={3}
-                    value={activeLayer?.text || ""}
-                    onChange={(e) => updateActiveLayer({ text: e.target.value })}
-                    placeholder="Enter card text here..."
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
-                  />
-                </div>
-
-                {/* Typography Font Family Dropdown */}
-                <div>
-                  <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                    Typography
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={activeLayer?.fontFamily}
-                      onChange={(e) => {
-                        const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
-                        updateActiveLayer({
-                          fontFamily: e.target.value,
-                          fontWeight: opt?.weight || "700",
-                        });
-                      }}
-                      className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
-                    >
-                      {TYPOGRAPHY_OPTIONS.map((f) => (
-                        <option key={f.name} value={f.value}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Type Size & Type Color Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Type Size */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Type Size
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={activeLayer?.fontSize || 42}
-                        onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
-                        className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
-                      >
-                        {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Type Color */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Type Color
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                        <span
-                          className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
-                          style={{ backgroundColor: activeLayer?.color || "#51afff" }}
-                        />
-                        <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
-                          {activeLayer?.color || "#51afff"}
-                        </span>
-                      </div>
-                      {/* Color Wheel Trigger */}
-                      <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
-                          }}
-                        />
-                        <input
-                          type="color"
-                          value={activeLayer?.color || "#51afff"}
-                          onChange={(e) => updateActiveLayer({ color: e.target.value })}
-                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                        />
-                        <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
-                          <Pipette className="w-2.5 h-2.5 text-slate-700" />
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Letter Casing & Text Alignment Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Letter Casing */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Letter Casing
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "uppercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "uppercase"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        A
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "lowercase" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "lowercase"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        a
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ casing: "capitalize" })}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer?.casing === "capitalize"
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                      >
-                        Aa
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Text Alignment */}
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                      Text Alignment
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "left" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "left"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Left"
-                      >
-                        <AlignLeft className="w-4 h-4" />
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "center" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "center"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Center"
-                      >
-                        <AlignCenter className="w-4 h-4" />
-                      </button>
-                      <div className="w-px h-6 bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => updateActiveLayer({ align: "right" })}
-                        className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer?.align === "right"
-                          ? "bg-[#d9f99d] text-slate-900"
-                          : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        title="Align Right"
-                      >
-                        <AlignRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Letter Spacing & Line Height Sliders */}
-                <div className="space-y-4 pt-1">
-                  <div>
-                    <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                      <span>Letter Spacing</span>
-                      <span className="text-slate-700 font-mono font-medium">{activeLayer?.letterSpacing || 0}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={-2}
-                      max={12}
-                      step={0.5}
-                      value={activeLayer?.letterSpacing || 0}
-                      onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
-                      className="w-full accent-slate-900 cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                      <span>Line Height</span>
-                      <span className="text-slate-700 font-mono font-medium">
-                        {(activeLayer?.lineHeight || 1.2).toFixed(1)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.8}
-                      max={2.2}
-                      step={0.1}
-                      value={activeLayer?.lineHeight || 1.2}
-                      onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
-                      className="w-full accent-slate-900 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons: Add Text Box, Duplicate & Delete */}
-                <div className="pt-2 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddTextBox}
-                      className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add text box</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicateActiveLayer()}
-                      className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
-                      title="Duplicate active text box"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Duplicate</span>
-                    </button>
-                  </div>
-
-                  {designState.textLayers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteActiveLayer()}
-                      className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete this text box</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
-            {activeTab === "backgrounds" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Interactive Photo Slot Manager (for templates with a photo frame) */}
-                {designState.photoSlot && (
-                  <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl shadow-2xs">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                        <span>📸</span>
-                        <span>Photo Placeholder</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 uppercase tracking-wider">
-                        Editable Slot
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed mb-3">
-                      This template includes an interactive circular photo slot. Click below or directly click the photo frame on the canvas to upload your baby photo.
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
-                        title="Click to change photo"
-                      >
-                        {designState.photoSlot.imageUrl ? (
-                          <img
-                            src={designState.photoSlot.imageUrl}
-                            alt="Photo preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-amber-600 bg-amber-100">
-                            <Upload className="w-4 h-4" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                          <Upload className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <div className="flex-1 flex flex-col gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => photoInputRef.current?.click()}
-                          className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Replace Photo</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nextState: StudioDesignState = {
-                              ...designState,
-                              photoSlot: designState.photoSlot
-                                ? {
-                                  ...designState.photoSlot,
-                                  imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
-                                }
-                                : null,
-                            };
-                            setDesignState(nextState);
-                            pushStateToHistory(nextState);
-                          }}
-                          className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline transition-colors"
-                        >
-                          Reset to placeholder
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Custom Background Upload Area */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
-                    Custom Background
-                  </span>
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-slate-50 flex items-center gap-3.5"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                      {isUploading ? (
-                        <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
-                      ) : (
-                        <Upload className="w-5 h-5 text-slate-600" />
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-bold text-slate-800">Upload your own</p>
-                      <p className="text-[11px] text-slate-500">Use any image as your background</p>
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file);
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Evite Ambient Workspace Backdrops */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
-                    Ambient Workspace Backdrop
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PRESET_STAGE_BACKDROPS.map((stageBg) => {
-                      const isSelected = designState.stageBackdrop.value === stageBg.style;
-                      return (
-                        <button
-                          key={stageBg.id}
-                          type="button"
-                          onClick={() => {
-                            pushStateToHistory({
-                              ...designState,
-                              stageBackdrop: {
-                                type: "pattern",
-                                value: stageBg.style,
-                              },
-                              canvasWorkspaceBg: stageBg.style,
-                              backdropBackground: stageBg.style,
-                            } as any);
-                          }}
-                          className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${
-                            isSelected
-                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                          }`}
-                          style={{
-                            background: stageBg.style.startsWith("/")
-                              ? `url(${stageBg.style}) center/cover no-repeat`
-                              : stageBg.style,
-                          }}
-                          title={stageBg.label}
-                        >
-                          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="text-sm">{stageBg.icon}</span>
-                          </div>
-                          {isSelected && (
-                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Colors Picker Input */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                    Backdrop Color
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                      <span
-                        className="w-5 h-5 rounded-full border border-black/10 flex-shrink-0"
-                        style={{
-                          background: designState.stageBackdrop.value || "#0f172a",
-                          backgroundColor: designState.stageBackdrop.value?.includes("gradient")
-                            ? undefined
-                            : designState.stageBackdrop.value || "#0f172a",
-                        }}
-                      />
-                      <span className="text-xs font-mono font-semibold text-slate-700 uppercase truncate">
-                        {designState.stageBackdrop.value?.includes("gradient")
-                          ? "Preset Gradient"
-                          : designState.stageBackdrop.value || "#0f172a"}
-                      </span>
-                    </div>
-                    {/* Rainbow color wheel */}
-                    <label className="w-10 h-10 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
-                        }}
-                      />
-                      <input
-                        type="color"
-                        value={
-                          designState.stageBackdrop.value?.startsWith("#")
-                            ? designState.stageBackdrop.value
-                            : "#0f172a"
-                        }
-                        onChange={(e) =>
-                          pushStateToHistory({
-                            ...designState,
-                            stageBackdrop: {
-                              type: "color",
-                              value: e.target.value,
-                              gradient: undefined,
-                            },
-                            canvasWorkspaceBg: e.target.value,
-                            backdropBackground: e.target.value,
-                          } as any)
-                        }
-                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                      />
-                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
-                        <Pipette className="w-3 h-3 text-slate-700" />
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 3-Column Scrollable Grid of Background Presets */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Backdrop Presets
-                  </span>
-                  <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                    {PRESET_BACKGROUNDS.map((bg) => {
-                      const isSelected =
-                        designState.stageBackdrop.value === bg.style ||
-                        designState.stageBackdrop.gradient === bg.style;
-                      return (
-                        <button
-                          key={bg.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              stageBackdrop: {
-                                type: "pattern",
-                                value: bg.style,
-                                gradient: bg.style,
-                              },
-                              canvasWorkspaceBg: bg.style,
-                              backdropBackground: bg.style,
-                            } as any)
-                          }
-                          className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
-                            ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                            : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                            }`}
-                          style={{ background: bg.style }}
-                          title={bg.label}
-                        >
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-base drop-shadow-sm">{bg.icon}</span>
-                          </div>
-                          {isSelected && (
-                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB 3: ENVELOPE -------------------- */}
-            {activeTab === "envelope" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Sub-tabs: Colors, Liners, Stamps, Stickers */}
-                <div className="flex items-center p-1 bg-slate-100 rounded-xl">
-                  {(["colors", "liners", "stamps", "stickers"] as const).map((sub) => {
-                    const isActive = envelopeSubTab === sub;
-                    return (
-                      <button
-                        key={sub}
-                        type="button"
-                        onClick={() => setEnvelopeSubTab(sub)}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${isActive
-                          ? "bg-white text-slate-900 shadow-xs font-bold"
-                          : "text-slate-500 hover:text-slate-800"
-                          }`}
-                      >
-                        {sub}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Sub-Tab 1: Envelope Flap Colors */}
-                {envelopeSubTab === "colors" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Envelope Flap Colors
-                    </span>
-                    <div className="grid grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
-                      {ENVELOPE_COLORS.map((env) => {
-                        const isSelected = designState.envelope.color === env.hex;
-                        return (
-                          <button
-                            key={env.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: { ...designState.envelope, color: env.hex },
-                              })
-                            }
-                            className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
-                              ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                              : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                              }`}
-                            style={{ background: env.hex }}
-                            title={env.name}
-                          >
-                            {/* Realistic Envelope Flap SVG Silhouette */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" viewBox="0 0 100 70">
-                              <polygon points="0,0 100,0 50,42" fill="none" stroke="#000" strokeWidth="2" />
-                            </svg>
-                            {isSelected && (
-                              <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 2: Liners */}
-                {envelopeSubTab === "liners" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Interior Liner Patterns
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                       {ENVELOPE_LINERS.map((liner) => {
-                        const isSelected = designState.envelope.liner === liner.id;
-                        return (
-                          <button
-                            key={liner.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
-                              })
-                            }
-                            className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <div
-                              className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
-                              style={{ background: liner.style }}
-                            />
-                            <span className="text-xs font-semibold text-slate-800 truncate">{liner.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 3: Stamps */}
-                {envelopeSubTab === "stamps" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Envelope Postal Stamps
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {STAMPS.map((stamp) => {
-                        const isSelected = designState.envelope.stamp === stamp.id;
-                        return (
-                          <button
-                            key={stamp.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: {
-                                  ...designState.envelope,
-                                  stamp: isSelected ? null : stamp.id,
-                                },
-                              })
-                            }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <span className="text-2xl">{stamp.emoji}</span>
-                            <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 4: Stickers */}
-                {envelopeSubTab === "stickers" && (
-                  <div>
-                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                      Flap Seals & Stickers
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {STICKERS.map((sticker) => {
-                        const isSelected = designState.envelope.sticker === sticker.id;
-                        return (
-                          <button
-                            key={sticker.id}
-                            type="button"
-                            onClick={() =>
-                              pushStateToHistory({
-                                ...designState,
-                                envelope: {
-                                  ...designState.envelope,
-                                  sticker: isSelected ? null : sticker.id,
-                                },
-                              })
-                            }
-                            className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                              ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                              : "border-slate-200 hover:border-slate-300"
-                              }`}
-                          >
-                            <span className="text-2xl">{sticker.emoji}</span>
-                            <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* -------------------- TAB 4: EFFECTS -------------------- */}
-            {activeTab === "effects" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Metallic Foil Stamps */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Metallic Foil Stamp
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: null, label: "None" },
-                      { id: "gold", label: "Gold Foil", class: "foil-gold" },
-                      { id: "rose-gold", label: "Rose Gold", class: "foil-rose-gold" },
-                      { id: "silver", label: "Silver Foil", class: "foil-silver" },
-                    ].map((foil) => {
-                      const isSelected = designState.effects.foil === foil.id;
-                      return (
-                        <button
-                          key={foil.label}
-                          type="button"
-                          onClick={() => {
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, foil: foil.id as any },
-                            });
-                          }}
-                          className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          <span className={foil.class || ""}>{foil.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Card Surface Textures */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Card Paper Texture
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "matte", label: "Smooth Matte" },
-                      { id: "cotton-press", label: "Cotton Press" },
-                      { id: "linen", label: "Linen Weave" },
-                      { id: "glossy", label: "Glossy Sheen" },
-                    ].map((tex) => {
-                      const isSelected = designState.effects.texture === tex.id;
-                      return (
-                        <button
-                          key={tex.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, texture: tex.id as any },
-                            })
-                          }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          {tex.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Drop Shadow Toggles */}
-                <div>
-                  <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                    Card Elevation / Shadow
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "subtle", label: "Subtle" },
-                      { id: "floating", label: "Floating 3D" },
-                      { id: "deep", label: "Deep Luxury" },
-                      { id: "none", label: "Flat" },
-                    ].map((sh) => {
-                      const isSelected = designState.effects.shadow === sh.id;
-                      return (
-                        <button
-                          key={sh.id}
-                          type="button"
-                          onClick={() =>
-                            pushStateToHistory({
-                              ...designState,
-                              effects: { ...designState.effects, shadow: sh.id as any },
-                            })
-                          }
-                          className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
-                            ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
-                            : "border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                        >
-                          {sh.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB 5: EVENT DETAILS -------------------- */}
-            {activeTab === "details" && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1">
-                  Card Details & Location
-                </span>
-
-                {/* Event Title */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Event Title</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.title}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, title: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-title" ? { ...l, text: val.toUpperCase() } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Host Name */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Host Name</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.host}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, host: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-host" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Date & Time */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={designState.eventDetails.date}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const dateFormatted = val
-                          ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "short",
-                            day: "numeric",
-                          }).toUpperCase()
-                          : "";
-                        const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
-                        const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
-                        setDesignState((prev) => ({
-                          ...prev,
-                          eventDetails: { ...prev.eventDetails, date: val },
-                          textLayers: prev.textLayers.map((l) =>
-                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
-                          ),
-                        }));
-                      }}
-                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Time</label>
-                    <input
-                      type="time"
-                      value={designState.eventDetails.time}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const dateFormatted = designState.eventDetails.date
-                          ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "short",
-                            day: "numeric",
-                          }).toUpperCase()
-                          : "";
-                        const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
-                        setDesignState((prev) => ({
-                          ...prev,
-                          eventDetails: { ...prev.eventDetails, time: val },
-                          textLayers: prev.textLayers.map((l) =>
-                            l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
-                          ),
-                        }));
-                      }}
-                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Venue */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Venue Name</label>
-                  <input
-                    type="text"
-                    value={designState.eventDetails.venue}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, venue: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-venue" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Description / Message</label>
-                  <textarea
-                    rows={2}
-                    value={designState.eventDetails.description || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, description: val },
-                        textLayers: prev.textLayers.map((l) =>
-                          l.id === "layer-description" ? { ...l, text: val } : l
-                        ),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Physical Address</label>
-                  <textarea
-                    rows={2}
-                    value={designState.eventDetails.address}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDesignState((prev) => ({
-                        ...prev,
-                        eventDetails: { ...prev.eventDetails, address: val },
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* -------------------- TAB: BACKSIDE -------------------- */}
-            {activeTab === "backside" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Card Backside
-                    </h4>
-                    <p className="text-[11px] text-slate-400">
-                      Add a personal note or sign-off to the reverse side
-                    </p>
-                  </div>
+            {/* Fit / Fill toggle for image backgrounds */}
+            {designState.cardBg?.type === "image" && (
+              <>
+                <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">Fit</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setDesignState((prev) => ({
-                        ...prev,
-                        backside: {
-                          enabled: !prev.backside?.enabled,
-                          message: prev.backside?.message || "We can't wait to celebrate with you! Please join us for this special occasion.",
-                          signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
-                          photoUrl: prev.backside?.photoUrl || null,
-                        },
-                      }));
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      designState.backside?.enabled ? "bg-slate-900" : "bg-slate-200"
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        designState.backside?.enabled ? "translate-x-5" : "translate-x-0"
+                    onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "contain" }))}
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.cardImageFit || "contain") === "contain"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                       }`}
-                    />
+                    title="Fit 1:1 without cropping"
+                  >
+                    Fit (1:1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesignState((prev) => ({ ...prev, cardImageFit: "cover" }))}
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${designState.cardImageFit === "cover"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                      }`}
+                    title="Fill entire card"
+                  >
+                    Fill (Cover)
                   </button>
                 </div>
+              </>
+            )}
 
-                {/* Flip Card Preview button */}
+            {/* View Mode Switcher: Standalone Card Only vs Card + Envelope Presentation */}
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 select-none">View</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDesignState((prev) => ({
+                    ...prev,
+                    viewMode: "card",
+                    hideEnvelope: true,
+                  }));
+                }}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(designState.viewMode === "card" || designState.hideEnvelope)
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  }`}
+                title="Standalone Card Only View"
+              >
+                Card Only
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDesignState((prev) => ({
+                    ...prev,
+                    viewMode: "envelope",
+                    hideEnvelope: false,
+                  }));
+                }}
+                className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${(!designState.hideEnvelope && designState.viewMode !== "card")
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  }`}
+                title="Card + Envelope Presentation View"
+              >
+                Envelope View
+              </button>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* MAIN WORKSPACE: SIDEBAR & CENTER CANVAS/STAGE                             */}
+          {/* ========================================================================= */}
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
+            {/* ------------------------------------------------------------- */}
+            {/* MULTI-TAB SIDEBAR (Left on desktop, Bottom dock on mobile)   */}
+            {/* ------------------------------------------------------------- */}
+            <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
+              {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
+              <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
+                {/* 1. Text Tab */}
                 <button
                   type="button"
-                  onClick={() => setShowingBackside((prev) => !prev)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => {
+                    if (activeTab === "text" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("text");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "text"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{showingBackside ? "View Front Side" : "Flip & View Backside"}</span>
+                  <span className="text-base lg:text-lg font-bold font-serif leading-none">T</span>
+                  <span className="text-[10px] tracking-tight">Text</span>
                 </button>
 
-                {designState.backside?.enabled && (
-                  <div className="space-y-4 animate-in fade-in duration-150">
+                {/* 2. Backgrounds Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "backgrounds" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("backgrounds");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backgrounds"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <svg className="w-4 h-4 lg:w-5 lg:h-5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="4" y1="20" x2="20" y2="4" />
+                    <line x1="8" y1="20" x2="20" y2="8" />
+                    <line x1="14" y1="20" x2="20" y2="14" />
+                    <line x1="4" y1="14" x2="14" y2="4" />
+                  </svg>
+                  <span className="text-[10px] tracking-tight">Backgrounds</span>
+                </button>
+
+                {/* 3. Effects Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "effects" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("effects");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "effects"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Effects</span>
+                </button>
+
+                {/* 4. Envelope Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "envelope" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("envelope");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <Mail className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Envelope</span>
+                </button>
+
+                {/* 5. Backside Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "backside" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("backside");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "backside"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                >
+                  <CopyPlus className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Backside</span>
+                </button>
+              </div>
+
+              {/* Sub-Panel Content Area (Drawer on mobile/tablet, Sidebar on desktop) */}
+              <div className={`${mobileToolsOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:md:w-88 max-h-[48vh] lg:max-h-none h-auto lg:h-full overflow-y-auto p-4 sm:p-5 space-y-6 flex-col text-slate-700 bg-white border-b lg:border-b-0 border-slate-200 custom-scrollbar`}>
+                {/* Mobile close bar */}
+                <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    {activeTab} Settings
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileToolsOpen(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Close settings"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* -------------------- TAB 1: TEXT -------------------- */}
+                {activeTab === "text" && (
+                  activeLayer ? (
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      {/* Header with Deselect & Clear Buttons */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                              Text Editor
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                              Active Layer
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                                setEditingTextId(null);
+                              }}
+                              className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                              title="Deselect active text layer"
+                            >
+                              Deselect
+                            </button>
+                            <span className="text-slate-200">|</span>
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ text: "" })}
+                              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Textarea */}
+                        <textarea
+                          rows={3}
+                          value={activeLayer.text || ""}
+                          onChange={(e) => updateActiveLayer({ text: e.target.value })}
+                          placeholder="Enter card text here..."
+                          className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all resize-none shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Typography Font Family Dropdown */}
+                      <div>
+                        <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                          Typography
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={activeLayer.fontFamily}
+                            onChange={(e) => {
+                              const opt = TYPOGRAPHY_OPTIONS.find((t) => t.value === e.target.value);
+                              updateActiveLayer({
+                                fontFamily: e.target.value,
+                                fontWeight: opt?.weight || "700",
+                              });
+                            }}
+                            className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
+                          >
+                            {TYPOGRAPHY_OPTIONS.map((f) => (
+                              <option key={f.name} value={f.value}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Type Size & Type Color Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Type Size */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Type Size
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={activeLayer.fontSize || 42}
+                              onChange={(e) => updateActiveLayer({ fontSize: Number(e.target.value) })}
+                              className="w-full appearance-none px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none shadow-2xs cursor-pointer"
+                            >
+                              {[12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72, 84, 96, 118].map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        {/* Type Color */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Type Color
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                              <span
+                                className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
+                                style={{ backgroundColor: activeLayer.color || "#51afff" }}
+                              />
+                              <span className="text-xs font-mono font-medium text-slate-700 uppercase truncate">
+                                {activeLayer.color || "#51afff"}
+                              </span>
+                            </div>
+                            {/* Color Wheel Trigger */}
+                            <label className="w-9 h-9 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
+                              <div
+                                className="absolute inset-0"
+                                style={{
+                                  background:
+                                    "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
+                                }}
+                              />
+                              <input
+                                type="color"
+                                value={activeLayer.color || "#51afff"}
+                                onChange={(e) => updateActiveLayer({ color: e.target.value })}
+                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                              />
+                              <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
+                                <Pipette className="w-2.5 h-2.5 text-slate-700" />
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Font Styling & Text Alignment Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Font Style: Bold, Italic, Underline */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Font Style
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const isBold =
+                                  String(activeLayer.fontWeight) === "700" ||
+                                  String(activeLayer.fontWeight) === "bold" ||
+                                  Number(activeLayer.fontWeight) >= 700;
+                                updateActiveLayer({ fontWeight: isBold ? "400" : "700" });
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                String(activeLayer.fontWeight) === "700" ||
+                                String(activeLayer.fontWeight) === "bold" ||
+                                Number(activeLayer.fontWeight) >= 700
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Bold"
+                            >
+                              <Bold className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const isItalic = activeLayer.fontStyle === "italic";
+                                updateActiveLayer({ fontStyle: isItalic ? "normal" : "italic" });
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                activeLayer.fontStyle === "italic"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Italic"
+                            >
+                              <Italic className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const isUnderline =
+                                  (activeLayer as any).underline === true ||
+                                  (activeLayer as any).textDecoration === "underline";
+                                updateActiveLayer({
+                                  underline: !isUnderline,
+                                  textDecoration: !isUnderline ? "underline" : "none",
+                                } as any);
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                (activeLayer as any).underline === true ||
+                                (activeLayer as any).textDecoration === "underline"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Underline"
+                            >
+                              <Underline className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Text Alignment */}
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                            Text Alignment
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "left", textAlign: "left" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "left" || activeLayer.textAlign === "left"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Align Left"
+                            >
+                              <AlignLeft className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "center", textAlign: "center" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "center" ||
+                                activeLayer.textAlign === "center" ||
+                                (!activeLayer.align && !activeLayer.textAlign)
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Align Center"
+                            >
+                              <AlignCenter className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200" />
+                            <button
+                              type="button"
+                              onClick={() => updateActiveLayer({ align: "right", textAlign: "right" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "right" || activeLayer.textAlign === "right"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Align Right"
+                            >
+                              <AlignRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Letter Casing */}
+                      <div>
+                        <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                          Letter Casing
+                        </label>
+                        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "uppercase" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "uppercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            A
+                          </button>
+                          <div className="w-px h-6 bg-slate-200" />
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "lowercase" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "lowercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            a
+                          </button>
+                          <div className="w-px h-6 bg-slate-200" />
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "capitalize" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "capitalize"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            Aa
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Letter Spacing & Line Height Sliders */}
+                      <div className="space-y-4 pt-1">
+                        <div>
+                          <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            <span>Letter Spacing</span>
+                            <span className="text-slate-700 font-mono font-medium">{activeLayer.letterSpacing || 0}px</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={-2}
+                            max={12}
+                            step={0.5}
+                            value={activeLayer.letterSpacing || 0}
+                            onChange={(e) => updateActiveLayer({ letterSpacing: Number(e.target.value) })}
+                            className="w-full accent-slate-900 cursor-pointer"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            <span>Line Height</span>
+                            <span className="text-slate-700 font-mono font-medium">
+                              {(activeLayer.lineHeight || 1.2).toFixed(1)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.8}
+                            max={2.2}
+                            step={0.1}
+                            value={activeLayer.lineHeight || 1.2}
+                            onChange={(e) => updateActiveLayer({ lineHeight: Number(e.target.value) })}
+                            className="w-full accent-slate-900 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons: Add Text Box, Duplicate & Delete */}
+                      <div className="pt-2 flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddTextBox}
+                            className="flex-1 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add text box</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateActiveLayer()}
+                            className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-indigo-50/50 transition-colors cursor-pointer"
+                            title="Duplicate active text box"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Duplicate</span>
+                          </button>
+                        </div>
+
+                        {designState.textLayers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteActiveLayer()}
+                            className="w-full py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete this text box</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Inactive State: Decoupled when no text layer is selected */
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Text Editor
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">
+                            No Layer Selected
+                          </span>
+                        </div>
+
+                        {/* Friendly Instructional Guide Card */}
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-2.5 my-3">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+                            <Type className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">Select text to customize</p>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                              Click any text element directly on the canvas to edit typography, size, and styling.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Add Text Box Button */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleAddTextBox}
+                          className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add text box</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* -------------------- TAB 2: BACKGROUNDS -------------------- */}
+                {activeTab === "backgrounds" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Interactive Photo Slot Manager (for templates with a photo frame) */}
+                    {designState.photoSlot && (
+                      <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl shadow-2xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                            <span>📸</span>
+                            <span>Photo Placeholder</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 uppercase tracking-wider">
+                            Editable Slot
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 leading-relaxed mb-3">
+                          This template includes an interactive circular photo slot. Click below or directly click the photo frame on the canvas to upload your baby photo.
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            onClick={() => photoInputRef.current?.click()}
+                            className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
+                            title="Click to change photo"
+                          >
+                            {designState.photoSlot.imageUrl ? (
+                              <img
+                                src={designState.photoSlot.imageUrl}
+                                alt="Photo preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-amber-600 bg-amber-100">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <Upload className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="flex-1 flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => photoInputRef.current?.click()}
+                              className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Replace Photo</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextState: StudioDesignState = {
+                                  ...designState,
+                                  photoSlot: designState.photoSlot
+                                    ? {
+                                      ...designState.photoSlot,
+                                      imageUrl: "/assets/templates/pooh-baby-photo-placeholder.svg",
+                                    }
+                                    : null,
+                                };
+                                setDesignState(nextState);
+                                pushStateToHistory(nextState);
+                              }}
+                              className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline transition-colors"
+                            >
+                              Reset to placeholder
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Custom Background Upload Area */}
                     <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        Backside Message / Note
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={designState.backside?.message || ""}
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
+                        Custom Background
+                      </span>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-slate-50 flex items-center gap-3.5"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                          {isUploading ? (
+                            <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
+                          ) : (
+                            <Upload className="w-5 h-5 text-slate-600" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-800">Upload your own</p>
+                          <p className="text-[11px] text-slate-500">Use any image as your background</p>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Evite Ambient Workspace Backdrops */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2.5">
+                        Ambient Workspace Backdrop
+                      </span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {PRESET_STAGE_BACKDROPS.map((stageBg) => {
+                          const isSelected = designState.stageBackdrop.value === stageBg.style;
+                          return (
+                            <button
+                              key={stageBg.id}
+                              type="button"
+                              onClick={() => {
+                                pushStateToHistory({
+                                  ...designState,
+                                  stageBackdrop: {
+                                    type: "pattern",
+                                    value: stageBg.style,
+                                  },
+                                  canvasWorkspaceBg: stageBg.style,
+                                  backdropBackground: stageBg.style,
+                                } as any);
+                              }}
+                              className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
+                                ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                }`}
+                              style={{
+                                background: stageBg.style.startsWith("/")
+                                  ? `url(${stageBg.style}) center/cover no-repeat`
+                                  : stageBg.style,
+                              }}
+                              title={stageBg.label}
+                            >
+                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="text-sm">{stageBg.icon}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Colors Picker Input */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Backdrop Color
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                          <span
+                            className="w-5 h-5 rounded-full border border-black/10 flex-shrink-0"
+                            style={{
+                              background: designState.stageBackdrop.value || "#0f172a",
+                              backgroundColor: designState.stageBackdrop.value?.includes("gradient")
+                                ? undefined
+                                : designState.stageBackdrop.value || "#0f172a",
+                            }}
+                          />
+                          <span className="text-xs font-mono font-semibold text-slate-700 uppercase truncate">
+                            {designState.stageBackdrop.value?.includes("gradient")
+                              ? "Preset Gradient"
+                              : designState.stageBackdrop.value || "#0f172a"}
+                          </span>
+                        </div>
+                        {/* Rainbow color wheel */}
+                        <label className="w-10 h-10 rounded-full relative overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 shadow-xs hover:scale-105 transition-transform flex-shrink-0">
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              background:
+                                "conic-gradient(from 90deg, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #8800ff, #ff00ff, #ff0000)",
+                            }}
+                          />
+                          <input
+                            type="color"
+                            value={
+                              designState.stageBackdrop.value?.startsWith("#")
+                                ? designState.stageBackdrop.value
+                                : "#0f172a"
+                            }
+                            onChange={(e) =>
+                              pushStateToHistory({
+                                ...designState,
+                                stageBackdrop: {
+                                  type: "color",
+                                  value: e.target.value,
+                                  gradient: undefined,
+                                },
+                                canvasWorkspaceBg: e.target.value,
+                                backdropBackground: e.target.value,
+                              } as any)
+                            }
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          />
+                          <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center relative z-10 shadow-xs">
+                            <Pipette className="w-3 h-3 text-slate-700" />
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* 3-Column Scrollable Grid of Background Presets */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Backdrop Presets
+                      </span>
+                      <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                        {PRESET_BACKGROUNDS.map((bg) => {
+                          const isSelected =
+                            designState.stageBackdrop.value === bg.style ||
+                            designState.stageBackdrop.gradient === bg.style;
+                          return (
+                            <button
+                              key={bg.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  stageBackdrop: {
+                                    type: "pattern",
+                                    value: bg.style,
+                                    gradient: bg.style,
+                                  },
+                                  canvasWorkspaceBg: bg.style,
+                                  backdropBackground: bg.style,
+                                } as any)
+                              }
+                              className={`group aspect-[4/5] rounded-xl relative overflow-hidden border transition-all cursor-pointer ${isSelected
+                                ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                }`}
+                              style={{ background: bg.style }}
+                              title={bg.label}
+                            >
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-base drop-shadow-sm">{bg.icon}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB 3: ENVELOPE -------------------- */}
+                {activeTab === "envelope" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Sub-tabs: Colors, Liners, Stamps, Stickers */}
+                    <div className="flex items-center p-1 bg-slate-100 rounded-xl">
+                      {(["colors", "liners", "stamps", "stickers"] as const).map((sub) => {
+                        const isActive = envelopeSubTab === sub;
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => setEnvelopeSubTab(sub)}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all cursor-pointer ${isActive
+                              ? "bg-white text-slate-900 shadow-xs font-bold"
+                              : "text-slate-500 hover:text-slate-800"
+                              }`}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Sub-Tab 1: Envelope Flap Colors */}
+                    {envelopeSubTab === "colors" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Envelope Flap Colors
+                        </span>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
+                          {ENVELOPE_COLORS.map((env) => {
+                            const isSelected = designState.envelope.color === env.hex;
+                            return (
+                              <button
+                                key={env.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: { ...designState.envelope, color: env.hex },
+                                  })
+                                }
+                                className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
+                                  ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
+                                  : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
+                                  }`}
+                                style={{ background: env.hex }}
+                                title={env.name}
+                              >
+                                {/* Realistic Envelope Flap SVG Silhouette */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" viewBox="0 0 100 70">
+                                  <polygon points="0,0 100,0 50,42" fill="none" stroke="#000" strokeWidth="2" />
+                                </svg>
+                                {isSelected && (
+                                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5" />
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 2: Liners */}
+                    {envelopeSubTab === "liners" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Interior Liner Patterns
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {ENVELOPE_LINERS.map((liner) => {
+                            const isSelected = designState.envelope.liner === liner.id;
+                            return (
+                              <button
+                                key={liner.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
+                                  })
+                                }
+                                className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <div
+                                  className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
+                                  style={{ background: liner.style }}
+                                />
+                                <span className="text-xs font-semibold text-slate-800 truncate">{liner.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 3: Stamps */}
+                    {envelopeSubTab === "stamps" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Envelope Postal Stamps
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {STAMPS.map((stamp) => {
+                            const isSelected = designState.envelope.stamp === stamp.id;
+                            return (
+                              <button
+                                key={stamp.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: {
+                                      ...designState.envelope,
+                                      stamp: isSelected ? null : stamp.id,
+                                    },
+                                  })
+                                }
+                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <span className="text-2xl">{stamp.emoji}</span>
+                                <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 4: Stickers */}
+                    {envelopeSubTab === "stickers" && (
+                      <div>
+                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                          Flap Seals & Stickers
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {STICKERS.map((sticker) => {
+                            const isSelected = designState.envelope.sticker === sticker.id;
+                            return (
+                              <button
+                                key={sticker.id}
+                                type="button"
+                                onClick={() =>
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: {
+                                      ...designState.envelope,
+                                      sticker: isSelected ? null : sticker.id,
+                                    },
+                                  })
+                                }
+                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                              >
+                                <span className="text-2xl">{sticker.emoji}</span>
+                                <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* -------------------- TAB 4: EFFECTS -------------------- */}
+                {activeTab === "effects" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    {/* Metallic Foil Stamps */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Metallic Foil Stamp
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: null, label: "None" },
+                          { id: "gold", label: "Gold Foil", class: "foil-gold" },
+                          { id: "rose-gold", label: "Rose Gold", class: "foil-rose-gold" },
+                          { id: "silver", label: "Silver Foil", class: "foil-silver" },
+                        ].map((foil) => {
+                          const isSelected = designState.effects.foil === foil.id;
+                          return (
+                            <button
+                              key={foil.label}
+                              type="button"
+                              onClick={() => {
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, foil: foil.id as any },
+                                });
+                              }}
+                              className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              <span className={foil.class || ""}>{foil.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Card Surface Textures */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Card Paper Texture
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: "matte", label: "Smooth Matte" },
+                          { id: "cotton-press", label: "Cotton Press" },
+                          { id: "linen", label: "Linen Weave" },
+                          { id: "glossy", label: "Glossy Sheen" },
+                        ].map((tex) => {
+                          const isSelected = designState.effects.texture === tex.id;
+                          return (
+                            <button
+                              key={tex.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, texture: tex.id as any },
+                                })
+                              }
+                              className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              {tex.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Drop Shadow Toggles */}
+                    <div>
+                      <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
+                        Card Elevation / Shadow
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: "subtle", label: "Subtle" },
+                          { id: "floating", label: "Floating 3D" },
+                          { id: "deep", label: "Deep Luxury" },
+                          { id: "none", label: "Flat" },
+                        ].map((sh) => {
+                          const isSelected = designState.effects.shadow === sh.id;
+                          return (
+                            <button
+                              key={sh.id}
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  effects: { ...designState.effects, shadow: sh.id as any },
+                                })
+                              }
+                              className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 text-slate-950 font-bold"
+                                : "border-slate-200 text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                              {sh.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB 5: EVENT DETAILS -------------------- */}
+                {activeTab === "details" && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1">
+                      Card Details & Location
+                    </span>
+
+                    {/* Event Title */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Event Title</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.title}
                         onChange={(e) => {
                           const val = e.target.value;
                           setDesignState((prev) => ({
                             ...prev,
+                            eventDetails: { ...prev.eventDetails, title: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-title" ? { ...l, text: val.toUpperCase() } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Host Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Host Name</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.host}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, host: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-host" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Date & Time */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={designState.eventDetails.date}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const dateFormatted = val
+                              ? new Date(val + "T00:00:00").toLocaleDateString("en-US", {
+                                weekday: "long",
+                                month: "short",
+                                day: "numeric",
+                              }).toUpperCase()
+                              : "";
+                            const timeStr = designState.eventDetails.time ? ` AT ${designState.eventDetails.time}` : "";
+                            const newDateText = dateFormatted ? `${dateFormatted}${timeStr}` : "";
+                            setDesignState((prev) => ({
+                              ...prev,
+                              eventDetails: { ...prev.eventDetails, date: val },
+                              textLayers: prev.textLayers.map((l) =>
+                                l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                              ),
+                            }));
+                          }}
+                          className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={designState.eventDetails.time}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const dateFormatted = designState.eventDetails.date
+                              ? new Date(designState.eventDetails.date + "T00:00:00").toLocaleDateString("en-US", {
+                                weekday: "long",
+                                month: "short",
+                                day: "numeric",
+                              }).toUpperCase()
+                              : "";
+                            const newDateText = dateFormatted ? `${dateFormatted} AT ${val}` : val ? `AT ${val}` : "";
+                            setDesignState((prev) => ({
+                              ...prev,
+                              eventDetails: { ...prev.eventDetails, time: val },
+                              textLayers: prev.textLayers.map((l) =>
+                                l.id === "layer-datetime" && newDateText ? { ...l, text: newDateText } : l
+                              ),
+                            }));
+                          }}
+                          className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Venue */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Venue Name</label>
+                      <input
+                        type="text"
+                        value={designState.eventDetails.venue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, venue: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-venue" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Description / Message</label>
+                      <textarea
+                        rows={2}
+                        value={designState.eventDetails.description || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, description: val },
+                            textLayers: prev.textLayers.map((l) =>
+                              l.id === "layer-description" ? { ...l, text: val } : l
+                            ),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
+                      />
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Physical Address</label>
+                      <textarea
+                        rows={2}
+                        value={designState.eventDetails.address}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDesignState((prev) => ({
+                            ...prev,
+                            eventDetails: { ...prev.eventDetails, address: val },
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------- TAB: BACKSIDE -------------------- */}
+                {activeTab === "backside" && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                          Card Backside
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Add a personal note or sign-off to the reverse side
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDesignState((prev) => ({
+                            ...prev,
                             backside: {
-                              enabled: true,
-                              message: val,
+                              enabled: !prev.backside?.enabled,
+                              message: prev.backside?.message || "We can't wait to celebrate with you! Please join us for this special occasion.",
                               signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
                               photoUrl: prev.backside?.photoUrl || null,
                             },
                           }));
                         }}
-                        placeholder="Write a message to appear on the back of your invitation..."
-                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 resize-none shadow-2xs"
-                      />
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${designState.backside?.enabled ? "bg-slate-900" : "bg-slate-200"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${designState.backside?.enabled ? "translate-x-5" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
-                        Sign-Off / Signature
-                      </label>
-                      <input
-                        type="text"
-                        value={designState.backside?.signOff || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDesignState((prev) => ({
-                            ...prev,
-                            backside: {
-                              enabled: true,
-                              message: prev.backside?.message || "",
-                              signOff: val,
-                              photoUrl: prev.backside?.photoUrl || null,
-                            },
-                          }));
-                        }}
-                        placeholder="e.g. With love, The Smiths"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 shadow-2xs"
-                      />
-                    </div>
+                    {/* Flip Card Preview button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowingBackside((prev) => !prev)}
+                      className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>{showingBackside ? "View Front Side" : "Flip & View Backside"}</span>
+                    </button>
+
+                    {designState.backside?.enabled && (
+                      <div className="space-y-4 animate-in fade-in duration-150">
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            Backside Message / Note
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={designState.backside?.message || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDesignState((prev) => ({
+                                ...prev,
+                                backside: {
+                                  enabled: true,
+                                  message: val,
+                                  signOff: prev.backside?.signOff || prev.eventDetails?.host || "With love, The Host",
+                                  photoUrl: prev.backside?.photoUrl || null,
+                                },
+                              }));
+                            }}
+                            placeholder="Write a message to appear on the back of your invitation..."
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 resize-none shadow-2xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-1.5">
+                            Sign-Off / Signature
+                          </label>
+                          <input
+                            type="text"
+                            value={designState.backside?.signOff || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDesignState((prev) => ({
+                                ...prev,
+                                backside: {
+                                  enabled: true,
+                                  message: prev.backside?.message || "",
+                                  signOff: val,
+                                  photoUrl: prev.backside?.photoUrl || null,
+                                },
+                              }));
+                            }}
+                            placeholder="e.g. With love, The Smiths"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400 shadow-2xs"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
+            {/* ------------------------------------------------------------- */}
+            <InvitationCanvasStage
+              key={canvasKey}
+              config={designState}
+              readOnly={false}
+              selectedTextId={designState.selectedTextId}
+              onSelectLayer={(id) => {
+                if (id) {
+                  handleSelectLayer(id);
+                  setActiveTab("text");
+                  setMobileToolsOpen(true);
+                } else {
+                  setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                  setEditingTextId(null);
+                }
+              }}
+              onUpdateLayer={(id, updates) => {
+                setDesignState((prev) => ({
+                  ...prev,
+                  textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+                }));
+              }}
+              onDeleteLayer={handleDeleteActiveLayer}
+              onDuplicateLayer={handleDuplicateActiveLayer}
+              editingTextId={editingTextId}
+              setEditingTextId={setEditingTextId}
+              stageRef={envelopeStageRef}
+              cardRef={cardCanvasRef}
+              zoom={canvasZoom}
+              maxW={activePreset.maxW}
+              aspectRatio={activePreset.aspect}
+              onPhotoClick={() => photoInputRef.current?.click()}
+              photoInputRef={photoInputRef}
+              onBackdropClick={() => {
+                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+                setEditingTextId(null);
+              }}
+              onCardClick={() => {
+                setEditingTextId(null);
+                setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+              }}
+              showingBackside={showingBackside}
+              onFlipCard={() => setShowingBackside((prev) => !prev)}
+              className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
+            />
+
+            {/* Hidden file input for photo slot replacement */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSlotUpload}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STEP 1: DETAILS WORKFLOW SCREEN (LIVE PREVIEW PANE + DETAILS FORM)        */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 1 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowDetails
+              title={designState.eventDetails.title}
+              eventDate={designState.eventDetails.date}
+              eventTime={designState.eventDetails.time}
+              location={designState.eventDetails.venue || designState.eventDetails.address}
+              hostNote={designState.eventDetails.description || ""}
+              hostDetails={hostDetails}
+              rsvpOptions={rsvpOptions}
+              additionalSections={additionalSections}
+              onUpdateField={handleDetailsFieldChange}
+              onUpdateHostDetails={handleDetailsHostChange}
+              onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
+              onUpdateAdditionalSections={setAdditionalSections}
+            />
           </div>
         </div>
+      )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* CENTER CANVAS STAGE: Shared 4-Layer Evite Decoupled Engine     */}
-        {/* ------------------------------------------------------------- */}
-        <InvitationCanvasStage
-          key={canvasKey}
-          config={designState}
-          readOnly={false}
-          selectedTextId={designState.selectedTextId}
-          onSelectLayer={(id) => {
-            if (id) {
-              handleSelectLayer(id);
-              setActiveTab("text");
-              setMobileToolsOpen(true);
-            } else {
-              setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-              setEditingTextId(null);
-            }
-          }}
-          onUpdateLayer={(id, updates) => {
-            setDesignState((prev) => ({
-              ...prev,
-              textLayers: prev.textLayers.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-            }));
-          }}
-          onDeleteLayer={handleDeleteActiveLayer}
-          onDuplicateLayer={handleDuplicateActiveLayer}
-          editingTextId={editingTextId}
-          setEditingTextId={setEditingTextId}
-          stageRef={envelopeStageRef}
-          cardRef={cardCanvasRef}
-          zoom={canvasZoom}
-          maxW={activePreset.maxW}
-          aspectRatio={activePreset.aspect}
-          onPhotoClick={() => photoInputRef.current?.click()}
-          photoInputRef={photoInputRef}
-          onBackdropClick={() => {
-            setDesignState((prev) => ({ ...prev, selectedTextId: null }));
-            setEditingTextId(null);
-          }}
-          onCardClick={() => {
-            setEditingTextId(null);
-          }}
-          showingBackside={showingBackside}
-          onFlipCard={() => setShowingBackside((prev) => !prev)}
-          className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
-        />
+      {/* ========================================================================= */}
+      {/* STEP 2: GIFTING WORKFLOW SCREEN (LIVE PREVIEW PANE + GIFTING SECTIONS)    */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 2 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowGifting
+              gifting={giftingState}
+              onUpdateGifting={(next) => {
+                setGiftingState(next);
+                setDesignState((prev) => ({ ...prev, gifting: next }));
+              }}
+              wishlists={wishlists}
+              charities={charities}
+              personalFunds={personalFunds}
+              onAddWishlist={(item) => setWishlists((p) => [...p, item])}
+              onRemoveWishlist={(id) => setWishlists((p) => p.filter((w) => w.id !== id))}
+              onAddCharity={(item) => setCharities((p) => [...p, item])}
+              onRemoveCharity={(id) => setCharities((p) => p.filter((c) => c.id !== id))}
+              onAddPersonalFund={(item) => setPersonalFunds((p) => [...p, item])}
+              onRemovePersonalFund={(id) => setPersonalFunds((p) => p.filter((f) => f.id !== id))}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Hidden file input for photo slot replacement */}
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handlePhotoSlotUpload}
-        />
-      </div>
-    </>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 1: DETAILS WORKFLOW SCREEN (LIVE PREVIEW PANE + DETAILS FORM)        */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 1 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowDetails
-          title={designState.eventDetails.title}
-          dateTime={designState.eventDetails.date}
-          location={designState.eventDetails.venue || designState.eventDetails.address}
-          hostNote={designState.eventDetails.description || ""}
-          hostDetails={hostDetails}
-          rsvpOptions={rsvpOptions}
-          onUpdateField={handleDetailsFieldChange}
-          onUpdateHostDetails={setHostDetails}
-          onOpenRsvpOptions={() => setIsRsvpModalOpen(true)}
-        />
-      </div>
-    </div>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 2: GIFTING WORKFLOW SCREEN (LIVE PREVIEW PANE + GIFTING SECTIONS)    */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 2 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[52%] lg:w-[54%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowGifting
-          gifting={giftingState}
-          onUpdateGifting={(next) => {
-            setGiftingState(next);
-            setDesignState((prev) => ({ ...prev, gifting: next }));
-          }}
-          wishlists={wishlists}
-          charities={charities}
-          personalFunds={personalFunds}
-          onAddWishlist={(item) => setWishlists((p) => [...p, item])}
-          onRemoveWishlist={(id) => setWishlists((p) => p.filter((w) => w.id !== id))}
-          onAddCharity={(item) => setCharities((p) => [...p, item])}
-          onRemoveCharity={(id) => setCharities((p) => p.filter((c) => c.id !== id))}
-          onAddPersonalFund={(item) => setPersonalFunds((p) => [...p, item])}
-          onRemovePersonalFund={(id) => setPersonalFunds((p) => p.filter((f) => f.id !== id))}
-        />
-      </div>
-    </div>
-  )}
-
-  {/* ========================================================================= */}
-  {/* STEP 3: REVIEW WORKFLOW SCREEN (LIVE PREVIEW PANE + REVIEW SUMMARY)       */}
-  {/* ========================================================================= */}
-  {currentStepIndex === 3 && (
-    <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
-      <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
-        <InvitationWorkflowPreviewPane
-          designState={designState}
-          allowMaybe={rsvpOptions.allowMaybe}
-          onRsvpClick={(status) => {
-            setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
-          }}
-        />
-      </div>
-      <div className="w-full md:w-[56%] lg:w-[58%] flex-1 md:h-full flex flex-col min-h-0">
-        <InvitationWorkflowReview
-          designState={designState}
-          rsvpOptions={rsvpOptions}
-          hostDetails={hostDetails}
-          wishlists={wishlists}
-          charities={charities}
-          personalFunds={personalFunds}
-          selectedGuestCount={selectedGuestIds.length}
-          totalGuestCount={eventGuests.length}
-          onJumpToStep={(idx) => setCurrentStepIndex(idx)}
-          onDesignStateChange={setDesignState}
-          onHostDetailsChange={setHostDetails}
-        />
-      </div>
-    </div>
-  )}
+      {/* ========================================================================= */}
+      {/* STEP 3: REVIEW WORKFLOW SCREEN (LIVE PREVIEW PANE + REVIEW SUMMARY)       */}
+      {/* ========================================================================= */}
+      {currentStepIndex === 3 && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0">
+          <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
+            <InvitationWorkflowPreviewPane
+              designState={designState}
+              allowMaybe={rsvpOptions.allowMaybe}
+              hostDetails={hostDetails}
+              guestCount={eventGuests.length}
+              onRsvpClick={(status) => {
+                setToast({ message: `RSVP preview selection: ${status.toUpperCase()}`, type: "success" });
+              }}
+            />
+          </div>
+          <div className="w-full md:w-[56%] lg:w-[58%] flex-1 md:h-full flex flex-col min-h-0">
+            <InvitationWorkflowReview
+              designState={designState}
+              rsvpOptions={rsvpOptions}
+              hostDetails={hostDetails}
+              wishlists={wishlists}
+              charities={charities}
+              personalFunds={personalFunds}
+              selectedGuestCount={selectedGuestIds.length}
+              totalGuestCount={eventGuests.length}
+              onJumpToStep={(idx) => setCurrentStepIndex(idx)}
+              onDesignStateChange={handleReviewDesignStateChange}
+              onHostDetailsChange={handleReviewHostDetailsChange}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* EMAIL SNAPSHOT & DISPATCH MODAL                                           */}
@@ -5613,6 +6079,140 @@ export default function InvitationStudio({
           />
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TEMPLATE GALLERY MODAL — Shown on fresh session / after send cleanup     */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isTemplateGalleryOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsTemplateGalleryOpen(false);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Choose a Template</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Select a design to start creating your invitation</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateGalleryOpen(false)}
+                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                  title="Close template gallery"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Template Grid */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {NEW_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectTemplate(tpl.id);
+                        setIsTemplateGalleryOpen(false);
+                      }}
+                      className="group relative flex flex-col rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:bg-slate-50 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                    >
+                      {/* Preview thumbnail with text layers */}
+                      <div
+                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden relative"
+                        style={{
+                          background: tpl.gradient || tpl.backgroundColor || "#f1f5f9",
+                        }}
+                      >
+                        {tpl.image ? (
+                          <img
+                            src={tpl.image}
+                            alt={tpl.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">
+                            {tpl.emoji || "🎉"}
+                          </div>
+                        )}
+                        {/* Text layer preview overlay */}
+                        {tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0 && (
+                          <div className="absolute inset-0 pointer-events-none p-2">
+                            {tpl.defaultTextLayers.slice(0, 5).map((layer) => {
+                              const casingVal = (layer as any).casing as string | undefined;
+                              const casingStyle: React.CSSProperties =
+                                casingVal === "uppercase" ? { textTransform: "uppercase" }
+                                : casingVal === "lowercase" ? { textTransform: "lowercase" }
+                                : casingVal === "capitalize" ? { textTransform: "capitalize" }
+                                : {};
+                              return (
+                                <div
+                                  key={layer.id}
+                                  className="absolute whitespace-pre-line"
+                                  style={{
+                                    top: `${layer.top}%`,
+                                    left: `${layer.left}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontFamily: layer.fontFamily,
+                                    fontSize: `${Math.max(6, Math.round(layer.fontSize * 0.32))}px`,
+                                    color: layer.color,
+                                    fontWeight: layer.fontWeight,
+                                    textAlign: layer.textAlign,
+                                    lineHeight: (layer as any).lineHeight || 1.2,
+                                    maxWidth: "90%",
+                                    overflow: "hidden",
+                                    ...casingStyle,
+                                  }}
+                                >
+                                  {layer.text}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      {/* Label */}
+                      <div className="px-3 py-2.5 text-left">
+                        <p className="text-xs font-semibold text-slate-800 truncate">{tpl.title}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] font-medium text-slate-400">{tpl.category}</span>
+                          {tpl.badge && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                              tpl.badge === "PREMIUM"
+                                ? "bg-purple-100 text-purple-700"
+                                : tpl.badge === "Trending"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                            }`}>
+                              {tpl.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

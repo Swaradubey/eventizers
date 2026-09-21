@@ -39,6 +39,9 @@ import {
   Crown,
   CopyPlus,
   Copy,
+  Bold,
+  Italic,
+  Underline,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API, { getApiErrorMessage } from "../../services/api";
@@ -972,9 +975,68 @@ export default function InvitationStudio({
       } catch (e) { }
     }
 
+    let persistentCanvasState: any = null;
+    const rawEvtCanvasState = (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
+    if (rawEvtCanvasState) {
+      try {
+        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+      } catch (_) {}
+    }
+
     const mergedInvite = {
       ...(initialInvitation || {}),
+      ...(persistentCanvasState || {}),
       ...(cachedDraft || {}),
+      textElements:
+        cachedDraft?.textElements ||
+        persistentCanvasState?.textLayers ||
+        persistentCanvasState?.layers ||
+        persistentCanvasState?.textElements ||
+        initialInvitation?.textElements ||
+        undefined,
+      templateId:
+        cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
+        initialInvitation?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
+        undefined,
+      envelope:
+        cachedDraft?.envelope ||
+        persistentCanvasState?.envelope ||
+        initialInvitation?.envelope ||
+        undefined,
+      stageBackdrop:
+        cachedDraft?.stageBackdrop ||
+        persistentCanvasState?.stageBackdrop ||
+        initialInvitation?.stageBackdrop ||
+        undefined,
+      cardBg:
+        cachedDraft?.cardBg ||
+        persistentCanvasState?.cardBg ||
+        initialInvitation?.cardBg ||
+        undefined,
+      card:
+        cachedDraft?.card ||
+        persistentCanvasState?.card ||
+        (initialInvitation as any)?.card ||
+        undefined,
+      effects:
+        cachedDraft?.effects ||
+        persistentCanvasState?.effects ||
+        initialInvitation?.effects ||
+        undefined,
+      backside:
+        cachedDraft?.backside ||
+        persistentCanvasState?.backside ||
+        (initialInvitation as any)?.backside ||
+        undefined,
+      decorations:
+        cachedDraft?.decorations ||
+        persistentCanvasState?.decorations ||
+        (initialInvitation as any)?.decorations ||
+        undefined,
     };
 
     const pendingUploadUrl = getPendingOrUploadedImageUrl(mergedInvite as any, initialEvent, uploadedImageUrl);
@@ -984,8 +1046,11 @@ export default function InvitationStudio({
       ? null
       : (templateIdQuery ||
         cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
         mergedInvite?.templateId ||
         initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
         (typeof window !== "undefined"
           ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
           : null));
@@ -2292,22 +2357,88 @@ export default function InvitationStudio({
       } catch (e) { }
     }
 
+    let persistentCanvasState: any = null;
+    const rawEvtCanvasState = (currentEvent as any)?.canvasState || (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
+    if (rawEvtCanvasState) {
+      try {
+        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+      } catch (_) {}
+    }
+
     const mergedInvite = {
       ...(initialInvitation || {}),
+      ...(persistentCanvasState || {}),
       ...(cachedDraft || {}),
+      textElements:
+        cachedDraft?.textElements ||
+        persistentCanvasState?.textLayers ||
+        persistentCanvasState?.layers ||
+        persistentCanvasState?.textElements ||
+        initialInvitation?.textElements ||
+        undefined,
+      templateId:
+        cachedDraft?.templateId ||
+        persistentCanvasState?.templateId ||
+        persistentCanvasState?.activeTemplateId ||
+        initialInvitation?.templateId ||
+        (currentEvent as any)?.selectedTemplateId ||
+        (currentEvent as any)?.templateId ||
+        initialEvent?.selectedTemplateId ||
+        (initialEvent as any)?.templateId ||
+        undefined,
+      envelope:
+        cachedDraft?.envelope ||
+        persistentCanvasState?.envelope ||
+        initialInvitation?.envelope ||
+        undefined,
+      stageBackdrop:
+        cachedDraft?.stageBackdrop ||
+        persistentCanvasState?.stageBackdrop ||
+        initialInvitation?.stageBackdrop ||
+        undefined,
+      cardBg:
+        cachedDraft?.cardBg ||
+        persistentCanvasState?.cardBg ||
+        initialInvitation?.cardBg ||
+        undefined,
+      card:
+        cachedDraft?.card ||
+        persistentCanvasState?.card ||
+        (initialInvitation as any)?.card ||
+        undefined,
+      effects:
+        cachedDraft?.effects ||
+        persistentCanvasState?.effects ||
+        initialInvitation?.effects ||
+        undefined,
+      backside:
+        cachedDraft?.backside ||
+        persistentCanvasState?.backside ||
+        (initialInvitation as any)?.backside ||
+        undefined,
+      decorations:
+        cachedDraft?.decorations ||
+        persistentCanvasState?.decorations ||
+        (initialInvitation as any)?.decorations ||
+        undefined,
     };
 
     const targetTplId =
       mergedInvite?.templateId ||
       initialInvitation?.templateId ||
       templateIdQuery ||
+      (currentEvent as any)?.selectedTemplateId ||
+      (currentEvent as any)?.templateId ||
       initialEvent?.selectedTemplateId ||
+      (initialEvent as any)?.templateId ||
       (typeof window !== "undefined"
         ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
         : null);
 
     const hasSavedLayers = Boolean(
       (initialInvitation?.textElements && initialInvitation.textElements.length > 0) ||
+      (persistentCanvasState?.textLayers && persistentCanvasState.textLayers.length > 0) ||
+      (persistentCanvasState?.layers && persistentCanvasState.layers.length > 0) ||
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
     );
 
@@ -2812,6 +2943,27 @@ export default function InvitationStudio({
       backside: designState.backside,
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
+      selectedTemplateId: activeTplId,
+      previewUrl: resolvedImageUrl,
+      thumbnailUrl: resolvedImageUrl,
+      canvasState: {
+        templateId: activeTplId,
+        activeTemplateId: activeTplId,
+        textLayers: normalizedTextLayers,
+        layers: normalizedTextLayers,
+        card: fullCardModel,
+        cardBg: fullBackgroundModel,
+        background: fullBackgroundModel,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: decorativeImages,
+        isLandscape: designState.isLandscape,
+        previewUrl: resolvedImageUrl,
+        thumbnailUrl: resolvedImageUrl,
+        eventDetails: designState.eventDetails,
+      },
       designData: {
         ...(currentInvitation?.designData || {}),
         hostDetails,
@@ -2968,6 +3120,32 @@ export default function InvitationStudio({
             );
           } catch (e) { }
         }
+
+        // Persist templateId, previewUrl, and canvasState to Event record
+        if (payload.eventId) {
+          try {
+            await eventService.updateEvent(payload.eventId, {
+              selectedTemplateId: payload.templateId,
+              templateId: payload.templateId,
+              canvasState: payload.canvasState,
+              previewUrl: payload.previewUrl || payload.imageUrl || null,
+              coverImage: payload.previewUrl || payload.imageUrl || null,
+            } as any);
+            if (currentEvent) {
+              setCurrentEvent((prev) => (prev ? {
+                ...prev,
+                selectedTemplateId: payload.templateId,
+                templateId: payload.templateId,
+                canvasState: payload.canvasState,
+                previewUrl: payload.previewUrl || payload.imageUrl || null,
+                coverImage: payload.previewUrl || payload.imageUrl || null,
+              } : prev));
+            }
+          } catch (evErr) {
+            console.warn("[saveDesign] Could not sync event record with canvasState:", evErr);
+          }
+        }
+
         return mergedInvite;
       }
       return null;
@@ -3469,11 +3647,50 @@ export default function InvitationStudio({
           ? combineDateTimeToIso(rsvpOptions.deadlineDate, rsvpOptions.deadlineTime)
           : null;
 
+      const effectiveTplId = templateIdQuery || designState.activeTemplateId || designState.templateId || "custom";
+      const resolvedSnapshot = activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined) || (activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined);
+
+      const packagedCanvasState = {
+        templateId: effectiveTplId,
+        activeTemplateId: effectiveTplId,
+        textLayers: designState.textLayers,
+        layers: designState.textLayers,
+        card: designState.card,
+        cardBg: designState.cardBg,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: designState.decorations,
+        isLandscape: designState.isLandscape,
+        previewUrl: resolvedSnapshot,
+        thumbnailUrl: resolvedSnapshot,
+        eventDetails: designState.eventDetails,
+      };
+
       // 2. Prepare payload
       payload = {
         invitationId: activeInvitationId,
         eventId: targetEventId,
-        templateId: templateIdQuery || designState.activeTemplateId || "custom",
+        templateId: effectiveTplId,
+        selectedTemplateId: effectiveTplId,
+        canvasState: packagedCanvasState,
+        layers: designState.textLayers,
+        textElements: designState.textLayers,
+        previewUrl: resolvedSnapshot,
+        thumbnailUrl: resolvedSnapshot,
+        snapshot: resolvedSnapshot,
+        snapshotUrl: resolvedSnapshot,
+        cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
+        cardSnapshotUrl: resolvedSnapshot,
+        card: designState.card,
+        cardBg: designState.cardBg,
+        background: designState.cardBg,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: designState.decorations,
         title:
           designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
           designState.eventDetails.title?.trim() ||
@@ -3482,10 +3699,6 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: selectedGuestIds,
-        snapshot: activeUploadedUrl || undefined,
-        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
-        cardImageBase64: activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
         eventDetails: designState.eventDetails,
         eventTitle: designState.eventDetails.title || currentEvent?.title || "",
         eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
@@ -3510,8 +3723,8 @@ export default function InvitationStudio({
         rsvpDeadlineEnabled: rsvpOptions.deadlineEnabled,
       };
 
-      // Auto-publish associated event if in draft status so sending is never blocked
-      if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
+      // Always persist the template, snapshot preview, and canvas state to the event record
+      if (targetEventId) {
         try {
           await eventService.updateEvent(targetEventId, {
             title: currentEvent?.title || designState.eventDetails.title || "Special Event",
@@ -3519,9 +3732,25 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            selectedTemplateId: effectiveTplId,
+            templateId: effectiveTplId,
+            canvasState: packagedCanvasState,
+            previewUrl: resolvedSnapshot,
+            coverImage: resolvedSnapshot,
           } as any);
           if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+            setCurrentEvent((prev) => (prev ? {
+              ...prev,
+              status: "published",
+              selectedTemplateId: effectiveTplId,
+              templateId: effectiveTplId,
+              canvasState: packagedCanvasState,
+              previewUrl: resolvedSnapshot,
+              coverImage: resolvedSnapshot,
+            } : prev));
+          }
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(packagedCanvasState));
           }
         } catch (pubErr) {
           console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
@@ -4126,7 +4355,7 @@ export default function InvitationStudio({
                     <div className="space-y-6 animate-in fade-in duration-200">
                       {/* Header with Deselect & Clear Buttons */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
                               Text Editor
@@ -4156,38 +4385,6 @@ export default function InvitationStudio({
                               Clear
                             </button>
                           </div>
-                        </div>
-
-                        {/* Active Layer Quick Switcher Chips */}
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          {designState.textLayers.map((l) => {
-                            const isSelected = activeLayer?.id === l.id;
-                            const label =
-                              l.id === "layer-title"
-                                ? "Title"
-                                : l.id === "layer-datetime"
-                                  ? "Date & Time"
-                                  : l.id === "layer-venue"
-                                    ? "Venue"
-                                    : l.id === "layer-description"
-                                      ? "Description"
-                                      : l.id === "layer-host"
-                                        ? "Host"
-                                        : l.text?.slice(0, 12) || "Layer";
-                            return (
-                              <button
-                                key={l.id}
-                                type="button"
-                                onClick={() => handleSelectLayer(l.id)}
-                                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSelected
-                                  ? "bg-slate-900 text-white shadow-xs"
-                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                  }`}
-                              >
-                                {label}
-                              </button>
-                            );
-                          })}
                         </div>
 
                         {/* Textarea */}
@@ -4288,45 +4485,71 @@ export default function InvitationStudio({
                         </div>
                       </div>
 
-                      {/* Letter Casing & Text Alignment Row */}
+                      {/* Font Styling & Text Alignment Row */}
                       <div className="grid grid-cols-2 gap-3">
-                        {/* Letter Casing */}
+                        {/* Font Style: Bold, Italic, Underline */}
                         <div>
                           <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                            Letter Casing
+                            Font Style
                           </label>
                           <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ casing: "uppercase" })}
-                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "uppercase"
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => {
+                                const isBold =
+                                  String(activeLayer.fontWeight) === "700" ||
+                                  String(activeLayer.fontWeight) === "bold" ||
+                                  Number(activeLayer.fontWeight) >= 700;
+                                updateActiveLayer({ fontWeight: isBold ? "400" : "700" });
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                String(activeLayer.fontWeight) === "700" ||
+                                String(activeLayer.fontWeight) === "bold" ||
+                                Number(activeLayer.fontWeight) >= 700
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Bold"
                             >
-                              A
+                              <Bold className="w-3.5 h-3.5" />
                             </button>
                             <div className="w-px h-6 bg-slate-200" />
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ casing: "lowercase" })}
-                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "lowercase"
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => {
+                                const isItalic = activeLayer.fontStyle === "italic";
+                                updateActiveLayer({ fontStyle: isItalic ? "normal" : "italic" });
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                activeLayer.fontStyle === "italic"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Italic"
                             >
-                              a
+                              <Italic className="w-3.5 h-3.5" />
                             </button>
                             <div className="w-px h-6 bg-slate-200" />
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ casing: "capitalize" })}
-                              className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${activeLayer.casing === "capitalize"
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => {
+                                const isUnderline =
+                                  (activeLayer as any).underline === true ||
+                                  (activeLayer as any).textDecoration === "underline";
+                                updateActiveLayer({
+                                  underline: !isUnderline,
+                                  textDecoration: !isUnderline ? "underline" : "none",
+                                } as any);
+                              }}
+                              className={`flex-1 py-2 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                                (activeLayer as any).underline === true ||
+                                (activeLayer as any).textDecoration === "underline"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                              title="Underline"
                             >
-                              Aa
+                              <Underline className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -4339,11 +4562,12 @@ export default function InvitationStudio({
                           <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ align: "left" })}
-                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "left"
-                                ? "bg-[#d9f99d] text-slate-900"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => updateActiveLayer({ align: "left", textAlign: "left" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "left" || activeLayer.textAlign === "left"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
                               title="Align Left"
                             >
                               <AlignLeft className="w-4 h-4" />
@@ -4351,11 +4575,14 @@ export default function InvitationStudio({
                             <div className="w-px h-6 bg-slate-200" />
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ align: "center" })}
-                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "center"
-                                ? "bg-[#d9f99d] text-slate-900"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => updateActiveLayer({ align: "center", textAlign: "center" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "center" ||
+                                activeLayer.textAlign === "center" ||
+                                (!activeLayer.align && !activeLayer.textAlign)
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
                               title="Align Center"
                             >
                               <AlignCenter className="w-4 h-4" />
@@ -4363,16 +4590,61 @@ export default function InvitationStudio({
                             <div className="w-px h-6 bg-slate-200" />
                             <button
                               type="button"
-                              onClick={() => updateActiveLayer({ align: "right" })}
-                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${activeLayer.align === "right"
-                                ? "bg-[#d9f99d] text-slate-900"
-                                : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                              onClick={() => updateActiveLayer({ align: "right", textAlign: "right" })}
+                              className={`flex-1 py-2 flex items-center justify-center transition-colors cursor-pointer ${
+                                activeLayer.align === "right" || activeLayer.textAlign === "right"
+                                  ? "bg-slate-900 text-white"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
                               title="Align Right"
                             >
                               <AlignRight className="w-4 h-4" />
                             </button>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Letter Casing */}
+                      <div>
+                        <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                          Letter Casing
+                        </label>
+                        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "uppercase" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "uppercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            A
+                          </button>
+                          <div className="w-px h-6 bg-slate-200" />
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "lowercase" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "lowercase"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            a
+                          </button>
+                          <div className="w-px h-6 bg-slate-200" />
+                          <button
+                            type="button"
+                            onClick={() => updateActiveLayer({ casing: "capitalize" })}
+                            className={`flex-1 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                              activeLayer.casing === "capitalize"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            Aa
+                          </button>
                         </div>
                       </div>
 
@@ -4469,51 +4741,10 @@ export default function InvitationStudio({
                           <div>
                             <p className="text-xs font-semibold text-slate-800">Select text to customize</p>
                             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                              Click any text element directly on the canvas to edit typography, size, and styling, or select a layer below.
+                              Click any text element directly on the canvas to edit typography, size, and styling.
                             </p>
                           </div>
                         </div>
-
-                        {/* Quick Layer Switcher List */}
-                        {designState.textLayers.length > 0 && (
-                          <div className="mt-4">
-                            <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
-                              Available Layers ({designState.textLayers.length})
-                            </span>
-                            <div className="flex flex-col gap-1.5">
-                              {designState.textLayers.map((l) => {
-                                const label =
-                                  l.id === "layer-title"
-                                    ? "Title"
-                                    : l.id === "layer-datetime"
-                                      ? "Date & Time"
-                                      : l.id === "layer-venue"
-                                        ? "Venue"
-                                        : l.id === "layer-description"
-                                          ? "Description"
-                                          : l.id === "layer-host"
-                                            ? "Host"
-                                            : l.text?.slice(0, 16) || "Layer";
-                                return (
-                                  <button
-                                    key={l.id}
-                                    type="button"
-                                    onClick={() => handleSelectLayer(l.id)}
-                                    className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 transition-all text-left cursor-pointer group shadow-2xs"
-                                  >
-                                    <span className="font-semibold text-slate-800 flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-slate-400 group-hover:bg-indigo-600 transition-colors" />
-                                      <span>{label}</span>
-                                    </span>
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[140px] group-hover:text-slate-600">
-                                      {l.text}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </div>
 
                       {/* Add Text Box Button */}

@@ -53,6 +53,8 @@ export interface TextLayer {
   width?: number; // percentage or px width
   height?: number; // computed height
   cardWidth?: number; // base container width when designed
+  textDecoration?: string;
+  underline?: boolean;
 }
 
 export interface EnvelopeConfig {

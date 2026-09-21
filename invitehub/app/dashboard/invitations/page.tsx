@@ -128,6 +128,7 @@ function InvitationPageContent() {
     : (queryTemplateId ||
        invitation?.templateId ||
        activeEvent?.selectedTemplateId ||
+       activeEvent?.templateId ||
        (typeof window !== "undefined"
          ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
          : null));

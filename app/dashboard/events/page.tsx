@@ -494,8 +494,8 @@ function EventsPageContent() {
                     <div className="flex items-start gap-3.5 sm:gap-4 min-w-0 flex-1">
                       <EventThumbnail
                         event={event}
-                        size="md"
-                        className="rounded-xl shrink-0 mt-0.5"
+                        size="lg"
+                        className="rounded-xl shrink-0 mt-0.5 shadow-sm border border-slate-100"
                         onPreview={() => setViewingEvent(event)}
                       />
                       <div className="min-w-0 flex-1">
@@ -565,7 +565,8 @@ function EventsPageContent() {
                             <button
                               onClick={() => {
                                 setActiveMenuId(null);
-                                router.push(`/dashboard/invitations?eventId=${event.id}`);
+                                const tplId = event.selectedTemplateId || event.templateId || "";
+                                router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
                               }}
                               className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                             >
@@ -598,7 +599,10 @@ function EventsPageContent() {
                       </div>
 
                       <button
-                        onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                        onClick={() => {
+                          const tplId = event.selectedTemplateId || event.templateId || "";
+                          router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
+                        }}
                         className="p-1 text-[#625BF6] hover:text-[#4338CA] hover:translate-x-0.5 transition-all focus:outline-none"
                         title="Go to Event"
                         aria-label="Go to event"
@@ -662,7 +666,10 @@ function EventsPageContent() {
                   {/* Card Bottom Actions: Manage & Preview */}
                   <div className="flex items-center gap-3 pt-1">
                     <button
-                      onClick={() => router.push(`/dashboard/invitations?eventId=${event.id}`)}
+                      onClick={() => {
+                        const tplId = event.selectedTemplateId || event.templateId || "";
+                        router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
+                      }}
                       className="flex-1 py-2.5 px-4 bg-[#F4F3FF] hover:bg-[#EBE9FE] text-[#5B50E5] font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none"
                     >
                       Manage
@@ -747,7 +754,7 @@ function EventsPageContent() {
                   <div className="w-48 sm:w-56 aspect-[5/7] rounded-xl overflow-hidden shadow-md">
                     <EviteCardPreview
                       event={viewingEvent}
-                      templateId={viewingEvent.selectedTemplateId}
+                      templateId={viewingEvent.selectedTemplateId || viewingEvent.templateId}
                       aspectRatio="5x7"
                       cardOnly={false}
                     />
@@ -844,8 +851,9 @@ function EventsPageContent() {
                 <button
                   onClick={() => {
                     const id = viewingEvent.id;
+                    const tplId = viewingEvent.selectedTemplateId || viewingEvent.templateId || "";
                     setViewingEvent(null);
-                    router.push(`/dashboard/invitations?eventId=${id}`);
+                    router.push(`/dashboard/invitations?eventId=${id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
                   }}
                   className="px-4 py-2 text-xs font-semibold text-white bg-[#625BF6] hover:bg-indigo-700 rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none flex items-center gap-1.5"
                 >

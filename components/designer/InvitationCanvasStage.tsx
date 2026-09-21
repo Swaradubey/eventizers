@@ -1005,6 +1005,7 @@ export default function InvitationCanvasStage({
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
                       fontStyle: (layer as any).fontStyle || undefined,
+                      textDecoration: (layer as any).textDecoration || ((layer as any).underline ? "underline" : undefined),
                       maxHeight: (layer as any).maxHeight || undefined,
                       letterSpacing:
                         typeof layer.letterSpacing === "string"
@@ -1033,6 +1034,7 @@ export default function InvitationCanvasStage({
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
                       fontStyle: (layer as any).fontStyle || undefined,
+                      textDecoration: (layer as any).textDecoration || ((layer as any).underline ? "underline" : undefined),
                       maxHeight: (layer as any).maxHeight || undefined,
                       pointerEvents: "auto",
                     }}

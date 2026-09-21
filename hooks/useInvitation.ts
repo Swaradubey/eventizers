@@ -323,6 +323,27 @@ export const useInvitation = (eventId: string | null) => {
             fetchedInvitation.imageUrl = fetchedInvitation.imageUrl.replace(/\.svg$/, "-bg.svg");
           }
 
+          // Restore persistent canvasState from Event record if available
+          let persistentCanvasState = eventRes.event.canvasState;
+          if (typeof persistentCanvasState === "string") {
+            try { persistentCanvasState = JSON.parse(persistentCanvasState); } catch (_) {}
+          }
+          if (persistentCanvasState) {
+            if (persistentCanvasState.templateId) fetchedInvitation.templateId = persistentCanvasState.templateId;
+            if (persistentCanvasState.textLayers || persistentCanvasState.layers || persistentCanvasState.textElements) {
+              fetchedInvitation.textElements = persistentCanvasState.textLayers || persistentCanvasState.layers || persistentCanvasState.textElements;
+            }
+            if (persistentCanvasState.envelope) fetchedInvitation.envelope = persistentCanvasState.envelope;
+            if (persistentCanvasState.stageBackdrop) fetchedInvitation.stageBackdrop = persistentCanvasState.stageBackdrop;
+            if (persistentCanvasState.cardBg) fetchedInvitation.cardBg = persistentCanvasState.cardBg;
+            if (persistentCanvasState.card) (fetchedInvitation as any).card = persistentCanvasState.card;
+            if (persistentCanvasState.effects) fetchedInvitation.effects = persistentCanvasState.effects;
+            if (persistentCanvasState.backside) (fetchedInvitation as any).backside = persistentCanvasState.backside;
+            if (persistentCanvasState.decorations) (fetchedInvitation as any).decorations = persistentCanvasState.decorations;
+            if (persistentCanvasState.isLandscape !== undefined) fetchedInvitation.isLandscape = persistentCanvasState.isLandscape;
+            (fetchedInvitation as any).canvasState = persistentCanvasState;
+          }
+
           // Restore cached 4-layer Evite-style state if available
           if (typeof window !== "undefined") {
             try {

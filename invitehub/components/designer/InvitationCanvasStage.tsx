@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers } from "./InvitationStudio";
+import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
@@ -130,17 +131,6 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
-  // Strict Canvas Object Purge Before Render:
-  // Purge only text objects before adding new/updated ones to eliminate text overlap ("JJEEIINNNNIFFEEERR")
-  // IMPORTANT: Never wipe background images, frame artwork, borders, or decorative illustrations.
-  useEffect(() => {
-    teardownCanvasTextLayers(
-      (window as any)?.__fabricCanvas ||
-      (window as any)?.__canvasInstance ||
-      (window as any)?.__fabricCanvasRef?.current
-    );
-  }, [config.activeTemplateId, (config as any).templateId]);
-
   // Deduplicate incoming text layers before layout and rendering
   const deduplicatedLayers = useMemo(() => {
     return deduplicateTextLayers(config.textLayers || []);
@@ -258,18 +248,13 @@ export default function InvitationCanvasStage({
       if (!targetId) return;
 
       // Clean up active object on fabric/window canvas if present
-      if (typeof window !== "undefined") {
-        const canvas =
-          (window as any)?.__fabricCanvas ||
-          (window as any)?.__canvasInstance ||
-          (window as any)?.__fabricCanvasRef?.current;
-        if (canvas && typeof canvas.getActiveObject === "function") {
-          const activeObj = canvas.getActiveObject();
-          if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
-            canvas.remove(activeObj);
-            if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
-            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-          }
+      const canvas = getFabricCanvas();
+      if (canvas && typeof canvas.getActiveObject === "function") {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj.customId === targetId || activeObj.data?.id === targetId)) {
+          canvas.remove(activeObj);
+          if (typeof canvas.discardActiveObject === "function") canvas.discardActiveObject();
+          if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
         }
       }
 
@@ -286,34 +271,29 @@ export default function InvitationCanvasStage({
       if (!targetId) return;
 
       // Duplicate on fabric/window canvas if present
-      if (typeof window !== "undefined") {
-        const canvas =
-          (window as any)?.__fabricCanvas ||
-          (window as any)?.__canvasInstance ||
-          (window as any)?.__fabricCanvasRef?.current;
-        if (canvas && typeof canvas.getActiveObject === "function") {
-          const activeObj = canvas.getActiveObject();
-          if (
-            activeObj &&
-            (activeObj.customId === targetId || activeObj.data?.id === targetId) &&
-            typeof activeObj.clone === "function"
-          ) {
-            activeObj.clone((cloned: any) => {
-              cloned.set({
-                left: (activeObj.left || 0) + 20,
-                top: (activeObj.top || 0) + 20,
-                evented: true,
-              });
-              const newCustomId = `text-${Date.now()}`;
-              cloned.customId = newCustomId;
-              if (cloned.data) cloned.data.id = newCustomId;
-              canvas.add(cloned);
-              canvas.setActiveObject(cloned);
-              if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
-              if (onDuplicateLayer) onDuplicateLayer(newCustomId);
+      const canvas = getFabricCanvas();
+      if (canvas && typeof canvas.getActiveObject === "function") {
+        const activeObj = canvas.getActiveObject();
+        if (
+          activeObj &&
+          (activeObj.customId === targetId || activeObj.data?.id === targetId) &&
+          typeof activeObj.clone === "function"
+        ) {
+          activeObj.clone((cloned: any) => {
+            cloned.set({
+              left: (activeObj.left || 0) + 20,
+              top: (activeObj.top || 0) + 20,
+              evented: true,
             });
-            return;
-          }
+            const newCustomId = `text-${Date.now()}`;
+            cloned.customId = newCustomId;
+            if (cloned.data) cloned.data.id = newCustomId;
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+            if (onDuplicateLayer) onDuplicateLayer(newCustomId);
+          });
+          return;
         }
       }
 
@@ -332,11 +312,7 @@ export default function InvitationCanvasStage({
   });
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const canvas =
-      (window as any)?.__fabricCanvas ||
-      (window as any)?.__canvasInstance ||
-      (window as any)?.__fabricCanvasRef?.current;
+    const canvas = getFabricCanvas();
     if (!canvas || typeof canvas.on !== "function") return;
 
     const updateFromCanvas = () => {
@@ -467,6 +443,7 @@ export default function InvitationCanvasStage({
 
   const cardImageRaw =
     uploadedImageSrc ||
+    (config as any)?.backgroundImageUrl ||
     config.card?.artworkUrl ||
     (config.card as any)?.borderIllustration ||
     bgImg ||
@@ -499,35 +476,32 @@ export default function InvitationCanvasStage({
   const [hasImgError, setHasImgError] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     setImgSrc(cleanCardImage);
     setHasImgError(false);
 
-    // If Fabric canvas instance is present on window, sync background image and request render
-    if (typeof window !== "undefined") {
-      const activeCanvas =
-        (window as any)?.__fabricCanvas ||
-        (window as any)?.__canvasInstance ||
-        (window as any)?.__fabricCanvasRef?.current;
-      if (activeCanvas) {
-        if (cleanCardImage && typeof activeCanvas.setBackgroundImage === "function") {
-          try {
-            activeCanvas.setBackgroundImage(
-              cleanCardImage,
-              () => {
-                if (typeof activeCanvas.requestRenderAll === "function") {
-                  activeCanvas.requestRenderAll();
-                }
-              },
-              { crossOrigin: "anonymous" }
-            );
-          } catch (_e) {
-            // Ignore fabric background image sync error
-          }
-        } else if (typeof activeCanvas.requestRenderAll === "function") {
-          activeCanvas.requestRenderAll();
-        }
+    // Strict Canvas Object & Listener Purge:
+    // Strictly clears previous canvas objects and event listeners before loading any new or saved template,
+    // preventing double-mounting / React StrictMode duplicate text layering.
+    const activeCanvas = getFabricCanvas();
+    if (activeCanvas) {
+      cleanFabricCanvas(activeCanvas, {
+        preserveBackground: true,
+        backgroundUrl: cleanCardImage,
+      });
+      if (!isMounted) return;
+      if (cleanCardImage) {
+        applyCanvasBackground(activeCanvas, cleanCardImage);
+      } else if (typeof activeCanvas.requestRenderAll === "function") {
+        activeCanvas.requestRenderAll();
+      } else if (typeof activeCanvas.renderAll === "function") {
+        activeCanvas.renderAll();
       }
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     cleanCardImage,
     (config as any)?.activeTemplateId,
@@ -573,9 +547,7 @@ export default function InvitationCanvasStage({
     config.stageBackdrop?.value ||
     (isCardOnlyMode ? cleanNeutralBg : "#0f172a");
 
-  const backdropValue = isCardOnlyMode
-    ? (rawBackdropValue && !rawBackdropValue.includes("evite_gold_swirl") && !rawBackdropValue.includes("gold-swirl") ? rawBackdropValue : cleanNeutralBg)
-    : rawBackdropValue;
+  const backdropValue = rawBackdropValue || cleanNeutralBg;
 
   const backdropGradient =
     (config as any)?.canvasWorkspaceBg ||
@@ -689,6 +661,7 @@ export default function InvitationCanvasStage({
         }}
         onCardClick={() => {
           if (onCardClick) onCardClick();
+          if (onSelectLayer) onSelectLayer("");
           if (setEditingTextId) setEditingTextId(null);
         }}
       />
@@ -709,11 +682,9 @@ export default function InvitationCanvasStage({
         backgroundColor: isBackdropGradient
           ? undefined
           : (backdropValue?.startsWith("#") || backdropValue?.startsWith("rgb") ? backdropValue : (isCardOnlyMode ? "#f8fafc" : "#1c1917")),
-        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http")) && !backdropValue.includes("evite_gold_swirl")
+        backgroundImage: backdropValue && (backdropValue.includes("/") || backdropValue.includes("http"))
           ? `url('${backdropValue}')`
-          : isBackdropGradient || isCardOnlyMode
-            ? undefined
-            : `url('/assets/backdrops/evite_gold_swirl.jpg')`,
+          : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -798,6 +769,7 @@ export default function InvitationCanvasStage({
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               if (onCardClick) onCardClick();
+              if (onSelectLayer) onSelectLayer("");
               if (setEditingTextId) setEditingTextId(null);
             }
           }}
@@ -1033,6 +1005,7 @@ export default function InvitationCanvasStage({
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
                       fontStyle: (layer as any).fontStyle || undefined,
+                      textDecoration: (layer as any).textDecoration || ((layer as any).underline ? "underline" : undefined),
                       maxHeight: (layer as any).maxHeight || undefined,
                       letterSpacing:
                         typeof layer.letterSpacing === "string"
@@ -1061,6 +1034,7 @@ export default function InvitationCanvasStage({
                       lineHeight: layer.effectiveLineHeight,
                       fontWeight: layer.fontWeight,
                       fontStyle: (layer as any).fontStyle || undefined,
+                      textDecoration: (layer as any).textDecoration || ((layer as any).underline ? "underline" : undefined),
                       maxHeight: (layer as any).maxHeight || undefined,
                       pointerEvents: "auto",
                     }}
