@@ -221,6 +221,8 @@ export interface InvitationPayload {
   fontFamily?: string;
   textAlignment?: string;
   imageUrl?: string;
+  previewUrl?: string;
+  templatePreviewUrl?: string;
   buttonText?: string;
   buttonColor?: string;
   buttonRadius?: number;

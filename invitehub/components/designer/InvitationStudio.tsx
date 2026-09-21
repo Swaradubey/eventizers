@@ -3177,6 +3177,11 @@ export default function InvitationStudio({
         propSelectedEventId ||
         (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("eventId") : null);
 
+      // Capture clean isolated snapshot decoupled from active canvas DOM
+      const { dataUrl, uploadedUrl } = await generateSnapshot();
+      const activeSnapshotDataUrl = dataUrl || snapshotDataUrl;
+      const finalPreview = uploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined);
+
       if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
         try {
           await eventService.updateEvent(targetEventId, {
@@ -3185,19 +3190,38 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            coverImage: finalPreview || currentEvent?.coverImage,
+            previewUrl: finalPreview || currentEvent?.previewUrl,
+            templatePreviewUrl: finalPreview,
+            selectedTemplateId: templateIdQuery || designState.activeTemplateId || currentEvent?.selectedTemplateId,
           } as any);
           if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+            setCurrentEvent((prev) => (prev ? {
+              ...prev,
+              status: "published",
+              coverImage: finalPreview || prev.coverImage,
+              previewUrl: finalPreview || prev.previewUrl,
+              templatePreviewUrl: finalPreview,
+            } : prev));
           }
         } catch (pubErr) {
           console.warn("[prepareAndOpenDispatch] Auto-publish event on fly notice:", pubErr);
         }
       }
 
-      // Capture clean isolated snapshot decoupled from active canvas DOM
-      const { dataUrl, uploadedUrl } = await generateSnapshot();
       // Save the design (with the snapshot URL) so the backend has the finalized state
-      await saveDesign(uploadedUrl || dataUrl);
+      const savedDesign = await saveDesign(uploadedUrl || dataUrl);
+      const savedImage = (savedDesign as any)?.previewUrl || (savedDesign as any)?.imageUrl || finalPreview;
+      if (targetEventId && savedImage) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            coverImage: savedImage,
+            previewUrl: savedImage,
+            templatePreviewUrl: savedImage,
+            selectedTemplateId: templateIdQuery || designState.activeTemplateId || currentEvent?.selectedTemplateId,
+          } as any);
+        } catch (e) {}
+      }
     } catch (_err) {
       // Non-blocking — still open modal even if save/snapshot failed
     } finally {
@@ -3417,7 +3441,15 @@ export default function InvitationStudio({
     setIsSendingEmails(true);
     let payload: any = null;
     try {
-      // Auto-publish associated event if in draft mode so dispatch is never blocked
+      // Direct clean snapshot capture: Never tear down or re-hydrate text during snapshot generation
+      // Take snapshot directly from the existing live canvas/DOM to permanently eliminate text duplication
+      const snap = await generateSnapshot();
+      const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
+      const activeUploadedUrl = snap.uploadedUrl;
+      const finalPreview = activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined);
+
+      // Auto-publish associated event if in draft mode so dispatch is never blocked,
+      // ensuring coverImage and previewUrl are persisted and not erased on status change
       if (targetEventId && (currentEvent?.status === "draft" || !currentEvent?.status)) {
         try {
           await eventService.updateEvent(targetEventId, {
@@ -3426,26 +3458,46 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            coverImage: finalPreview || currentEvent?.coverImage,
+            previewUrl: finalPreview || currentEvent?.previewUrl,
+            templatePreviewUrl: finalPreview,
+            selectedTemplateId: templateIdQuery || designState.activeTemplateId || currentEvent?.selectedTemplateId,
+            canvasState: {
+              ...(typeof currentEvent?.canvasState === "object" ? currentEvent?.canvasState : {}),
+              previewUrl: finalPreview || activeSnapshotDataUrl,
+              templateId: templateIdQuery || designState.activeTemplateId,
+            },
           } as any);
           if (currentEvent) {
-            setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
+            setCurrentEvent((prev) => (prev ? {
+              ...prev,
+              status: "published",
+              coverImage: finalPreview || prev.coverImage,
+              previewUrl: finalPreview || prev.previewUrl,
+              templatePreviewUrl: finalPreview,
+            } : prev));
           }
         } catch (pubErr) {
           console.warn("[handleDirectSendInvitations] Auto-publish event notice:", pubErr);
         }
       }
 
-      // Direct clean snapshot capture: Never tear down or re-hydrate text during snapshot generation
-      // Take snapshot directly from the existing live canvas/DOM to permanently eliminate text duplication
-      const snap = await generateSnapshot();
-      const activeSnapshotDataUrl = snap.dataUrl || snapshotDataUrl;
-      const activeUploadedUrl = snap.uploadedUrl;
-
       // Save design with finalized snapshot
       let activeInvitationId = currentInvitation?.id || initialInvitation?.id;
       const saved = await saveDesign(activeUploadedUrl || activeSnapshotDataUrl);
       if (saved && saved.id) {
         activeInvitationId = saved.id;
+      }
+      const savedImage = (saved as any)?.previewUrl || (saved as any)?.imageUrl || finalPreview;
+      if (targetEventId && savedImage) {
+        try {
+          await eventService.updateEvent(targetEventId, {
+            coverImage: savedImage,
+            previewUrl: savedImage,
+            templatePreviewUrl: savedImage,
+            selectedTemplateId: templateIdQuery || designState.activeTemplateId || currentEvent?.selectedTemplateId,
+          } as any);
+        } catch (e) {}
       }
 
       const combinedDeadlineIso =
@@ -3466,10 +3518,13 @@ export default function InvitationStudio({
           "Party Invitation",
         recipients: allRecipients,
         guestIds: activeGuestIds,
-        snapshot: activeUploadedUrl || undefined,
-        snapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
-        cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : undefined,
-        cardSnapshotUrl: activeUploadedUrl || (activeSnapshotDataUrl?.startsWith("http") ? activeSnapshotDataUrl : undefined),
+        previewUrl: finalPreview || activeSnapshotDataUrl,
+        templatePreviewUrl: finalPreview || activeSnapshotDataUrl,
+        imageUrl: finalPreview || activeSnapshotDataUrl,
+        snapshot: activeUploadedUrl || activeSnapshotDataUrl || undefined,
+        snapshotUrl: finalPreview || activeSnapshotDataUrl || undefined,
+        cardImageBase64: snap.dataUrl?.startsWith("data:") ? snap.dataUrl : (activeSnapshotDataUrl?.startsWith("data:") ? activeSnapshotDataUrl : undefined),
+        cardSnapshotUrl: finalPreview || activeSnapshotDataUrl || undefined,
         eventDetails: designState.eventDetails,
         eventTitle: designState.eventDetails.title || currentEvent?.title || "",
         eventDate: designState.eventDetails.date || currentEvent?.eventDate || "",
@@ -3548,6 +3603,10 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            coverImage: payload?.previewUrl || payload?.imageUrl || currentEvent?.coverImage,
+            previewUrl: payload?.previewUrl || payload?.imageUrl || currentEvent?.previewUrl,
+            templatePreviewUrl: payload?.templatePreviewUrl || payload?.previewUrl || currentEvent?.templatePreviewUrl,
+            selectedTemplateId: payload?.templateId || currentEvent?.selectedTemplateId,
           } as any);
           if (currentEvent) {
             setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));
@@ -3798,6 +3857,10 @@ export default function InvitationStudio({
             eventTime: currentEvent?.eventTime || designState.eventDetails.time || "18:00:00",
             venue: currentEvent?.venue || designState.eventDetails.venue || "TBD",
             status: "published",
+            coverImage: payload?.previewUrl || payload?.imageUrl || currentEvent?.coverImage,
+            previewUrl: payload?.previewUrl || payload?.imageUrl || currentEvent?.previewUrl,
+            templatePreviewUrl: payload?.templatePreviewUrl || payload?.previewUrl || currentEvent?.templatePreviewUrl,
+            selectedTemplateId: payload?.templateId || currentEvent?.selectedTemplateId,
           } as any);
           if (currentEvent) {
             setCurrentEvent((prev) => (prev ? { ...prev, status: "published" } : prev));

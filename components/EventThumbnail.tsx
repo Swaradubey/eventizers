@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getImageUrl } from "../utils/imageUrl";
-import { NEW_TEMPLATE_IMAGES } from "../lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "../lib/newTemplatesData";
 
 export const getTemplateImage = (templateId?: string | null): string | null => {
   if (!templateId) return null;
@@ -26,7 +26,21 @@ export const getTemplateImage = (templateId?: string | null): string | null => {
     "tpl-net-connections": "/assets/templates/networking_connections.jpg",
     ...NEW_TEMPLATE_IMAGES,
   };
-  return mapping[templateId] || null;
+  if (mapping[templateId]) return mapping[templateId];
+
+  // Dynamically resolve artwork from template config
+  const config = getTemplateConfig(templateId);
+  if (config) {
+    const candidate =
+      config.image ||
+      config.decorationImage ||
+      (config.card as any)?.artworkUrl ||
+      (config.card as any)?.borderIllustration ||
+      (config.card as any)?.decorativeBorderSvgUrl ||
+      null;
+    if (candidate) return candidate;
+  }
+  return null;
 };
 
 export interface EventThumbnailEvent {
@@ -39,15 +53,32 @@ export interface EventThumbnailEvent {
   uploadedFileUrl?: string | null;
   previewUrl?: string | null;
   templatePreviewUrl?: string | null;
+  previewImage?: string | null;
   selectedTemplateId?: string | null;
   templateId?: string | null;
   template?: {
+    id?: string | null;
     previewUrl?: string | null;
     thumbnailUrl?: string | null;
+    imageUrl?: string | null;
     [key: string]: any;
   } | null;
   designData?: {
     previewUrl?: string;
+    coverImage?: string;
+    [key: string]: any;
+  } | null;
+  canvasState?: {
+    previewUrl?: string | null;
+    thumbnailUrl?: string | null;
+    imageUrl?: string | null;
+    templateId?: string | null;
+    [key: string]: any;
+  } | string | null;
+  invitation?: {
+    imageUrl?: string | null;
+    previewUrl?: string | null;
+    templateId?: string | null;
     [key: string]: any;
   } | null;
   [key: string]: any;
@@ -88,26 +119,56 @@ export default function EventThumbnail({
 }: EventThumbnailProps) {
   const [hasError, setHasError] = useState(false);
 
-  // 1. Resolve raw candidate image from all potential fields (prioritizing custom canvas preview & selected template)
+  // Parse canvasState if it was returned as a serialized JSON string
+  let parsedCanvasState: any = null;
+  if (event.canvasState) {
+    if (typeof event.canvasState === "object") {
+      parsedCanvasState = event.canvasState;
+    } else if (typeof event.canvasState === "string") {
+      try {
+        parsedCanvasState = JSON.parse(event.canvasState);
+      } catch (_) {}
+    }
+  }
+
+  const candidateTemplateId =
+    event.selectedTemplateId ||
+    event.templateId ||
+    event.template?.id ||
+    parsedCanvasState?.templateId ||
+    parsedCanvasState?.activeTemplateId ||
+    event.invitation?.templateId ||
+    null;
+
+  // 1. Resolve raw candidate image across both draft and active states
   const rawImage =
     event.previewUrl ||
     event.templatePreviewUrl ||
-    event.template?.previewUrl ||
-    event.template?.thumbnailUrl ||
-    event.imageUrl ||
-    event.coverImage ||
+    event.previewImage ||
     event.thumbnail ||
     event.thumbnailUrl ||
-    event.uploadedFileUrl ||
+    event.imageUrl ||
+    event.coverImage ||
+    event.template?.previewUrl ||
+    event.template?.thumbnailUrl ||
+    event.template?.imageUrl ||
+    event.invitation?.imageUrl ||
+    event.invitation?.previewUrl ||
+    parsedCanvasState?.previewUrl ||
+    parsedCanvasState?.thumbnailUrl ||
+    parsedCanvasState?.imageUrl ||
     event.designData?.previewUrl ||
-    getTemplateImage(event.selectedTemplateId || event.templateId) ||
+    event.uploadedFileUrl ||
+    getTemplateImage(candidateTemplateId) ||
     "";
 
   // 2. Format with URL resolver
   const resolvedUrl = getImageUrl(rawImage);
+  const [currentSrc, setCurrentSrc] = useState(resolvedUrl);
 
-  // Reset error state when the image URL changes
+  // Reset error & source state when the resolved URL changes
   useEffect(() => {
+    setCurrentSrc(resolvedUrl);
     setHasError(false);
   }, [resolvedUrl]);
 
@@ -116,10 +177,20 @@ export default function EventThumbnail({
   const finalAlt = alt || eventTitle;
   const currentSizeClass = sizeClasses[size] || sizeClasses.md;
 
+  const handleImageError = () => {
+    // If the custom snapshot fails to load, gracefully attempt template artwork before falling back to initial badge
+    const tplFallback = candidateTemplateId ? getImageUrl(getTemplateImage(candidateTemplateId)) : "";
+    if (tplFallback && currentSrc !== tplFallback) {
+      setCurrentSrc(tplFallback);
+    } else {
+      setHasError(true);
+    }
+  };
+
   const handleImageClick = (e: React.MouseEvent) => {
-    if (onPreview && (resolvedUrl || event.selectedTemplateId || event.templateId) && !hasError) {
+    if (onPreview && (currentSrc || candidateTemplateId) && !hasError) {
       e.stopPropagation();
-      onPreview(resolvedUrl, eventTitle, event);
+      onPreview(currentSrc, eventTitle, event);
     }
   };
 
@@ -133,8 +204,8 @@ export default function EventThumbnail({
     </div>
   );
 
-  // If no URL or failed to load, render fallback badge directly
-  if (!resolvedUrl || hasError) {
+  // If no URL or all load attempts failed, render fallback badge directly
+  if (!currentSrc || hasError) {
     return (
       <div className={`relative flex-shrink-0 ${className}`}>
         {fallbackBadge}
@@ -146,11 +217,10 @@ export default function EventThumbnail({
 
   const imageElement = (
     <img
-      src={resolvedUrl}
-      crossOrigin="anonymous"
+      src={currentSrc}
       alt={finalAlt}
       loading="lazy"
-      onError={() => setHasError(true)}
+      onError={handleImageError}
       className={`object-cover border border-slate-200/80 shadow-sm flex-shrink-0 ${roundedClassName} ${currentSizeClass} ${imageClassName}`}
     />
   );

@@ -197,6 +197,28 @@ function InvitationPageContent() {
         const saved = await saveInvitation(payload);
         if (saved) {
           setInvitation(saved);
+          if (targetEventId) {
+            const preview = (saved as any)?.previewUrl || (saved as any)?.imageUrl || payload.previewUrl || payload.imageUrl;
+            if (preview) {
+              try {
+                await eventService.updateEvent(targetEventId, {
+                  coverImage: preview,
+                  previewUrl: preview,
+                  templatePreviewUrl: preview,
+                  selectedTemplateId: payload.templateId,
+                } as any);
+                setEvents((prev) =>
+                  prev.map((e) =>
+                    e.id === targetEventId
+                      ? { ...e, coverImage: preview, previewUrl: preview, templatePreviewUrl: preview, selectedTemplateId: payload.templateId }
+                      : e
+                  )
+                );
+              } catch (e) {
+                console.warn("Failed to sync event preview on invitation save:", e);
+              }
+            }
+          }
         }
         return saved;
       }}

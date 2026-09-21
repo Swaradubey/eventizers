@@ -121,10 +121,13 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   // Check if event or template has a raster snapshot (PNG/JPEG/WebP or dataUrl)
   const candidateSnapshot =
+    event?.previewUrl ||
+    event?.templatePreviewUrl ||
+    event?.previewImage ||
     event?.imageUrl ||
     event?.coverImage ||
-    event?.previewUrl ||
     event?.thumbnailUrl ||
+    event?.thumbnail ||
     null;
 
   const isRasterSnapshot = Boolean(

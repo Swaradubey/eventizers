@@ -32,7 +32,7 @@ API.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token) {
+      if (token && token !== "undefined" && token !== "null" && token.trim() !== "") {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }

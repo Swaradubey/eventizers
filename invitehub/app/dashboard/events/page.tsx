@@ -81,21 +81,38 @@ function EventsPageContent() {
     setLoadingEvents(true);
     setError(null);
     try {
-      const data = await eventService.getEvents();
-      if (data && data.success) {
-        setEvents(data.events || []);
+      const res: any = await eventService.getEvents();
+      let eventList: Event[] = [];
+      if (Array.isArray(res)) {
+        eventList = res;
+      } else if (res && Array.isArray(res.events)) {
+        eventList = res.events;
+      } else if (res && Array.isArray(res.data)) {
+        eventList = res.data;
+      } else if (res && res.error) {
+        throw new Error(res.error || res.message || "Failed to load events");
       }
+      setEvents(eventList);
+      setError(null);
     } catch (err: any) {
       console.error("Events page: Failed to fetch events:", err);
-      if (err.response && err.response.status === 401) {
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         setError("Session expired. Please sign in again.");
-        localStorage.removeItem("token");
-        sessionStorage.removeItem("token");
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          sessionStorage.removeItem("token");
+        }
         router.push("/login");
-      } else if (!err.response) {
-        setError("Unable to connect to the server.");
+      } else if (!err.response && (err.code === "ERR_NETWORK" || err.message?.includes("Network Error"))) {
+        setError("Unable to connect to the server. Please check your network connection.");
       } else {
-        setError(err.response.data?.error || err.response.data?.message || "Failed to fetch events from server.");
+        const errorMsg =
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          err.displayMessage ||
+          err.message ||
+          "Failed to fetch events from server.";
+        setError(errorMsg);
       }
     } finally {
       setLoadingEvents(false);

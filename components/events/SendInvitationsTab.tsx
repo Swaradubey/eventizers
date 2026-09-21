@@ -177,6 +177,11 @@ export default function SendInvitationsTab({
             eventTime: event?.eventTime || "18:00:00",
             venue: event?.venue || "TBD",
             status: "published",
+            coverImage: (event as any)?.coverImage,
+            previewUrl: (event as any)?.previewUrl || (event as any)?.templatePreviewUrl,
+            templatePreviewUrl: (event as any)?.templatePreviewUrl || (event as any)?.previewUrl,
+            selectedTemplateId: (event as any)?.selectedTemplateId || (event as any)?.templateId,
+            canvasState: (event as any)?.canvasState,
           } as any);
         } catch (pubErr) {
           console.warn("[SendInvitationsTab] Auto-publish on fly notice:", pubErr);
@@ -186,7 +191,9 @@ export default function SendInvitationsTab({
       const res = await eventService.sendInvitations(eventId, {
         deliveryMethod: deliveryMethod === "all" ? "email" : "email",
         options,
-      });
+        previewUrl: (event as any)?.previewUrl || (event as any)?.coverImage,
+        coverImage: (event as any)?.coverImage || (event as any)?.previewUrl,
+      } as any);
 
       if (res && res.success) {
         showToast(
@@ -218,11 +225,18 @@ export default function SendInvitationsTab({
             eventTime: event?.eventTime || "18:00:00",
             venue: event?.venue || "TBD",
             status: "published",
+            coverImage: (event as any)?.coverImage,
+            previewUrl: (event as any)?.previewUrl || (event as any)?.templatePreviewUrl,
+            templatePreviewUrl: (event as any)?.templatePreviewUrl || (event as any)?.previewUrl,
+            selectedTemplateId: (event as any)?.selectedTemplateId || (event as any)?.templateId,
+            canvasState: (event as any)?.canvasState,
           } as any);
           const retryRes = await eventService.sendInvitations(eventId, {
             deliveryMethod: deliveryMethod === "all" ? "email" : "email",
             options,
-          });
+            previewUrl: (event as any)?.previewUrl || (event as any)?.coverImage,
+            coverImage: (event as any)?.coverImage || (event as any)?.previewUrl,
+          } as any);
           if (retryRes && retryRes.success) {
             showToast(
               retryRes.message ||

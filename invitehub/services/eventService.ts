@@ -19,6 +19,7 @@ export interface Event {
   uploadedFileUrl?: string | null;
   previewUrl?: string | null;
   templatePreviewUrl?: string | null;
+  previewImage?: string | null;
   canvasState?: any;
   designData?: any;
   selectedTemplateId?: string | null;
@@ -83,9 +84,20 @@ export interface RsvpSettingsData {
   updatedAt?: string;
 }
 
-interface EventsResponse {
+export interface EventCounts {
+  all: number;
+  active: number;
+  draft: number;
+  completed: number;
+}
+
+export interface EventsResponse {
   success: boolean;
   events: Event[];
+  data?: Event[];
+  counts?: EventCounts;
+  message?: string;
+  error?: string;
 }
 
 interface EventResponse {
@@ -140,10 +152,30 @@ export interface DesignSettingsResponse {
   message?: string;
 }
 
-export const getEvents = async (page?: number, limit?: number): Promise<EventsResponse> => {
-  const params = page && limit ? { page, limit } : undefined;
-  const response = await API.get<EventsResponse>("/events", { params });
-  return response.data;
+export const getEvents = async (page?: number, limit?: number, status?: string): Promise<EventsResponse> => {
+  const params: Record<string, any> = {};
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
+  if (status && status !== "all") params.status = status;
+
+  const response = await API.get<any>("/events", {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+
+  const raw = response.data;
+  if (Array.isArray(raw)) {
+    return { success: true, events: raw, data: raw };
+  }
+  if (raw && Array.isArray(raw.events)) {
+    return { success: raw.success !== false, events: raw.events, data: raw.events, ...raw };
+  }
+  if (raw && Array.isArray(raw.data)) {
+    return { success: raw.success !== false, events: raw.data, data: raw.data, ...raw };
+  }
+  if (raw && raw.success && !raw.events) {
+    return { ...raw, events: [], data: [] };
+  }
+  return { success: true, events: [], data: [], ...raw };
 };
 
 export const getEventById = async (id: string): Promise<EventResponse> => {
