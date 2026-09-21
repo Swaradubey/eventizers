@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { 
   Sparkles, 
   Wand2, 
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import templateService, { Template } from "@/services/templateService";
 import eventService from "@/services/eventService";
@@ -102,9 +102,20 @@ const tabs = [
 ];
 
 export default function AIAssistantPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+      <AIAssistantContent />
+    </Suspense>
+  );
+}
+
+function AIAssistantContent() {
   const { user, loading: authLoading } = useAuth();
   const { setIsOpen } = useSidebar();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams?.get("returnTo") || null;
+  const returnEventId = searchParams?.get("eventId") || null;
 
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
@@ -488,6 +499,24 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
       const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
       const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-birthday-maya";
+
+      // If returning to canvas with an existing event, skip event creation
+      // and redirect back directly with the chosen templateId
+      if (returnTo === "canvas" && returnEventId) {
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("pending_template_id", targetTplId);
+            localStorage.setItem("pending_template_id", targetTplId);
+          } catch (e) {}
+        }
+        setSuccessMsg("Opening invitation designer with selected template...");
+        setTimeout(() => {
+          router.push(
+            `/dashboard/invitations?eventId=${returnEventId}&templateId=${encodeURIComponent(targetTplId)}&studio=true`
+          );
+        }, 400);
+        return;
+      }
 
       if (!user) {
         try {

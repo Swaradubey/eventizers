@@ -42,6 +42,7 @@ import {
   Bold,
   Italic,
   Underline,
+  LayoutTemplate,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API, { getApiErrorMessage } from "../../services/api";
@@ -969,7 +970,20 @@ export default function InvitationStudio({
           propSelectedEventId ||
           new URLSearchParams(window.location.search).get("eventId");
         if (targetEvtId) {
-          const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+          // Pre-resolve the template ID so we can look up the template-scoped cache.
+          // This prevents reading the cached state of a different template.
+          const preResolvedTplId =
+            templateIdQuery ||
+            initialInvitation?.templateId ||
+            initialEvent?.selectedTemplateId ||
+            (initialEvent as any)?.templateId ||
+            sessionStorage.getItem("pending_template_id") ||
+            localStorage.getItem("pending_template_id");
+          const scopedKey = preResolvedTplId
+            ? `invitation_4layer_${targetEvtId}_${preResolvedTplId}`
+            : null;
+          const raw = (scopedKey && localStorage.getItem(scopedKey))
+            || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
           if (raw) cachedDraft = JSON.parse(raw);
         }
       } catch (e) { }
@@ -2005,11 +2019,17 @@ export default function InvitationStudio({
 
     setCurrentEvent(foundEvt);
 
-    // 1. Check local storage cache for saved 4-layer state
+    // 1. Check local storage cache for saved 4-layer state.
+    // Prefer the template-scoped cache key to avoid cross-template collisions.
     let cachedDraft: any = null;
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(`invitation_4layer_${eventId}`);
+        const evtTplId = foundEvt?.selectedTemplateId || (foundEvt as any)?.templateId;
+        const scopedKey = evtTplId
+          ? `invitation_4layer_${eventId}_${evtTplId}`
+          : null;
+        const raw = (scopedKey && localStorage.getItem(scopedKey))
+          || localStorage.getItem(`invitation_4layer_${eventId}`);
         if (raw) cachedDraft = JSON.parse(raw);
       } catch (e) { }
     }
@@ -2349,10 +2369,28 @@ export default function InvitationStudio({
       propSelectedEventId ||
       initialInvitation?.eventId;
 
+    // Pre-resolve the template ID so we can look up the template-scoped localStorage
+    // cache. This prevents reading the cached state of a different template.
+    const preResolvedTplId =
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      (currentEvent as any)?.selectedTemplateId ||
+      (currentEvent as any)?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      (initialEvent as any)?.templateId ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+        : null);
+
     let cachedDraft: any = null;
     if (typeof window !== "undefined" && targetEvtId) {
       try {
-        const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+        // Prefer the template-scoped cache key to avoid cross-template collisions
+        const scopedKey = preResolvedTplId
+          ? `invitation_4layer_${targetEvtId}_${preResolvedTplId}`
+          : null;
+        const raw = (scopedKey && localStorage.getItem(scopedKey))
+          || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
         if (raw) cachedDraft = JSON.parse(raw);
       } catch (e) { }
     }
@@ -2453,6 +2491,13 @@ export default function InvitationStudio({
         teardownCanvasTextLayers();
       }
 
+      // Detect whether the template genuinely changed (e.g. user picked a new template
+      // from the gallery). When it has, we must always overwrite the live canvas state
+      // regardless of whether the layer IDs happen to match — the new template may have
+      // different backgrounds, envelope styling, effects, or card artwork even if some
+      // text layer IDs overlap.
+      const templateChanged = Boolean(targetTplId && targetTplId !== loadedTemplateIdRef.current);
+
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
         targetTplId,
@@ -2480,10 +2525,14 @@ export default function InvitationStudio({
         // Idempotency guard: if the live canvas already contains all incoming layer IDs
         // (i.e. the same layers are already mounted), preserve prev.textLayers as-is.
         // This prevents a second, identical write that causes the duplicate / ghost text.
+        // IMPORTANT: When the template has changed, this guard MUST be bypassed so the new
+        // template's layers, backgrounds, and styling are applied even if some layer IDs
+        // coincidentally overlap.
         const prevLayerIds = new Set(
           (prev.textLayers || []).map((l) => l.id).filter(Boolean)
         );
         const layersAlreadyLoaded =
+          !templateChanged &&
           incomingLayerIds.size > 0 &&
           incomingLayerIds.size === prevLayerIds.size &&
           Array.from(incomingLayerIds).every((id) => prevLayerIds.has(id));
@@ -2581,11 +2630,33 @@ export default function InvitationStudio({
     loadedTemplateIdRef.current = templateId;
 
     // Create fresh design state from the selected template — isExplicitSwitch=true
-    // ensures saved draft layers are IGNORED and only template defaults are used
+    // ensures saved draft layers are IGNORED and only template defaults are used.
+    // Strip all stale visual properties from the old invitation so the new template's
+    // defaults for cardBg, envelope, effects, backside, card, decorations, and backdrop
+    // are used instead of the previous template's cached values.
+    const staleInvite = currentInvitation || initialInvitation;
+    const cleanInvite = staleInvite
+      ? {
+          ...staleInvite,
+          cardBg: undefined,
+          background: undefined,
+          backgroundImageUrl: undefined,
+          envelope: undefined,
+          effects: undefined,
+          backside: undefined,
+          card: undefined,
+          decorations: undefined,
+          textElements: undefined,
+          stageBackdrop: undefined,
+          canvasWorkspaceBg: undefined,
+          backdropBackground: undefined,
+          isLandscape: undefined,
+        }
+      : null;
     const nextState = createDesignStateFromTemplate(
       templateId,
       currentEvent || initialEvent,
-      currentInvitation || initialInvitation,
+      cleanInvite,
       true
     );
     const dedupedState = {
@@ -2601,17 +2672,37 @@ export default function InvitationStudio({
     setDesignState(dedupedState);
 
     // Persist the fresh template payload to localStorage so remounts load the
-    // correct data instead of falling back to stale cached drafts
+    // correct data instead of falling back to stale cached drafts.
+    // The cache key includes the templateId to prevent cross-template cache collision:
+    // switching templates never reads the cached state of a different template.
     if (typeof window !== "undefined") {
       try {
         const targetEvtId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+
+        // Clear stale pending_template_id from both storages so the hydration effect
+        // cannot revive the previous template on the next render cycle.
+        sessionStorage.removeItem("pending_template_id");
+        localStorage.removeItem("pending_template_id");
+
         if (targetEvtId) {
           const draftPayload = {
             templateId,
             textElements: dedupedState.textLayers,
             cardBg: dedupedState.cardBg,
             envelope: dedupedState.envelope,
+            effects: dedupedState.effects,
+            backside: dedupedState.backside,
+            card: dedupedState.card,
+            decorations: dedupedState.decorations,
+            stageBackdrop: dedupedState.stageBackdrop,
+            canvasWorkspaceBg: dedupedState.canvasWorkspaceBg,
+            backdropBackground: dedupedState.backdropBackground,
+            isLandscape: dedupedState.isLandscape,
           };
+          // Template-scoped key prevents cross-template cache collision
+          localStorage.setItem(`invitation_4layer_${targetEvtId}_${templateId}`, JSON.stringify(draftPayload));
+          // Also write to the unscoped key for backward compatibility with
+          // useInvitation.ts and other consumers that read the legacy key.
           localStorage.setItem(`invitation_4layer_${targetEvtId}`, JSON.stringify(draftPayload));
         }
         // Update URL query param to reflect new template
@@ -3093,12 +3184,11 @@ export default function InvitationStudio({
           decorations: payload.decorations || prev.decorations || [],
         }));
 
-        // Persist rich 4-layer state to local storage cache for instant recovery
+        // Persist rich 4-layer state to local storage cache for instant recovery.
+        // Write to both the template-scoped key and the legacy unscoped key.
         if (typeof window !== "undefined" && payload.eventId) {
           try {
-            localStorage.setItem(
-              `invitation_4layer_${payload.eventId}`,
-              JSON.stringify({
+            const draftPayload = {
                 templateId: payload.templateId,
                 templateName: payload.templateName,
                 textElements: payload.textElements,
@@ -3116,8 +3206,14 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
-              })
-            );
+            };
+            const draftJson = JSON.stringify(draftPayload);
+            // Template-scoped key prevents cross-template cache collision
+            if (payload.templateId) {
+              localStorage.setItem(`invitation_4layer_${payload.eventId}_${payload.templateId}`, draftJson);
+            }
+            // Legacy unscoped key for backward compatibility
+            localStorage.setItem(`invitation_4layer_${payload.eventId}`, draftJson);
           } catch (e) { }
         }
 
@@ -3258,9 +3354,7 @@ export default function InvitationStudio({
           }
           if (activeEventId) {
             try {
-              localStorage.setItem(
-                `invitation_4layer_${activeEventId}`,
-                JSON.stringify({
+              const draftPayload = {
                   templateId: activeTplId,
                   templateName: (saved as any)?.templateName || designState.activeTemplateId,
                   textElements: designState.textLayers,
@@ -3273,8 +3367,12 @@ export default function InvitationStudio({
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
-                })
-              );
+              };
+              const draftJson = JSON.stringify(draftPayload);
+              if (activeTplId) {
+                localStorage.setItem(`invitation_4layer_${activeEventId}_${activeTplId}`, draftJson);
+              }
+              localStorage.setItem(`invitation_4layer_${activeEventId}`, draftJson);
             } catch (e) { }
           }
           if (window.location.pathname !== "/dashboard/invitations") {
@@ -3750,7 +3848,11 @@ export default function InvitationStudio({
             } : prev));
           }
           if (typeof window !== "undefined") {
-            localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(packagedCanvasState));
+            const draftJson = JSON.stringify(packagedCanvasState);
+            if (effectiveTplId) {
+              localStorage.setItem(`invitation_4layer_${targetEventId}_${effectiveTplId}`, draftJson);
+            }
+            localStorage.setItem(`invitation_4layer_${targetEventId}`, draftJson);
           }
         } catch (pubErr) {
           console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
@@ -6081,7 +6183,7 @@ export default function InvitationStudio({
       )}
 
       {/* ========================================================================= */}
-      {/* TEMPLATE GALLERY MODAL — Shown on fresh session / after send cleanup     */}
+      {/* TEMPLATE GALLERY MODAL — Redirects to AI Assistant for template selection */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {isTemplateGalleryOpen && (
@@ -6101,113 +6203,53 @@ export default function InvitationStudio({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl w-[90vw] max-w-md flex flex-col overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Choose a Template</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Select a design to start creating your invitation</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Pick a design to start creating your invitation</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsTemplateGalleryOpen(false)}
                   className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                  title="Close template gallery"
+                  title="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Template Grid */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {NEW_TEMPLATES.map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      type="button"
-                      onClick={() => {
-                        handleSelectTemplate(tpl.id);
-                        setIsTemplateGalleryOpen(false);
-                      }}
-                      className="group relative flex flex-col rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:bg-slate-50 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
-                    >
-                      {/* Preview thumbnail with text layers */}
-                      <div
-                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden relative"
-                        style={{
-                          background: tpl.gradient || tpl.backgroundColor || "#f1f5f9",
-                        }}
-                      >
-                        {tpl.image ? (
-                          <img
-                            src={tpl.image}
-                            alt={tpl.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl">
-                            {tpl.emoji || "🎉"}
-                          </div>
-                        )}
-                        {/* Text layer preview overlay */}
-                        {tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0 && (
-                          <div className="absolute inset-0 pointer-events-none p-2">
-                            {tpl.defaultTextLayers.slice(0, 5).map((layer) => {
-                              const casingVal = (layer as any).casing as string | undefined;
-                              const casingStyle: React.CSSProperties =
-                                casingVal === "uppercase" ? { textTransform: "uppercase" }
-                                : casingVal === "lowercase" ? { textTransform: "lowercase" }
-                                : casingVal === "capitalize" ? { textTransform: "capitalize" }
-                                : {};
-                              return (
-                                <div
-                                  key={layer.id}
-                                  className="absolute whitespace-pre-line"
-                                  style={{
-                                    top: `${layer.top}%`,
-                                    left: `${layer.left}%`,
-                                    transform: "translate(-50%, -50%)",
-                                    fontFamily: layer.fontFamily,
-                                    fontSize: `${Math.max(6, Math.round(layer.fontSize * 0.32))}px`,
-                                    color: layer.color,
-                                    fontWeight: layer.fontWeight,
-                                    textAlign: layer.textAlign,
-                                    lineHeight: (layer as any).lineHeight || 1.2,
-                                    maxWidth: "90%",
-                                    overflow: "hidden",
-                                    ...casingStyle,
-                                  }}
-                                >
-                                  {layer.text}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      {/* Label */}
-                      <div className="px-3 py-2.5 text-left">
-                        <p className="text-xs font-semibold text-slate-800 truncate">{tpl.title}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[10px] font-medium text-slate-400">{tpl.category}</span>
-                          {tpl.badge && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                              tpl.badge === "PREMIUM"
-                                ? "bg-purple-100 text-purple-700"
-                                : tpl.badge === "Trending"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-emerald-100 text-emerald-700"
-                            }`}>
-                              {tpl.badge}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+              {/* Simple action to navigate to AI Assistant */}
+              <div className="flex flex-col items-center justify-center px-6 py-10 gap-4">
+                <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-indigo-600" />
                 </div>
+                <p className="text-sm text-slate-600 text-center max-w-xs">
+                  Browse curated templates or let AI create a custom design for your event.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetEventId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+                    const params = new URLSearchParams({ returnTo: "canvas" });
+                    if (targetEventId) params.set("eventId", targetEventId);
+                    setIsTemplateGalleryOpen(false);
+                    router.push(`/dashboard/ai-assistant?${params.toString()}`);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors cursor-pointer shadow-md shadow-indigo-200"
+                >
+                  <LayoutTemplate className="w-4 h-4" />
+                  Choose Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateGalleryOpen(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  Maybe later
+                </button>
               </div>
             </motion.div>
           </motion.div>
