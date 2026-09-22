@@ -94,6 +94,47 @@ export const updateGroupMembers = async (
   return response.data;
 };
 
+// ─── Guest change sync (cross-page invalidation) ─────────────────────────────
+// There is no React Query/SWR in this app, so we use a lightweight window event
+// as a shared invalidation bus. Any producer (Canvas modal, studio, etc.) calls
+// notifyGuestsChanged() after a mutation; consumers (Guest page, dashboards)
+// subscribe and refetch their guest/group queries.
+export const GUESTS_CHANGED_EVENT = "invitehub:guests-changed";
+
+export const notifyGuestsChanged = (): void => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(GUESTS_CHANGED_EVENT, { detail: { source: "guest-mutation" } }));
+  }
+};
+
+export const subscribeToGuestsChanged = (listener: () => void): (() => void) => {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(GUESTS_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(GUESTS_CHANGED_EVENT, listener);
+};
+
+// ─── Map selected guests onto an event's guest collection ────────────────────
+// Called by the Canvas "Apply & Add Guests" handler. Guests already belonging to
+// the event are left untouched; guests from other events / account-wide contacts
+// are assigned to this event via PUT /guests/:id so they appear in the event's
+// guest list and counts on the Guest Management page.
+export const assignGuestsToEvent = async (
+  guests: Array<{ id?: string; eventId?: string }>,
+  eventId: string
+): Promise<{ success: boolean; assignedCount: number }> => {
+  if (!eventId) return { success: true, assignedCount: 0 };
+
+  const toAssign = guests.filter((g) => g.id && g.eventId !== eventId);
+  if (toAssign.length === 0) return { success: true, assignedCount: 0 };
+
+  const results = await Promise.allSettled(
+    toAssign.map((g) => updateGuest(g.id as string, { eventId }))
+  );
+
+  const assignedCount = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+  return { success: assignedCount > 0, assignedCount };
+};
+
 // GUEST PORTAL API METHODS
 export const getMyGuestPortal = async (): Promise<any> => {
   const response = await API.get("/guests/me/portal");

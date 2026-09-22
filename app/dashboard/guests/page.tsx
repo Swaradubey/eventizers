@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
 import Navbar from "../../../components/Navbar";
-import guestService from "../../../services/guestService";
+import guestService, { subscribeToGuestsChanged } from "../../../services/guestService";
 import eventService, { Event } from "../../../services/eventService";
 import { Guest } from "../../../types/guestTypes";
 import Pagination from "../../../components/Pagination";
@@ -228,6 +228,16 @@ export default function GuestsPage() {
     if (user) {
       fetchGuests(currentPage);
     }
+  }, [user, currentPage, search, selectedEventId, selectedGroup]);
+
+  // Live-refresh when guests are mutated elsewhere (e.g. Canvas GuestSelectionModal Apply)
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToGuestsChanged(() => {
+      fetchGroups();
+      fetchGuests(currentPage);
+    });
+    return unsubscribe;
   }, [user, currentPage, search, selectedEventId, selectedGroup]);
 
   // Toast effect

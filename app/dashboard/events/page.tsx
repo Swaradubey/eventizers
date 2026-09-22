@@ -681,17 +681,8 @@ function EventsPageContent() {
                     </div>
                   </div>
 
-                  {/* Card Bottom Actions: Manage & Preview */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <button
-                      onClick={() => {
-                        const tplId = event.selectedTemplateId || event.templateId || "";
-                        router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
-                      }}
-                      className="flex-1 py-2.5 px-4 bg-[#F4F3FF] hover:bg-[#EBE9FE] text-[#5B50E5] font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none"
-                    >
-                      Manage
-                    </button>
+                  {/* Card Bottom Action: Preview */}
+                  <div className="flex items-center pt-1">
                     <button
                       onClick={() => setViewingEvent(event)}
                       className="flex-1 py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all duration-150 text-center active:scale-[0.99] focus:outline-none shadow-xs"

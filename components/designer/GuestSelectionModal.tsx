@@ -20,7 +20,10 @@ import {
   Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import guestService from "@/services/guestService";
+import guestService, {
+  assignGuestsToEvent,
+  notifyGuestsChanged,
+} from "@/services/guestService";
 
 export interface GuestSelectionModalProps {
   isOpen: boolean;
@@ -66,6 +69,9 @@ export default function GuestSelectionModal({
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Apply (persist) loading state
+  const [applying, setApplying] = useState(false);
 
   // Sync initiallySelectedGuestIds when modal opens
   useEffect(() => {
@@ -418,6 +424,7 @@ export default function GuestSelectionModal({
         }
 
         resetAddForm();
+        notifyGuestsChanged();
         setToast({ message: `"${name}" added to contacts and selected!`, type: "success" });
       } else {
         setAddFormError(res?.message || "Failed to create guest. Please try again.");
@@ -434,11 +441,46 @@ export default function GuestSelectionModal({
     }
   };
 
-  // Handle Apply
-  const handleApply = () => {
+  // Handle Apply — persist selected guests onto the event's collection in the API,
+  // then notify listeners (Guest page) so their lists refetch without a hard reload.
+  const handleApply = async () => {
+    if (applying) return;
     const selectedList = allPoolGuests.filter((g) => selectedIds.has(g.id));
-    onApply(selectedList, Array.from(selectedIds));
-    onClose();
+
+    setApplying(true);
+    try {
+      if (currentEventId) {
+        const result = await assignGuestsToEvent(selectedList, currentEventId);
+        if (result.assignedCount > 0) {
+          setAllPoolGuests((prev) =>
+            prev.map((g) =>
+              selectedIds.has(g.id)
+                ? { ...g, eventId: currentEventId, isCurrentEventGuest: true }
+                : g
+            )
+          );
+        }
+      }
+      notifyGuestsChanged();
+      onApply(
+        selectedList.map((g) =>
+          g.id && selectedIds.has(g.id)
+            ? { ...g, eventId: currentEventId || g.eventId, isCurrentEventGuest: true }
+            : g
+        ),
+        Array.from(selectedIds)
+      );
+      onClose();
+    } catch (err: any) {
+      console.error("[GuestSelectionModal] Error applying guest selection:", err);
+      // Still push selection to the canvas so the user isn't blocked,
+      // and notify so the Guest page reflects whatever did persist.
+      notifyGuestsChanged();
+      onApply(selectedList, Array.from(selectedIds));
+      onClose();
+    } finally {
+      setApplying(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -925,9 +967,14 @@ export default function GuestSelectionModal({
               <button
                 type="button"
                 onClick={handleApply}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-98 transition-all cursor-pointer"
+                disabled={applying}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-98 transition-all cursor-pointer"
               >
-                <UserPlus className="w-4 h-4" />
+                {applying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
                 <span>Apply & Add Guests ({selectedIds.size})</span>
               </button>
             </div>
