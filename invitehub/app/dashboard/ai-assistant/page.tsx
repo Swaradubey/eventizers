@@ -170,7 +170,7 @@ export default function AIAssistantPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-corporate-annual-launch");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-abstract-nature-party");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -246,43 +246,12 @@ export default function AIAssistantPage() {
     },
   ];
 
-  const excludedTitles = useMemo(
-    () =>
-      new Set([
-        "Founders & Tech Connect",
-        "Black Tie Charity Gala",
-        "Sunset Garden Soirée",
-        "Pumpkin & Petals",
-        "Eternal Botanical Garland",
-        "Global Innovation Summit 2026",
-      ]),
-    []
-  );
-
-  const blankBridalTitles = useMemo(
-    () =>
-      new Set([
-        "Floral Elegance",
-        "Floral Arch",
-        "Little Limoncello",
-        "Lovely Blossoms",
-        "Elegant Lace",
-        "Painted Petals",
-        "Hibiscus Blooms",
-        "Chicory Whispers",
-      ]),
-    []
-  );
-
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
     return list.filter(
-      (t) =>
-        !excludedTitles.has(t.name) &&
-        !blankBridalTitles.has(t.name) &&
-        matchesCategory(t.category, selectedCategory)
+      (t) => matchesCategory(t.category, selectedCategory)
     );
-  }, [templates, selectedCategory, excludedTitles, blankBridalTitles]);
+  }, [templates, selectedCategory]);
 
   const displayedTemplates = useMemo(() => {
     return filteredTemplates;
@@ -509,7 +478,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     try {
       const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
       const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
-      const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-birthday-maya";
+      const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
 
       const finalTitle = targetTpl?.name || "Special Celebration";
       const finalVenue = getDefaultVenueForTemplate(targetTpl);

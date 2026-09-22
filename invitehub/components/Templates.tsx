@@ -95,38 +95,8 @@ export default function Templates() {
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
-  const excludedTitles = React.useMemo(
-    () =>
-      new Set([
-        "Founders & Tech Connect",
-        "Black Tie Charity Gala",
-        "Sunset Garden Soirée",
-        "Pumpkin & Petals",
-        "Eternal Botanical Garland",
-        "Global Innovation Summit 2026",
-      ]),
-    []
-  );
-
-  const blankBridalTitles = React.useMemo(
-    () =>
-      new Set([
-        "Floral Elegance",
-        "Floral Arch",
-        "Little Limoncello",
-        "Lovely Blossoms",
-        "Elegant Lace",
-        "Painted Petals",
-        "Hibiscus Blooms",
-        "Chicory Whispers",
-      ]),
-    []
-  );
-
   const filteredTemplates = React.useMemo(() => {
-    const base = CURATED_TEMPLATES.filter(
-      (t) => !excludedTitles.has(t.title) && !blankBridalTitles.has(t.title)
-    );
+    const base = CURATED_TEMPLATES;
     if (selectedCategory === "All") return base;
     const target = selectedCategory.toLowerCase();
     return base.filter((t) => {
@@ -141,7 +111,7 @@ export default function Templates() {
       }
       return cat === target || cat.includes(target);
     });
-  }, [selectedCategory, excludedTitles, blankBridalTitles]);
+  }, [selectedCategory]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
