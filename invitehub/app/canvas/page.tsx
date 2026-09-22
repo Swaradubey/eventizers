@@ -8,32 +8,31 @@ function CanvasBridgeContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isGuest = searchParams?.get("guest") === "true";
 
   useEffect(() => {
     if (authLoading) return;
 
-    // Read the consolidated guest draft from localStorage
+    // Read the consolidated guest draft from localStorage or sessionStorage
     let guestDraft: any = null;
     try {
-      const raw = localStorage.getItem("guestEventDraft");
+      const raw = localStorage.getItem("guestEventDraft") || sessionStorage.getItem("guestEventDraft");
       if (raw) {
         guestDraft = JSON.parse(raw);
       }
     } catch (e) {}
 
-    // If authenticated, clear any stale guest draft and redirect to the real canvas
-    if (user) {
-      try {
-        localStorage.removeItem("guestEventDraft");
-      } catch (e) {}
-      router.replace("/dashboard/invitations?studio=true");
-      return;
-    }
-
     // Build the redirect URL to the actual canvas at /dashboard/invitations
     const params = new URLSearchParams();
     params.set("studio", "true");
-    params.set("guest", "1");
+    if (isGuest || !user) {
+      params.set("guest", "1");
+    }
+
+    const queryUploadedImageUrl = searchParams.get("uploadedImageUrl") || searchParams.get("imageUrl");
+    if (queryUploadedImageUrl) {
+      params.set("uploadedImageUrl", queryUploadedImageUrl);
+    }
 
     const queryTemplateId = searchParams.get("templateId");
     if (queryTemplateId) {
@@ -56,9 +55,15 @@ function CanvasBridgeContent() {
             localStorage.setItem("pending_template_name", guestDraft.templateName);
             sessionStorage.setItem("pending_template_name", guestDraft.templateName);
           }
-        } else if (guestDraft.type === "upload" && guestDraft.uploadUrl) {
-          localStorage.setItem("pending_upload_invite", guestDraft.uploadUrl);
-          sessionStorage.setItem("pending_upload_invite", guestDraft.uploadUrl);
+        } else if (guestDraft.type === "upload" || guestDraft.uploadUrl || guestDraft.stationeryDesign?.backgroundImage) {
+          const bgUrl = guestDraft.stationeryDesign?.backgroundImage || guestDraft.uploadUrl || guestDraft.backgroundImage || "";
+          if (bgUrl) {
+            localStorage.setItem("pending_upload_invite", bgUrl);
+            sessionStorage.setItem("pending_upload_invite", bgUrl);
+            if (!bgUrl.startsWith("data:")) {
+              params.set("uploadedImageUrl", bgUrl);
+            }
+          }
           if (guestDraft.uploadName) {
             sessionStorage.setItem("pending_upload_name", guestDraft.uploadName);
           }
@@ -70,6 +75,7 @@ function CanvasBridgeContent() {
           }
           if (guestDraft.stationeryDesign) {
             sessionStorage.setItem("pending_stationery_design", JSON.stringify(guestDraft.stationeryDesign));
+            localStorage.setItem("pending_stationery_design", JSON.stringify(guestDraft.stationeryDesign));
           }
         } else if (guestDraft.type === "ai") {
           if (guestDraft.prompt) {
@@ -78,15 +84,33 @@ function CanvasBridgeContent() {
           if (guestDraft.eventType) {
             sessionStorage.setItem("pending_event_type", guestDraft.eventType);
           }
+          if (guestDraft.venue) {
+            sessionStorage.setItem("pending_venue", guestDraft.venue);
+          }
+          if (guestDraft.guestCount) {
+            sessionStorage.setItem("pending_guest_count", guestDraft.guestCount);
+          }
+          if (guestDraft.date) {
+            sessionStorage.setItem("pending_event_date", guestDraft.date);
+          }
+          if (guestDraft.startTime) {
+            sessionStorage.setItem("pending_start_time", guestDraft.startTime);
+          }
+          if (guestDraft.endTime) {
+            sessionStorage.setItem("pending_end_time", guestDraft.endTime);
+          }
+          if (guestDraft.isFullDay !== undefined) {
+            sessionStorage.setItem("pending_is_full_day", String(guestDraft.isFullDay));
+          }
         }
       } catch (e) {
         console.warn("Canvas bridge: failed to hydrate session storage:", e);
       }
     }
 
-    // Redirect to the actual canvas editor
+    // Redirect to the actual canvas
     router.replace(`/dashboard/invitations?${params.toString()}`);
-  }, [user, authLoading, router, searchParams]);
+  }, [user, authLoading, router, searchParams, isGuest]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">

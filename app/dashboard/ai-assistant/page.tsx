@@ -808,10 +808,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         localStorage.removeItem("pending_template_id");
       } catch (_) {}
 
-      if (detectedTextLayers && detectedTextLayers.length > 0) {
-        const stationeryPayload = {
-          cardBgColor: extractedCardBgColor || "#FAF4E8",
-          textElements: detectedTextLayers.map((block: any, idx: number) => ({
+      const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+        ? detectedTextLayers.map((block: any, idx: number) => ({
             id: `replicate-layer-${idx}`,
             role: block.role || "other",
             text: block.text || "",
@@ -820,11 +818,20 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
             fontFamily: block.fontFamily || "Inter",
             color: block.color || "#1E293B",
-          })),
-        };
-        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
-      }
+          }))
+        : [];
+
+      const stationeryPayload = {
+        cardBgColor: extractedCardBgColor || "#FAF4E8",
+        backgroundImage: resolvedPersistentUrl || bgToUse || "",
+        cleanedImageUrl: cleanedPreviewUrl || "",
+        originalImageUrl: previewUrl || "",
+        textLayers: typographyLayers,
+        textElements: typographyLayers,
+      };
+
+      safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+      try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
     } catch (e) {
       console.error("Failed to store pending upload:", e);
     } finally {
@@ -832,8 +839,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
 
     setSuccessMsg("Opening invitation designer...");
+    const queryImg = (resolvedPersistentUrl && !resolvedPersistentUrl.startsWith("data:"))
+      ? `&uploadedImageUrl=${encodeURIComponent(resolvedPersistentUrl)}`
+      : "";
     setTimeout(() => {
-      router.push("/dashboard/invitations?studio=true");
+      router.push(`/dashboard/invitations?studio=true${queryImg}`);
     }, 500);
   };
 
@@ -903,10 +913,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             localStorage.removeItem("pending_template_id");
           } catch (_) {}
         }
-        if (detectedTextLayers && detectedTextLayers.length > 0) {
-          const stationeryPayload = {
-            cardBgColor: extractedCardBgColor || "#FAF4E8",
-            textElements: detectedTextLayers.map((block: any, idx: number) => ({
+
+        const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+          ? detectedTextLayers.map((block: any, idx: number) => ({
               id: `replicate-layer-${idx}`,
               role: block.role || "other",
               text: block.text || "",
@@ -915,15 +924,27 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
               fontFamily: block.fontFamily || "Inter",
               color: block.color || "#1E293B",
-            })),
-          };
-          safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        }
+            }))
+          : [];
+
+        const stationeryPayload = {
+          cardBgColor: extractedCardBgColor || "#FAF4E8",
+          backgroundImage: createdImage || bgToUse,
+          cleanedImageUrl: cleanedPreviewUrl || "",
+          originalImageUrl: previewUrl || "",
+          textLayers: typographyLayers,
+          textElements: typographyLayers,
+        };
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
 
         const eventId = res.event?.id;
+        const queryImg = (createdImage && !createdImage.startsWith("data:"))
+          ? `&uploadedImageUrl=${encodeURIComponent(createdImage)}`
+          : "";
         setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true` : "/dashboard/invitations?studio=true");
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true${queryImg}` : `/dashboard/invitations?studio=true${queryImg}`);
         }, 800);
       } else {
         setUploadError(res?.message || "Failed to create event from uploaded invitation.");

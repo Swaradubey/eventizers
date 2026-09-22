@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion";
 import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
-import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers } from "./InvitationStudio";
+import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
 import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
@@ -140,12 +140,12 @@ export default function InvitationCanvasStage({
     isSnapshotOrRasterUrl(config.cardBg?.value) ||
     isSnapshotOrRasterUrl((config as any)?.backgroundImageUrl);
 
-  const deduplicatedLayers = useMemo(() => {
+  const deduplicatedLayers = useMemo((): TextLayer[] => {
     if (isSnapshotCardBg) {
       return [];
     }
-    const layers = config.textLayers || [];
-    const semanticallyDeduped = deduplicateTextLayers(layers);
+    const layers = (config.textLayers || []) as TextLayer[];
+    const semanticallyDeduped = deduplicateTextLayers<TextLayer>(layers);
     // Final safety net: deduplicate by strict ID to catch any remaining duplicates
     // that may have slipped through semantic deduplication edge cases
     const seenIds = new Set<string>();
@@ -417,7 +417,10 @@ export default function InvitationCanvasStage({
   const isUploadedCard = Boolean(
     config.card?.artworkUrl && isUserUploadedImage(config.card.artworkUrl)
   );
-  const isUserUpload = isUploadedBg || isUploadedCard;
+  const isUploadedBgUrl = Boolean(
+    (config as any)?.backgroundImageUrl && isUserUploadedImage((config as any).backgroundImageUrl)
+  );
+  const isUserUpload = isUploadedBg || isUploadedCard || isUploadedBgUrl;
 
   // View mode / Envelope visibility: In standalone "Card Only" mode or by default for custom uploaded images
   const isCardOnlyMode = Boolean(
@@ -429,7 +432,7 @@ export default function InvitationCanvasStage({
 
   const uploadedImageSrc = isUploadedBg
     ? config.cardBg.value
-    : (isUploadedCard ? config.card!.artworkUrl : null);
+    : (isUploadedCard ? config.card!.artworkUrl : ((config as any)?.backgroundImageUrl || null));
 
   // Resolve fallback template configuration if preset template ID exists
   const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
@@ -497,6 +500,31 @@ export default function InvitationCanvasStage({
 
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
   const [hasImgError, setHasImgError] = useState(false);
+  const [bgNaturalDimensions, setBgNaturalDimensions] = useState<{ width: number; height: number; aspectRatio: string } | null>(null);
+
+  useEffect(() => {
+    if (!cleanCardImage) {
+      setBgNaturalDimensions(null);
+      return;
+    }
+    let isProbeActive = true;
+    const probe = new Image();
+    probe.crossOrigin = "anonymous";
+    probe.src = cleanCardImage;
+    probe.onload = () => {
+      if (!isProbeActive) return;
+      const w = probe.naturalWidth || probe.width || 600;
+      const h = probe.naturalHeight || probe.height || 840;
+      setBgNaturalDimensions({
+        width: w,
+        height: h,
+        aspectRatio: `${w} / ${h}`,
+      });
+    };
+    return () => {
+      isProbeActive = false;
+    };
+  }, [cleanCardImage]);
 
   useEffect(() => {
     let isMounted = true;
@@ -514,11 +542,25 @@ export default function InvitationCanvasStage({
       });
       if (!isMounted) return;
       if (cleanCardImage) {
-        applyCanvasBackground(activeCanvas, cleanCardImage);
-      } else if (typeof activeCanvas.requestRenderAll === "function") {
-        activeCanvas.requestRenderAll();
-      } else if (typeof activeCanvas.renderAll === "function") {
-        activeCanvas.renderAll();
+        applyCanvasBackground(activeCanvas, cleanCardImage, (info) => {
+          if (!isMounted) return;
+          if (info && info.width && info.height) {
+            setBgNaturalDimensions({
+              width: info.width,
+              height: info.height,
+              aspectRatio: `${info.width} / ${info.height}`,
+            });
+          }
+          // Ensure typography layers are rendered ON TOP of the loaded background image
+          syncCanvasTextLayers(activeCanvas, deduplicatedLayers);
+        });
+      } else {
+        syncCanvasTextLayers(activeCanvas, deduplicatedLayers);
+        if (typeof activeCanvas.requestRenderAll === "function") {
+          activeCanvas.requestRenderAll();
+        } else if (typeof activeCanvas.renderAll === "function") {
+          activeCanvas.renderAll();
+        }
       }
     }
 
@@ -555,12 +597,14 @@ export default function InvitationCanvasStage({
       : "#ffffff");
 
   const cardAspectRatio =
-    (config as any).innerCardLayer?.aspectRatio ||
-    (config.card?.aspectRatio === "5x7" || config.card?.aspectRatio === "5/7"
-      ? "5/7"
-      : config.card?.aspectRatio === "square" || config.card?.aspectRatio === "1/1"
-      ? "1/1"
-      : aspectRatio || (isLandscape ? "4/3" : "5/7"));
+    (isUserUpload && bgNaturalDimensions?.aspectRatio)
+      ? bgNaturalDimensions.aspectRatio
+      : ((config as any).innerCardLayer?.aspectRatio ||
+        (config.card?.aspectRatio === "5x7" || config.card?.aspectRatio === "5/7"
+          ? "5/7"
+          : config.card?.aspectRatio === "square" || config.card?.aspectRatio === "1/1"
+          ? "1/1"
+          : aspectRatio || (isLandscape ? "4/3" : "5/7")));
 
   const cleanNeutralBg = "#f8fafc";
   const rawBackdropValue =
@@ -857,6 +901,16 @@ export default function InvitationCanvasStage({
                   aria-hidden="true"
                   crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
                   onError={handleImageError}
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    if (img.naturalWidth && img.naturalHeight) {
+                      setBgNaturalDimensions({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        aspectRatio: `${img.naturalWidth} / ${img.naturalHeight}`,
+                      });
+                    }
+                  }}
                   className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-200 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
                   }`}

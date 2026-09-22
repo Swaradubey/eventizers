@@ -30,7 +30,7 @@ export const getFabricCanvas = (): any => {
 export const applyCanvasBackground = (
   canvas: any,
   imageUrl: string | null | undefined,
-  callback?: () => void
+  callback?: (info?: { width: number; height: number; aspectRatio: number }) => void
 ): void => {
   if (!canvas || !imageUrl) {
     if (callback) callback();
@@ -49,6 +49,19 @@ export const applyCanvasBackground = (
 
   imgElement.onload = () => {
     try {
+      const imgW = imgElement.naturalWidth || imgElement.width || 600;
+      const imgH = imgElement.naturalHeight || imgElement.height || 840;
+      const imgAspectRatio = imgW / imgH;
+
+      // Ensure the canvas sets its width and height proportionally to the loaded background image
+      const currentW = typeof canvas.getWidth === "function" ? canvas.getWidth() : (canvas.width || 600);
+      const proportionalH = Math.round(currentW / imgAspectRatio);
+      if (typeof canvas.setDimensions === "function") {
+        canvas.setDimensions({ width: currentW, height: proportionalH });
+      } else if (typeof canvas.setHeight === "function") {
+        canvas.setHeight(proportionalH);
+      }
+
       const fabricImg = new fabric.Image(imgElement, {
         originX: "left",
         originY: "top",
@@ -61,19 +74,28 @@ export const applyCanvasBackground = (
         excludeFromExport: true,
       });
 
-      // Scale to fill canvas dimensions perfectly
-      const cw = typeof canvas.getWidth === "function" ? canvas.getWidth() : canvas.width || 600;
-      const ch = typeof canvas.getHeight === "function" ? canvas.getHeight() : canvas.height || 840;
+      const cw = typeof canvas.getWidth === "function" ? canvas.getWidth() : (canvas.width || currentW);
+      const ch = typeof canvas.getHeight === "function" ? canvas.getHeight() : (canvas.height || proportionalH);
       fabricImg.scaleToWidth(cw);
       fabricImg.scaleToHeight(ch);
 
       canvas.setBackgroundImage(fabricImg, () => {
-        if (typeof canvas.requestRenderAll === "function") {
-          canvas.requestRenderAll();
-        } else if (typeof canvas.renderAll === "function") {
-          canvas.renderAll();
+        // Bring typography/canvas objects to front so they render ON TOP of the background
+        if (typeof canvas.getObjects === "function") {
+          const objects = canvas.getObjects();
+          objects.forEach((obj: any) => {
+            if (typeof canvas.bringToFront === "function") {
+              canvas.bringToFront(obj);
+            }
+          });
         }
-        if (callback) callback();
+
+        if (typeof canvas.renderAll === "function") {
+          canvas.renderAll();
+        } else if (typeof canvas.requestRenderAll === "function") {
+          canvas.requestRenderAll();
+        }
+        if (callback) callback({ width: imgW, height: imgH, aspectRatio: imgAspectRatio });
       });
     } catch (err) {
       console.warn("[applyCanvasBackground] Fabric render error:", err);

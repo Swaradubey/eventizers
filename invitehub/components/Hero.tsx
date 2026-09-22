@@ -28,31 +28,12 @@ import { useRouter } from "next/navigation";
 import AuthModal from "./AuthModal";
 import templateService, { Template } from "../services/templateService";
 import eventService from "../services/eventService";
-import API from "../services/api";
+import API, { getApiErrorMessage } from "../services/api";
 import { getImageUrl } from "../utils/imageUrl";
 import { compressAndNormalizeImage } from "../utils/imageCompressor";
 import { templateCards, matchesCategory } from "../lib/templateData";
 import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "../lib/newTemplatesData";
 import EviteCardPreview from "./designer/EviteCardPreview";
-
-
-
-const fallbackTemplates: Template[] = templateCards.map((tc) => ({
-  id: tc.id,
-  name: tc.title,
-  category: tc.category || tc.type,
-  badge: tc.badge || "FREE",
-  content: JSON.stringify({
-    gradient: tc.gradient,
-    accentColor: tc.accentColor,
-    emoji: tc.emoji,
-    host: tc.host,
-    venue: tc.venue,
-    description: tc.description,
-    image: tc.image
-  }),
-  isPremium: (tc.badge || "").toUpperCase() === "PREMIUM"
-}));
 
 const getDefaultEventDate = () => {
   const d = new Date();
@@ -68,8 +49,8 @@ const getDefaultVenueForTemplate = (tpl?: Template | null) => {
     const parsed = typeof tpl.content === "string" ? JSON.parse(tpl.content) : tpl.content;
     if (parsed && parsed.venue) return parsed.venue;
   } catch (e) {}
-  const cat = (tpl.category || "").toLowerCase();
-  const name = (tpl.name || "").toLowerCase();
+  const cat = (tpl?.category || "").toLowerCase();
+  const name = (tpl?.name || "").toLowerCase();
   if (cat.includes("birthday") || name.includes("birthday")) return "Grand Celebration Hall";
   if (cat.includes("wedding") || name.includes("wedding")) return "Sunset Garden & Ballroom";
   if (cat.includes("baby") || name.includes("baby")) return "The Blossom Lounge";
@@ -78,6 +59,23 @@ const getDefaultVenueForTemplate = (tpl?: Template | null) => {
   if (cat.includes("party") || name.includes("gala")) return "Skyline Lounge";
   return "Main Event Hall";
 };
+
+const fallbackTemplates: Template[] = templateCards.map((tc) => ({
+  id: tc.id,
+  name: tc.title,
+  category: tc.category || tc.type,
+  badge: tc.badge || "FREE",
+  content: JSON.stringify({
+    gradient: tc.gradient,
+    accentColor: tc.accentColor,
+    emoji: tc.emoji,
+    host: tc.host,
+    venue: tc.venue,
+    description: tc.description,
+    image: tc.image
+  }),
+  isPremium: tc.badge === "PREMIUM"
+}));
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
@@ -109,6 +107,7 @@ export default function Hero() {
   const { user } = useAuth();
   const router = useRouter();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingAuthAction, setPendingAuthAction] = useState<"ai" | "upload" | null>(null);
 
   // Tab 0: AI Create (Active by default)
   const [activeTab, setActiveTab] = useState(0);
@@ -177,38 +176,34 @@ export default function Hero() {
   ];
 
   // Fetch templates when Template tab is activated
-  // NOTE: templates.length === 0 was a dead guard (fallbackTemplates is always pre-populated).
-  // Use loadingTemplates flag instead so the fetch fires exactly once per session.
   useEffect(() => {
-    if (activeTab === 1 && !loadingTemplates) {
+    if (activeTab === 1 && templates.length === 0) {
       const fetchTemplates = async () => {
         setLoadingTemplates(true);
         setErrorMsg(null);
         try {
           const data = await templateService.getTemplates();
-          // Seed map with ALL local fallback templates (includes newly added ones)
           const mergedMap = new Map<string, Template>();
           fallbackTemplates.forEach(t => mergedMap.set(t.id, t));
-          // Backend data overrides matching IDs (but local-only entries are preserved)
           if (data && data.length > 0) {
             data.forEach(t => mergedMap.set(t.id, t));
           }
           const combined = Array.from(mergedMap.values());
           setTemplates(combined);
-          if (combined.length > 0 && !selectedTemplateId) {
+          if (combined.length > 0) {
             setSelectedTemplateId(combined[0].id);
           }
         } catch (err: any) {
           console.error("Failed to load templates:", err);
           setTemplates(fallbackTemplates);
+          setSelectedTemplateId(fallbackTemplates[0].id);
         } finally {
           setLoadingTemplates(false);
         }
       };
       fetchTemplates();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, templates.length]);
 
   // Restore pending template selection and draft data on login
   useEffect(() => {
@@ -227,7 +222,6 @@ export default function Hero() {
           setPrompt(pendingPrompt);
           sessionStorage.removeItem("pending_prompt");
         }
-
       } catch (e) {
         console.warn("Error restoring pending data:", e);
       }
@@ -249,8 +243,9 @@ export default function Hero() {
   const handleGenerate = async () => {
     if (!user) {
       try {
-        if (prompt.trim()) sessionStorage.setItem("pending_prompt", prompt);
+        sessionStorage.setItem("pending_prompt", prompt.trim());
       } catch (e) {}
+      setPendingAuthAction("ai");
       setIsAuthModalOpen(true);
       return;
     }
@@ -266,59 +261,118 @@ export default function Hero() {
     setAiEventData(null);
 
     try {
-      const res = await API.post("/ai/generate-event", {
+      const res = await API.post("/ai/generate-event-template", {
         userPrompt: prompt.trim(),
-        prompt: prompt.trim(),
+        eventType: "Event",
+        title: prompt.trim().substring(0, 80),
+        date: new Date().toISOString().split("T")[0],
+        venue: "Venue",
       });
 
-      if (res.data) {
-        setAiEventData(res.data);
-        const createdEventId = res.data.eventId || res.data.event?.id;
-        const targetTplId = res.data.templateId || res.data.selectedTemplateId || "tpl-abstract-nature-party";
+      if (res.data && res.data.success && res.data.imageUrl) {
+        const imageUrl = res.data.imageUrl;
 
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("pending_template_id", targetTplId);
-          localStorage.setItem("pending_template_id", targetTplId);
-          if (res.data.stationeryDesign) {
-            sessionStorage.setItem("pending_stationery_design", JSON.stringify(res.data.stationeryDesign));
-          }
+          sessionStorage.setItem("pending_upload_invite", imageUrl);
+          localStorage.setItem("pending_upload_invite", imageUrl);
+
+          const details = res.data.details || res.data.meta || {};
+          const title = details.title || prompt.trim().substring(0, 80);
+          sessionStorage.setItem("pending_upload_title", title);
+          localStorage.setItem("pending_upload_title", title);
+
+          const stationeryDesign = {
+            cardBgColor: "#ffffff",
+            textElements: [
+              {
+                id: "layer-title",
+                role: "title",
+                text: (details.title || title || "Celebration").toUpperCase(),
+                x: 50,
+                y: 30,
+                fontSize: 34,
+                fontFamily: "Playfair Display",
+                fontWeight: "800",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 2,
+              },
+              {
+                id: "layer-host",
+                role: "host",
+                text: details.subtitle || "YOU ARE CORDIALLY INVITED TO CELEBRATE",
+                x: 50,
+                y: 42,
+                fontSize: 13,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 1.2,
+                casing: "uppercase",
+              },
+              {
+                id: "layer-datetime",
+                role: "datetime",
+                text: details.date || "Saturday, 25 October • 6:00 PM",
+                x: 50,
+                y: 54,
+                fontSize: 15,
+                fontFamily: "Inter",
+                fontWeight: "700",
+                color: "#1E293B",
+                align: "center",
+                letterSpacing: 1.5,
+              },
+              {
+                id: "layer-venue",
+                role: "venue",
+                text: details.venue || "The Grand Palace Hall, City Center",
+                x: 50,
+                y: 65,
+                fontSize: 14,
+                fontFamily: "Inter",
+                fontWeight: "600",
+                color: "#475569",
+                align: "center",
+                letterSpacing: 0.5,
+              },
+            ],
+          };
+          sessionStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryDesign));
         }
 
-        const redirectUrl = res.data.redirectUrl || (createdEventId ? `/dashboard/invitations?eventId=${createdEventId}&studio=true&templateId=${targetTplId}` : "/dashboard/invitations?studio=true");
-        if (createdEventId) {
-          setSuccessMsg("🎉 AI Event generated! Redirecting to Evite Invitation Studio...");
-          setTimeout(() => {
-            router.push(redirectUrl);
-          }, 800);
-        } else {
-          setSuccessMsg("🎉 AI Event generated and saved to your Dashboard!");
-        }
+        const studioUrl = `/dashboard/invitations?uploadedImageUrl=${encodeURIComponent(imageUrl)}&studio=true&aiGenerated=1`;
+
+        setSuccessMsg("AI invitation template generated! Redirecting to Studio...");
+        setTimeout(() => {
+          router.push(studioUrl);
+        }, 800);
+      } else {
+        setErrorMsg(res.data?.error || "Failed to generate template. Please try again.");
       }
     } catch (err: any) {
-      console.error("Frontend AI Create Request Failed:", err.response?.data || err.message || err);
-      const status = err.response?.status;
-      const serverError = err.response?.data?.error;
+      console.error("AI Template Generation Failed:", err.response?.data || err.message || err);
+      const errorMsg = getApiErrorMessage(err);
 
       if (
-        status === 429 ||
-        (serverError && (
-          serverError.toLowerCase().includes("quota") ||
-          serverError.toLowerCase().includes("unavailable") ||
-          serverError.toLowerCase().includes("rate limit")
+        err.response?.status === 429 ||
+        err.response?.status === 504 ||
+        (typeof errorMsg === "string" && (
+          errorMsg.toLowerCase().includes("busy") ||
+          errorMsg.toLowerCase().includes("rate limit") ||
+          errorMsg.toLowerCase().includes("too many") ||
+          errorMsg.toLowerCase().includes("timed out")
         ))
       ) {
-        setErrorMsg("Gemini service is temporarily busy. Please try again in a moment.");
-      } else if (
-        status === 401 ||
-        status === 403 ||
-        (serverError && (
-          serverError.toLowerCase().includes("invalid gemini api key") ||
-          serverError.toLowerCase().includes("unauthorized")
-        ))
-      ) {
-        setErrorMsg("Invalid Gemini API key.");
+        setErrorMsg("AI service is temporarily busy. Please try again in a moment.");
+      } else if (err.response?.status === 404) {
+        setErrorMsg("AI endpoint not found. Please check the server configuration.");
+      } else if (err.response?.status >= 500) {
+        setErrorMsg(errorMsg || "AI service encountered an error. Please try again later.");
       } else {
-        setErrorMsg(serverError || "Failed to generate event with AI. Please try again.");
+        setErrorMsg(errorMsg || "Failed to generate template. Please check Replicate configuration.");
       }
     } finally {
       setGenerating(false);
@@ -326,11 +380,22 @@ export default function Hero() {
   };
 
   const handleSaveAiEvent = async () => {
+    if (!aiEventData) return;
+
     if (!user) {
-      setIsAuthModalOpen(true);
+      try {
+        const guestDraft = {
+          type: "ai",
+          aiEventData,
+        };
+        localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+      } catch (e) {}
+      setSuccessMsg("🎉 Opening Invitation Designer...");
+      setTimeout(() => {
+        router.push("/canvas?guest=true");
+      }, 500);
       return;
     }
-    if (!aiEventData) return;
 
     // If already saved to database via the AI endpoint
     if (aiEventData.event?.id) {
@@ -402,7 +467,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
 
     if (!user) {
-      // Guest flow: persist draft and navigate directly to canvas — no sign-in required
       try {
         const guestDraft = {
           type: "template",
@@ -410,10 +474,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           templateName: targetTpl?.name || "Event",
         };
         localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
-        localStorage.setItem("pending_template_id", targetTplId);
-        localStorage.setItem("pending_template_name", targetTpl?.name || "Event");
-        sessionStorage.setItem("pending_template_id", targetTplId);
-        sessionStorage.setItem("pending_template_name", targetTpl?.name || "Event");
       } catch (e) {}
       router.push("/canvas?guest=true");
       return;
@@ -474,14 +534,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return;
     setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return;
     setIsDragging(true);
   };
 
@@ -496,12 +554,22 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (!user) {
+      setPendingAuthAction("upload");
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      setPendingAuthAction("upload");
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (e.target.files && e.target.files.length > 0) {
       handleFileSelection(e.target.files[0]);
     }
@@ -712,11 +780,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleOpenInDesigner = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
     if (!uploadedFile && !previewUrl && !cleanedPreviewUrl) {
       setUploadError("Please select an invitation file first.");
       return;
@@ -741,10 +804,66 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       }
     }
 
+    const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+      ? detectedTextLayers.map((block: any, idx: number) => ({
+          id: `replicate-layer-${idx}`,
+          role: block.role || "other",
+          text: block.text || "",
+          x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
+          y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
+          fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
+          fontFamily: block.fontFamily || "Inter",
+          color: block.color || "#1E293B",
+        }))
+      : [];
+
+    const stationeryPayload = {
+      cardBgColor: extractedCardBgColor || "#FAF4E8",
+      backgroundImage: resolvedPersistentUrl || bgToUse || "",
+      cleanedImageUrl: cleanedPreviewUrl || "",
+      originalImageUrl: previewUrl || "",
+      textLayers: typographyLayers,
+      textElements: typographyLayers,
+    };
+
+    // For guests: store consolidated draft and route directly
+    if (!user) {
+      try {
+        const guestDraft: any = {
+          type: "upload",
+          uploadUrl: resolvedPersistentUrl || bgToUse || "",
+          uploadName: uploadedFile?.name || "",
+          uploadType: uploadedFile?.type || "",
+          uploadTitle: uploadTitle || "",
+          backgroundImage: resolvedPersistentUrl || bgToUse || "",
+          cleanedImageUrl: cleanedPreviewUrl || "",
+          originalImageUrl: previewUrl || "",
+          stationeryDesign: stationeryPayload,
+        };
+        localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+        sessionStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+
+        const finalBg = resolvedPersistentUrl || bgToUse || "";
+        if (finalBg) {
+          safeSetSessionStorage("pending_upload_invite", finalBg);
+          try { localStorage.setItem("pending_upload_invite", finalBg); } catch (_) {}
+        }
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
+      } catch (e) {}
+      setIsUploading(false);
+      const queryImg = (resolvedPersistentUrl && !resolvedPersistentUrl.startsWith("data:"))
+        ? `&uploadedImageUrl=${encodeURIComponent(resolvedPersistentUrl)}`
+        : "";
+      router.push(`/canvas?guest=true${queryImg}`);
+      return;
+    }
+
     try {
-      if (resolvedPersistentUrl) {
-        safeSetSessionStorage("pending_upload_invite", resolvedPersistentUrl);
-        try { localStorage.setItem("pending_upload_invite", resolvedPersistentUrl); } catch (_) {}
+      const finalBg = resolvedPersistentUrl || bgToUse || "";
+      if (finalBg) {
+        safeSetSessionStorage("pending_upload_invite", finalBg);
+        try { localStorage.setItem("pending_upload_invite", finalBg); } catch (_) {}
       }
       if (uploadedFile) {
         safeSetSessionStorage("pending_upload_name", uploadedFile.name);
@@ -758,24 +877,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         localStorage.removeItem("pending_template_id");
       } catch (_) {}
 
-      // If Replicate / OCR detected text layers, seamlessly inject into stationery design
-      if (detectedTextLayers && detectedTextLayers.length > 0) {
-        const stationeryPayload = {
-          cardBgColor: extractedCardBgColor || "#FAF4E8",
-          textElements: detectedTextLayers.map((block: any, idx: number) => ({
-            id: `replicate-layer-${idx}`,
-            role: block.role || "other",
-            text: block.text || "",
-            x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
-            y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
-            fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
-            fontFamily: block.fontFamily || "Inter",
-            color: block.color || "#1E293B",
-          })),
-        };
-        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
-      }
+      // Always pass the full stationeryPayload with backgroundImage and typography layers
+      safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+      try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
     } catch (e) {
       console.error("Failed to store pending upload:", e);
     } finally {
@@ -783,19 +887,22 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
 
     setSuccessMsg("Opening invitation designer...");
+    const queryImg = (resolvedPersistentUrl && !resolvedPersistentUrl.startsWith("data:"))
+      ? `&uploadedImageUrl=${encodeURIComponent(resolvedPersistentUrl)}`
+      : "";
     setTimeout(() => {
-      router.push("/dashboard/invitations?studio=true");
+      router.push(`/dashboard/invitations?studio=true${queryImg}`);
     }, 500);
   };
 
   const handleUploadAndCreateEvent = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
+    if (!uploadedFile && !previewUrl && !cleanedPreviewUrl) {
+      setUploadError("Please select an invitation file first.");
       return;
     }
 
-    if (!uploadedFile && !previewUrl && !cleanedPreviewUrl) {
-      setUploadError("Please select an invitation file first.");
+    if (!user) {
+      await handleOpenInDesigner();
       return;
     }
 
@@ -854,10 +961,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             localStorage.removeItem("pending_template_id");
           } catch (_) {}
         }
-        if (detectedTextLayers && detectedTextLayers.length > 0) {
-          const stationeryPayload = {
-            cardBgColor: extractedCardBgColor || "#FAF4E8",
-            textElements: detectedTextLayers.map((block: any, idx: number) => ({
+
+        const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+          ? detectedTextLayers.map((block: any, idx: number) => ({
               id: `replicate-layer-${idx}`,
               role: block.role || "other",
               text: block.text || "",
@@ -866,15 +972,27 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
               fontFamily: block.fontFamily || "Inter",
               color: block.color || "#1E293B",
-            })),
-          };
-          safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        }
+            }))
+          : [];
+
+        const stationeryPayload = {
+          cardBgColor: extractedCardBgColor || "#FAF4E8",
+          backgroundImage: createdImage || bgToUse,
+          cleanedImageUrl: cleanedPreviewUrl || "",
+          originalImageUrl: previewUrl || "",
+          textLayers: typographyLayers,
+          textElements: typographyLayers,
+        };
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
 
         const eventId = res.event?.id;
+        const queryImg = (createdImage && !createdImage.startsWith("data:"))
+          ? `&uploadedImageUrl=${encodeURIComponent(createdImage)}`
+          : "";
         setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true` : "/dashboard/invitations?studio=true");
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true${queryImg}` : `/dashboard/invitations?studio=true${queryImg}`);
         }, 800);
       } else {
         setUploadError(res?.message || "Failed to create event from uploaded invitation.");
@@ -889,10 +1007,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleExtractDetailsAI = () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
     const targetUrl = previewUrl || (uploadedFile ? URL.createObjectURL(uploadedFile) : "");
     if (!targetUrl) return;
     scanInvitationWithAI(targetUrl);
@@ -937,7 +1051,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         {/* Main Heading */}
         <h1
           className="font-bold font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
-          style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.9rem, 4vw, 3.75rem)" }}
+          style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.6rem, 3.5vw, 3.2rem)" }}
         >
           Create Any Event in Under 60 Seconds
         </h1>
@@ -1161,8 +1275,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     </button>
                   ))}
                 </div>
-
-
 
                 {/* Bottom Action Button */}
                 <button
@@ -1404,7 +1516,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     ? "bg-rose-500/90 text-white border-rose-400/90"
                                     : badgeText.toUpperCase() === "POPULAR"
                                     ? "bg-indigo-500/90 text-white border-indigo-400/90"
-                                    : isPremium || badgeText.toUpperCase() === "PREMIUM" || badgeText.toUpperCase() === "FEATURED"
+                                    : isPremium || badgeText.toUpperCase() === "FEATURED"
                                     ? "bg-amber-500/95 text-white border-amber-400/90"
                                     : "bg-white/90 text-gray-800 border-white/70"
                                 }`}>
@@ -1518,6 +1630,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 {!uploadedFile && (
                   <div
                     onClick={() => {
+                      if (!user) {
+                        setPendingAuthAction("upload");
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
                       fileInputRef.current?.click();
                     }}
                     onDragEnter={handleDragEnter}
@@ -1736,7 +1853,24 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       {/* Sign-In / Register Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAuthAction(null);
+        }}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          if (pendingAuthAction === "ai") {
+            setPendingAuthAction(null);
+            handleGenerate();
+          } else if (pendingAuthAction === "upload") {
+            setPendingAuthAction(null);
+            setTimeout(() => {
+              fileInputRef.current?.click();
+            }, 100);
+          } else {
+            setPendingAuthAction(null);
+          }
+        }}
       />
     </section>
   );

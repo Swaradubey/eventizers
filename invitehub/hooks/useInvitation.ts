@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import invitationService from "../services/invitationService";
 import eventService, { Event } from "../services/eventService";
 import { Invitation, InvitationPayload } from "../types/invitationTypes";
-import { deduplicateTextLayers } from "../components/designer/layoutUtils";
+import { deduplicateTextLayers, isSnapshotOrRasterUrl, checkIsUserUploadedImage } from "../components/designer/layoutUtils";
 
 import { NEW_TEMPLATES_CONFIG } from "../lib/newTemplatesData";
 
@@ -302,15 +302,27 @@ export const useInvitation = (eventId: string | null) => {
           const evtImg = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
           const cleanTemplateImg = (tplConfig as any)?.decorationImage || (tplConfig?.image?.includes('/assets/templates/') && tplConfig.image.endsWith('.svg') ? tplConfig.image.replace(/\.svg$/, '-bg.svg') : tplConfig?.image) || evtImg;
 
-          // If imageUrl is a snapshot (e.g. contains snapshot/invitation_snapshot or data:) or missing,
-          // restore clean template artwork so canvas renders only the raw artwork without baked text
-          if (
-            !fetchedInvitation.imageUrl ||
-            fetchedInvitation.imageUrl.includes("snapshot") ||
-            fetchedInvitation.imageUrl.startsWith("data:")
-          ) {
-            if (cleanTemplateImg) {
-              fetchedInvitation.imageUrl = cleanTemplateImg;
+          // If imageUrl is a snapshot or missing, restore clean artwork.
+          // CRITICAL: Preserve custom user uploads and AI-cleaned images (e.g. data:image/, blob:, or persistent upload URLs).
+          const isUserUpload =
+            checkIsUserUploadedImage(fetchedInvitation.imageUrl) ||
+            checkIsUserUploadedImage(evtImg) ||
+            eventRes.event.selectedTemplateId === "custom-upload";
+
+          if (isUserUpload) {
+            if (!fetchedInvitation.imageUrl || isSnapshotOrRasterUrl(fetchedInvitation.imageUrl)) {
+              if (evtImg && !isSnapshotOrRasterUrl(evtImg)) {
+                fetchedInvitation.imageUrl = evtImg;
+              }
+            }
+          } else {
+            if (
+              !fetchedInvitation.imageUrl ||
+              isSnapshotOrRasterUrl(fetchedInvitation.imageUrl)
+            ) {
+              if (cleanTemplateImg) {
+                fetchedInvitation.imageUrl = cleanTemplateImg;
+              }
             }
           }
           if (
@@ -340,6 +352,17 @@ export const useInvitation = (eventId: string | null) => {
             if (persistentCanvasState.effects) fetchedInvitation.effects = persistentCanvasState.effects;
             if (persistentCanvasState.backside) (fetchedInvitation as any).backside = persistentCanvasState.backside;
             if (persistentCanvasState.decorations) (fetchedInvitation as any).decorations = persistentCanvasState.decorations;
+            if (persistentCanvasState.background) (fetchedInvitation as any).background = persistentCanvasState.background;
+            if (persistentCanvasState.backgroundLayer) (fetchedInvitation as any).backgroundLayer = persistentCanvasState.backgroundLayer;
+            if (persistentCanvasState.frameLayers) (fetchedInvitation as any).frameLayers = persistentCanvasState.frameLayers;
+            if (persistentCanvasState.innerCardLayer) (fetchedInvitation as any).innerCardLayer = persistentCanvasState.innerCardLayer;
+            if (persistentCanvasState.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = persistentCanvasState.backgroundImageUrl;
+            if (persistentCanvasState.backgroundImage) {
+              (fetchedInvitation as any).backgroundImageUrl = persistentCanvasState.backgroundImage;
+              if (!fetchedInvitation.imageUrl || isSnapshotOrRasterUrl(fetchedInvitation.imageUrl)) {
+                fetchedInvitation.imageUrl = persistentCanvasState.backgroundImage;
+              }
+            }
             if (persistentCanvasState.isLandscape !== undefined) fetchedInvitation.isLandscape = persistentCanvasState.isLandscape;
             (fetchedInvitation as any).canvasState = persistentCanvasState;
           }
@@ -357,12 +380,20 @@ export const useInvitation = (eventId: string | null) => {
                 if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
                 if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
                 if (parsed.background) fetchedInvitation.background = parsed.background;
+                if (parsed.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImageUrl;
+                if (parsed.backgroundImage) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImage;
+                if ((parsed.backgroundImageUrl || parsed.backgroundImage) && (!fetchedInvitation.imageUrl || isSnapshotOrRasterUrl(fetchedInvitation.imageUrl))) {
+                  fetchedInvitation.imageUrl = parsed.backgroundImageUrl || parsed.backgroundImage;
+                }
                 if (parsed.effects) fetchedInvitation.effects = parsed.effects;
                 if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
                 if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
                 if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
                 if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
                 if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
+                if (parsed.backgroundLayer) (fetchedInvitation as any).backgroundLayer = parsed.backgroundLayer;
+                if (parsed.frameLayers) (fetchedInvitation as any).frameLayers = parsed.frameLayers;
+                if (parsed.innerCardLayer) (fetchedInvitation as any).innerCardLayer = parsed.innerCardLayer;
               }
             } catch (e) {}
           }

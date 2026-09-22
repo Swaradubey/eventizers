@@ -213,10 +213,36 @@ export const getPendingOrUploadedImageUrl = (
       const urlParams = new URLSearchParams(window.location.search);
       const paramUrl =
         urlParams.get("uploadedImageUrl") ||
+        urlParams.get("cleanedImageUrl") ||
         urlParams.get("customBackgroundUrl") ||
-        urlParams.get("imageUrl");
+        urlParams.get("imageUrl") ||
+        urlParams.get("bg");
       if (paramUrl && isUserUploadedImage(paramUrl)) return paramUrl;
     } catch (_) { }
+
+    try {
+      const pendingStationeryRaw =
+        sessionStorage.getItem("pending_stationery_design") ||
+        localStorage.getItem("pending_stationery_design");
+      if (pendingStationeryRaw) {
+        const parsed = JSON.parse(pendingStationeryRaw);
+        const bg = parsed.backgroundImage || parsed.cleanedImageUrl || parsed.uploadUrl || parsed.imageUrl;
+        if (bg && isUserUploadedImage(bg)) return bg;
+      }
+    } catch (_) {}
+
+    try {
+      const guestDraftRaw = localStorage.getItem("guestEventDraft") || sessionStorage.getItem("guestEventDraft");
+      if (guestDraftRaw) {
+        const parsed = JSON.parse(guestDraftRaw);
+        const bg =
+          parsed.stationeryDesign?.backgroundImage ||
+          parsed.cleanedImageUrl ||
+          parsed.uploadUrl ||
+          parsed.backgroundImage;
+        if (bg && isUserUploadedImage(bg)) return bg;
+      }
+    } catch (_) {}
 
     try {
       const sessionUpload = sessionStorage.getItem("pending_upload_invite");
@@ -230,6 +256,9 @@ export const getPendingOrUploadedImageUrl = (
   }
   if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
     return invite.imageUrl;
+  }
+  if ((invite as any)?.backgroundImageUrl && isUserUploadedImage((invite as any).backgroundImageUrl)) {
+    return (invite as any).backgroundImageUrl;
   }
   if (evt?.coverImage && isUserUploadedImage(evt.coverImage)) {
     return evt.coverImage;
@@ -1117,7 +1146,9 @@ export default function InvitationStudio({
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
     if (isUploadedSession && pendingUploadUrl) {
       baseState.cardBg = { type: "image", value: pendingUploadUrl };
-      baseState.card = null;
+      baseState.backgroundImageUrl = pendingUploadUrl;
+      if (!baseState.card) baseState.card = {};
+      baseState.card.artworkUrl = pendingUploadUrl;
       baseState.photoSlot = null;
       baseState.isPureCss = false;
       baseState.activeTemplateId = null;
@@ -1136,6 +1167,17 @@ export default function InvitationStudio({
       if (pendingStationery) {
         try {
           const sd = JSON.parse(pendingStationery);
+          const bgFromDesign = sd.backgroundImage || sd.cleanedImageUrl || sd.uploadUrl || sd.imageUrl;
+          if (bgFromDesign && isUserUploadedImage(bgFromDesign)) {
+            baseState.cardBg = { type: "image", value: bgFromDesign };
+            baseState.backgroundImageUrl = bgFromDesign;
+            if (!baseState.card) baseState.card = {};
+            baseState.card.artworkUrl = bgFromDesign;
+            baseState.cardImageFit = "contain";
+            baseState.hideEnvelope = true;
+            baseState.viewMode = "card";
+            baseState.isPureCss = false;
+          }
           if (sd.envelopeColor && !isUploadedSession) baseState.envelope.color = sd.envelopeColor;
           if (sd.envelopeLiner && !isUploadedSession) {
             baseState.envelope.liner = sd.envelopeLiner;
@@ -1149,8 +1191,13 @@ export default function InvitationStudio({
           if (sd.cardBgColor && (!baseState.cardBg || baseState.cardBg.type !== "image")) {
             baseState.cardBg = { type: "color", value: sd.cardBgColor };
           }
-          if (Array.isArray(sd.textElements) && sd.textElements.length > 0) {
-            const aiLayers = sd.textElements.map((el: any, idx: number) => ({
+          const layersArray = (Array.isArray(sd.textLayers) && sd.textLayers.length > 0)
+            ? sd.textLayers
+            : (Array.isArray(sd.textElements) && sd.textElements.length > 0)
+            ? sd.textElements
+            : [];
+          if (layersArray.length > 0) {
+            const aiLayers = layersArray.map((el: any, idx: number) => ({
               id: el.id || `ai-layer-${idx}`,
               key: el.role || el.id || `layer-${idx}`,
               text: el.text || "",

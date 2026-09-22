@@ -804,42 +804,66 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
       }
     }
 
+    const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+      ? detectedTextLayers.map((block: any, idx: number) => ({
+          id: `replicate-layer-${idx}`,
+          role: block.role || "other",
+          text: block.text || "",
+          x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
+          y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
+          fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
+          fontFamily: block.fontFamily || "Inter",
+          color: block.color || "#1E293B",
+        }))
+      : [];
+
+    const stationeryPayload = {
+      cardBgColor: extractedCardBgColor || "#FAF4E8",
+      backgroundImage: resolvedPersistentUrl || bgToUse || "",
+      cleanedImageUrl: cleanedPreviewUrl || "",
+      originalImageUrl: previewUrl || "",
+      textLayers: typographyLayers,
+      textElements: typographyLayers,
+    };
+
     // For guests: store consolidated draft and route directly
     if (!user) {
       try {
         const guestDraft: any = {
           type: "upload",
-          uploadUrl: resolvedPersistentUrl || "",
+          uploadUrl: resolvedPersistentUrl || bgToUse || "",
           uploadName: uploadedFile?.name || "",
           uploadType: uploadedFile?.type || "",
           uploadTitle: uploadTitle || "",
+          backgroundImage: resolvedPersistentUrl || bgToUse || "",
+          cleanedImageUrl: cleanedPreviewUrl || "",
+          originalImageUrl: previewUrl || "",
+          stationeryDesign: stationeryPayload,
         };
-        if (detectedTextLayers && detectedTextLayers.length > 0) {
-          guestDraft.stationeryDesign = {
-            cardBgColor: extractedCardBgColor || "#FAF4E8",
-            textElements: detectedTextLayers.map((block: any, idx: number) => ({
-              id: `replicate-layer-${idx}`,
-              role: block.role || "other",
-              text: block.text || "",
-              x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
-              y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
-              fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
-              fontFamily: block.fontFamily || "Inter",
-              color: block.color || "#1E293B",
-            })),
-          };
-        }
         localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+        sessionStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+
+        const finalBg = resolvedPersistentUrl || bgToUse || "";
+        if (finalBg) {
+          safeSetSessionStorage("pending_upload_invite", finalBg);
+          try { localStorage.setItem("pending_upload_invite", finalBg); } catch (_) {}
+        }
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
       } catch (e) {}
       setIsUploading(false);
-      router.push("/canvas?guest=true");
+      const queryImg = (resolvedPersistentUrl && !resolvedPersistentUrl.startsWith("data:"))
+        ? `&uploadedImageUrl=${encodeURIComponent(resolvedPersistentUrl)}`
+        : "";
+      router.push(`/canvas?guest=true${queryImg}`);
       return;
     }
 
     try {
-      if (resolvedPersistentUrl) {
-        safeSetSessionStorage("pending_upload_invite", resolvedPersistentUrl);
-        try { localStorage.setItem("pending_upload_invite", resolvedPersistentUrl); } catch (_) {}
+      const finalBg = resolvedPersistentUrl || bgToUse || "";
+      if (finalBg) {
+        safeSetSessionStorage("pending_upload_invite", finalBg);
+        try { localStorage.setItem("pending_upload_invite", finalBg); } catch (_) {}
       }
       if (uploadedFile) {
         safeSetSessionStorage("pending_upload_name", uploadedFile.name);
@@ -853,24 +877,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         localStorage.removeItem("pending_template_id");
       } catch (_) {}
 
-      // If Replicate / OCR detected text layers, seamlessly inject into stationery design
-      if (detectedTextLayers && detectedTextLayers.length > 0) {
-        const stationeryPayload = {
-          cardBgColor: extractedCardBgColor || "#FAF4E8",
-          textElements: detectedTextLayers.map((block: any, idx: number) => ({
-            id: `replicate-layer-${idx}`,
-            role: block.role || "other",
-            text: block.text || "",
-            x: block.x !== undefined ? (block.x > 1 ? block.x : Math.round(block.x * 100)) : 50,
-            y: block.y !== undefined ? (block.y > 1 ? block.y : Math.round(block.y * 100)) : (20 + idx * 10),
-            fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
-            fontFamily: block.fontFamily || "Inter",
-            color: block.color || "#1E293B",
-          })),
-        };
-        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
-      }
+      // Always pass the full stationeryPayload with backgroundImage and typography layers
+      safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+      try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
     } catch (e) {
       console.error("Failed to store pending upload:", e);
     } finally {
@@ -878,8 +887,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
     }
 
     setSuccessMsg("Opening invitation designer...");
+    const queryImg = (resolvedPersistentUrl && !resolvedPersistentUrl.startsWith("data:"))
+      ? `&uploadedImageUrl=${encodeURIComponent(resolvedPersistentUrl)}`
+      : "";
     setTimeout(() => {
-      router.push("/dashboard/invitations?studio=true");
+      router.push(`/dashboard/invitations?studio=true${queryImg}`);
     }, 500);
   };
 
@@ -949,10 +961,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             localStorage.removeItem("pending_template_id");
           } catch (_) {}
         }
-        if (detectedTextLayers && detectedTextLayers.length > 0) {
-          const stationeryPayload = {
-            cardBgColor: extractedCardBgColor || "#FAF4E8",
-            textElements: detectedTextLayers.map((block: any, idx: number) => ({
+
+        const typographyLayers = (detectedTextLayers && detectedTextLayers.length > 0)
+          ? detectedTextLayers.map((block: any, idx: number) => ({
               id: `replicate-layer-${idx}`,
               role: block.role || "other",
               text: block.text || "",
@@ -961,15 +972,27 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               fontSize: block.fontSize || (block.role === "title" ? 32 : 16),
               fontFamily: block.fontFamily || "Inter",
               color: block.color || "#1E293B",
-            })),
-          };
-          safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
-        }
+            }))
+          : [];
+
+        const stationeryPayload = {
+          cardBgColor: extractedCardBgColor || "#FAF4E8",
+          backgroundImage: createdImage || bgToUse,
+          cleanedImageUrl: cleanedPreviewUrl || "",
+          originalImageUrl: previewUrl || "",
+          textLayers: typographyLayers,
+          textElements: typographyLayers,
+        };
+        safeSetSessionStorage("pending_stationery_design", JSON.stringify(stationeryPayload));
+        try { localStorage.setItem("pending_stationery_design", JSON.stringify(stationeryPayload)); } catch (_) {}
 
         const eventId = res.event?.id;
+        const queryImg = (createdImage && !createdImage.startsWith("data:"))
+          ? `&uploadedImageUrl=${encodeURIComponent(createdImage)}`
+          : "";
         setSuccessMsg("🎉 Event created successfully! Opening Invitation Designer...");
         setTimeout(() => {
-          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true` : "/dashboard/invitations?studio=true");
+          router.push(eventId ? `/dashboard/invitations?eventId=${eventId}&studio=true${queryImg}` : `/dashboard/invitations?studio=true${queryImg}`);
         }, 800);
       } else {
         setUploadError(res?.message || "Failed to create event from uploaded invitation.");

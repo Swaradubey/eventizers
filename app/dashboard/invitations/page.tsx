@@ -19,11 +19,10 @@ function InvitationPageContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(queryEventId);
 
-  // Hydrate guest draft from localStorage on mount
+  // Hydrate draft from localStorage on mount if pending
   useEffect(() => {
-    if (!isGuest || user) return;
     try {
-      const raw = localStorage.getItem("guestEventDraft");
+      const raw = localStorage.getItem("guestEventDraft") || sessionStorage.getItem("guestEventDraft");
       if (!raw) return;
       const draft = JSON.parse(raw);
 
@@ -32,10 +31,11 @@ function InvitationPageContent() {
           sessionStorage.setItem("pending_template_id", draft.templateId);
           localStorage.setItem("pending_template_id", draft.templateId);
         }
-      } else if (draft.type === "upload" && draft.uploadUrl) {
-        if (!sessionStorage.getItem("pending_upload_invite")) {
-          sessionStorage.setItem("pending_upload_invite", draft.uploadUrl);
-          localStorage.setItem("pending_upload_invite", draft.uploadUrl);
+      } else if (draft.type === "upload" || draft.uploadUrl || draft.stationeryDesign?.backgroundImage) {
+        const bgUrl = draft.stationeryDesign?.backgroundImage || draft.uploadUrl || draft.backgroundImage;
+        if (bgUrl && !sessionStorage.getItem("pending_upload_invite")) {
+          sessionStorage.setItem("pending_upload_invite", bgUrl);
+          localStorage.setItem("pending_upload_invite", bgUrl);
         }
         if (draft.uploadName && !sessionStorage.getItem("pending_upload_name")) {
           sessionStorage.setItem("pending_upload_name", draft.uploadName);
@@ -48,6 +48,7 @@ function InvitationPageContent() {
         }
         if (draft.stationeryDesign && !sessionStorage.getItem("pending_stationery_design")) {
           sessionStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
         }
       } else if (draft.type === "ai") {
         if (draft.prompt && !sessionStorage.getItem("pending_prompt")) {
@@ -137,7 +138,9 @@ function InvitationPageContent() {
     (typeof window !== "undefined" &&
       Boolean(
         sessionStorage.getItem("pending_upload_invite") ||
-        localStorage.getItem("pending_upload_invite")
+        localStorage.getItem("pending_upload_invite") ||
+        sessionStorage.getItem("pending_stationery_design") ||
+        localStorage.getItem("pending_stationery_design")
       ));
 
   const resolvedTemplateId = hasPendingUpload

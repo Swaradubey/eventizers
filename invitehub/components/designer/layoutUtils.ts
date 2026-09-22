@@ -336,19 +336,26 @@ export function isSnapshotOrRasterUrl(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
   const trimmed = url.trim().toLowerCase();
   if (trimmed === "") return false;
+  // Never treat user-uploaded images, base64 card artwork, or AI inpaint results as snapshots
+  if (
+    trimmed.includes("user_upload") ||
+    trimmed.includes("cleaned_background") ||
+    trimmed.includes("replicate") ||
+    trimmed.includes("/uploads/")
+  ) {
+    return false;
+  }
   return (
-    trimmed.startsWith("data:image") ||
-    trimmed.startsWith("blob:") ||
-    trimmed.includes("snapshot") ||
     trimmed.includes("canvas_snapshot") ||
     trimmed.includes("invitation_snapshot") ||
-    trimmed.includes("invitation_cover")
+    (trimmed.includes("snapshot") && !trimmed.startsWith("data:image/")) ||
+    (trimmed.includes("invitation_cover") && !trimmed.includes("/uploads/") && !trimmed.startsWith("data:"))
   );
 }
 
 /**
- * Checks whether an image URL is a user-uploaded asset
- * Strictly excludes any snapshot URLs, template SVGs, base64 captures, or system render captures
+ * Checks whether an image URL is a user-uploaded asset or AI-cleaned in-painted background.
+ * Strictly excludes template SVGs, template asset paths, and canvas export snapshots.
  */
 export function checkIsUserUploadedImage(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -358,8 +365,8 @@ export function checkIsUserUploadedImage(url?: string | null): boolean {
   }
   if (trimmed.startsWith("#")) return false;
   if (trimmed.includes("/assets/templates/") || trimmed.endsWith(".svg")) return false;
-  if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) return false;
-  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return false;
+  if (trimmed.startsWith("data:image/")) return true;
+  if (trimmed.startsWith("blob:")) return true;
   return (
     trimmed.includes("/uploads/") ||
     trimmed.startsWith("http://") ||

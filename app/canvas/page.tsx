@@ -13,28 +13,26 @@ function CanvasBridgeContent() {
   useEffect(() => {
     if (authLoading) return;
 
-    // Read the consolidated guest draft from localStorage
+    // Read the consolidated guest draft from localStorage or sessionStorage
     let guestDraft: any = null;
     try {
-      const raw = localStorage.getItem("guestEventDraft");
+      const raw = localStorage.getItem("guestEventDraft") || sessionStorage.getItem("guestEventDraft");
       if (raw) {
         guestDraft = JSON.parse(raw);
       }
     } catch (e) {}
 
-    // If authenticated, clear any stale guest draft and redirect to the real canvas
-    if (user) {
-      try {
-        localStorage.removeItem("guestEventDraft");
-      } catch (e) {}
-      router.replace("/dashboard/invitations?studio=true");
-      return;
-    }
-
     // Build the redirect URL to the actual canvas at /dashboard/invitations
     const params = new URLSearchParams();
     params.set("studio", "true");
-    params.set("guest", "1");
+    if (isGuest || !user) {
+      params.set("guest", "1");
+    }
+
+    const queryUploadedImageUrl = searchParams.get("uploadedImageUrl") || searchParams.get("imageUrl");
+    if (queryUploadedImageUrl) {
+      params.set("uploadedImageUrl", queryUploadedImageUrl);
+    }
 
     const queryTemplateId = searchParams.get("templateId");
     if (queryTemplateId) {
@@ -46,8 +44,8 @@ function CanvasBridgeContent() {
     }
 
     if (guestDraft) {
-      // Map the consolidated draft fields to the legacy sessionStorage keys
-      // that InvitationStudio already reads on mount
+      // Map the consolidated draft fields to the session/local storage keys
+      // that InvitationStudio reads on mount
       try {
         if (guestDraft.type === "template" && guestDraft.templateId) {
           params.set("templateId", guestDraft.templateId);
@@ -57,9 +55,15 @@ function CanvasBridgeContent() {
             localStorage.setItem("pending_template_name", guestDraft.templateName);
             sessionStorage.setItem("pending_template_name", guestDraft.templateName);
           }
-        } else if (guestDraft.type === "upload" && guestDraft.uploadUrl) {
-          localStorage.setItem("pending_upload_invite", guestDraft.uploadUrl);
-          sessionStorage.setItem("pending_upload_invite", guestDraft.uploadUrl);
+        } else if (guestDraft.type === "upload" || guestDraft.uploadUrl || guestDraft.stationeryDesign?.backgroundImage) {
+          const bgUrl = guestDraft.stationeryDesign?.backgroundImage || guestDraft.uploadUrl || guestDraft.backgroundImage || "";
+          if (bgUrl) {
+            localStorage.setItem("pending_upload_invite", bgUrl);
+            sessionStorage.setItem("pending_upload_invite", bgUrl);
+            if (!bgUrl.startsWith("data:")) {
+              params.set("uploadedImageUrl", bgUrl);
+            }
+          }
           if (guestDraft.uploadName) {
             sessionStorage.setItem("pending_upload_name", guestDraft.uploadName);
           }
@@ -71,6 +75,7 @@ function CanvasBridgeContent() {
           }
           if (guestDraft.stationeryDesign) {
             sessionStorage.setItem("pending_stationery_design", JSON.stringify(guestDraft.stationeryDesign));
+            localStorage.setItem("pending_stationery_design", JSON.stringify(guestDraft.stationeryDesign));
           }
         } else if (guestDraft.type === "ai") {
           if (guestDraft.prompt) {

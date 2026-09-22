@@ -19,11 +19,10 @@ function InvitationPageContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(queryEventId);
 
-  // Hydrate guest draft from localStorage on mount (for guest flows arriving from /canvas bridge)
+  // Hydrate draft from localStorage on mount if pending
   useEffect(() => {
-    if (!isGuest || user) return;
     try {
-      const raw = localStorage.getItem("guestEventDraft");
+      const raw = localStorage.getItem("guestEventDraft") || sessionStorage.getItem("guestEventDraft");
       if (!raw) return;
       const draft = JSON.parse(raw);
 
@@ -32,10 +31,11 @@ function InvitationPageContent() {
           sessionStorage.setItem("pending_template_id", draft.templateId);
           localStorage.setItem("pending_template_id", draft.templateId);
         }
-      } else if (draft.type === "upload" && draft.uploadUrl) {
-        if (!sessionStorage.getItem("pending_upload_invite")) {
-          sessionStorage.setItem("pending_upload_invite", draft.uploadUrl);
-          localStorage.setItem("pending_upload_invite", draft.uploadUrl);
+      } else if (draft.type === "upload" || draft.uploadUrl || draft.stationeryDesign?.backgroundImage) {
+        const bgUrl = draft.stationeryDesign?.backgroundImage || draft.uploadUrl || draft.backgroundImage;
+        if (bgUrl && !sessionStorage.getItem("pending_upload_invite")) {
+          sessionStorage.setItem("pending_upload_invite", bgUrl);
+          localStorage.setItem("pending_upload_invite", bgUrl);
         }
         if (draft.uploadName && !sessionStorage.getItem("pending_upload_name")) {
           sessionStorage.setItem("pending_upload_name", draft.uploadName);
@@ -48,6 +48,7 @@ function InvitationPageContent() {
         }
         if (draft.stationeryDesign && !sessionStorage.getItem("pending_stationery_design")) {
           sessionStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
+          localStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
         }
       } else if (draft.type === "ai") {
         if (draft.prompt && !sessionStorage.getItem("pending_prompt")) {
@@ -56,13 +57,31 @@ function InvitationPageContent() {
         if (draft.eventType && !sessionStorage.getItem("pending_event_type")) {
           sessionStorage.setItem("pending_event_type", draft.eventType);
         }
+        if (draft.venue && !sessionStorage.getItem("pending_venue")) {
+          sessionStorage.setItem("pending_venue", draft.venue);
+        }
+        if (draft.guestCount && !sessionStorage.getItem("pending_guest_count")) {
+          sessionStorage.setItem("pending_guest_count", draft.guestCount);
+        }
+        if (draft.date && !sessionStorage.getItem("pending_event_date")) {
+          sessionStorage.setItem("pending_event_date", draft.date);
+        }
+        if (draft.startTime && !sessionStorage.getItem("pending_start_time")) {
+          sessionStorage.setItem("pending_start_time", draft.startTime);
+        }
+        if (draft.endTime && !sessionStorage.getItem("pending_end_time")) {
+          sessionStorage.setItem("pending_end_time", draft.endTime);
+        }
+        if (draft.isFullDay !== undefined && !sessionStorage.getItem("pending_is_full_day")) {
+          sessionStorage.setItem("pending_is_full_day", String(draft.isFullDay));
+        }
       }
     } catch (e) {
       console.warn("Canvas page: failed to hydrate guest draft:", e);
     }
   }, [isGuest, user]);
 
-  // Invitation hook for target event (skips API calls when no eventId)
+  // Invitation hook for target event
   const {
     invitation,
     setInvitation,
@@ -70,10 +89,9 @@ function InvitationPageContent() {
     saveInvitation,
   } = useInvitation(selectedEventId);
 
-  // Protected route check removed: guest users can access Canvas editor freely.
-  // Auth is deferred to Save / Next button clicks inside InvitationStudio.
+  // Protected route check removed: guest users can access Canvas editor
 
-  // Load user events for selector (only for authenticated users)
+  // Load user events for selector
   useEffect(() => {
     if (user) {
       eventService
@@ -120,7 +138,9 @@ function InvitationPageContent() {
     (typeof window !== "undefined" &&
       Boolean(
         sessionStorage.getItem("pending_upload_invite") ||
-        localStorage.getItem("pending_upload_invite")
+        localStorage.getItem("pending_upload_invite") ||
+        sessionStorage.getItem("pending_stationery_design") ||
+        localStorage.getItem("pending_stationery_design")
       ));
 
   const resolvedTemplateId = hasPendingUpload
@@ -150,8 +170,8 @@ function InvitationPageContent() {
         }
       }}
       onSave={async (payload) => {
-        // Deferred auth gate: guests store the draft locally instead of hitting the backend
         if (!user) {
+          // Store draft locally for later sync after auth
           try {
             localStorage.setItem("guestDraft", JSON.stringify(payload));
           } catch (e) {}
