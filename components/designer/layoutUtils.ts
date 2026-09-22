@@ -329,27 +329,38 @@ export function resolveCleanTemplateSvg(url?: string | null): string | null {
 export const getCleanTemplateSvg = resolveCleanTemplateSvg;
 
 /**
- * Checks whether an image URL is a user-uploaded asset
- * Strictly excludes any snapshot URLs, template SVGs, or system render captures
+ * Strictly checks if a URL represents a flattened snapshot, canvas raster capture,
+ * base64 data URL, or blob snapshot.
  */
-export function checkIsUserUploadedImage(url?: string | null): boolean {
+export function isSnapshotOrRasterUrl(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
-  const trimmed = url.trim();
-  if (
-    trimmed === "" ||
-    trimmed.startsWith("#") ||
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed === "") return false;
+  return (
+    trimmed.startsWith("data:image") ||
+    trimmed.startsWith("blob:") ||
     trimmed.includes("snapshot") ||
     trimmed.includes("canvas_snapshot") ||
     trimmed.includes("invitation_snapshot") ||
     trimmed.includes("invitation_cover")
-  ) {
+  );
+}
+
+/**
+ * Checks whether an image URL is a user-uploaded asset
+ * Strictly excludes any snapshot URLs, template SVGs, base64 captures, or system render captures
+ */
+export function checkIsUserUploadedImage(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (isSnapshotOrRasterUrl(trimmed)) {
     return false;
   }
+  if (trimmed.startsWith("#")) return false;
   if (trimmed.includes("/assets/templates/") || trimmed.endsWith(".svg")) return false;
   if (trimmed.startsWith("data:image/") && !trimmed.includes("user_upload")) return false;
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return false;
   return (
-    trimmed.startsWith("data:") ||
-    trimmed.startsWith("blob:") ||
     trimmed.includes("/uploads/") ||
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://")
@@ -382,7 +393,7 @@ export function extractCleanSnapshotData(designState: any, baseWidth = 600) {
     designState.card?.aspectRatio ||
     (isLandscape ? "4/3" : "5/7");
 
-  // 1. Resolve Background Artwork / Image
+  // 1. Resolve Background Artwork / Image (strictly excluding any snapshot captures)
   const uploadedBg =
     designState.cardBg?.type === "image" && checkIsUserUploadedImage(designState.cardBg.value)
       ? designState.cardBg.value
@@ -395,9 +406,9 @@ export function extractCleanSnapshotData(designState: any, baseWidth = 600) {
 
   const rawCardImage =
     userUploadSrc ||
-    designState.card?.artworkUrl ||
-    (designState.card as any)?.borderIllustration ||
-    (designState.cardBg?.type === "image" ? designState.cardBg.value : null) ||
+    (designState.card?.artworkUrl && !isSnapshotOrRasterUrl(designState.card.artworkUrl) ? designState.card.artworkUrl : null) ||
+    ((designState.card as any)?.borderIllustration && !isSnapshotOrRasterUrl((designState.card as any).borderIllustration) ? (designState.card as any).borderIllustration : null) ||
+    (designState.cardBg?.type === "image" && !isSnapshotOrRasterUrl(designState.cardBg.value) ? designState.cardBg.value : null) ||
     null;
 
   // Use clean -bg.svg variant for templates so static text in SVG artwork never renders behind dynamic text

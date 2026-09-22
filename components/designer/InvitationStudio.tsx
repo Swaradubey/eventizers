@@ -63,11 +63,11 @@ import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
 import { invitationStore } from "../../hooks/useInvitationStore";
-import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
+import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage, isSnapshotOrRasterUrl } from "./layoutUtils";
 import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
-export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
+export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, isSnapshotOrRasterUrl };
 
 // --- Types & Interfaces ---
 
@@ -521,19 +521,19 @@ export default function InvitationStudio({
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
     let cardBgValue = "#faf8f5";
 
-    // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
-    if (pendingUploadUrl && isUserUploadedImage(pendingUploadUrl)) {
+    // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is, strictly excluding snapshots)
+    if (pendingUploadUrl && isUserUploadedImage(pendingUploadUrl) && !isSnapshotOrRasterUrl(pendingUploadUrl)) {
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
     // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image and NOT a snapshot)
-    // Accept any saved image URL — not just user uploads or .svg — to survive save/restore round-trips
+    // Accept any saved image URL — strictly excluding snapshots, data URLs, and blobs
     else if (
       invite?.cardBg &&
       invite.cardBg.type === "image" &&
       typeof invite.cardBg.value === "string" &&
       invite.cardBg.value.trim() !== "" &&
-      !invite.cardBg.value.includes("snapshot")
+      !isSnapshotOrRasterUrl(invite.cardBg.value)
     ) {
       cardBgType = "image";
       cardBgValue = invite.cardBg.value;
@@ -542,7 +542,7 @@ export default function InvitationStudio({
       invite.background.type === "image" &&
       typeof invite.background.value === "string" &&
       invite.background.value.trim() !== "" &&
-      !invite.background.value.includes("snapshot")
+      !isSnapshotOrRasterUrl(invite.background.value)
     ) {
       cardBgType = "image";
       cardBgValue = invite.background.value;
@@ -552,7 +552,7 @@ export default function InvitationStudio({
       (invite as any)?.backgroundImageUrl &&
       typeof (invite as any).backgroundImageUrl === "string" &&
       (invite as any).backgroundImageUrl.trim() !== "" &&
-      !(invite as any).backgroundImageUrl.includes("snapshot")
+      !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl)
     ) {
       cardBgType = "image";
       cardBgValue = (invite as any).backgroundImageUrl;
@@ -561,6 +561,7 @@ export default function InvitationStudio({
     else if (
       invite?.cardBg &&
       invite.cardBg.type !== "image" &&
+      !isSnapshotOrRasterUrl(invite.cardBg.value) &&
       !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.cardBg.type;
@@ -568,6 +569,7 @@ export default function InvitationStudio({
     } else if (
       invite?.background &&
       invite.background.type !== "image" &&
+      !isSnapshotOrRasterUrl(invite.background.value) &&
       !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.background.type;
@@ -585,10 +587,10 @@ export default function InvitationStudio({
       cardBgValue = getCleanTemplateSvg(tplConfig.decorationImage) || tplConfig.decorationImage;
     }
     // Priority 3: Preserved color/gradient from invite
-    else if (invite?.cardBg && invite.cardBg.type !== "image") {
+    else if (invite?.cardBg && invite.cardBg.type !== "image" && !isSnapshotOrRasterUrl(invite.cardBg.value)) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background && invite.background.type !== "image") {
+    } else if (invite?.background && invite.background.type !== "image" && !isSnapshotOrRasterUrl(invite.background.value)) {
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
@@ -602,13 +604,13 @@ export default function InvitationStudio({
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 6: User-uploaded invitation image (user-chosen, no template text overlap risk)
-    else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
+    // Priority 6: User-uploaded invitation image (user-chosen, strictly NOT a snapshot or data/blob capture)
+    else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl) && !isSnapshotOrRasterUrl(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
     // Priority 7: Clean template SVG fallback if invitation has a template image URL
-    else if (invite?.imageUrl && (invite.imageUrl.includes("/assets/templates/") || invite.imageUrl.endsWith(".svg"))) {
+    else if (invite?.imageUrl && !isSnapshotOrRasterUrl(invite.imageUrl) && (invite.imageUrl.includes("/assets/templates/") || invite.imageUrl.endsWith(".svg"))) {
       cardBgType = "image";
       cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
     }
@@ -618,25 +620,18 @@ export default function InvitationStudio({
       cardBgValue = "#faf8f5";
     }
 
-    // Defensive check: if cardBgType is image, verify that cardBgValue is NOT a snapshot
-    if (cardBgType === "image" && cardBgValue) {
-      if (
-        !isUserUploadedImage(cardBgValue) &&
-        (cardBgValue.includes("snapshot") ||
-          cardBgValue.includes("canvas_snapshot") ||
-          cardBgValue.includes("invitation_snapshot") ||
-          cardBgValue.includes("invitation_cover"))
-      ) {
-        const fallbackArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || tplConfig?.decorationImage;
-        if (fallbackArt) {
-          cardBgValue = getCleanTemplateSvg(fallbackArt) || fallbackArt;
-        } else if (tplConfig?.backgroundColor) {
-          cardBgType = "color";
-          cardBgValue = tplConfig.backgroundColor;
-        } else {
-          cardBgType = "color";
-          cardBgValue = "#faf8f5";
-        }
+    // Defensive check: if cardBgValue is a snapshot string, data:image, or blob URL, fall back to clean template artwork/decoration
+    if (isSnapshotOrRasterUrl(cardBgValue) || (cardBgType === "image" && (!cardBgValue || isSnapshotOrRasterUrl(cardBgValue)))) {
+      const fallbackArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || tplConfig?.decorationImage;
+      if (fallbackArt && !isSnapshotOrRasterUrl(fallbackArt)) {
+        cardBgType = "image";
+        cardBgValue = getCleanTemplateSvg(fallbackArt) || fallbackArt;
+      } else if (tplConfig?.backgroundColor) {
+        cardBgType = "color";
+        cardBgValue = tplConfig.backgroundColor;
+      } else {
+        cardBgType = "color";
+        cardBgValue = "#faf8f5";
       }
     }
 
@@ -923,7 +918,9 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
-      backgroundImageUrl: cardBgType === "image" ? cardBgValue : ((invite as any)?.backgroundImageUrl || null),
+      backgroundImageUrl: cardBgType === "image" && !isSnapshotOrRasterUrl(cardBgValue)
+        ? cardBgValue
+        : ((invite as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl) ? (invite as any).backgroundImageUrl : null),
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
@@ -1037,9 +1034,9 @@ export default function InvitationStudio({
         (initialInvitation as any)?.background ||
         undefined,
       backgroundImageUrl:
-        cachedDraft?.backgroundImageUrl ||
-        persistentCanvasState?.backgroundImageUrl ||
-        (initialInvitation as any)?.backgroundImageUrl ||
+        (cachedDraft?.backgroundImageUrl && !isSnapshotOrRasterUrl(cachedDraft.backgroundImageUrl) ? cachedDraft.backgroundImageUrl : null) ||
+        (persistentCanvasState?.backgroundImageUrl && !isSnapshotOrRasterUrl(persistentCanvasState.backgroundImageUrl) ? persistentCanvasState.backgroundImageUrl : null) ||
+        ((initialInvitation as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((initialInvitation as any).backgroundImageUrl) ? (initialInvitation as any).backgroundImageUrl : null) ||
         undefined,
       card:
         cachedDraft?.card ||
@@ -2942,12 +2939,40 @@ export default function InvitationStudio({
     const tplConfig = getTemplateConfig(activeTplId);
     const templateName = tplConfig?.title || designState.activeTemplateId || "Custom Template";
 
-    const resolvedImageUrl = snapshotUrl
-      || (designState.cardBg.type === "image" && designState.cardBg.value ? designState.cardBg.value : null)
-      || currentInvitation?.imageUrl
-      || currentEvent?.coverImage
-      || initialEvent?.coverImage
-      || null;
+    // Clean original background image candidate: strictly excluding snapshots, canvas_snapshots, data URLs, and blobs
+    const cleanBgCandidate = (designState.cardBg?.type === "image" && !isSnapshotOrRasterUrl(designState.cardBg.value))
+      ? designState.cardBg.value
+      : null;
+
+    // Clean artwork candidate (pure frame/art, no baked text)
+    const rawArtworkCandidate =
+      ((designState.card as any)?.artworkUrl && !isSnapshotOrRasterUrl((designState.card as any).artworkUrl) ? (designState.card as any).artworkUrl : null) ||
+      ((tplConfig as any)?.card?.artworkUrl && !isSnapshotOrRasterUrl((tplConfig as any)?.card?.artworkUrl) ? (tplConfig as any).card.artworkUrl : null) ||
+      cleanBgCandidate ||
+      (tplConfig?.decorationImage && !isSnapshotOrRasterUrl(tplConfig.decorationImage) ? tplConfig.decorationImage : null) ||
+      null;
+
+    const effectiveArtworkUrl = rawArtworkCandidate ? (getCleanTemplateSvg(rawArtworkCandidate) || rawArtworkCandidate) : null;
+
+    // Explicit background image URL: strictly clean original base artwork or user upload, NEVER a snapshot
+    const explicitBackgroundImageUrl =
+      cleanBgCandidate ||
+      effectiveArtworkUrl ||
+      null;
+
+    // Clean background model: strictly store clean original background image or color in cardBg.value
+    const cleanCardBgType = cleanBgCandidate
+      ? "image"
+      : (designState.cardBg?.type === "image" ? "color" : (designState.cardBg?.type || "color"));
+
+    const cleanCardBgValue = cleanBgCandidate ||
+      (cleanCardBgType === "color" && !isSnapshotOrRasterUrl(designState.cardBg?.value) && typeof designState.cardBg?.value === "string" && !designState.cardBg.value.includes("/")
+        ? designState.cardBg.value
+        : (tplConfig?.backgroundColor || "#FAF8F5"));
+
+    // snapshotUrl or snapshotDataUrl is strictly passed to previewUrl / thumbnailUrl / email attachments
+    const cleanImageUrl = cleanBgCandidate || currentInvitation?.imageUrl || currentEvent?.coverImage || initialEvent?.coverImage || null;
+    const resolvedImageUrl = snapshotUrl || cleanImageUrl;
 
     const rsvpLayer = designState.textLayers.find((l) => l.id === "layer-rsvp" || l.key === "rsvp");
     const buttonText = rsvpLayer?.text?.trim() || currentInvitation?.buttonText || "RSVP Now";
@@ -2972,15 +2997,6 @@ export default function InvitationStudio({
       isFoil: l.isFoil || null,
     }));
 
-    const rawArtworkCandidate =
-      (designState.card as any)?.artworkUrl ||
-      (tplConfig as any)?.card?.artworkUrl ||
-      (designState.cardBg?.type === "image" && !isUserUploadedImage(designState.cardBg.value) ? designState.cardBg.value : null) ||
-      (tplConfig as any)?.decorationImage ||
-      null;
-
-    const effectiveArtworkUrl = rawArtworkCandidate ? (getCleanTemplateSvg(rawArtworkCandidate) || rawArtworkCandidate) : null;
-
     const decorativeImages: string[] = Array.from(
       new Set(
         [
@@ -2990,16 +3006,16 @@ export default function InvitationStudio({
           ...((designState.card as any)?.decorations || []),
           ...((tplConfig as any)?.card?.decorations || []),
           ...(designState.decorations || []),
-        ].filter(Boolean)
+        ].filter((img) => Boolean(img) && !isSnapshotOrRasterUrl(img))
       )
     );
 
     const fullCardModel = {
       ...((tplConfig as any)?.card || {}),
       ...(designState.card || {}),
-      artworkUrl: effectiveArtworkUrl || (designState.card as any)?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || "",
+      artworkUrl: effectiveArtworkUrl || "",
       decorativeBorderSvgUrl: (designState.card as any)?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || effectiveArtworkUrl || "",
-      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : "#FAF8F5"),
+      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof cleanCardBgValue === "string" && !cleanCardBgValue.includes("/") ? cleanCardBgValue : "#FAF8F5"),
       aspectRatio: (designState.card as any)?.aspectRatio || activePreset.aspect || "5x7",
       decorations: decorativeImages,
       decorativeImages,
@@ -3009,20 +3025,15 @@ export default function InvitationStudio({
 
     const fullBackgroundModel = {
       ...designState.cardBg,
-      color: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/")
-        ? designState.cardBg.value
+      type: cleanCardBgType,
+      value: cleanCardBgValue,
+      color: typeof cleanCardBgValue === "string" && !cleanCardBgValue.includes("/")
+        ? cleanCardBgValue
         : (tplConfig?.backgroundColor || (designState.card as any)?.backgroundColor || "#FAF8F5"),
       pattern: (designState.cardBg as any)?.pattern || null,
       decorativeImages,
       artworkUrl: effectiveArtworkUrl,
     };
-
-    // Explicit background image URL for reliable round-trip persistence
-    const explicitBackgroundImageUrl =
-      (designState.cardBg?.type === "image" && designState.cardBg.value) ||
-      effectiveArtworkUrl ||
-      (designState.card as any)?.artworkUrl ||
-      null;
 
     return {
       id: currentInvitation?.id || undefined,
@@ -3207,20 +3218,42 @@ export default function InvitationStudio({
         setCanvasKey((k) => k + 1);
 
         // Non-destructive state merge: retain complete card artwork, templateId, decorations
+        // Strictly protect cardBg, background, and backgroundImageUrl from taking any snapshot URL
+        const safeMergedCardBg = (payload.cardBg && !isSnapshotOrRasterUrl(payload.cardBg.value))
+          ? payload.cardBg
+          : (currentInvitation?.cardBg && !isSnapshotOrRasterUrl(currentInvitation.cardBg.value)
+              ? currentInvitation.cardBg
+              : payload.cardBg);
+
+        const safeMergedBackgroundImageUrl = (payload.backgroundImageUrl && !isSnapshotOrRasterUrl(payload.backgroundImageUrl))
+          ? payload.backgroundImageUrl
+          : null;
+
         const mergedInvite: Invitation = {
           ...currentInvitation,
           ...payload,
           ...saved,
+          imageUrl: saved?.imageUrl || payload.imageUrl || currentInvitation?.imageUrl,
           templateId: payload.templateId || saved.templateId || currentInvitation?.templateId || designState.activeTemplateId,
           card: payload.card || (currentInvitation as any)?.card || designState.card,
-          cardBg: payload.cardBg || currentInvitation?.cardBg || designState.cardBg,
-          background: payload.background || currentInvitation?.background || designState.cardBg,
+          cardBg: safeMergedCardBg,
+          background: safeMergedCardBg,
+          backgroundImageUrl: safeMergedBackgroundImageUrl,
           decorations: payload.decorations || (currentInvitation as any)?.decorations || designState.decorations,
           textElements: payload.textElements || designState.textLayers,
         };
         setCurrentInvitation(mergedInvite);
 
         // Keep active canvas state intact so decorative layers stay mounted
+        const safeCardBgType: "image" | "color" | "gradient" | "preset" =
+          (safeMergedCardBg?.type === "image" || safeMergedCardBg?.type === "color" || safeMergedCardBg?.type === "gradient" || safeMergedCardBg?.type === "preset")
+            ? safeMergedCardBg.type
+            : "color";
+        const safeCardBgForState = {
+          type: safeCardBgType,
+          value: safeMergedCardBg?.value || "#FAF8F5",
+        };
+
         const activeTpl = payload.templateId || designState.activeTemplateId || designState.templateId || (typeof templateIdQuery === "string" ? templateIdQuery : null);
         setDesignState((prev) => ({
           ...prev,
@@ -3230,7 +3263,8 @@ export default function InvitationStudio({
             ...(prev.card || {}),
             ...payload.card,
           },
-          backgroundImageUrl: payload.backgroundImageUrl || prev.backgroundImageUrl || null,
+          cardBg: safeCardBgForState,
+          backgroundImageUrl: safeMergedBackgroundImageUrl || prev.backgroundImageUrl || null,
           decorations: payload.decorations || prev.decorations || [],
         }));
 
@@ -3243,9 +3277,9 @@ export default function InvitationStudio({
                 templateName: payload.templateName,
                 textElements: payload.textElements,
                 card: payload.card,
-                cardBg: payload.cardBg,
-                background: payload.background,
-                backgroundImageUrl: payload.backgroundImageUrl || payload.cardBg?.value || null,
+                cardBg: safeMergedCardBg,
+                background: safeMergedCardBg,
+                backgroundImageUrl: safeMergedBackgroundImageUrl,
                 decorations: payload.decorations,
                 envelope: payload.envelope,
                 stageBackdrop: payload.stageBackdrop,
@@ -3431,14 +3465,21 @@ export default function InvitationStudio({
           }
           if (activeEventId) {
             try {
+              const cleanCardBg = (saved as any)?.cardBg && !isSnapshotOrRasterUrl((saved as any).cardBg.value)
+                ? (saved as any).cardBg
+                : (!isSnapshotOrRasterUrl(designState.cardBg.value) ? designState.cardBg : { type: "color", value: "#FAF8F5" });
+              const cleanBgImgUrl = (saved as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((saved as any).backgroundImageUrl)
+                ? (saved as any).backgroundImageUrl
+                : (!isSnapshotOrRasterUrl(designState.backgroundImageUrl) ? designState.backgroundImageUrl : null);
+
               const draftPayload = {
                   templateId: activeTplId,
                   templateName: (saved as any)?.templateName || designState.activeTemplateId,
                   textElements: designState.textLayers,
                   card: (saved as any)?.card || designState.card,
-                  cardBg: (saved as any)?.cardBg || designState.cardBg,
-                  background: (saved as any)?.background || designState.cardBg,
-                  backgroundImageUrl: designState.cardBg?.type === "image" ? designState.cardBg.value : ((saved as any)?.backgroundImageUrl || null),
+                  cardBg: cleanCardBg,
+                  background: cleanCardBg,
+                  backgroundImageUrl: cleanBgImgUrl,
                   decorations: (saved as any)?.decorations || designState.decorations || (designState.card as any)?.decorations || [],
                   envelope: designState.envelope,
                   stageBackdrop: designState.stageBackdrop,
@@ -5879,6 +5920,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}
@@ -5914,6 +5956,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}
@@ -5951,6 +5994,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}

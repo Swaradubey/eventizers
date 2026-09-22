@@ -42,6 +42,7 @@ import {
   Bold,
   Italic,
   Underline,
+  LayoutTemplate,
 } from "lucide-react";
 import eventService, { Event, RsvpSettingsData } from "../../services/eventService";
 import API, { getApiErrorMessage } from "../../services/api";
@@ -62,11 +63,11 @@ import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
 import { invitationStore } from "../../hooks/useInvitationStore";
-import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage } from "./layoutUtils";
+import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage, isSnapshotOrRasterUrl } from "./layoutUtils";
 import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
-export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy };
+export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, isSnapshotOrRasterUrl };
 
 // --- Types & Interfaces ---
 
@@ -520,19 +521,19 @@ export default function InvitationStudio({
     let cardBgType: "color" | "gradient" | "image" | "preset" = "color";
     let cardBgValue = "#faf8f5";
 
-    // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is)
-    if (pendingUploadUrl && isUserUploadedImage(pendingUploadUrl)) {
+    // Priority -1: User-uploaded invitation image (highest priority: renders 1:1 as-is, strictly excluding snapshots)
+    if (pendingUploadUrl && isUserUploadedImage(pendingUploadUrl) && !isSnapshotOrRasterUrl(pendingUploadUrl)) {
       cardBgType = "image";
       cardBgValue = pendingUploadUrl;
     }
     // Priority 0: Preserved 4-Layer state from invite (if it contains real artwork / image and NOT a snapshot)
-    // Accept any saved image URL — not just user uploads or .svg — to survive save/restore round-trips
+    // Accept any saved image URL — strictly excluding snapshots, data URLs, and blobs
     else if (
       invite?.cardBg &&
       invite.cardBg.type === "image" &&
       typeof invite.cardBg.value === "string" &&
       invite.cardBg.value.trim() !== "" &&
-      !invite.cardBg.value.includes("snapshot")
+      !isSnapshotOrRasterUrl(invite.cardBg.value)
     ) {
       cardBgType = "image";
       cardBgValue = invite.cardBg.value;
@@ -541,7 +542,7 @@ export default function InvitationStudio({
       invite.background.type === "image" &&
       typeof invite.background.value === "string" &&
       invite.background.value.trim() !== "" &&
-      !invite.background.value.includes("snapshot")
+      !isSnapshotOrRasterUrl(invite.background.value)
     ) {
       cardBgType = "image";
       cardBgValue = invite.background.value;
@@ -551,7 +552,7 @@ export default function InvitationStudio({
       (invite as any)?.backgroundImageUrl &&
       typeof (invite as any).backgroundImageUrl === "string" &&
       (invite as any).backgroundImageUrl.trim() !== "" &&
-      !(invite as any).backgroundImageUrl.includes("snapshot")
+      !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl)
     ) {
       cardBgType = "image";
       cardBgValue = (invite as any).backgroundImageUrl;
@@ -560,6 +561,7 @@ export default function InvitationStudio({
     else if (
       invite?.cardBg &&
       invite.cardBg.type !== "image" &&
+      !isSnapshotOrRasterUrl(invite.cardBg.value) &&
       !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.cardBg.type;
@@ -567,6 +569,7 @@ export default function InvitationStudio({
     } else if (
       invite?.background &&
       invite.background.type !== "image" &&
+      !isSnapshotOrRasterUrl(invite.background.value) &&
       !((tplConfig as any)?.card?.artworkUrl)
     ) {
       cardBgType = invite.background.type;
@@ -584,10 +587,10 @@ export default function InvitationStudio({
       cardBgValue = getCleanTemplateSvg(tplConfig.decorationImage) || tplConfig.decorationImage;
     }
     // Priority 3: Preserved color/gradient from invite
-    else if (invite?.cardBg && invite.cardBg.type !== "image") {
+    else if (invite?.cardBg && invite.cardBg.type !== "image" && !isSnapshotOrRasterUrl(invite.cardBg.value)) {
       cardBgType = invite.cardBg.type;
       cardBgValue = invite.cardBg.value;
-    } else if (invite?.background && invite.background.type !== "image") {
+    } else if (invite?.background && invite.background.type !== "image" && !isSnapshotOrRasterUrl(invite.background.value)) {
       cardBgType = invite.background.type;
       cardBgValue = invite.background.value;
     }
@@ -601,13 +604,13 @@ export default function InvitationStudio({
       cardBgType = "color";
       cardBgValue = tplConfig.backgroundColor;
     }
-    // Priority 6: User-uploaded invitation image (user-chosen, no template text overlap risk)
-    else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl)) {
+    // Priority 6: User-uploaded invitation image (user-chosen, strictly NOT a snapshot or data/blob capture)
+    else if (invite?.imageUrl && isUserUploadedImage(invite.imageUrl) && !isSnapshotOrRasterUrl(invite.imageUrl)) {
       cardBgType = "image";
       cardBgValue = invite.imageUrl;
     }
     // Priority 7: Clean template SVG fallback if invitation has a template image URL
-    else if (invite?.imageUrl && (invite.imageUrl.includes("/assets/templates/") || invite.imageUrl.endsWith(".svg"))) {
+    else if (invite?.imageUrl && !isSnapshotOrRasterUrl(invite.imageUrl) && (invite.imageUrl.includes("/assets/templates/") || invite.imageUrl.endsWith(".svg"))) {
       cardBgType = "image";
       cardBgValue = getCleanTemplateSvg(invite.imageUrl) || "#faf8f5";
     }
@@ -617,25 +620,18 @@ export default function InvitationStudio({
       cardBgValue = "#faf8f5";
     }
 
-    // Defensive check: if cardBgType is image, verify that cardBgValue is NOT a snapshot
-    if (cardBgType === "image" && cardBgValue) {
-      if (
-        !isUserUploadedImage(cardBgValue) &&
-        (cardBgValue.includes("snapshot") ||
-          cardBgValue.includes("canvas_snapshot") ||
-          cardBgValue.includes("invitation_snapshot") ||
-          cardBgValue.includes("invitation_cover"))
-      ) {
-        const fallbackArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || tplConfig?.decorationImage;
-        if (fallbackArt) {
-          cardBgValue = getCleanTemplateSvg(fallbackArt) || fallbackArt;
-        } else if (tplConfig?.backgroundColor) {
-          cardBgType = "color";
-          cardBgValue = tplConfig.backgroundColor;
-        } else {
-          cardBgType = "color";
-          cardBgValue = "#faf8f5";
-        }
+    // Defensive check: if cardBgValue is a snapshot string, data:image, or blob URL, fall back to clean template artwork/decoration
+    if (isSnapshotOrRasterUrl(cardBgValue) || (cardBgType === "image" && (!cardBgValue || isSnapshotOrRasterUrl(cardBgValue)))) {
+      const fallbackArt = (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || tplConfig?.decorationImage;
+      if (fallbackArt && !isSnapshotOrRasterUrl(fallbackArt)) {
+        cardBgType = "image";
+        cardBgValue = getCleanTemplateSvg(fallbackArt) || fallbackArt;
+      } else if (tplConfig?.backgroundColor) {
+        cardBgType = "color";
+        cardBgValue = tplConfig.backgroundColor;
+      } else {
+        cardBgType = "color";
+        cardBgValue = "#faf8f5";
       }
     }
 
@@ -922,7 +918,9 @@ export default function InvitationStudio({
         type: cardBgType,
         value: cardBgValue,
       },
-      backgroundImageUrl: cardBgType === "image" ? cardBgValue : ((invite as any)?.backgroundImageUrl || null),
+      backgroundImageUrl: cardBgType === "image" && !isSnapshotOrRasterUrl(cardBgValue)
+        ? cardBgValue
+        : ((invite as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl) ? (invite as any).backgroundImageUrl : null),
       stageBackdrop: pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
@@ -969,7 +967,20 @@ export default function InvitationStudio({
           propSelectedEventId ||
           new URLSearchParams(window.location.search).get("eventId");
         if (targetEvtId) {
-          const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+          // Pre-resolve the template ID so we can look up the template-scoped cache.
+          // This prevents reading the cached state of a different template.
+          const preResolvedTplId =
+            templateIdQuery ||
+            initialInvitation?.templateId ||
+            initialEvent?.selectedTemplateId ||
+            (initialEvent as any)?.templateId ||
+            sessionStorage.getItem("pending_template_id") ||
+            localStorage.getItem("pending_template_id");
+          const scopedKey = preResolvedTplId
+            ? `invitation_4layer_${targetEvtId}_${preResolvedTplId}`
+            : null;
+          const raw = (scopedKey && localStorage.getItem(scopedKey))
+            || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
           if (raw) cachedDraft = JSON.parse(raw);
         }
       } catch (e) { }
@@ -1017,6 +1028,16 @@ export default function InvitationStudio({
         persistentCanvasState?.cardBg ||
         initialInvitation?.cardBg ||
         undefined,
+      background:
+        cachedDraft?.background ||
+        persistentCanvasState?.background ||
+        (initialInvitation as any)?.background ||
+        undefined,
+      backgroundImageUrl:
+        (cachedDraft?.backgroundImageUrl && !isSnapshotOrRasterUrl(cachedDraft.backgroundImageUrl) ? cachedDraft.backgroundImageUrl : null) ||
+        (persistentCanvasState?.backgroundImageUrl && !isSnapshotOrRasterUrl(persistentCanvasState.backgroundImageUrl) ? persistentCanvasState.backgroundImageUrl : null) ||
+        ((initialInvitation as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((initialInvitation as any).backgroundImageUrl) ? (initialInvitation as any).backgroundImageUrl : null) ||
+        undefined,
       card:
         cachedDraft?.card ||
         persistentCanvasState?.card ||
@@ -1036,6 +1057,21 @@ export default function InvitationStudio({
         cachedDraft?.decorations ||
         persistentCanvasState?.decorations ||
         (initialInvitation as any)?.decorations ||
+        undefined,
+      backgroundLayer:
+        cachedDraft?.backgroundLayer ||
+        persistentCanvasState?.backgroundLayer ||
+        (initialInvitation as any)?.backgroundLayer ||
+        undefined,
+      frameLayers:
+        cachedDraft?.frameLayers ||
+        persistentCanvasState?.frameLayers ||
+        (initialInvitation as any)?.frameLayers ||
+        undefined,
+      innerCardLayer:
+        cachedDraft?.innerCardLayer ||
+        persistentCanvasState?.innerCardLayer ||
+        (initialInvitation as any)?.innerCardLayer ||
         undefined,
     };
 
@@ -1790,7 +1826,7 @@ export default function InvitationStudio({
       top: Math.min(92, targetY + 3),
     };
 
-    const nextLayers = [...designState.textLayers, duplicatedLayer];
+    const nextLayers = deduplicateTextLayers([...designState.textLayers, duplicatedLayer]);
     pushStateToHistory({
       ...designState,
       textLayers: nextLayers,
@@ -2005,11 +2041,17 @@ export default function InvitationStudio({
 
     setCurrentEvent(foundEvt);
 
-    // 1. Check local storage cache for saved 4-layer state
+    // 1. Check local storage cache for saved 4-layer state.
+    // Prefer the template-scoped cache key to avoid cross-template collisions.
     let cachedDraft: any = null;
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(`invitation_4layer_${eventId}`);
+        const evtTplId = foundEvt?.selectedTemplateId || (foundEvt as any)?.templateId;
+        const scopedKey = evtTplId
+          ? `invitation_4layer_${eventId}_${evtTplId}`
+          : null;
+        const raw = (scopedKey && localStorage.getItem(scopedKey))
+          || localStorage.getItem(`invitation_4layer_${eventId}`);
         if (raw) cachedDraft = JSON.parse(raw);
       } catch (e) { }
     }
@@ -2349,10 +2391,28 @@ export default function InvitationStudio({
       propSelectedEventId ||
       initialInvitation?.eventId;
 
+    // Pre-resolve the template ID so we can look up the template-scoped localStorage
+    // cache. This prevents reading the cached state of a different template.
+    const preResolvedTplId =
+      templateIdQuery ||
+      initialInvitation?.templateId ||
+      (currentEvent as any)?.selectedTemplateId ||
+      (currentEvent as any)?.templateId ||
+      initialEvent?.selectedTemplateId ||
+      (initialEvent as any)?.templateId ||
+      (typeof window !== "undefined"
+        ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+        : null);
+
     let cachedDraft: any = null;
     if (typeof window !== "undefined" && targetEvtId) {
       try {
-        const raw = localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+        // Prefer the template-scoped cache key to avoid cross-template collisions
+        const scopedKey = preResolvedTplId
+          ? `invitation_4layer_${targetEvtId}_${preResolvedTplId}`
+          : null;
+        const raw = (scopedKey && localStorage.getItem(scopedKey))
+          || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
         if (raw) cachedDraft = JSON.parse(raw);
       } catch (e) { }
     }
@@ -2453,6 +2513,13 @@ export default function InvitationStudio({
         teardownCanvasTextLayers();
       }
 
+      // Detect whether the template genuinely changed (e.g. user picked a new template
+      // from the gallery). When it has, we must always overwrite the live canvas state
+      // regardless of whether the layer IDs happen to match — the new template may have
+      // different backgrounds, envelope styling, effects, or card artwork even if some
+      // text layer IDs overlap.
+      const templateChanged = Boolean(targetTplId && targetTplId !== loadedTemplateIdRef.current);
+
       loadedTemplateIdRef.current = targetTplId || null;
       const freshState = createDesignStateFromTemplate(
         targetTplId,
@@ -2480,10 +2547,14 @@ export default function InvitationStudio({
         // Idempotency guard: if the live canvas already contains all incoming layer IDs
         // (i.e. the same layers are already mounted), preserve prev.textLayers as-is.
         // This prevents a second, identical write that causes the duplicate / ghost text.
+        // IMPORTANT: When the template has changed, this guard MUST be bypassed so the new
+        // template's layers, backgrounds, and styling are applied even if some layer IDs
+        // coincidentally overlap.
         const prevLayerIds = new Set(
           (prev.textLayers || []).map((l) => l.id).filter(Boolean)
         );
         const layersAlreadyLoaded =
+          !templateChanged &&
           incomingLayerIds.size > 0 &&
           incomingLayerIds.size === prevLayerIds.size &&
           Array.from(incomingLayerIds).every((id) => prevLayerIds.has(id));
@@ -2549,10 +2620,11 @@ export default function InvitationStudio({
       // Bump canvasKey so InvitationCanvasStage fully unmounts/remounts, clearing
       // stale text layer DOM nodes that can cause the "ghost text" duplication.
       setCanvasKey((k) => k + 1);
-      // Allow the re-hydration effect to run so the correct saved layers re-paint.
-      // We set isHydratingRef to false (not hasInitialHydratedRef) so the guard
-      // still blocks the very first mount but allows this explicit navigation remount.
-      isHydratingRef.current = false;
+      // IMPORTANT: Do NOT reset isHydratingRef.current here. The canvasKey remount
+      // already forces a clean render with the current designState.textLayers.
+      // Resetting this flag would allow the re-hydration effect to fire and
+      // inject fresh template-default layers on top of the existing saved layers,
+      // causing the duplicate text overlap bug.
     }
   }, [currentStepIndex]);
 
@@ -2581,11 +2653,33 @@ export default function InvitationStudio({
     loadedTemplateIdRef.current = templateId;
 
     // Create fresh design state from the selected template — isExplicitSwitch=true
-    // ensures saved draft layers are IGNORED and only template defaults are used
+    // ensures saved draft layers are IGNORED and only template defaults are used.
+    // Strip all stale visual properties from the old invitation so the new template's
+    // defaults for cardBg, envelope, effects, backside, card, decorations, and backdrop
+    // are used instead of the previous template's cached values.
+    const staleInvite = currentInvitation || initialInvitation;
+    const cleanInvite = staleInvite
+      ? {
+          ...staleInvite,
+          cardBg: undefined,
+          background: undefined,
+          backgroundImageUrl: undefined,
+          envelope: undefined,
+          effects: undefined,
+          backside: undefined,
+          card: undefined,
+          decorations: undefined,
+          textElements: undefined,
+          stageBackdrop: undefined,
+          canvasWorkspaceBg: undefined,
+          backdropBackground: undefined,
+          isLandscape: undefined,
+        }
+      : null;
     const nextState = createDesignStateFromTemplate(
       templateId,
       currentEvent || initialEvent,
-      currentInvitation || initialInvitation,
+      cleanInvite,
       true
     );
     const dedupedState = {
@@ -2601,17 +2695,37 @@ export default function InvitationStudio({
     setDesignState(dedupedState);
 
     // Persist the fresh template payload to localStorage so remounts load the
-    // correct data instead of falling back to stale cached drafts
+    // correct data instead of falling back to stale cached drafts.
+    // The cache key includes the templateId to prevent cross-template cache collision:
+    // switching templates never reads the cached state of a different template.
     if (typeof window !== "undefined") {
       try {
         const targetEvtId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+
+        // Clear stale pending_template_id from both storages so the hydration effect
+        // cannot revive the previous template on the next render cycle.
+        sessionStorage.removeItem("pending_template_id");
+        localStorage.removeItem("pending_template_id");
+
         if (targetEvtId) {
           const draftPayload = {
             templateId,
             textElements: dedupedState.textLayers,
             cardBg: dedupedState.cardBg,
             envelope: dedupedState.envelope,
+            effects: dedupedState.effects,
+            backside: dedupedState.backside,
+            card: dedupedState.card,
+            decorations: dedupedState.decorations,
+            stageBackdrop: dedupedState.stageBackdrop,
+            canvasWorkspaceBg: dedupedState.canvasWorkspaceBg,
+            backdropBackground: dedupedState.backdropBackground,
+            isLandscape: dedupedState.isLandscape,
           };
+          // Template-scoped key prevents cross-template cache collision
+          localStorage.setItem(`invitation_4layer_${targetEvtId}_${templateId}`, JSON.stringify(draftPayload));
+          // Also write to the unscoped key for backward compatibility with
+          // useInvitation.ts and other consumers that read the legacy key.
           localStorage.setItem(`invitation_4layer_${targetEvtId}`, JSON.stringify(draftPayload));
         }
         // Update URL query param to reflect new template
@@ -2695,6 +2809,16 @@ export default function InvitationStudio({
     isSnapshotInProgressRef.current = true;
     setIsGeneratingSnapshot(true);
     try {
+      // Phase 0: Defensive deduplication — ensure designState.textLayers has zero duplicates
+      // before extracting snapshot data. This prevents ghost text in the snapshot image when
+      // layers were inadvertently duplicated by state merges or bidirectional sync.
+      const snapshotLayers = deduplicateTextLayers(designState.textLayers);
+      if (snapshotLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: snapshotLayers }));
+        // Allow React to flush the deduplicated state
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 20)));
+      }
+
       // Phase 1: Extract clean, deduplicated data snapshot directly from designState
       // Strictly non-destructive: active canvas DOM is never touched and selectedTextId is never mutated!
       const cleanData = extractCleanSnapshotData(designState, 600);
@@ -2815,12 +2939,40 @@ export default function InvitationStudio({
     const tplConfig = getTemplateConfig(activeTplId);
     const templateName = tplConfig?.title || designState.activeTemplateId || "Custom Template";
 
-    const resolvedImageUrl = snapshotUrl
-      || (designState.cardBg.type === "image" && designState.cardBg.value ? designState.cardBg.value : null)
-      || currentInvitation?.imageUrl
-      || currentEvent?.coverImage
-      || initialEvent?.coverImage
-      || null;
+    // Clean original background image candidate: strictly excluding snapshots, canvas_snapshots, data URLs, and blobs
+    const cleanBgCandidate = (designState.cardBg?.type === "image" && !isSnapshotOrRasterUrl(designState.cardBg.value))
+      ? designState.cardBg.value
+      : null;
+
+    // Clean artwork candidate (pure frame/art, no baked text)
+    const rawArtworkCandidate =
+      ((designState.card as any)?.artworkUrl && !isSnapshotOrRasterUrl((designState.card as any).artworkUrl) ? (designState.card as any).artworkUrl : null) ||
+      ((tplConfig as any)?.card?.artworkUrl && !isSnapshotOrRasterUrl((tplConfig as any)?.card?.artworkUrl) ? (tplConfig as any).card.artworkUrl : null) ||
+      cleanBgCandidate ||
+      (tplConfig?.decorationImage && !isSnapshotOrRasterUrl(tplConfig.decorationImage) ? tplConfig.decorationImage : null) ||
+      null;
+
+    const effectiveArtworkUrl = rawArtworkCandidate ? (getCleanTemplateSvg(rawArtworkCandidate) || rawArtworkCandidate) : null;
+
+    // Explicit background image URL: strictly clean original base artwork or user upload, NEVER a snapshot
+    const explicitBackgroundImageUrl =
+      cleanBgCandidate ||
+      effectiveArtworkUrl ||
+      null;
+
+    // Clean background model: strictly store clean original background image or color in cardBg.value
+    const cleanCardBgType = cleanBgCandidate
+      ? "image"
+      : (designState.cardBg?.type === "image" ? "color" : (designState.cardBg?.type || "color"));
+
+    const cleanCardBgValue = cleanBgCandidate ||
+      (cleanCardBgType === "color" && !isSnapshotOrRasterUrl(designState.cardBg?.value) && typeof designState.cardBg?.value === "string" && !designState.cardBg.value.includes("/")
+        ? designState.cardBg.value
+        : (tplConfig?.backgroundColor || "#FAF8F5"));
+
+    // snapshotUrl or snapshotDataUrl is strictly passed to previewUrl / thumbnailUrl / email attachments
+    const cleanImageUrl = cleanBgCandidate || currentInvitation?.imageUrl || currentEvent?.coverImage || initialEvent?.coverImage || null;
+    const resolvedImageUrl = snapshotUrl || cleanImageUrl;
 
     const rsvpLayer = designState.textLayers.find((l) => l.id === "layer-rsvp" || l.key === "rsvp");
     const buttonText = rsvpLayer?.text?.trim() || currentInvitation?.buttonText || "RSVP Now";
@@ -2845,15 +2997,6 @@ export default function InvitationStudio({
       isFoil: l.isFoil || null,
     }));
 
-    const rawArtworkCandidate =
-      (designState.card as any)?.artworkUrl ||
-      (tplConfig as any)?.card?.artworkUrl ||
-      (designState.cardBg?.type === "image" && !isUserUploadedImage(designState.cardBg.value) ? designState.cardBg.value : null) ||
-      (tplConfig as any)?.decorationImage ||
-      null;
-
-    const effectiveArtworkUrl = rawArtworkCandidate ? (getCleanTemplateSvg(rawArtworkCandidate) || rawArtworkCandidate) : null;
-
     const decorativeImages: string[] = Array.from(
       new Set(
         [
@@ -2863,16 +3006,16 @@ export default function InvitationStudio({
           ...((designState.card as any)?.decorations || []),
           ...((tplConfig as any)?.card?.decorations || []),
           ...(designState.decorations || []),
-        ].filter(Boolean)
+        ].filter((img) => Boolean(img) && !isSnapshotOrRasterUrl(img))
       )
     );
 
     const fullCardModel = {
       ...((tplConfig as any)?.card || {}),
       ...(designState.card || {}),
-      artworkUrl: effectiveArtworkUrl || (designState.card as any)?.artworkUrl || (tplConfig as any)?.card?.artworkUrl || "",
+      artworkUrl: effectiveArtworkUrl || "",
       decorativeBorderSvgUrl: (designState.card as any)?.decorativeBorderSvgUrl || (tplConfig as any)?.card?.decorativeBorderSvgUrl || effectiveArtworkUrl || "",
-      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/") ? designState.cardBg.value : "#FAF8F5"),
+      backgroundColor: (designState.card as any)?.backgroundColor || tplConfig?.backgroundColor || (typeof cleanCardBgValue === "string" && !cleanCardBgValue.includes("/") ? cleanCardBgValue : "#FAF8F5"),
       aspectRatio: (designState.card as any)?.aspectRatio || activePreset.aspect || "5x7",
       decorations: decorativeImages,
       decorativeImages,
@@ -2882,20 +3025,15 @@ export default function InvitationStudio({
 
     const fullBackgroundModel = {
       ...designState.cardBg,
-      color: typeof designState.cardBg.value === "string" && !designState.cardBg.value.includes("/")
-        ? designState.cardBg.value
+      type: cleanCardBgType,
+      value: cleanCardBgValue,
+      color: typeof cleanCardBgValue === "string" && !cleanCardBgValue.includes("/")
+        ? cleanCardBgValue
         : (tplConfig?.backgroundColor || (designState.card as any)?.backgroundColor || "#FAF8F5"),
       pattern: (designState.cardBg as any)?.pattern || null,
       decorativeImages,
       artworkUrl: effectiveArtworkUrl,
     };
-
-    // Explicit background image URL for reliable round-trip persistence
-    const explicitBackgroundImageUrl =
-      (designState.cardBg?.type === "image" && designState.cardBg.value) ||
-      effectiveArtworkUrl ||
-      (designState.card as any)?.artworkUrl ||
-      null;
 
     return {
       id: currentInvitation?.id || undefined,
@@ -2963,6 +3101,10 @@ export default function InvitationStudio({
         previewUrl: resolvedImageUrl,
         thumbnailUrl: resolvedImageUrl,
         eventDetails: designState.eventDetails,
+        backgroundLayer: designState.backgroundLayer || null,
+        frameLayers: designState.frameLayers || null,
+        innerCardLayer: designState.innerCardLayer || null,
+        backgroundImageUrl: explicitBackgroundImageUrl,
       },
       designData: {
         ...(currentInvitation?.designData || {}),
@@ -3063,23 +3205,55 @@ export default function InvitationStudio({
 
       if (saved) {
         lastSavedInvitationIdRef.current = saved.id || payload.id || null;
+
+        // Deduplicate text layers before canvas remount to prevent ghost/double rendering.
+        // The canvasKey bump forces InvitationCanvasStage to fully unmount+remount;
+        // if stale duplicate layers exist in state, they would briefly render twice during
+        // the React reconciliation window, producing the visible "ghost text" overlap.
+        const dedupedLayers = deduplicateTextLayers(designState.textLayers);
+        if (dedupedLayers.length !== designState.textLayers.length) {
+          setDesignState((prev) => ({ ...prev, textLayers: dedupedLayers }));
+        }
+
         setCanvasKey((k) => k + 1);
 
         // Non-destructive state merge: retain complete card artwork, templateId, decorations
+        // Strictly protect cardBg, background, and backgroundImageUrl from taking any snapshot URL
+        const safeMergedCardBg = (payload.cardBg && !isSnapshotOrRasterUrl(payload.cardBg.value))
+          ? payload.cardBg
+          : (currentInvitation?.cardBg && !isSnapshotOrRasterUrl(currentInvitation.cardBg.value)
+              ? currentInvitation.cardBg
+              : payload.cardBg);
+
+        const safeMergedBackgroundImageUrl = (payload.backgroundImageUrl && !isSnapshotOrRasterUrl(payload.backgroundImageUrl))
+          ? payload.backgroundImageUrl
+          : null;
+
         const mergedInvite: Invitation = {
           ...currentInvitation,
           ...payload,
           ...saved,
+          imageUrl: saved?.imageUrl || payload.imageUrl || currentInvitation?.imageUrl,
           templateId: payload.templateId || saved.templateId || currentInvitation?.templateId || designState.activeTemplateId,
           card: payload.card || (currentInvitation as any)?.card || designState.card,
-          cardBg: payload.cardBg || currentInvitation?.cardBg || designState.cardBg,
-          background: payload.background || currentInvitation?.background || designState.cardBg,
+          cardBg: safeMergedCardBg,
+          background: safeMergedCardBg,
+          backgroundImageUrl: safeMergedBackgroundImageUrl,
           decorations: payload.decorations || (currentInvitation as any)?.decorations || designState.decorations,
           textElements: payload.textElements || designState.textLayers,
         };
         setCurrentInvitation(mergedInvite);
 
         // Keep active canvas state intact so decorative layers stay mounted
+        const safeCardBgType: "image" | "color" | "gradient" | "preset" =
+          (safeMergedCardBg?.type === "image" || safeMergedCardBg?.type === "color" || safeMergedCardBg?.type === "gradient" || safeMergedCardBg?.type === "preset")
+            ? safeMergedCardBg.type
+            : "color";
+        const safeCardBgForState = {
+          type: safeCardBgType,
+          value: safeMergedCardBg?.value || "#FAF8F5",
+        };
+
         const activeTpl = payload.templateId || designState.activeTemplateId || designState.templateId || (typeof templateIdQuery === "string" ? templateIdQuery : null);
         setDesignState((prev) => ({
           ...prev,
@@ -3089,23 +3263,23 @@ export default function InvitationStudio({
             ...(prev.card || {}),
             ...payload.card,
           },
-          backgroundImageUrl: payload.backgroundImageUrl || prev.backgroundImageUrl || null,
+          cardBg: safeCardBgForState,
+          backgroundImageUrl: safeMergedBackgroundImageUrl || prev.backgroundImageUrl || null,
           decorations: payload.decorations || prev.decorations || [],
         }));
 
-        // Persist rich 4-layer state to local storage cache for instant recovery
+        // Persist rich 4-layer state to local storage cache for instant recovery.
+        // Write to both the template-scoped key and the legacy unscoped key.
         if (typeof window !== "undefined" && payload.eventId) {
           try {
-            localStorage.setItem(
-              `invitation_4layer_${payload.eventId}`,
-              JSON.stringify({
+            const draftPayload = {
                 templateId: payload.templateId,
                 templateName: payload.templateName,
                 textElements: payload.textElements,
                 card: payload.card,
-                cardBg: payload.cardBg,
-                background: payload.background,
-                backgroundImageUrl: payload.backgroundImageUrl || payload.cardBg?.value || null,
+                cardBg: safeMergedCardBg,
+                background: safeMergedCardBg,
+                backgroundImageUrl: safeMergedBackgroundImageUrl,
                 decorations: payload.decorations,
                 envelope: payload.envelope,
                 stageBackdrop: payload.stageBackdrop,
@@ -3116,8 +3290,17 @@ export default function InvitationStudio({
                 aspectRatio: payload.aspectRatio,
                 backside: payload.backside,
                 designData: payload.designData,
-              })
-            );
+                backgroundLayer: designState.backgroundLayer || null,
+                frameLayers: designState.frameLayers || null,
+                innerCardLayer: designState.innerCardLayer || null,
+            };
+            const draftJson = JSON.stringify(draftPayload);
+            // Template-scoped key prevents cross-template cache collision
+            if (payload.templateId) {
+              localStorage.setItem(`invitation_4layer_${payload.eventId}_${payload.templateId}`, draftJson);
+            }
+            // Legacy unscoped key for backward compatibility
+            localStorage.setItem(`invitation_4layer_${payload.eventId}`, draftJson);
           } catch (e) { }
         }
 
@@ -3282,23 +3465,36 @@ export default function InvitationStudio({
           }
           if (activeEventId) {
             try {
-              localStorage.setItem(
-                `invitation_4layer_${activeEventId}`,
-                JSON.stringify({
+              const cleanCardBg = (saved as any)?.cardBg && !isSnapshotOrRasterUrl((saved as any).cardBg.value)
+                ? (saved as any).cardBg
+                : (!isSnapshotOrRasterUrl(designState.cardBg.value) ? designState.cardBg : { type: "color", value: "#FAF8F5" });
+              const cleanBgImgUrl = (saved as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((saved as any).backgroundImageUrl)
+                ? (saved as any).backgroundImageUrl
+                : (!isSnapshotOrRasterUrl(designState.backgroundImageUrl) ? designState.backgroundImageUrl : null);
+
+              const draftPayload = {
                   templateId: activeTplId,
                   templateName: (saved as any)?.templateName || designState.activeTemplateId,
                   textElements: designState.textLayers,
                   card: (saved as any)?.card || designState.card,
-                  cardBg: (saved as any)?.cardBg || designState.cardBg,
-                  background: (saved as any)?.background || designState.cardBg,
+                  cardBg: cleanCardBg,
+                  background: cleanCardBg,
+                  backgroundImageUrl: cleanBgImgUrl,
                   decorations: (saved as any)?.decorations || designState.decorations || (designState.card as any)?.decorations || [],
                   envelope: designState.envelope,
                   stageBackdrop: designState.stageBackdrop,
                   effects: designState.effects,
                   isLandscape: designState.isLandscape,
                   backside: designState.backside,
-                })
-              );
+                  backgroundLayer: designState.backgroundLayer || null,
+                  frameLayers: designState.frameLayers || null,
+                  innerCardLayer: designState.innerCardLayer || null,
+              };
+              const draftJson = JSON.stringify(draftPayload);
+              if (activeTplId) {
+                localStorage.setItem(`invitation_4layer_${activeEventId}_${activeTplId}`, draftJson);
+              }
+              localStorage.setItem(`invitation_4layer_${activeEventId}`, draftJson);
             } catch (e) { }
           }
           if (window.location.pathname !== "/dashboard/invitations") {
@@ -3441,6 +3637,15 @@ export default function InvitationStudio({
     setIsSendingEmails(true);
     let payload: any = null;
     try {
+      // Deduplicate text layers BEFORE snapshot capture and payload build to prevent
+      // duplicate/overlapping text from bleeding into the generated snapshot image.
+      const dedupedSendLayers = deduplicateTextLayers(designState.textLayers);
+      if (dedupedSendLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: dedupedSendLayers }));
+        // Wait for React to flush the deduplicated state before snapshot capture
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
+      }
+
       // Direct clean snapshot capture: Never tear down or re-hydrate text during snapshot generation
       // Take snapshot directly from the existing live canvas/DOM to permanently eliminate text duplication
       const snap = await generateSnapshot();
@@ -3662,6 +3867,14 @@ export default function InvitationStudio({
     setIsSendingEmails(true);
     let payload: any = null;
     try {
+      // Deduplicate text layers before snapshot capture and payload build to prevent
+      // duplicate/overlapping text from bleeding into the generated snapshot image.
+      const dedupedDispatchLayers = deduplicateTextLayers(designState.textLayers);
+      if (dedupedDispatchLayers.length !== designState.textLayers.length) {
+        setDesignState((prev) => ({ ...prev, textLayers: dedupedDispatchLayers }));
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
+      }
+
       // 1. Prepare recipients
       const manualEmails = guestEmailsInput
         .split(/[\n,;]+/)
@@ -3712,8 +3925,8 @@ export default function InvitationStudio({
       const packagedCanvasState = {
         templateId: effectiveTplId,
         activeTemplateId: effectiveTplId,
-        textLayers: designState.textLayers,
-        layers: designState.textLayers,
+        textLayers: dedupedDispatchLayers,
+        layers: dedupedDispatchLayers,
         card: designState.card,
         cardBg: designState.cardBg,
         envelope: designState.envelope,
@@ -3734,8 +3947,8 @@ export default function InvitationStudio({
         templateId: effectiveTplId,
         selectedTemplateId: effectiveTplId,
         canvasState: packagedCanvasState,
-        layers: designState.textLayers,
-        textElements: designState.textLayers,
+        layers: dedupedDispatchLayers,
+        textElements: dedupedDispatchLayers,
         previewUrl: resolvedSnapshot,
         thumbnailUrl: resolvedSnapshot,
         snapshot: resolvedSnapshot,
@@ -3809,7 +4022,11 @@ export default function InvitationStudio({
             } : prev));
           }
           if (typeof window !== "undefined") {
-            localStorage.setItem(`invitation_4layer_${targetEventId}`, JSON.stringify(packagedCanvasState));
+            const draftJson = JSON.stringify(packagedCanvasState);
+            if (effectiveTplId) {
+              localStorage.setItem(`invitation_4layer_${targetEventId}_${effectiveTplId}`, draftJson);
+            }
+            localStorage.setItem(`invitation_4layer_${targetEventId}`, draftJson);
           }
         } catch (pubErr) {
           console.warn("[handleDispatchInvitations] Auto-publish event on fly notice:", pubErr);
@@ -5703,6 +5920,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}
@@ -5738,6 +5956,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[48%] lg:w-[46%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}
@@ -5775,6 +5994,7 @@ export default function InvitationStudio({
           <div className="w-full md:w-[44%] lg:w-[42%] h-[400px] sm:h-[480px] md:h-full flex flex-col shrink-0">
             <InvitationWorkflowPreviewPane
               designState={designState}
+              previewUrl={snapshotDataUrl || null}
               allowMaybe={rsvpOptions.allowMaybe}
               hostDetails={hostDetails}
               guestCount={eventGuests.length}
@@ -6117,7 +6337,10 @@ export default function InvitationStudio({
         }}
       />
 
-      {/* Offscreen Pure-Data Isolated Snapshot Container */}
+      {/* Offscreen Pure-Data Isolated Snapshot Container
+          CRITICAL: CSS containment and stacking context isolation prevent html-to-image's
+          SVG foreignObject serialization from accidentally capturing live canvas DOM nodes
+          or bleeding text layers into the snapshot output. */}
       {isolatedSnapshotData && (
         <div
           id="isolated-snapshot-container"
@@ -6132,6 +6355,8 @@ export default function InvitationStudio({
             opacity: 1,
             zIndex: -9999,
             overflow: "hidden",
+            isolation: "isolate",
+            contain: "strict layout style paint",
           }}
           aria-hidden="true"
         >
@@ -6144,7 +6369,7 @@ export default function InvitationStudio({
       )}
 
       {/* ========================================================================= */}
-      {/* TEMPLATE GALLERY MODAL — Shown on fresh session / after send cleanup     */}
+      {/* TEMPLATE GALLERY MODAL — Redirects to AI Assistant for template selection */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {isTemplateGalleryOpen && (
@@ -6164,113 +6389,53 @@ export default function InvitationStudio({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl w-[90vw] max-w-md flex flex-col overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Choose a Template</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Select a design to start creating your invitation</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Pick a design to start creating your invitation</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsTemplateGalleryOpen(false)}
                   className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                  title="Close template gallery"
+                  title="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Template Grid */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {NEW_TEMPLATES.map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      type="button"
-                      onClick={() => {
-                        handleSelectTemplate(tpl.id);
-                        setIsTemplateGalleryOpen(false);
-                      }}
-                      className="group relative flex flex-col rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:bg-slate-50 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
-                    >
-                      {/* Preview thumbnail with text layers */}
-                      <div
-                        className="w-full aspect-[5/7] rounded-t-xl overflow-hidden relative"
-                        style={{
-                          background: tpl.gradient || tpl.backgroundColor || "#f1f5f9",
-                        }}
-                      >
-                        {tpl.image ? (
-                          <img
-                            src={tpl.image}
-                            alt={tpl.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl">
-                            {tpl.emoji || "🎉"}
-                          </div>
-                        )}
-                        {/* Text layer preview overlay */}
-                        {tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0 && (
-                          <div className="absolute inset-0 pointer-events-none p-2">
-                            {tpl.defaultTextLayers.slice(0, 5).map((layer) => {
-                              const casingVal = (layer as any).casing as string | undefined;
-                              const casingStyle: React.CSSProperties =
-                                casingVal === "uppercase" ? { textTransform: "uppercase" }
-                                : casingVal === "lowercase" ? { textTransform: "lowercase" }
-                                : casingVal === "capitalize" ? { textTransform: "capitalize" }
-                                : {};
-                              return (
-                                <div
-                                  key={layer.id}
-                                  className="absolute whitespace-pre-line"
-                                  style={{
-                                    top: `${layer.top}%`,
-                                    left: `${layer.left}%`,
-                                    transform: "translate(-50%, -50%)",
-                                    fontFamily: layer.fontFamily,
-                                    fontSize: `${Math.max(6, Math.round(layer.fontSize * 0.32))}px`,
-                                    color: layer.color,
-                                    fontWeight: layer.fontWeight,
-                                    textAlign: layer.textAlign,
-                                    lineHeight: (layer as any).lineHeight || 1.2,
-                                    maxWidth: "90%",
-                                    overflow: "hidden",
-                                    ...casingStyle,
-                                  }}
-                                >
-                                  {layer.text}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      {/* Label */}
-                      <div className="px-3 py-2.5 text-left">
-                        <p className="text-xs font-semibold text-slate-800 truncate">{tpl.title}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[10px] font-medium text-slate-400">{tpl.category}</span>
-                          {tpl.badge && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                              tpl.badge === "PREMIUM"
-                                ? "bg-purple-100 text-purple-700"
-                                : tpl.badge === "Trending"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-emerald-100 text-emerald-700"
-                            }`}>
-                              {tpl.badge}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+              {/* Simple action to navigate to AI Assistant */}
+              <div className="flex flex-col items-center justify-center px-6 py-10 gap-4">
+                <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-indigo-600" />
                 </div>
+                <p className="text-sm text-slate-600 text-center max-w-xs">
+                  Browse curated templates or let AI create a custom design for your event.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetEventId = currentEvent?.id || initialEvent?.id || propSelectedEventId;
+                    const params = new URLSearchParams({ returnTo: "canvas" });
+                    if (targetEventId) params.set("eventId", targetEventId);
+                    setIsTemplateGalleryOpen(false);
+                    router.push(`/dashboard/ai-assistant?${params.toString()}`);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors cursor-pointer shadow-md shadow-indigo-200"
+                >
+                  <LayoutTemplate className="w-4 h-4" />
+                  Choose Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateGalleryOpen(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  Maybe later
+                </button>
               </div>
             </motion.div>
           </motion.div>

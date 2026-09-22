@@ -8,7 +8,7 @@ import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers } fr
 import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas } from "./canvasBackgroundUtils";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
-import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export { teardownCanvasTextLayers };
@@ -131,10 +131,19 @@ export default function InvitationCanvasStage({
     };
   }, [effectiveCardRef, maxW, isLandscape]);
 
-  // Deduplicate incoming text layers before layout and rendering
+  // Deduplicate incoming text layers before layout and rendering.
+  // CRITICAL: If the card background is detected as a flattened snapshot, suppress dynamic text layers
+  // to strictly prevent duplicate/overlapping text rendering.
+  const isSnapshotCardBg =
+    isSnapshotOrRasterUrl(config.cardBg?.value) ||
+    isSnapshotOrRasterUrl((config as any)?.backgroundImageUrl);
+
   const deduplicatedLayers = useMemo(() => {
+    if (isSnapshotCardBg) {
+      return [];
+    }
     return deduplicateTextLayers(config.textLayers || []);
-  }, [config.textLayers]);
+  }, [config.textLayers, isSnapshotCardBg]);
 
   // Compute container-proportional typography and anti-collision layer positions
   const computedLayers = useMemo(() => {
@@ -420,10 +429,7 @@ export default function InvitationCanvasStage({
     if (
       trimmed === "" ||
       trimmed.startsWith("#") ||
-      trimmed.includes("snapshot") ||
-      trimmed.includes("canvas_snapshot") ||
-      trimmed.includes("invitation_snapshot") ||
-      trimmed.includes("invitation_cover")
+      isSnapshotOrRasterUrl(trimmed)
     ) {
       return null;
     }
@@ -436,16 +442,20 @@ export default function InvitationCanvasStage({
   const rawCardBgValue = rawCardBg?.type === "image" ? rawCardBg.value : (typeof rawCardBg === "string" ? rawCardBg : null);
   const rawBgValue = rawBg?.type === "image" ? rawBg.value : (rawBg?.image || rawBg?.url || (typeof rawBg === "string" ? rawBg : null));
 
-  const validBgVal = isUserUploadedImage(rawCardBgValue) ? rawCardBgValue : sanitizeBackgroundCandidate(rawCardBgValue);
-  const validFallbackBgVal = isUserUploadedImage(rawBgValue) ? rawBgValue : sanitizeBackgroundCandidate(rawBgValue);
+  const validBgVal = (isUserUploadedImage(rawCardBgValue) && !isSnapshotOrRasterUrl(rawCardBgValue))
+    ? rawCardBgValue
+    : sanitizeBackgroundCandidate(rawCardBgValue);
+  const validFallbackBgVal = (isUserUploadedImage(rawBgValue) && !isSnapshotOrRasterUrl(rawBgValue))
+    ? rawBgValue
+    : sanitizeBackgroundCandidate(rawBgValue);
 
   const bgImg = validBgVal || validFallbackBgVal || null;
 
   const cardImageRaw =
-    uploadedImageSrc ||
-    (config as any)?.backgroundImageUrl ||
-    config.card?.artworkUrl ||
-    (config.card as any)?.borderIllustration ||
+    (uploadedImageSrc && !isSnapshotOrRasterUrl(uploadedImageSrc) ? uploadedImageSrc : null) ||
+    sanitizeBackgroundCandidate((config as any)?.backgroundImageUrl) ||
+    sanitizeBackgroundCandidate(config.card?.artworkUrl) ||
+    sanitizeBackgroundCandidate((config.card as any)?.borderIllustration) ||
     bgImg ||
     (fallbackTpl as any)?.card?.borderIllustration ||
     (fallbackTpl as any)?.card?.artworkUrl ||

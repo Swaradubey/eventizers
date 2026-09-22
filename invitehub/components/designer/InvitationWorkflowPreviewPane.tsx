@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Monitor, Smartphone, User, Users, MapPin } from "lucide-react";
+import { Monitor, Smartphone, User, Users, MapPin, Sparkles } from "lucide-react";
 import InvitationCanvasStage from "./InvitationCanvasStage";
 import { StudioDesignState, teardownCanvasTextLayers } from "./InvitationStudio";
-import { deduplicateTextLayers } from "./layoutUtils";
+import { deduplicateTextLayers, isSnapshotOrRasterUrl, getCleanTemplateSvg } from "./layoutUtils";
+import { getTemplateConfig } from "../../lib/newTemplatesData";
 import { HostDetailsData } from "./InvitationWorkflowDetails";
 
 interface InvitationWorkflowPreviewPaneProps {
@@ -13,6 +14,8 @@ interface InvitationWorkflowPreviewPaneProps {
   hostDetails?: HostDetailsData;
   onRsvpClick?: (status: "yes" | "maybe" | "no") => void;
   guestCount?: number;
+  previewUrl?: string | null;
+  snapshotUrl?: string | null;
 }
 
 export default function InvitationWorkflowPreviewPane({
@@ -21,14 +24,64 @@ export default function InvitationWorkflowPreviewPane({
   hostDetails,
   onRsvpClick,
   guestCount = 0,
+  previewUrl,
+  snapshotUrl,
 }: InvitationWorkflowPreviewPaneProps) {
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
 
-  const cleanConfig = useMemo(() => ({
-    ...designState,
-    textLayers: deduplicateTextLayers(designState.textLayers || []),
-  }), [designState]);
+  // Candidate flattened snapshot URL (if present)
+  const effectiveSnapshotUrl =
+    (previewUrl && !previewUrl.startsWith("#") ? previewUrl : null) ||
+    (snapshotUrl && !snapshotUrl.startsWith("#") ? snapshotUrl : null) ||
+    ((designState as any)?.previewUrl && !(designState as any).previewUrl.startsWith("#") ? (designState as any).previewUrl : null) ||
+    ((designState as any)?.snapshotUrl && !(designState as any).snapshotUrl.startsWith("#") ? (designState as any).snapshotUrl : null) ||
+    (isSnapshotOrRasterUrl(designState.cardBg?.value) ? designState.cardBg.value : null) ||
+    (isSnapshotOrRasterUrl(designState.backgroundImageUrl) ? designState.backgroundImageUrl : null) ||
+    null;
+
+  // View option: "live" (Option B: clean artwork background + dynamic text) vs "snapshot" (Option A: flat snapshot image without text overlays)
+  const [activeOption, setActiveOption] = useState<"live" | "snapshot">("live");
+
+  // Option B sanitized design state: strictly guarantees clean template artwork / SVG background with dynamic text layers
+  const cleanConfig = useMemo(() => {
+    const rawBgVal = designState.cardBg?.value;
+    const isBgSnapshot = isSnapshotOrRasterUrl(rawBgVal);
+    const rawBackdropImg = designState.backgroundImageUrl;
+    const isBackdropSnapshot = isSnapshotOrRasterUrl(rawBackdropImg);
+
+    const activeTplId = designState.activeTemplateId || designState.templateId;
+    const tplConfig = activeTplId ? getTemplateConfig(activeTplId) : null;
+    const cleanArtwork =
+      (tplConfig as any)?.card?.borderIllustration ||
+      (tplConfig as any)?.card?.artworkUrl ||
+      tplConfig?.decorationImage;
+
+    const safeBgValue = isBgSnapshot
+      ? (cleanArtwork ? getCleanTemplateSvg(cleanArtwork) || cleanArtwork : (tplConfig?.backgroundColor || "#faf8f5"))
+      : rawBgVal;
+
+    const safeCardBg = isBgSnapshot
+      ? {
+          ...designState.cardBg,
+          type: (cleanArtwork ? "image" : "color") as "image" | "color",
+          value: safeBgValue,
+        }
+      : designState.cardBg;
+
+    return {
+      ...designState,
+      cardBg: safeCardBg,
+      backgroundImageUrl: isBackdropSnapshot ? (cleanArtwork || null) : rawBackdropImg,
+      card: {
+        ...(designState.card || {}),
+        artworkUrl: isSnapshotOrRasterUrl(designState.card?.artworkUrl)
+          ? (cleanArtwork || "")
+          : designState.card?.artworkUrl,
+      },
+      textLayers: deduplicateTextLayers(designState.textLayers || []),
+    };
+  }, [designState]);
 
   useEffect(() => {
     if (!allowMaybe && selectedRsvp === "maybe") {
@@ -78,65 +131,118 @@ export default function InvitationWorkflowPreviewPane({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f4f4f1] border-r border-slate-200/90 overflow-hidden select-none relative">
-      {/* Top View Mode Switcher */}
-      <div className="h-11 bg-white/90 backdrop-blur-xs border-b border-slate-200/80 px-4 flex items-center justify-center gap-4 flex-shrink-0 z-10 shadow-2xs">
-        <button
-          type="button"
-          onClick={() => setViewMode("desktop")}
-          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-            viewMode === "desktop"
-              ? "text-slate-900 bg-slate-100 ring-1 ring-slate-300 font-bold"
-              : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-          }`}
-          title="Desktop preview"
-        >
-          <Monitor className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("mobile")}
-          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-            viewMode === "mobile"
-              ? "text-slate-900 bg-slate-100 ring-1 ring-slate-300 font-bold"
-              : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-          }`}
-          title="Mobile preview"
-        >
-          <Smartphone className="w-4 h-4" />
-        </button>
+      {/* Top View Mode Switcher + Optional Option A / Option B Toggle */}
+      <div className="h-11 bg-white/90 backdrop-blur-xs border-b border-slate-200/80 px-4 flex items-center justify-between gap-2 flex-shrink-0 z-10 shadow-2xs">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("desktop")}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              viewMode === "desktop"
+                ? "text-slate-900 bg-slate-100 ring-1 ring-slate-300 font-bold"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+            title="Desktop preview"
+          >
+            <Monitor className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("mobile")}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              viewMode === "mobile"
+                ? "text-slate-900 bg-slate-100 ring-1 ring-slate-300 font-bold"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+            title="Mobile preview"
+          >
+            <Smartphone className="w-4 h-4" />
+          </button>
+        </div>
+
+        {effectiveSnapshotUrl && (
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveOption("live")}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                activeOption === "live"
+                  ? "bg-white text-indigo-700 shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Live Card
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveOption("snapshot")}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                activeOption === "snapshot"
+                  ? "bg-white text-indigo-700 shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Snapshot
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Center Invitation Card Stage + Event Details Sections */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-3 flex flex-col items-center relative">
-        {/* Card Preview */}
+        {/* Card Preview: Renders strictly Option A (Flat image without dynamic text) OR Option B (Clean template artwork with dynamic text) */}
         <div className="w-full flex items-center justify-center mb-4">
           {viewMode === "desktop" ? (
             <div className="w-full max-w-[460px] flex items-center justify-center transition-all duration-300">
               <div className="w-full shadow-2xl rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
-                <InvitationCanvasStage
-                  key={`workflow-preview-desktop-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
-                  config={cleanConfig}
-                  readOnly={true}
-                  maxW={460}
-                  zoom={100}
-                  aspectRatio="5/7"
-                  className="w-full !p-0"
-                />
+                {activeOption === "snapshot" && effectiveSnapshotUrl ? (
+                  /* Option A: The flattened preview image WITHOUT any dynamic text overlays */
+                  <div className="w-full aspect-[5/7] max-h-[640px] flex items-center justify-center bg-white overflow-hidden p-2">
+                    <img
+                      src={effectiveSnapshotUrl}
+                      alt="Rendered Invitation Preview"
+                      className="w-full h-full object-contain select-none pointer-events-none"
+                    />
+                  </div>
+                ) : (
+                  /* Option B: The clean template artwork background WITH dynamic text layers */
+                  <InvitationCanvasStage
+                    key={`workflow-preview-desktop-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
+                    config={cleanConfig}
+                    readOnly={true}
+                    maxW={460}
+                    zoom={100}
+                    aspectRatio="5/7"
+                    className="w-full !p-0"
+                  />
+                )}
               </div>
             </div>
           ) : (
             <div className="w-[320px] rounded-[36px] p-2.5 bg-slate-900 shadow-2xl ring-1 ring-slate-800/80 transition-all duration-300">
               <div className="w-24 h-4 bg-slate-800 rounded-full mx-auto mb-2" />
               <div className="rounded-[26px] overflow-hidden bg-white max-h-[520px] overflow-y-auto">
-                <InvitationCanvasStage
-                  key={`workflow-preview-mobile-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
-                  config={cleanConfig}
-                  readOnly={true}
-                  maxW={300}
-                  zoom={90}
-                  aspectRatio="5/7"
-                  className="w-full !p-0"
-                />
+                {activeOption === "snapshot" && effectiveSnapshotUrl ? (
+                  /* Option A (Mobile): The flattened preview image WITHOUT any dynamic text overlays */
+                  <div className="w-full aspect-[5/7] max-h-[520px] flex items-center justify-center bg-white overflow-hidden p-2">
+                    <img
+                      src={effectiveSnapshotUrl}
+                      alt="Rendered Invitation Preview"
+                      className="w-full h-full object-contain select-none pointer-events-none"
+                    />
+                  </div>
+                ) : (
+                  /* Option B (Mobile): The clean template artwork background WITH dynamic text layers */
+                  <InvitationCanvasStage
+                    key={`workflow-preview-mobile-${cleanConfig.activeTemplateId || cleanConfig.templateId || "card"}-${(cleanConfig.textLayers || []).length}-${(cleanConfig.textLayers || []).map((l: any) => l.id || "").join("_")}`}
+                    config={cleanConfig}
+                    readOnly={true}
+                    maxW={300}
+                    zoom={90}
+                    aspectRatio="5/7"
+                    className="w-full !p-0"
+                  />
+                )}
               </div>
             </div>
           )}
