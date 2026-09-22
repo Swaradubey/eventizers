@@ -77,17 +77,30 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     resolvedTemplate.envelopeLiner ||
     "linear-gradient(135deg, #D4AF37 0%, #AA771C 100%)";
 
+  // Parse canvasState if available
+  let canvasState: any = null;
+  if (event?.canvasState) {
+    canvasState = typeof event.canvasState === 'string' 
+      ? (() => { try { return JSON.parse(event.canvasState); } catch(e) { return null; } })()
+      : event.canvasState;
+  }
+
   // 3. Resolve Card Surface
-  const cardData = resolvedTemplate.card || {};
+  const cardData = canvasState?.card || resolvedTemplate.card || {};
   const cssConfig = cardData.cssConfig;
 
-  const cardBg =
+  let cardBg =
+    canvasState?.cardBg?.value ||
+    canvasState?.background?.value ||
+    canvasState?.innerCardLayer?.backgroundColor ||
     resolvedTemplate.innerCardLayer?.backgroundColor ||
     cssConfig?.backgroundGradient ||
     cssConfig?.backgroundColor ||
     cardData.backgroundColor ||
     resolvedTemplate.backgroundColor ||
     "#FFFFFF";
+    
+  if (typeof cardBg === 'object') cardBg = cardBg.value || "#FFFFFF";
 
   const borderConfig = cssConfig?.border || resolvedTemplate.innerCardLayer?.border;
   const cardBorder =
@@ -107,9 +120,10 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   // Artwork resolution
   const rawCardArtwork =
-    cardData.borderIllustration ||
+    canvasState?.backgroundImageUrl ||
     cardData.artworkUrl ||
     cardData.decorativeBorderSvgUrl ||
+    cardData.borderIllustration ||
     resolvedTemplate.borderIllustration ||
     resolvedTemplate.artworkUrl ||
     resolvedTemplate.decorationImage ||

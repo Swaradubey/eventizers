@@ -175,9 +175,10 @@ function EventsPageContent() {
     router.push("/dashboard/ai-assistant");
   };
 
-  // Navigate to edit dashboard for event
+  // Navigate directly to the Canvas Design Editor for event
   const handleEditClick = (event: Event) => {
-    router.push(`/events/${event.id}/edit`);
+    const tplId = event.selectedTemplateId || event.templateId || "";
+    router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
   };
 
   // Handle Delete
@@ -772,6 +773,12 @@ function EventsPageContent() {
                     <EviteCardPreview
                       event={viewingEvent}
                       templateId={viewingEvent.selectedTemplateId || viewingEvent.templateId}
+                      overrideTextLayers={
+                        (typeof viewingEvent.canvasState === 'string' ? (() => { try { return JSON.parse(viewingEvent.canvasState); } catch(e) { return null; } })() : viewingEvent.canvasState)?.textLayers ||
+                        (typeof viewingEvent.canvasState === 'string' ? (() => { try { return JSON.parse(viewingEvent.canvasState); } catch(e) { return null; } })() : viewingEvent.canvasState)?.layers ||
+                        (typeof viewingEvent.canvasState === 'string' ? (() => { try { return JSON.parse(viewingEvent.canvasState); } catch(e) { return null; } })() : viewingEvent.canvasState)?.textElements ||
+                        ((viewingEvent as any).invitation as any)?.textElements
+                      }
                       aspectRatio="5x7"
                       cardOnly={false}
                     />

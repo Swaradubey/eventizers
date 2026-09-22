@@ -140,27 +140,30 @@ export default function EventThumbnail({
     event.invitation?.templateId ||
     null;
 
-  // 1. Resolve raw candidate image across both draft and active states
+  // Attempt to resolve the most accurate, high-res artwork or cover image
   const rawImage =
-    event.previewUrl ||
-    event.templatePreviewUrl ||
-    event.previewImage ||
-    event.thumbnail ||
-    event.thumbnailUrl ||
-    event.imageUrl ||
-    event.coverImage ||
-    event.template?.previewUrl ||
-    event.template?.thumbnailUrl ||
-    event.template?.imageUrl ||
-    event.invitation?.imageUrl ||
-    event.invitation?.previewUrl ||
-    parsedCanvasState?.previewUrl ||
-    parsedCanvasState?.thumbnailUrl ||
-    parsedCanvasState?.imageUrl ||
-    event.designData?.previewUrl ||
-    event.uploadedFileUrl ||
+    parsedCanvasState?.backgroundImageUrl ||
+    (parsedCanvasState?.cardBg?.type === 'image' ? parsedCanvasState.cardBg.value : null) ||
+    event?.previewImage ||
+    event?.templatePreviewUrl ||
+    event?.previewUrl ||
+    event?.imageUrl ||
+    event?.coverImage ||
+    event?.thumbnailUrl ||
+    event?.thumbnail ||
+    event?.uploadedFileUrl ||
+    event?.invitation?.previewUrl ||
+    event?.invitation?.imageUrl ||
+    event?.template?.previewUrl ||
+    event?.template?.thumbnailUrl ||
+    event?.template?.imageUrl ||
+    event?.designData?.previewUrl ||
+    event?.designData?.coverImage ||
+    (typeof event?.canvasState === 'object' && (event.canvasState as any)?.previewUrl) ||
+    (typeof event?.canvasState === 'object' && (event.canvasState as any)?.thumbnailUrl) ||
+    (typeof event?.canvasState === 'object' && (event.canvasState as any)?.imageUrl) ||
     getTemplateImage(candidateTemplateId) ||
-    "";
+    "/assets/templates/birthday.jpg";
 
   // 2. Format with URL resolver
   const resolvedUrl = getImageUrl(rawImage);

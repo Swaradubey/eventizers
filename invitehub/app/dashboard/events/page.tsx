@@ -175,9 +175,10 @@ function EventsPageContent() {
     router.push("/dashboard/ai-assistant");
   };
 
-  // Navigate to edit dashboard for event
+  // Navigate directly to the Canvas Design Editor for event
   const handleEditClick = (event: Event) => {
-    router.push(`/events/${event.id}/edit`);
+    const tplId = event.selectedTemplateId || event.templateId || "";
+    router.push(`/dashboard/invitations?eventId=${event.id}${tplId ? `&templateId=${encodeURIComponent(tplId)}` : ""}&studio=true`);
   };
 
   // Handle Delete

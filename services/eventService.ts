@@ -145,13 +145,6 @@ export interface DesignSettingsData {
   updatedAt?: string;
 }
 
-export interface DesignSettingsResponse {
-  success: boolean;
-  design: DesignSettingsData;
-  designSettings?: DesignSettingsData;
-  message?: string;
-}
-
 export const getEvents = async (page?: number, limit?: number, status?: string): Promise<EventsResponse> => {
   const params: Record<string, any> = {};
   if (page) params.page = page;
@@ -208,61 +201,11 @@ export const getRsvpSettings = async (eventId: string): Promise<RsvpSettingsResp
   return response.data;
 };
 
-export const updateRsvpSettings = async (
-  eventId: string,
-  settings: Partial<RsvpSettingsData>
-): Promise<RsvpSettingsResponse> => {
-  const response = await API.put<RsvpSettingsResponse>(`/events/${eventId}/rsvp-settings`, settings);
-  return response.data;
-};
-
 export const patchRsvpSettings = async (
   eventId: string,
   settings: Partial<RsvpSettingsData>
 ): Promise<RsvpSettingsResponse> => {
   const response = await API.patch<RsvpSettingsResponse>(`/events/${eventId}/rsvp-settings`, settings);
-  return response.data;
-};
-
-export const getDesignSettings = async (eventId: string): Promise<DesignSettingsResponse> => {
-  const response = await API.get<DesignSettingsResponse>(`/events/${eventId}/design`);
-  return response.data;
-};
-
-export const updateDesignSettings = async (
-  eventId: string,
-  settings: Partial<DesignSettingsData>
-): Promise<DesignSettingsResponse> => {
-  const response = await API.put<DesignSettingsResponse>(`/events/${eventId}/design`, settings);
-  return response.data;
-};
-
-export interface SendInvitationsOptions {
-  personalizedGreeting: boolean;
-  calendarLink: boolean;
-  mapLink: boolean;
-  qrCode: boolean;
-}
-
-export interface SendInvitationsPayload {
-  deliveryMethod: "email" | "sms" | "whatsapp" | "all";
-  options: SendInvitationsOptions;
-  testEmail?: string;
-}
-
-export interface SendInvitationsResponse {
-  success: boolean;
-  message: string;
-  recipientCount?: number;
-  previewUrl?: string | null;
-  error?: string;
-}
-
-export const sendInvitations = async (
-  eventId: string,
-  payload: SendInvitationsPayload
-): Promise<SendInvitationsResponse> => {
-  const response = await API.post<SendInvitationsResponse>(`/events/${eventId}/send-invitations`, payload);
   return response.data;
 };
 
@@ -287,15 +230,6 @@ export interface RemindersResponse {
 
 export const getReminders = async (eventId: string): Promise<RemindersResponse> => {
   const response = await API.get<RemindersResponse>(`/events/${eventId}/reminders`);
-  return response.data;
-};
-
-export const updateReminders = async (
-  eventId: string,
-  reminders: EventReminder[]
-): Promise<RemindersResponse> => {
-  const payload = Array.isArray(reminders) ? { reminders } : reminders;
-  const response = await API.put<RemindersResponse>(`/events/${eventId}/reminders`, payload);
   return response.data;
 };
 
@@ -424,13 +358,8 @@ const eventService = {
   updateEvent,
   deleteEvent,
   getRsvpSettings,
-  updateRsvpSettings,
   patchRsvpSettings,
-  getDesignSettings,
-  updateDesignSettings,
-  sendInvitations,
   getReminders,
-  updateReminders,
   saveGuaranteeReminders,
   getAttendanceCommitment,
   getAttendanceGuaranteeSettings,
