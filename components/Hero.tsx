@@ -1184,14 +1184,15 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       setErrorMsg(null);
                       setSuccessMsg(null);
                     }}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
+                    style={{ fontFamily: "Georgia, serif" }}
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-serif font-medium transition-all duration-200 cursor-pointer ${
                       isActive
                         ? "bg-[#F0EEFF] text-[#6C5CE7] border border-[#DDD6FE] font-semibold shadow-sm"
                         : "bg-white text-gray-700 border border-gray-200/90 hover:bg-gray-50"
                     }`}
                   >
                     <Icon className={`w-4 h-4 ${isActive ? "text-[#6C5CE7]" : "text-gray-500"}`} />
-                    <span>{tab.label}</span>
+                    <span style={{ fontFamily: "Georgia, serif" }}>{tab.label}</span>
                   </button>
                 );
               })}
@@ -1215,7 +1216,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 {/* Heading with Wand icon */}
                 <div className="flex items-center gap-2 text-gray-800">
                   <Wand2 className="w-4 h-4 text-[#7C3AED]" />
-                  <span className="font-semibold text-xs sm:text-sm">
+                  <span className="font-semibold text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif" }}>
                     Describe your event and let AI build it
                   </span>
                 </div>
@@ -1403,7 +1404,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {/* Heading & Counter Badge + View All CTA */}
                   <div className="flex items-center justify-between gap-2 mb-2.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xs sm:text-sm font-bold text-gray-900">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                         Choose from editable templates
                       </h3>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
@@ -1656,7 +1657,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     >
                       <FileUp className="w-6 h-6" />
                     </div>
-                    <p className="text-xs sm:text-sm font-semibold text-gray-800">
+                    <p className="text-xs sm:text-sm font-semibold text-gray-800 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                       {isDragging ? "Drop your file here to upload!" : "Drag & drop an existing invitation image or PDF"}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-1">
@@ -1679,7 +1680,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-gray-900 block leading-tight">
+                          <span className="text-xs font-bold text-gray-900 block leading-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
                             File Uploaded Successfully
                           </span>
                           <span className="text-[10px] text-gray-500">

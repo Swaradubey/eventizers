@@ -193,7 +193,7 @@ export default function Navbar() {
 
         {/* Center Section (Nav Links) — hidden on dashboard/admin routes */}
         {!isDashboard && (
-        <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-sans">
+        <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-serif" style={{ fontFamily: "Georgia, serif" }}>
           {navLinks.map((link) => {
             if (link.label === "Features") {
               return (
@@ -208,11 +208,12 @@ export default function Navbar() {
                     ref={triggerRef}
                     onClick={handleToggleClick}
                     onKeyDown={handleKeyDown}
-                    className="text-base font-medium text-gray-800 hover:text-black transition-colors flex items-center gap-1.5 h-full focus:outline-none cursor-pointer"
+                    style={{ fontFamily: "Georgia, serif" }}
+                    className="text-base font-serif font-medium text-gray-800 hover:text-black transition-colors flex items-center gap-1.5 h-full focus:outline-none cursor-pointer"
                     aria-haspopup="true"
                     aria-expanded={desktopMenuOpen}
                   >
-                    <span>Features</span>
+                    <span style={{ fontFamily: "Georgia, serif" }}>Features</span>
                     <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${desktopMenuOpen ? "rotate-180 text-black" : ""}`} />
                   </button>
 
@@ -230,7 +231,8 @@ export default function Navbar() {
                 <Link
                   key={link.label}
                   href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard/ai-assistant") : "/dashboard/ai-assistant"}
-                  className={`text-base font-medium transition-colors ${
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
                   }`}
                 >
@@ -243,7 +245,8 @@ export default function Navbar() {
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
                 onClick={(e) => handleSectionClick(e, link.href)}
-                className="text-base font-medium text-gray-800 hover:text-black transition-colors"
+                style={{ fontFamily: "Georgia, serif" }}
+                className="text-base font-serif font-medium text-gray-800 hover:text-black transition-colors"
               >
                 {link.label}
               </a>
@@ -302,16 +305,17 @@ export default function Navbar() {
 
       {/* Mobile menu — only shown on public/landing routes */}
       {open && !isDashboard && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-sans shadow-lg">
+        <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-serif shadow-lg" style={{ fontFamily: "Georgia, serif" }}>
           {navLinks.map((link) => {
             if (link.label === "Features") {
               return (
                 <div key={link.label} className="flex flex-col">
                   <button
                     onClick={() => setMobileFeaturesOpen(!mobileFeaturesOpen)}
-                    className="text-base font-medium text-left text-[#4B5563] hover:text-gray-900 flex items-center justify-between py-1 focus:outline-none"
+                    style={{ fontFamily: "Georgia, serif" }}
+                    className="text-base font-serif font-medium text-left text-[#4B5563] hover:text-gray-900 flex items-center justify-between py-1 focus:outline-none"
                   >
-                    <span>Features</span>
+                    <span style={{ fontFamily: "Georgia, serif" }}>Features</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileFeaturesOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -340,7 +344,7 @@ export default function Navbar() {
                                 <IconComponent className="w-4 h-4 text-gray-700" />
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs font-semibold text-gray-900">
+                                <span className="text-xs font-semibold text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                                   {item.title}
                                 </span>
                                 <span className="text-[10px] text-gray-500">
@@ -362,7 +366,8 @@ export default function Navbar() {
                 <Link
                   key={link.label}
                   href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard/ai-assistant") : "/dashboard/ai-assistant"}
-                  className={`text-base font-medium transition-colors ${
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
                   }`}
                   onClick={() => setOpen(false)}
@@ -375,7 +380,8 @@ export default function Navbar() {
               <a
                 key={link.label}
                 href={isHomePage ? link.href : `/${link.href}`}
-                className="text-base font-medium text-[#4B5563] hover:text-gray-900"
+                style={{ fontFamily: "Georgia, serif" }}
+                className="text-base font-serif font-medium text-[#4B5563] hover:text-gray-900"
                 onClick={(e) => {
                   setOpen(false);
                   handleSectionClick(e, link.href);

@@ -79,7 +79,7 @@ export default function MegaMenu({ onClose, onKeyDown }: MegaMenuProps) {
               </div>
               {/* Text */}
               <div className="flex flex-col gap-0.5">
-                <span className="font-semibold text-sm text-[#111827] group-hover:text-[#6366F1] transition-colors">
+                <span className="font-semibold text-sm text-[#111827] group-hover:text-[#6366F1] transition-colors font-serif" style={{ fontFamily: "Georgia, serif" }}>
                   {item.title}
                 </span>
                 <span className="text-xs text-[#6B7280] leading-relaxed">
