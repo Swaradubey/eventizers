@@ -124,9 +124,9 @@ export default function ChangePlanModal({ isOpen, onClose, user, onSave, updatin
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
               Plan Manager
             </span>
-            <h3
-              className="text-2xl font-semibold font-display mt-1 text-[#2D1B3D]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+<h3
+              className="text-2xl font-semibold mt-1 text-[#2D1B3D] force-georgia"
+              style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}
             >
               Update Subscription Plan
             </h3>

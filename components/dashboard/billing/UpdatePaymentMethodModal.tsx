@@ -266,8 +266,8 @@ export default function UpdatePaymentMethodModal({
                 </div>
                 <div>
                   <h3
-                    className="text-base font-bold text-[#2D1B3D]"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
+                    className="text-base font-bold text-[#2D1B3D] force-georgia"
+                    style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}
                   >
                     Update Payment Method
                   </h3>

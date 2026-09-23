@@ -122,8 +122,8 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               Billing Profile
             </span>
             <h3
-              className="text-2xl sm:text-3xl font-semibold font-display mt-1 break-words text-[#2D1B3D]"
-              style={{ fontFamily: "'Playfair Display', serif", overflowWrap: "break-word", wordBreak: "break-word" }}
+              className="text-2xl sm:text-3xl font-semibold mt-1 break-words text-[#2D1B3D] force-georgia"
+              style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif", overflowWrap: "break-word", wordBreak: "break-word" }}
             >
               {user.name}
             </h3>
@@ -140,7 +140,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           {/* Column 1: Info Card */}
           <div className="space-y-4">
             <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 space-y-3 shadow-sm">
-              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2 force-georgia">
                 User Details
               </h4>
               <div className="flex items-center gap-3 min-w-0 w-full">
@@ -185,7 +185,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
 
             {/* Billing dates */}
             <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 space-y-3 shadow-sm">
-              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-2 force-georgia">
                 Billing Cycle
               </h4>
               <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
           {/* Column 2: Usage Stats */}
           <div className="bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50 border border-blue-100/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
             <div>
-              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-4">
+              <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider mb-4 force-georgia">
                 Usage Statistics
               </h4>
 
@@ -286,7 +286,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
 
         {/* Invoice / Billing History */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider">
+          <h4 className="text-xs font-bold text-blue-900/60 uppercase tracking-wider force-georgia">
             Billing History
           </h4>
           {mockInvoices.length === 0 ? (
@@ -364,7 +364,7 @@ export default function BillingDetailsModal({ isOpen, onClose, user, onDeleteUse
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden z-10 p-6 text-[#2D1B3D] font-body"
             >
-              <h3 className="text-lg font-semibold font-display mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h3 className="text-lg font-semibold mb-2 force-georgia" style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}>
                 Delete User
               </h3>
               <div className="text-xs text-[#2D1B3D]/70 mb-6 space-y-2">

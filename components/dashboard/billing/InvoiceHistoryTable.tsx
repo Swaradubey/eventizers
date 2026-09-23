@@ -124,7 +124,7 @@ export default function InvoiceHistoryTable({
   return (
     <div ref={tableContainerRef} className="space-y-6">
       <div>
-        <h2 className="font-bold text-2xl text-slate-900">
+        <h2 className="font-bold text-2xl text-slate-900 force-georgia">
           Invoice History
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
@@ -345,7 +345,7 @@ export default function InvoiceHistoryTable({
                 <Trash2 className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <h3 id="delete-invoice-modal-title" className="text-base font-bold text-slate-900">
+                <h3 id="delete-invoice-modal-title" className="text-base font-bold text-slate-900 force-georgia">
                   Delete Invoice Record
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">

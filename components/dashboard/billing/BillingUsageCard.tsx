@@ -92,7 +92,7 @@ export default function BillingUsageCard({
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="w-4 h-4 text-indigo-600" />
-        <h3 className="text-base font-bold text-slate-900">Current usage</h3>
+        <h3 className="text-base font-bold text-slate-900 force-georgia">Current usage</h3>
       </div>
 
       {/* 3-column metrics */}

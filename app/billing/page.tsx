@@ -20,7 +20,7 @@ function BillingCancelContent() {
           <AlertCircle className="w-10 h-10 text-amber-600" />
         </div>
 
-        <h1 className="text-3xl font-bold font-display text-[#2D1B3D] tracking-tight mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h1 className="text-3xl font-bold tracking-tight text-[#2D1B3D] mb-2 force-georgia" style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}>
           {checkout === "cancelled" ? "Checkout Cancelled" : "Billing"}
         </h1>
         <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">

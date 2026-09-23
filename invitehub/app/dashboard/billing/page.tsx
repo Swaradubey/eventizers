@@ -345,7 +345,7 @@ export default function BillingPage() {
           <div className="flex items-center gap-3">
             <CreditCard className="w-6 h-6 text-indigo-600" />
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 font-['Georgia',serif]">Billing</h1>
+              <h1 className="text-3xl font-bold text-slate-900 force-georgia font-['Georgia',serif]">Billing</h1>
               <p className="text-sm text-slate-500 mt-1">
                 Manage your plan, usage, and invoices
               </p>
@@ -376,7 +376,7 @@ export default function BillingPage() {
         ) : error ? (
           <div className="bg-white border border-slate-100 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
             <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-            <h4 className="text-xl font-bold text-slate-900">
+            <h4 className="text-xl font-bold text-slate-900 force-georgia">
               Unable to load billing details
             </h4>
             <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
@@ -410,7 +410,7 @@ export default function BillingPage() {
 
             {/* ── 2. Choose your plan ── */}
             <div className="mb-10">
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Choose your plan</h2>
+              <h2 className="text-lg font-bold text-slate-900 mb-4 force-georgia">Choose your plan</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                 {billingInfo.plans.map((plan, index) => (
                   <motion.div
@@ -435,7 +435,7 @@ export default function BillingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
               {/* Payment Method — left ~30% */}
               <div className="lg:col-span-1">
-                <h2 className="font-bold text-2xl text-slate-900 mb-0.5">Payment Method</h2>
+                <h2 className="font-bold text-2xl text-slate-900 mb-0.5 force-georgia">Payment Method</h2>
                 <p className="text-xs text-slate-500 mb-4">
                   Manage your billing cards and default settings.
                 </p>
