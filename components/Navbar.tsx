@@ -168,12 +168,12 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100/90 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] transition-all duration-300 ${
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${
       isDashboard
-        ? isCollapsed
-          ? "left-0 md:left-[72px]"
-          : "left-0 md:left-64"
-        : "left-0 w-full"
+        ? `bg-white/95 backdrop-blur-md border-b border-gray-100/90 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] ${
+            isCollapsed ? "left-0 md:left-[72px]" : "left-0 md:left-64"
+          }`
+        : "left-0 w-full bg-white/60 backdrop-blur-xl border-b border-white/30 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]"
     }`}>
       <nav className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-16 flex items-center justify-between relative">
         {/* Left Section (Brand Logo) */}

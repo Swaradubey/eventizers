@@ -53,7 +53,7 @@ export default function AttendanceGuarantee() {
   return (
     <section
       id="attendance-guarantee"
-      className="relative pt-16 md:pt-20 pb-8 md:pb-10 bg-gradient-to-b from-[#FAF8F5] via-[#F4F7FC]/70 to-[#FAF8F5] overflow-hidden"
+      className="relative pt-16 md:pt-20 pb-8 md:pb-10 bg-transparent overflow-hidden"
     >
       {/* Subtle geometric plus/cross grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-25">

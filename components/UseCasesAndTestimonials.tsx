@@ -28,7 +28,7 @@ export default function UseCasesAndTestimonials() {
   return (
     <section
       id="testimonials"
-      className="relative pt-10 md:pt-12 pb-20 md:pb-28 bg-gradient-to-b from-[#FAF8F5] via-white to-[#FAF8F5] overflow-hidden"
+      className="relative pt-10 md:pt-12 pb-20 md:pb-28 bg-transparent overflow-hidden"
     >
       {/* Subtle geometric plus/cross grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-25">

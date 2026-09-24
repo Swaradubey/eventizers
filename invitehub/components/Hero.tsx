@@ -1013,30 +1013,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   return (
-    <section className="relative overflow-hidden overflow-x-clip min-h-[90vh] py-12 px-4 flex flex-col justify-center items-center bg-slate-50/40 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
-      {/* Subtle background grid/plus pattern overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-40 -z-10"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 12v8M12 16h8' stroke='%23CBD5E1' stroke-width='0.9' stroke-linecap='round' stroke-opacity='0.6' fill='none'/%3E%3C/svg%3E")`,
-          backgroundSize: '32px 32px'
-        }}
-      />
-
-      {/* Atmospheric multi-color radial gradient aura */}
-      {/* Left side: Soft subtle purple/lavender glow */}
-      <div className="absolute w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(224,231,255,0.6)_0%,rgba(238,242,255,0.3)_45%,transparent_70%)] top-1/4 -left-32 -translate-y-1/2 blur-3xl pointer-events-none" />
-      {/* Right/base: Crisp light blue/mesh tint */}
-      <div className="absolute w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(224,242,254,0.6)_0%,rgba(240,249,255,0.3)_45%,transparent_70%)] top-1/4 -right-32 -translate-y-1/2 blur-3xl pointer-events-none" />
-      {/* Bottom center: Very soft peach/warm tint */}
-      <div className="absolute w-[800px] h-[350px] rounded-full bg-[radial-gradient(ellipse,rgba(255,241,242,0.45)_0%,rgba(255,237,213,0.3)_40%,transparent_70%)] bottom-0 left-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
-
-      {/* Subtle scattered gold/beige stars in atmosphere */}
-      <span className="absolute top-[14%] left-[10%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
-      <span className="absolute top-[25%] left-[5%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
-      <span className="absolute top-[15%] right-[10%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
-      <span className="absolute top-[28%] right-[6%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
-      <span className="absolute top-[8%] left-[48%] text-amber-400/40 text-[10px] select-none pointer-events-none">✦</span>
+    <section className="relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent">
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col justify-center items-center overflow-x-clip">

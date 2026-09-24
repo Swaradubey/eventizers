@@ -114,7 +114,7 @@ export default function Pricing() {
   );
 
   return (
-    <section id="pricing" className="py-24 bg-white relative">
+    <section id="pricing" className="py-24 bg-transparent relative">
       {/* Toast notification */}
       {toast && (
         <div

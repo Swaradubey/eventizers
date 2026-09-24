@@ -151,7 +151,7 @@ export default function Templates() {
   return (
     <section
       id="templates"
-      className="relative py-20 md:py-28 bg-[#faf9f6] text-neutral-900 border-t border-neutral-200/50"
+      className="relative py-20 md:py-28 bg-transparent text-neutral-900 border-t border-slate-200/40"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Paperless Post / Evite Editorial Header */}

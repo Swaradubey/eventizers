@@ -21,7 +21,7 @@ export default function AIFeatures() {
   return (
     <section
       id="features"
-      className="py-16 md:py-24 bg-gradient-to-b from-[#FAF8F5] via-[#F4F7FC]/70 to-[#FAF8F5] relative overflow-hidden"
+      className="py-16 md:py-24 bg-transparent relative overflow-hidden"
     >
       {/* Subtle geometric cross grid background pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-25">

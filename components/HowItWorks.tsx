@@ -36,7 +36,7 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative py-20 md:py-28 bg-gradient-to-b from-[#FAF8F5] via-[#F4F7FC]/70 to-[#FAF8F5] overflow-hidden"
+      className="relative py-20 md:py-28 bg-transparent overflow-hidden"
     >
       {/* Faint geometric plus/cross grid pattern matching the application */}
       <div className="absolute inset-0 pointer-events-none opacity-25">
