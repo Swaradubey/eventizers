@@ -28,7 +28,7 @@ const solutionsLinks = [
   { label: "Birthdays", href: "#" },
   { label: "Corporate", href: "#" },
   { label: "Nonprofits", href: "#" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Pricing", href: "/pricing" },
 ];
 
 const companyLinks = [
@@ -89,7 +89,7 @@ export default function Footer() {
       }
       router.push("/dashboard/ai-assistant");
     } else {
-      router.push("/login?redirect=/dashboard/ai-assistant");
+      router.push("/dashboard/ai-assistant");
     }
   };
 
@@ -204,12 +204,21 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm">
               {solutionsLinks.map((item) => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
-                    className="text-[#64748b] hover:text-blue-600 transition-colors font-medium"
-                  >
-                    {item.label}
-                  </a>
+                  {item.href.startsWith("/") ? (
+                    <Link
+                      href={item.href}
+                      className="text-[#64748b] hover:text-blue-600 transition-colors font-medium"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className="text-[#64748b] hover:text-blue-600 transition-colors font-medium"
+                    >
+                      {item.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

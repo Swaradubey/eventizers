@@ -14,7 +14,7 @@ const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Templates", href: "#templates" },
   { label: "How it Works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Dashboard", href: "/dashboard" },
 ];
 
@@ -240,6 +240,21 @@ export default function Navbar() {
                 </Link>
               );
             }
+            if (link.href.startsWith("/")) {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
+                    active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            }
             return (
               <a
                 key={link.label}
@@ -366,6 +381,22 @@ export default function Navbar() {
                 <Link
                   key={link.label}
                   href={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard/ai-assistant") : "/dashboard/ai-assistant"}
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
+                    active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
+                  }`}
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            }
+            if (link.href.startsWith("/")) {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
                   style={{ fontFamily: "Georgia, serif" }}
                   className={`text-base font-serif font-medium transition-colors ${
                     active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
