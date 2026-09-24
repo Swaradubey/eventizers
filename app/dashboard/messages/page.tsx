@@ -349,7 +349,7 @@ export default function MessagesPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 force-georgia">Messages</h1>
+              <h1 className="text-3xl font-normal text-slate-900 force-georgia">Messages</h1>
               <p className="text-sm text-slate-500 mt-1">Communicate with your guests</p>
             </div>
           </div>

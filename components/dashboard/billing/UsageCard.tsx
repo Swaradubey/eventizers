@@ -23,7 +23,7 @@ export default function UsageCard({
   return (
     <div className="bg-white border border-[#E8C4B8]/30 rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-[#2D1B3D] force-georgia">Current Usage</h3>
+        <h3 className="text-lg font-normal text-[#2D1B3D] force-georgia">Current Usage</h3>
         <p className="text-xs text-[#2D1B3D]/50 mt-1">
           Your active usage stats for this billing cycle.
         </p>

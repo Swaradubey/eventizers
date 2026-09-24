@@ -152,7 +152,7 @@ export default function AnalyticsPage() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 force-georgia">Analytics</h1>
+              <h1 className="text-3xl font-normal text-slate-900 force-georgia">Analytics</h1>
               <p className="text-sm text-slate-500 mt-1">
                 Insights and metrics for your events
               </p>

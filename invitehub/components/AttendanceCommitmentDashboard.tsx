@@ -453,7 +453,7 @@ export default function AttendanceCommitmentDashboard({
             </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 truncate force-georgia">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-normal tracking-tight text-slate-900 truncate force-georgia">
                   Attendance Commitment
                 </h1>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full shrink-0">
@@ -563,7 +563,7 @@ export default function AttendanceCommitmentDashboard({
               </div>
             </div>
             <div>
-              <h4 className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-900 leading-snug truncate force-georgia">
+              <h4 className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-900 leading-snug truncate force-georgia">
                 Confirmed RSVPs
               </h4>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 font-normal truncate">
@@ -587,7 +587,7 @@ export default function AttendanceCommitmentDashboard({
               </div>
             </div>
             <div>
-              <h4 className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-900 leading-snug truncate force-georgia">
+              <h4 className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-900 leading-snug truncate force-georgia">
                 Attended (Safe)
               </h4>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 font-normal truncate">
@@ -611,7 +611,7 @@ export default function AttendanceCommitmentDashboard({
               </div>
             </div>
             <div>
-              <h4 className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-900 leading-snug truncate force-georgia">
+              <h4 className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-900 leading-snug truncate force-georgia">
                 No-Shows
               </h4>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 font-normal truncate">
@@ -635,7 +635,7 @@ export default function AttendanceCommitmentDashboard({
               </div>
             </div>
             <div>
-              <h4 className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-900 leading-snug truncate force-georgia">
+              <h4 className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-900 leading-snug truncate force-georgia">
                 Fee Resolution
               </h4>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 font-normal truncate">
@@ -660,7 +660,7 @@ export default function AttendanceCommitmentDashboard({
                     <Shield className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 leading-tight truncate sm:whitespace-normal force-georgia">
+                    <h3 className="text-base sm:text-lg md:text-xl font-normal text-slate-900 leading-tight truncate sm:whitespace-normal force-georgia">
                       Reservation Guarantee
                     </h3>
                     <p className="text-[11px] sm:text-xs md:text-sm text-slate-500 mt-0.5 sm:mt-1 truncate sm:whitespace-normal">
@@ -697,7 +697,7 @@ export default function AttendanceCommitmentDashboard({
                 {/* Fee Amount Pills */}
                 <div>
                   <div className="flex items-center justify-between mb-2 sm:mb-3">
-                    <label className="text-xs sm:text-sm font-semibold text-slate-800 force-georgia">
+                    <label className="text-xs sm:text-sm font-normal text-slate-800 force-georgia">
                       Guarantee Fee Amount (per confirmed guest)
                     </label>
                     <span className="text-xs font-semibold text-[#5b45f4]">
@@ -728,7 +728,7 @@ export default function AttendanceCommitmentDashboard({
                 {/* Host Review Window Row */}
                 <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 p-3 sm:p-4 bg-slate-50/70 border border-slate-200/60 rounded-xl sm:rounded-2xl">
                   <div>
-                    <p className="text-xs sm:text-sm font-bold text-slate-900 force-georgia">
+                    <p className="text-xs sm:text-sm font-normal text-slate-900 force-georgia">
                       Host Review Window
                     </p>
                     <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
@@ -779,7 +779,7 @@ export default function AttendanceCommitmentDashboard({
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs sm:text-sm font-bold text-slate-900 force-georgia">
+                          <p className="text-xs sm:text-sm font-normal text-slate-900 force-georgia">
                             Guarantee Reminders
                           </p>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
@@ -952,7 +952,7 @@ export default function AttendanceCommitmentDashboard({
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
                 </div>
                 <div>
-                  <h4 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 leading-tight force-georgia">
+                  <h4 className="text-sm sm:text-base md:text-lg font-normal text-slate-900 leading-tight force-georgia">
                     {reviewWindowDays}-Day Review Window & Auto-Waive
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 leading-relaxed">
@@ -963,7 +963,7 @@ export default function AttendanceCommitmentDashboard({
 
               {/* Guest Agreement Citation Card */}
               <div className="bg-[#f8faff] border border-slate-200/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 md:p-5 text-xs sm:text-sm space-y-2 relative z-10">
-                <div className="flex items-center gap-2 font-bold text-slate-900 force-georgia">
+                <div className="flex items-center gap-2 font-normal text-slate-900 force-georgia">
                   <Info className="w-4 h-4 text-[#5b45f4] shrink-0" />
                   <span>Guest Agreement (Presented during RSVP)</span>
                 </div>
@@ -983,7 +983,7 @@ export default function AttendanceCommitmentDashboard({
               {/* Card Header */}
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 force-georgia">
+                  <h3 className="text-base sm:text-lg md:text-xl font-normal text-slate-900 force-georgia">
                     No-Show Review List
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Manage attendee penalties</p>
@@ -1074,7 +1074,7 @@ export default function AttendanceCommitmentDashboard({
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate force-georgia">
+                            <h4 className="text-xs sm:text-sm font-normal text-slate-900 truncate force-georgia">
                               {guest.name}
                             </h4>
                             <p className="text-[11px] text-slate-500 truncate">{guest.email}</p>
@@ -1174,7 +1174,7 @@ export default function AttendanceCommitmentDashboard({
                     <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9 stroke-[2.2]" />
                   </div>
                   <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-800 force-georgia">
+                    <h4 className="text-xs sm:text-sm font-normal text-slate-800 force-georgia">
                       No No-Shows Recorded
                     </h4>
                     <p className="text-[11px] sm:text-xs text-slate-400 mt-1 max-w-xs px-3">

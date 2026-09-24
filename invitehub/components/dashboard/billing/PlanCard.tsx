@@ -45,7 +45,7 @@ export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCa
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_white,_transparent)]" />
 
         <div className="relative z-10">
-          <h3 className="font-semibold text-white text-base mb-1 force-georgia">{plan.name}</h3>
+          <h3 className="font-normal text-white text-base mb-1 force-georgia">{plan.name}</h3>
           <div className="flex items-baseline gap-1 mb-4">
             <span className="text-3xl font-bold text-white">{priceDisplay}</span>
             {showPerMonth && (
@@ -93,7 +93,7 @@ export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCa
         className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col justify-between h-full"
       >
         <div>
-          <h3 className="font-semibold text-slate-900 text-base mb-1 force-georgia">{plan.name}</h3>
+          <h3 className="font-normal text-slate-900 text-base mb-1 force-georgia">{plan.name}</h3>
           <div className="flex items-baseline gap-1 mb-4">
             <span className="text-3xl font-bold text-slate-900">{priceDisplay}</span>
           </div>
@@ -127,7 +127,7 @@ export default function PlanCard({ plan, isCurrent, onSelect, updating }: PlanCa
       className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col justify-between h-full"
     >
       <div>
-        <h3 className="font-semibold text-slate-900 text-base mb-1 force-georgia">{plan.name}</h3>
+        <h3 className="font-normal text-slate-900 text-base mb-1 force-georgia">{plan.name}</h3>
         <div className="flex items-baseline gap-1 mb-4">
           <span className="text-3xl font-bold text-slate-900">{priceDisplay}</span>
           {showPerMonth && (

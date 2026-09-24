@@ -246,7 +246,7 @@ export default function AdminDashboardPage() {
             <div>
               <div className="flex items-center gap-2.5">
                 <h1
-                  className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-georgia main-page-title"
+                  className="text-3xl md:text-4xl font-normal tracking-tight text-slate-900 font-georgia main-page-title"
                   style={{ fontFamily: "Georgia, Cambria, 'Times New Roman', Times, serif" }}
                 >
                   Admin Dashboard

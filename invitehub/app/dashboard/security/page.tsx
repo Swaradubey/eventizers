@@ -180,7 +180,7 @@ export default function SecurityPage() {
               <Menu className="w-5 h-5 text-blue-700" />
             </button>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 font-['Georgia',serif]">
+              <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-slate-900 font-['Georgia',serif]">
                 Security Center
               </h1>
               <p className="text-sm text-slate-500 mt-1">

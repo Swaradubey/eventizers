@@ -58,8 +58,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        .dashboard-page h1 {
+        .dashboard-page h1,
+        .dashboard-page h2,
+        .dashboard-page h3,
+        .dashboard-page h4,
+        .dashboard-page-title,
+        .force-georgia {
           font-family: Georgia, 'Times New Roman', Times, serif !important;
+          font-weight: 400 !important;
         }
       `}} />
       <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/60 flex text-slate-800 dashboard-page">

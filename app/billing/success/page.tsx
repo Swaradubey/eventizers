@@ -156,7 +156,7 @@ function BillingSuccessContent() {
           </div>
         )}
 
-        <h1 className="text-3xl font-bold tracking-tight text-[#2D1B3D] mb-2 force-georgia" style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}>
+        <h1 className="text-3xl font-normal tracking-tight text-[#2D1B3D] mb-2 force-georgia" style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}>
           {getTitle()}
         </h1>
         <p className="text-sm text-[#2D1B3D]/60 max-w-md mb-8">

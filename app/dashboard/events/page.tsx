@@ -329,7 +329,7 @@ function EventsPageContent() {
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight force-georgia">
+              <h1 className="text-2xl sm:text-3xl font-normal text-slate-900 tracking-tight force-georgia">
                 All events
               </h1>
               <p className="text-sm text-slate-500 mt-0.5">

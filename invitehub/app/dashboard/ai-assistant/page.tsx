@@ -1024,7 +1024,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
           {/* Main Heading */}
           <h1
-            className="font-bold font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap force-georgia"
+            className="font-normal font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap force-georgia"
             style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.6rem, 3.5vw, 3.2rem)" }}
           >
             Create Any Event in Under 60 Seconds
@@ -1175,7 +1175,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     <div className="mt-4 p-4 bg-[#F9FAFB] border border-gray-200 rounded-2xl text-left space-y-3 max-h-[450px] overflow-y-auto">
                       <div className="flex justify-between items-start border-b border-gray-200 pb-2.5">
                         <div>
-                          <h3 className="text-sm font-bold text-gray-900 leading-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                          <h3 className="text-sm font-normal text-gray-900 leading-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
                             {aiEventData.title}
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
@@ -1278,7 +1278,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     {/* Heading & Counter Badge */}
                     <div className="flex items-center justify-between gap-2 mb-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                        <h3 className="text-xs sm:text-sm font-normal text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
                           Choose from editable templates
                         </h3>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
@@ -1547,7 +1547,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                             <CheckCircle2 className="w-3.5 h-3.5" />
                           </div>
                           <div className="min-w-0">
-                            <span className="text-xs font-bold text-gray-900 block leading-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                            <span className="text-xs font-normal text-gray-900 block leading-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
                               File Uploaded Successfully
                             </span>
                             <span className="text-[10px] text-gray-500">

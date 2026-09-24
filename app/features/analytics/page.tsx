@@ -16,7 +16,7 @@ export default function Page() {
           Feature Showcase
         </span>
         
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#2D1B3D] mb-4" style={{ fontFamily: "Georgia, serif" }}>
+        <h1 className="text-4xl md:text-5xl font-serif font-normal text-[#2D1B3D] mb-4" style={{ fontFamily: "Georgia, serif" }}>
           Analytics
         </h1>
         

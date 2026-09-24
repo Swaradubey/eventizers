@@ -56,7 +56,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     !authLoading && isStaffCoHost && !isStaffAllowedRoute && !isStaffRootRedirecting;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/60 flex text-slate-800">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .dashboard-page h1,
+        .dashboard-page h2,
+        .dashboard-page h3,
+        .dashboard-page h4,
+        .dashboard-page-title,
+        .force-georgia {
+          font-family: Georgia, 'Times New Roman', Times, serif !important;
+          font-weight: 400 !important;
+        }
+      `}} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/60 flex text-slate-800 dashboard-page">
       {/* Responsive Left Sidebar */}
       <Sidebar />
 
@@ -88,6 +100,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </div>
+    </>
   );
 }
 

@@ -787,7 +787,7 @@ export default function GuestsPage() {
             </button>
             <div>
               <h1
-                className="text-4xl md:text-5xl font-semibold text-[#2D1B3D] font-['Georgia',serif]"
+                className="text-4xl md:text-5xl font-normal text-[#2D1B3D] font-['Georgia',serif]"
                 style={{ fontFamily: "Georgia, serif" }}
               >
                 Guests

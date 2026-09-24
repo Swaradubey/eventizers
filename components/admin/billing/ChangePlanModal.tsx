@@ -125,7 +125,7 @@ export default function ChangePlanModal({ isOpen, onClose, user, onSave, updatin
               Plan Manager
             </span>
 <h3
-              className="text-2xl font-semibold mt-1 text-[#2D1B3D] force-georgia"
+              className="text-2xl font-normal mt-1 text-[#2D1B3D] force-georgia"
               style={{ fontFamily: "Georgia, 'Times New Roman', Times, serif" }}
             >
               Update Subscription Plan

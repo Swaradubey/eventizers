@@ -424,7 +424,7 @@ export default function AdminBillingPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 force-georgia font-['Georgia',serif]">
+              <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-slate-900 force-georgia font-['Georgia',serif]">
                 Billing
               </h1>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
@@ -633,7 +633,7 @@ export default function AdminBillingPage() {
               <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
                 <AlertTriangle className="w-6 h-6 text-amber-600" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 force-georgia">No Billing Records Available</h3>
+              <h3 className="text-base font-normal text-slate-900 force-georgia">No Billing Records Available</h3>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
                 {error || "We're having trouble retrieving the billing registry right now. Please try refreshing the data."}
               </p>
@@ -649,7 +649,7 @@ export default function AdminBillingPage() {
               <div className="w-12 h-12 rounded-xl bg-blue-50/50 border border-blue-100 flex items-center justify-center mb-4">
                 <Search className="w-6 h-6 text-blue-500" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 force-georgia">No Billing Records Found</h3>
+              <h3 className="text-base font-normal text-slate-900 force-georgia">No Billing Records Found</h3>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
                 We couldn't find any users matching your query or filter criteria.
               </p>

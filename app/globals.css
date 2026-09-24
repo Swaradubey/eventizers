@@ -119,6 +119,7 @@ body {
 .home-page .font-display,
 .home-page .font-serif {
   font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
+  font-weight: 400 !important;
 }
 
 .home-page p,
@@ -137,6 +138,7 @@ body {
 .ai-assistant-page h3,
 .ai-assistant-page h4 {
   font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
+  font-weight: 400 !important;
 }
 
 /* Dashboard Page Headings: Force Georgia */
@@ -144,11 +146,36 @@ body {
 .dashboard-page h1,
 main h1 {
   font-family: Georgia, 'Times New Roman', Times, serif !important;
+  font-weight: 400 !important;
 }
 
 /* High-specificity utility for dashboard page titles - prevents OAuth redirect styling reset */
 .dashboard-page-title {
   font-family: Georgia, 'Times New Roman', Times, serif !important;
+  font-weight: 400 !important;
+}
+
+/* All headings/titles with Georgia / serif */
+h1.font-serif,
+h2.font-serif,
+h3.font-serif,
+h4.font-serif,
+h5.font-serif,
+h6.font-serif,
+h1.font-display,
+h2.font-display,
+h3.font-display,
+h4.font-display,
+h5.font-display,
+h6.font-display,
+h1[style*="Georgia"],
+h2[style*="Georgia"],
+h3[style*="Georgia"],
+h4[style*="Georgia"],
+h5[style*="Georgia"],
+h6[style*="Georgia"] {
+  font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
+  font-weight: 400 !important;
 }
 
 /* Gold shimmer effect */
@@ -1172,9 +1199,9 @@ main h1 {
 
 /* Section heading */
 .hiw-heading {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, 'Playfair Display', serif;
   font-size: clamp(1.75rem, 5vw, 3.5rem);
-  font-weight: 700;
+  font-weight: 400;
   color: #2D1B3D;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -1395,9 +1422,9 @@ main h1 {
 
 /* Card typography */
 .hiw-card-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, 'Playfair Display', serif;
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 400;
   color: #2D1B3D;
   line-height: 1.3;
   margin-bottom: 0.75rem;

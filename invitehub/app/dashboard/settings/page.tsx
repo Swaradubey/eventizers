@@ -347,7 +347,7 @@ export default function UserSettingsPage() {
             {/* Purple / Blue Settings Gear Icon */}
             <Settings className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-600 stroke-[1.8] flex-shrink-0" />
 
-            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight font-['Georgia',serif]">
+            <h1 className="text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight font-['Georgia',serif]">
               Settings
             </h1>
           </div>

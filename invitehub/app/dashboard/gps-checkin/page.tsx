@@ -510,7 +510,7 @@ function GpsCheckInContent() {
           </div>
 
           {/* Event title & venue subtitle */}
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug font-['Georgia',serif]">
+          <h1 className="text-xl sm:text-2xl font-normal text-slate-900 tracking-tight leading-snug font-['Georgia',serif]">
             {currentEvent ? currentEvent.title : "Select an Event"}
           </h1>
           <div className="flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 mt-1.5">
