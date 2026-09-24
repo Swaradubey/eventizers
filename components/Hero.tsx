@@ -1147,9 +1147,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           </div>
 
           {/* Central Interactive Hero Card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-6 md:p-8 relative z-10 text-left">
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left">
             {/* Tabs (Top of Card) */}
-            <div className="grid grid-cols-3 gap-2.5 mb-5">
+            <div className="grid grid-cols-3 gap-3 mb-6">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -1162,7 +1162,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       setSuccessMsg(null);
                     }}
                     style={{ fontFamily: "Georgia, serif" }}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-serif font-medium transition-all duration-200 cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 py-3 px-3.5 rounded-2xl text-xs sm:text-sm font-serif font-medium transition-all duration-200 cursor-pointer ${
                       isActive
                         ? "bg-[#F0EEFF] text-[#6C5CE7] border border-[#DDD6FE] font-semibold shadow-sm"
                         : "bg-white text-gray-700 border border-gray-200/90 hover:bg-gray-50"
@@ -1189,7 +1189,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
             {/* ─── TAB 0: AI CREATE ─── */}
             {activeTab === 0 && (
-              <div className="space-y-3.5">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Heading with Wand icon */}
                 <div className="flex items-center gap-2 text-gray-800">
                   <Wand2 className="w-4 h-4 text-[#7C3AED]" />
@@ -1200,10 +1200,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 
                 {/* Input Area (Middle of Card) */}
                 <div 
-                  className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-text"
+                  className="relative bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-text min-h-[125px]"
                 >
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => {
@@ -1213,11 +1213,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       }
                     }}
                     placeholder="e.g. Plan a rustic outdoor wedding for 120 guests with a warm autumn palette, live acoustic music, and a relaxed dinner under string lights..."
-                    className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed"
+                    className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed min-h-[80px]"
                   />
 
                   {/* Circular Send Button on the right */}
-                  <div className="absolute right-3 bottom-3">
+                  <div className="absolute right-3.5 bottom-3.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1238,14 +1238,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 </div>
 
                 {/* Quick Prompt Pills (Bottom of Card) */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                   {quickPrompts.map((item, idx) => (
                     <button
                       key={idx}
                       onClick={() => {
                         setPrompt(item.promptText);
                       }}
-                      className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-3.5 py-1.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
+                      className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-4 py-2 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
                       title={item.promptText}
                     >
                       <span className="text-[#7C3AED] text-xs">✨</span>
@@ -1258,7 +1258,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="w-full mt-2.5 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#4C6FFF] to-[#00C0F9] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60 group"
+                  className="w-full mt-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-[#4C6FFF] to-[#00C0F9] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60 group"
                 >
                   {generating ? (
                     <>

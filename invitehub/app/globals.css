@@ -2230,6 +2230,46 @@ html[data-theme="dark"] .bg-\[\#2D1B3D\]\/60 {
   animation: 4s ease-in-out infinite pulse-soft;
 }
 
+.orb-indigo {
+  background-color: rgba(125, 135, 255, 0.16) !important;
+}
+
+.orb-cyan {
+  background-color: rgba(0, 210, 239, 0.14) !important;
+}
+
+.orb-pink {
+  background-color: rgba(251, 100, 182, 0.14) !important;
+}
+
+.orb-blue {
+  background-color: rgba(84, 162, 255, 0.12) !important;
+}
+
+.orb-orange {
+  background-color: rgba(255, 139, 26, 0.14) !important;
+}
+
+.cursor-glow {
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: normal;
+  will-change: transform;
+  background: radial-gradient(circle, rgba(99, 91, 255, 0.09) 0%, rgba(34, 211, 238, 0.05) 42%, transparent 72%);
+  border-radius: 50%;
+  width: 520px;
+  height: 520px;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+@media (pointer: coarse) {
+  .cursor-glow {
+    display: none;
+  }
+}
+
 .dark .invitation-bg, html[data-theme="dark"] .invitation-bg {
   background: 
     radial-gradient(at 0 0, #635bff38 0%, #0000 50%),

@@ -973,29 +973,29 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-900 relative">
+    <div className="min-h-screen invitation-bg invitation-pattern flex flex-col font-sans text-slate-900 relative">
+      {/* Fixed Ambient Floating and Pulsing Orbs (v0-e-invitation-app) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-10 left-20">
+          <div className="w-96 h-96 orb-indigo rounded-full blur-3xl floating-orb" />
+        </div>
+        <div className="absolute top-60 right-10">
+          <div className="w-[500px] h-[500px] orb-cyan rounded-full blur-3xl floating-orb" style={{ animationDelay: "2s" }} />
+        </div>
+        <div className="absolute top-32 right-1/4">
+          <div className="w-72 h-72 orb-pink rounded-full blur-3xl pulse-orb" style={{ animationDelay: "1s" }} />
+        </div>
+        <div className="absolute bottom-40 left-1/4">
+          <div className="w-80 h-80 orb-blue rounded-full blur-3xl pulse-orb" />
+        </div>
+        <div className="absolute bottom-20 right-1/3">
+          <div className="w-72 h-72 orb-orange rounded-full blur-3xl floating-orb" style={{ animationDelay: "4s" }} />
+        </div>
+      </div>
+
       <Navbar />
 
-      <main className="ai-assistant-page flex-1 flex flex-col w-full mx-auto relative overflow-hidden overflow-x-clip py-8 px-4 sm:px-6 lg:px-8">
-        {/* Subtle background grid pattern */}
-        <div 
-          className="absolute inset-0 pointer-events-none opacity-40 -z-10"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 12v8M12 16h8' stroke='%23CBD5E1' stroke-width='0.9' stroke-linecap='round' stroke-opacity='0.6' fill='none'/%3E%3C/svg%3E")`,
-            backgroundSize: '32px 32px'
-          }}
-        />
-
-        {/* Atmospheric multi-color radial gradient aura */}
-        <div className="absolute w-[650px] h-[650px] rounded-full bg-[radial-gradient(circle,rgba(224,231,255,0.7)_0%,rgba(238,242,255,0.35)_45%,transparent_70%)] top-1/4 -left-32 -translate-y-1/2 blur-3xl pointer-events-none" />
-        <div className="absolute w-[650px] h-[650px] rounded-full bg-[radial-gradient(circle,rgba(224,242,254,0.7)_0%,rgba(240,249,255,0.35)_45%,transparent_70%)] top-1/4 -right-32 -translate-y-1/2 blur-3xl pointer-events-none" />
-        <div className="absolute w-[750px] h-[350px] rounded-full bg-[radial-gradient(ellipse,rgba(255,241,242,0.45)_0%,rgba(255,237,213,0.3)_40%,transparent_70%)] bottom-0 left-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
-
-        {/* Scattered gold stars */}
-        <span className="absolute top-[10%] left-[8%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
-        <span className="absolute top-[22%] left-[4%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
-        <span className="absolute top-[12%] right-[8%] text-amber-400/80 text-sm select-none pointer-events-none animate-pulse">✦</span>
-        <span className="absolute top-[24%] right-[5%] text-amber-400/60 text-xs select-none pointer-events-none">✦</span>
+      <main className="ai-assistant-page flex-1 flex flex-col w-full mx-auto relative overflow-hidden overflow-x-clip py-8 px-4 sm:px-6 lg:px-8 z-10">
 
         {/* Top Header & Mobile Hamburger */}
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center items-center overflow-x-clip">
@@ -1039,9 +1039,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
           {/* Central Hero Card Container */}
           <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10">
             {/* Central Interactive Hero Card */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-6 md:p-8 relative z-10 text-left">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left">
               {/* Tabs (Top of Card) */}
-              <div className="grid grid-cols-3 gap-2.5 mb-5">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -1054,7 +1054,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         setSuccessMsg(null);
                       }}
                       style={{ fontFamily: "Georgia, serif" }}
-                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-serif font-medium transition-all duration-200 cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-3 px-3.5 rounded-2xl text-xs sm:text-sm font-serif font-medium transition-all duration-200 cursor-pointer ${
                         isActive
                           ? "bg-[#F0EEFF] text-[#6C5CE7] border border-[#DDD6FE] font-semibold shadow-sm"
                           : "bg-white text-gray-700 border border-gray-200/90 hover:bg-gray-50"
@@ -1093,7 +1093,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
               {/* ─── TAB 0: AI CREATE ─── */}
               {activeTab === 0 && (
-                <div className="space-y-3.5">
+                <div className="space-y-4 sm:space-y-5">
                   {/* Heading with Wand icon */}
                   <div className="flex items-center gap-2 text-gray-800">
                     <Wand2 className="w-4 h-4 text-[#7C3AED]" />
@@ -1103,9 +1103,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   </div>
                   
                   {/* Input Area (Middle of Card) */}
-                  <div className="relative bg-white rounded-2xl border border-gray-200 p-3 sm:p-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                  <div className="relative bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all min-h-[125px]">
                     <textarea
-                      rows={2}
+                      rows={3}
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       onKeyDown={(e) => {
@@ -1115,11 +1115,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         }
                       }}
                       placeholder="e.g. Plan a rustic outdoor wedding for 120 guests with a warm autumn palette, live acoustic music, and a relaxed dinner under string lights..."
-                      className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed"
+                      className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed min-h-[80px]"
                     />
 
                     {/* Circular Send Button on the right */}
-                    <div className="absolute right-3 bottom-3">
+                    <div className="absolute right-3.5 bottom-3.5">
                       <button
                         onClick={handleGenerate}
                         disabled={generating}
@@ -1137,12 +1137,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   </div>
 
                   {/* Quick Prompt Pills */}
-                  <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
+                  <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                     {quickPrompts.slice(0, 2).map((item, idx) => (
                       <button
                         key={idx}
                         onClick={() => setPrompt(item.promptText)}
-                        className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-3.5 py-1.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
+                        className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-4 py-2 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
                         title={item.promptText}
                       >
                         <span className="text-[#7C3AED] text-xs">✨</span>
@@ -1155,7 +1155,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   <button
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="w-full mt-2.5 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#4C6FFF] to-[#00C0F9] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60 group"
+                    className="w-full mt-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-[#4C6FFF] to-[#00C0F9] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60 group"
                   >
                     {generating ? (
                       <>
