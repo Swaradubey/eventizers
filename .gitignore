@@ -36,3 +36,8 @@ tsconfig.tsbuildinfo
 # ── Backend & DB sessions ─────────────────────────────────────
 backend/
 *NeonDB.session.sql
+
+# ── Scratch files ─────────────────────────────────────────────
+css1.css
+css2.css
+fetch_site.html
