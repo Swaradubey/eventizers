@@ -61,9 +61,9 @@ function createInitialState(templateId: string | null = DEFAULT_TEMPLATE_ID): In
     selectedTextId: layers[0]?.id || null,
     editingTextId: null,
     envelope: {
-      outerColor: tpl?.envelope?.outerColor || "#5384db",
-      flapColor: (tpl?.envelope as any)?.flapColor || "#7ba3e8",
-      linerCss: (tpl?.envelope as any)?.linerCss || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+      outerColor: tpl?.envelope?.outerColor || "#b47b48",
+      flapColor: (tpl?.envelope as any)?.flapColor || "#9c6838",
+      linerCss: (tpl?.envelope as any)?.linerCss || "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
       isOpen: true,
     },
     card: {

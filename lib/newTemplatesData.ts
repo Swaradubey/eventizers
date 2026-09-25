@@ -253,8 +253,9 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     },
     "envelope": {
       "outerColor": "#3F5E3D",
-      "linerPatternUrl": "floral-liner",
-      "linerCss": "repeating-linear-gradient(45deg, #C4607B 0px, #C4607B 10px, #FAF3E8 10px, #FAF3E8 20px)",
+      "flapColor": "#2f482d",
+      "linerPatternUrl": "",
+      "linerCss": "",
       "isOpen": true
     },
     "card": {

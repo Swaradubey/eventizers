@@ -267,17 +267,17 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           className="absolute pointer-events-none select-none"
           style={{
             zIndex: 5,
-            width: "78%",
-            height: "94%",
+            width: "84%",
+            height: "98%",
             left: "56%",
-            top: "47%",
+            top: "46%",
             transform: "translate(-50%, -50%)",
           }}
         >
           <EnvelopeBackdrop
-            color={envelopeOuter || "#5384db"}
-            flapColor="#7ba3e8"
-            liner={envelopeLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)"}
+            color={envelopeOuter || "#b47b48"}
+            flapColor="#9c6838"
+            liner={envelopeLiner || "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)"}
           />
         </div>
       )}

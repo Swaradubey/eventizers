@@ -14,11 +14,26 @@ import EnvelopeBackdrop from "./EnvelopeBackdrop";
 export { teardownCanvasTextLayers };
 
 export const ENVELOPE_LINERS_DATA: Record<string, string> = {
+  // Autumn Tan Gingham / Plaid (Evite Fall Blooms exact style)
+  "autumn-gingham":
+    "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
+  "autumn-gingham-liner":
+    "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
   "vertical-pink-stripes":
     "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
   "pink-stripes":
     "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
   none: "rgba(0,0,0,0.02)",
+  // Gold checkered liner — Evite default style
+  "gold-grid":
+    "repeating-conic-gradient(#c9a227 0% 25%, #e8bb3a 0% 50%) 0 0 / 14px 14px",
+  "gold-checkered":
+    "repeating-conic-gradient(#c9a227 0% 25%, #e8bb3a 0% 50%) 0 0 / 14px 14px",
+  // Rose-gold metallic liner
+  "rose-gold":
+    "linear-gradient(135deg, #e8c4c4 0%, #d4a0a8 20%, #c490a0 40%, #b87898 60%, #c490a0 80%, #d4a0a8 100%)",
+  "rose-gold-metallic":
+    "linear-gradient(135deg, #e8c4c4 0%, #d4a0a8 20%, #c490a0 40%, #b87898 60%, #c490a0 80%, #d4a0a8 100%)",
   "gold-foil": "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)",
   "silver-foil": "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)",
   "pink-gingham":
@@ -38,6 +53,7 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   "autumn-gingham-liner": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
   "/templates/envelopes/autumn-gingham-liner.png": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
 };
+
 
 export const STAMPS_DATA: Record<string, string> = {
   airmail: "✈️",
@@ -75,6 +91,7 @@ export interface InvitationCanvasStageProps {
   onBackdropClick?: () => void;
   showingBackside?: boolean;
   onFlipCard?: () => void;
+  isEnvelopeTabActive?: boolean;
 }
 
 export default function InvitationCanvasStage({
@@ -99,6 +116,7 @@ export default function InvitationCanvasStage({
   onBackdropClick,
   showingBackside = false,
   onFlipCard,
+  isEnvelopeTabActive = false,
 }: InvitationCanvasStageProps) {
   const localCardRef = useRef<HTMLDivElement>(null);
   const effectiveCardRef: any = cardRef || localCardRef;
@@ -130,6 +148,33 @@ export default function InvitationCanvasStage({
       ro.disconnect();
     };
   }, [effectiveCardRef, maxW, isLandscape]);
+
+  // ─── MOUNT-TIME FABRIC CANVAS PURGE ─────────────────────────────────────────
+  // When this component mounts (including re-navigation from back-to-browse),
+  // force-clear ALL text objects from the fabric canvas singleton.
+  // This prevents the "double text" bug where stale fabric text objects from a
+  // previous session overlap with the freshly rendered React HTML text layers.
+  useEffect(() => {
+    const canvas = getFabricCanvas();
+    if (!canvas || typeof canvas.getObjects !== "function") return;
+    try {
+      // Remove only text-type objects (preserve background image objects)
+      const textObjects = canvas.getObjects().filter((obj: any) =>
+        obj.type === "textbox" ||
+        obj.type === "i-text" ||
+        obj.type === "text" ||
+        obj.data?.isTextBlock === true
+      );
+      textObjects.forEach((obj: any) => {
+        try { canvas.remove(obj); } catch (_) {}
+      });
+      if (textObjects.length > 0) {
+        if (typeof canvas.requestRenderAll === "function") canvas.requestRenderAll();
+        else if (typeof canvas.renderAll === "function") canvas.renderAll();
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount — intentionally no deps
 
   // Deduplicate incoming text layers before layout and rendering.
   // Two-pass deduplication: first by semantic rules (role, text, position), then by strict
@@ -377,15 +422,16 @@ export default function InvitationCanvasStage({
   }, []);
 
   // Resolve Envelope Outer Color, Flap Color & Liner Style
+  // Default: warm caramel kraft tan with autumn gingham liner (Evite Fall Blooms style)
   const envelopeOuterColor =
-    (config.envelope as any)?.outerColor || config.envelope?.color || "#5384db";
+    (config.envelope as any)?.outerColor || config.envelope?.color || "#b47b48";
   const envelopeFlapColor =
-    (config.envelope as any)?.flapColor || (config.envelope as any)?.outerColor || envelopeOuterColor;
+    (config.envelope as any)?.flapColor || (config.envelope as any)?.outerColor || "#9c6838";
   const linerRaw =
     (config.envelope as any)?.innerLiner ||
     (config.envelope as any)?.linerPatternUrl ||
     config.envelope?.liner ||
-    "vertical-pink-stripes";
+    "autumn-gingham";
   // Support pure-CSS liner (linerCss) OR legacy lookup-table liner OR image URL liner
   const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
   const isImageLiner = Boolean(
@@ -400,7 +446,9 @@ export default function InvitationCanvasStage({
     (isImageLiner ? `url('${linerRaw}') center / cover no-repeat` : null) ||
     ENVELOPE_LINERS_DATA[linerRaw] ||
     (linerRaw && linerRaw.includes("gradient") ? linerRaw : null) ||
-    ENVELOPE_LINERS_DATA["vertical-pink-stripes"];
+    (linerRaw && linerRaw.includes("conic") ? linerRaw : null) ||
+    ENVELOPE_LINERS_DATA["autumn-gingham"] ||
+    ENVELOPE_LINERS_DATA["gold-grid"];
 
   // Resolve Stamp & Sticker
   const stampEmoji = config.envelope?.stamp
@@ -767,96 +815,112 @@ export default function InvitationCanvasStage({
       <div
         ref={stageRef as any}
         data-testid="invitation-stage-container"
-        className="relative w-full flex flex-col items-center justify-center transition-transform duration-300"
+        className="relative w-full flex items-center justify-center transition-transform duration-300"
         style={{
-          maxWidth: `${maxW}px`,
+          maxWidth: `${Math.round((maxW || 540) * 1.25)}px`,
           aspectRatio: isLandscape ? "4 / 3" : "5 / 7",
           minHeight: isLandscape ? "520px" : "620px",
           transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
           transformOrigin: "top center",
+          overflow: "visible",
         }}
       >
         {/* ========================================================================= */}
-        {/* LAYER 2: Envelope & Liner (z-index: 10) - Open vertical pocket behind card */}
+        {/* CARD & ENVELOPE COMPOSITE UNIT (Keeps Card & Envelope locked together)     */}
+        {/* Envelope starts AT THE TOP of card, never hangs down, never cuts off      */}
         {/* ========================================================================= */}
-        {showEnvelope && (
-          <motion.div
-            data-layer="2-envelope-container"
-            initial={{ opacity: 0.6, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute pointer-events-none transition-all duration-300 select-none"
-            style={{
-              zIndex: 10,
-              width: isLandscape ? "84%" : "78%",
-              height: isLandscape ? "96%" : "96%",
-              left: isLandscape ? "54%" : "56%",
-              top: isLandscape ? "47%" : "46%",
-              transform: "translate(-50%, -50%)",
-            }}
-          >
-            <EnvelopeBackdrop
-              color={envelopeOuterColor}
-              flapColor={envelopeFlapColor}
-              liner={linerStyle}
-              innerLiner={(config.envelope as any)?.innerLiner}
-              shadowColor={(config.envelope as any)?.shadowColor}
-              stampEmoji={stampEmoji}
-              stickerEmoji={stickerEmoji}
-            />
-          </motion.div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* LAYER 3: Invitation Card Surface (z-index: 20)                            */}
-        {/* Evite Card Extraction Animation: slides up out of envelope on mount        */}
-        {/* ========================================================================= */}
-        <motion.div
-          ref={effectiveCardRef}
-          id="invitation-card-container"
-          data-layer="3-card-surface"
-          data-testid="preview-card"
-          initial={{
-            y: 80,
-            x: isCardOnlyMode ? 0 : (isLandscape ? "-1%" : "-1%"),
-            scale: 0.93,
-            opacity: 0.85,
-          }}
-          animate={{
-            y: 0,
-            x: isCardOnlyMode ? 0 : (isLandscape ? "-2%" : "-3%"),
-            scale: 1,
-            opacity: 1,
-          }}
-          transition={{
-            duration: 0.95,
-            ease: [0.16, 1, 0.3, 1],
-            delay: 0.08,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              if (onCardClick) onCardClick();
-              if (onSelectLayer) onSelectLayer("");
-              if (setEditingTextId) setEditingTextId(null);
-            }
-          }}
-          className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${cardTextureClass}`}
+        <div
+          data-layer="card-envelope-unit"
+          className="relative flex items-center justify-center"
           style={{
-            zIndex: 20,
-            position: "relative",
             width: isCardOnlyMode ? (isLandscape ? "92%" : "84%") : (isLandscape ? "88%" : "78%"),
             aspectRatio: cardAspectRatio,
-            backgroundColor: cardBgColor,
-            background:
-              (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
-              !(config as any).innerCardLayer?.backgroundColor &&
-              config.cardBg.value !== backdropGradient &&
-              config.cardBg.value !== backdropValue
-                ? config.cardBg.value
-                : undefined,
-            boxShadow: cardShadowStyle,
+            // Optically center composite unit when envelope peeks right (exact Evite match)
+            transform: !isCardOnlyMode && !isEnvelopeTabActive && config.viewMode !== "envelope"
+              ? "translateX(-7%)"
+              : undefined,
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
+          {/* LAYER 2: Envelope & Liner (z-index: 10) — Sits directly behind the card */}
+          {showEnvelope && (
+            <motion.div
+              data-layer="2-envelope-container"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+              className="absolute inset-0 pointer-events-none select-none"
+              style={{
+                zIndex: 10,
+                width: "100%",
+                height: "100%",
+                // Locked directly behind the card:
+                // Upper flap starts right at the top of the card!
+                // Lower body aligns right at the bottom of the card!
+                // Shifts right 25% so the upper flap and right edge peek out (Evite exact)
+                transform: isCardOnlyMode
+                  ? "translateX(0)"
+                  : (isEnvelopeTabActive || config.viewMode === "envelope")
+                  ? "translateX(0)"
+                  : "translateX(25%)",
+                transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            >
+              <EnvelopeBackdrop
+                color={envelopeOuterColor}
+                flapColor={envelopeFlapColor}
+                liner={linerStyle}
+                innerLiner={(config.envelope as any)?.innerLiner}
+                shadowColor={(config.envelope as any)?.shadowColor}
+                stampEmoji={stampEmoji}
+                stickerEmoji={stickerEmoji}
+              />
+            </motion.div>
+          )}
+
+          {/* LAYER 3: Invitation Card Surface (z-index: 20) */}
+          <motion.div
+            ref={effectiveCardRef}
+            id="invitation-card-container"
+            data-layer="3-card-surface"
+            data-testid="preview-card"
+            initial={{
+              y: 60,
+              scale: 0.93,
+              opacity: 0.85,
+            }}
+            animate={{
+              y: 0,
+              scale: 1,
+              opacity: 1,
+            }}
+            transition={{
+              duration: 0.95,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.08,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                if (onCardClick) onCardClick();
+                if (onSelectLayer) onSelectLayer("");
+                if (setEditingTextId) setEditingTextId(null);
+              }
+            }}
+            className={`relative w-full h-full rounded-2xl overflow-hidden transition-all duration-300 ${cardTextureClass}`}
+            style={{
+              zIndex: 20,
+              aspectRatio: cardAspectRatio,
+              backgroundColor: cardBgColor,
+              background:
+                (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
+                !(config as any).innerCardLayer?.backgroundColor &&
+                config.cardBg.value !== backdropGradient &&
+                config.cardBg.value !== backdropValue
+                  ? config.cardBg.value
+                  : undefined,
+              boxShadow: cardShadowStyle,
+            }}
+          >
           {showingBackside ? (
             <div className="absolute inset-0 flex flex-col items-center justify-between p-8 sm:p-12 text-center bg-[#FAF8F5] select-none">
               <div className="w-full flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-400">
@@ -1188,6 +1252,7 @@ export default function InvitationCanvasStage({
             </>
           )}
         </motion.div>
+        </div>
 
         {/* Floating Toolbar for Fabric / Window Canvas when active */}
         {toolbarPosition.visible && !readOnly && (

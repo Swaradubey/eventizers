@@ -410,6 +410,7 @@ const ENVELOPE_COLORS = [
 ];
 
 const ENVELOPE_LINERS = [
+  { id: "autumn-gingham", name: "Autumn Gingham (Evite)", style: "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)" },
   { id: "vertical-pink-stripes", name: "Pink Candy Stripes", style: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)" },
   { id: "none", name: "Plain Solid", style: "rgba(0,0,0,0.02)" },
   { id: "gold-foil", name: "Gold Leaf Foil", style: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)" },
@@ -1294,9 +1295,9 @@ export default function InvitationStudio({
       canvasWorkspaceBg: "#161616",
       backdropBackground: "#161616",
       envelope: {
-        color: "#5384db",
-        liner: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
-        linerCss: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+        color: "#b47b48",
+        liner: "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
+        linerCss: "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
         stamp: null,
         sticker: null,
       },
@@ -5944,7 +5945,8 @@ export default function InvitationStudio({
               }}
               showingBackside={showingBackside}
               onFlipCard={() => setShowingBackside((prev) => !prev)}
-              className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-hidden"
+              isEnvelopeTabActive={activeTab === "envelope"}
+              className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-auto"
             />
 
             {/* Hidden file input for photo slot replacement */}
