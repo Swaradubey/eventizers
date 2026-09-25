@@ -94,6 +94,7 @@ export interface EviteTemplateSchema {
   };
   envelope: {
     outerColor: string;
+    flapColor?: string;
     linerPatternUrl: string; // empty string for pure-CSS templates
     innerLiner?: string;     // image URL or pattern for liner
     shadowColor?: string;    // custom shadow color
