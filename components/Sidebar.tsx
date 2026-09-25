@@ -27,6 +27,7 @@ import {
   MapPin,
   KeyRound,
   QrCode,
+  PartyPopper,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -257,12 +258,32 @@ export default function Sidebar() {
         className="sidebar-shell"
         data-collapsed={collapsed}
       >
-        {/* ─── Header: Toggle ─── */}
-        <div className={`sidebar-header ${collapsed ? "sidebar-header--collapsed" : ""}`}>
-          {/* Toggle button */}
+        {/* ─── Header: Brand & Toggle ─── */}
+        <div className={`p-4 border-b border-white/30 flex items-center ${collapsed ? "flex-col gap-2 justify-center" : "justify-between gap-3"}`}>
+          <Link
+            href="/"
+            className="flex items-center gap-3 overflow-hidden group focus:outline-none"
+            title="Eventizers"
+          >
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+              <PartyPopper className="w-6 h-6 text-white" />
+            </div>
+            {!collapsed && (
+              <div className="overflow-hidden min-w-0">
+                <h1 className="font-bold text-lg bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent leading-tight truncate">
+                  Eventizers
+                </h1>
+                <p className="text-xs text-slate-500 font-normal truncate">
+                  Create. Invite. Manage.
+                </p>
+              </div>
+            )}
+          </Link>
+
+          {/* Toggle / Close button */}
           <button
             onClick={isMobileDrawer ? handleMobileClose : handleDesktopToggle}
-            className="sidebar-toggle"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/70 transition-colors flex-shrink-0 focus:outline-none"
             aria-label={
               isMobileDrawer
                 ? "Close navigation"
@@ -279,11 +300,11 @@ export default function Sidebar() {
             }
           >
             {isMobileDrawer ? (
-              <X className="sidebar-toggle-icon" />
+              <X className="w-5 h-5" />
             ) : collapsed ? (
-              <PanelLeftOpen className="sidebar-toggle-icon" />
+              <PanelLeftOpen className="w-5 h-5" />
             ) : (
-              <PanelLeftClose className="sidebar-toggle-icon" />
+              <PanelLeftClose className="w-5 h-5" />
             )}
           </button>
         </div>

@@ -1,8 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@300;400;900&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Dancing+Script:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Great+Vibes&family=Alex+Brush&family=Pinyon+Script&family=Cormorant+Garamond:wght@400;600;700&family=Parisienne&family=Bodoni+Moda:wght@400;700&family=Prata&family=Marcellus&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Questrial&family=Londrina+Solid:wght@300;400;900&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Dancing+Script:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Great+Vibes&family=Alex+Brush&family=Pinyon+Script&family=Cormorant+Garamond:wght@400;600;700&family=Parisienne&family=Bodoni+Moda:wght@400;700&family=Prata&family=Marcellus&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.font-questrial {
+  font-family: 'Questrial', system-ui, -apple-system, sans-serif;
+}
 
 :root {
   --ivory: #FAF8F5;
@@ -359,8 +363,10 @@ h6[style*="Georgia"] {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f0f7ff;
-  border-right: 1px solid #dbeafe;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
   font-family: 'Inter', system-ui, sans-serif;
   user-select: none;
   overflow: hidden;

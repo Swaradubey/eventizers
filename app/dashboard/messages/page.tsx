@@ -300,7 +300,7 @@ export default function MessagesPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
@@ -326,16 +326,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col font-body text-slate-900 relative"
-      style={{
-        backgroundColor: "#fbfcfe",
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23cbd5e1' opacity='0.45'%3E%2B%3C/text%3E%3C/svg%3E\")",
-      }}
-    >
-      <Navbar />
-
+    <div className="min-h-screen bg-transparent flex flex-col font-body text-slate-900 relative">
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-6 pb-12 z-10">
 
         {/* ── Header ── */}

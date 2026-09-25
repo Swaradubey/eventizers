@@ -130,16 +130,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col font-body text-slate-900 relative overflow-hidden"
-      style={{
-        backgroundColor: "#f8fafc",
-        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
-      }}
-    >
-      <Navbar />
-
+    <div className="min-h-screen bg-transparent flex flex-col font-body text-slate-900 relative overflow-hidden">
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-8 pt-4 md:pt-6 pb-10 z-10">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">

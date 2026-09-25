@@ -546,24 +546,14 @@ function TicketingPageContent() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen bg-slate-50/50 flex flex-col font-sans text-slate-800 relative overflow-hidden"
-      style={{
-        backgroundImage: `radial-gradient(circle at 10% 15%, rgba(59, 130, 246, 0.05) 0%, transparent 45%),
-                          radial-gradient(circle at 90% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 45%),
-                          radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 60%),
-                          url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.5 6.5h1v5h-1zm-2 2h5v1h-5z' fill='%2394A3B8' fill-opacity='0.09'/%3E%3C/svg%3E")`,
-      }}
-    >
-      <Navbar />
-
+    <div className="min-h-screen bg-transparent flex flex-col font-sans text-slate-800 relative overflow-hidden">
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-6 pb-12 z-10">
         {/* Main Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">

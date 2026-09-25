@@ -24,19 +24,19 @@ export default function Logo({
 }: LogoProps) {
   const sizeStyles = {
     sm: {
-      container: "w-8 h-8 rounded-xl",
+      container: "w-7 h-7 rounded-lg",
       icon: "w-4 h-4",
       text: "text-lg",
       gap: "gap-2",
     },
     md: {
-      container: "w-10 h-10 rounded-2xl",
+      container: "w-8 h-8 rounded-lg",
       icon: "w-5 h-5",
       text: "text-xl",
-      gap: "gap-2.5",
+      gap: "gap-2",
     },
     lg: {
-      container: "w-11 h-11 rounded-2xl",
+      container: "w-9 h-9 rounded-lg",
       icon: "w-5 h-5",
       text: "text-2xl",
       gap: "gap-2.5",
@@ -48,13 +48,14 @@ export default function Logo({
   const content = (
     <>
       <div
-        className={`${currentSize.container} bg-gradient-to-br from-[#6366f1] via-[#3b82f6] to-[#06b6d4] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 flex-shrink-0 ${iconContainerClassName}`}
+        className={`${currentSize.container} bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-xs transition-transform group-hover:scale-105 flex-shrink-0 ${iconContainerClassName}`}
       >
         <PartyPopper className={`${currentSize.icon} text-white ${iconClassName}`} />
       </div>
       {showText && (
         <span
-          className={`font-bold ${currentSize.text} tracking-tight bg-gradient-to-r from-[#4f46e5] via-[#2563eb] to-[#06b6d4] bg-clip-text text-transparent font-sans ${textClassName}`}
+          className={`font-bold ${currentSize.text} tracking-tight bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent font-questrial ${textClassName}`}
+          style={{ fontFamily: "'Questrial', sans-serif" }}
         >
           Eventizers
         </span>

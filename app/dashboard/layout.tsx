@@ -68,9 +68,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           font-weight: 400 !important;
         }
       `}} />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/60 flex text-slate-800 dashboard-page">
-      {/* Responsive Left Sidebar */}
-      <Sidebar />
+      <div className="min-h-screen invitation-bg invitation-pattern flex text-slate-800 dashboard-page relative">
+        {/* Ambient floating orbs matching v0-e-invitation-app */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-indigo-400/10 rounded-full blur-3xl floating-orb" />
+          <div className="absolute top-40 right-20 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl floating-orb" style={{ animationDelay: "2s" }} />
+          <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl pulse-orb" />
+        </div>
+
+        {/* Responsive Left Sidebar */}
+        <Sidebar />
 
       {/* Sparkle effect on login */}
       <SparkleEffect />

@@ -406,12 +406,7 @@ export default function AttendanceCommitmentDashboard({
 
   return (
     <div
-      className="min-h-screen flex flex-col font-body text-slate-900 relative selection:bg-indigo-100 selection:text-indigo-700 overflow-x-hidden"
-      style={{
-        backgroundColor: "#fbfcfe",
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23cbd5e1' opacity='0.45'%3E%2B%3C/text%3E%3C/svg%3E\")",
-      }}
+      className="min-h-screen bg-transparent flex flex-col font-body text-slate-900 relative selection:bg-indigo-100 selection:text-indigo-700 overflow-x-hidden"
     >
       {/* Top Navbar if enabled */}
       {showNavbar && <Navbar />}

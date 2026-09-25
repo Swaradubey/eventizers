@@ -23,7 +23,6 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import templateService, { Template } from "@/services/templateService";
 import eventService from "@/services/eventService";
 import API, { getApiErrorMessage } from "@/services/api";
@@ -993,8 +992,6 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         </div>
       </div>
 
-      <Navbar />
-
       <main className="ai-assistant-page flex-1 flex flex-col w-full mx-auto relative overflow-hidden overflow-x-clip py-8 px-4 sm:px-6 lg:px-8 z-10">
 
         {/* Top Header & Mobile Hamburger */}
@@ -1097,7 +1094,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {/* Heading with Wand icon */}
                   <div className="flex items-center gap-2 text-gray-800">
                     <Wand2 className="w-4 h-4 text-[#7C3AED]" />
-                    <span className="font-semibold text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                    <span className="font-normal text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif", fontWeight: "normal" }}>
                       Describe your event and let AI build it
                     </span>
                   </div>

@@ -312,27 +312,24 @@ function EventsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-900 relative">
-      <Navbar />
-
-      {/* Main container */}
-      <main className="flex-1 flex flex-col max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-16 z-10">
-        {/* Header Row: Title, Subtitle, and + New Event Button */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="min-h-screen bg-transparent flex flex-col font-sans text-slate-900 relative">
+      {/* Sticky Top Header: All events */}
+      <div className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Hamburger Button for Mobile Sidebar */}
             <button
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs focus:outline-none"
+              className="md:hidden p-2 rounded-xl border border-slate-200/80 bg-white/80 hover:bg-white text-slate-700 transition-colors shadow-xs focus:outline-none"
               aria-label="Open navigation"
             >
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-normal text-slate-900 tracking-tight force-georgia">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                 All events
               </h1>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-slate-500 text-sm mt-1">
                 View and manage all your events
               </p>
             </div>
@@ -340,12 +337,16 @@ function EventsPageContent() {
 
           <button
             onClick={handleCreateClick}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0070F3] hover:bg-[#0060df] rounded-xl active:scale-95 transition-all shadow-sm focus:outline-none"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-lg font-semibold hover:shadow-lg transition-shadow active:scale-95"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Plus className="w-5 h-5" />
             <span>New Event</span>
           </button>
         </div>
+      </div>
+
+      {/* Main container */}
+      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 py-8 z-10">
 
         {/* Dynamic Filter Pills */}
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 mb-6 scrollbar-none">

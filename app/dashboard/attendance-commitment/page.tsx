@@ -19,7 +19,7 @@ export default function AttendanceCommitmentPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8faff]">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-[#5b45f4] animate-spin" />
           <p className="text-sm font-medium text-slate-500">Loading Attendance Commitment...</p>
@@ -30,7 +30,7 @@ export default function AttendanceCommitmentPage() {
 
   return (
     <AttendanceCommitmentDashboard
-      showNavbar={true}
+      showNavbar={false}
       showBottomNav={false}
     />
   );

@@ -1097,7 +1097,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {/* Heading with Wand icon */}
                   <div className="flex items-center gap-2 text-gray-800">
                     <Wand2 className="w-4 h-4 text-[#7C3AED]" />
-                    <span className="font-semibold text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                    <span className="font-normal text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif", fontWeight: "normal" }}>
                       Describe your event and let AI build it
                     </span>
                   </div>
