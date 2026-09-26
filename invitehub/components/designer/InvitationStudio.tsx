@@ -1248,16 +1248,13 @@ export default function InvitationStudio({
   const [activeTab, setActiveTab] = useState<"text" | "backgrounds" | "envelope" | "effects" | "backside" | "details">("text");
   const [showingBackside, setShowingBackside] = useState(false);
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
-  const [canvasEnvelopeView, setCanvasEnvelopeView] = useState<"peek" | "open" | "closed" | null>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
   const effectiveEnvelopeView: "peek" | "open" | "closed" =
-    canvasEnvelopeView !== null
-      ? canvasEnvelopeView
-      : activeTab === "envelope"
-      ? (envelopeSubTab === "stamps" || envelopeSubTab === "stickers" ? "closed" : "open")
+    activeTab === "envelope" && (envelopeSubTab === "stamps" || envelopeSubTab === "stickers")
+      ? "closed"
       : "peek";
 
   // Clear all canvas state, localStorage caches, and present the template gallery.
@@ -4528,46 +4525,6 @@ export default function InvitationStudio({
               </>
             )}
 
-            {/* Envelope View Mode Switcher (Evite Style) */}
-            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
-            <div className="flex items-center gap-1 shrink-0 bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
-              <button
-                type="button"
-                onClick={() => setCanvasEnvelopeView("peek")}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                  effectiveEnvelopeView === "peek"
-                    ? "bg-white text-slate-900 shadow-2xs font-bold"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-                title="View envelope peeking behind the card (Evite authentic)"
-              >
-                <span>✉️</span> Behind Card
-              </button>
-              <button
-                type="button"
-                onClick={() => setCanvasEnvelopeView("open")}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                  effectiveEnvelopeView === "open"
-                    ? "bg-white text-slate-900 shadow-2xs font-bold"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-                title="View open envelope pocket with card tucked in"
-              >
-                <span>📬</span> Inside Envelope
-              </button>
-              <button
-                type="button"
-                onClick={() => setCanvasEnvelopeView("closed")}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                  effectiveEnvelopeView === "closed"
-                    ? "bg-white text-slate-900 shadow-2xs font-bold"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-                title="View addressed envelope front with stamp & seal"
-              >
-                <span>🏷️</span> Envelope Front
-              </button>
-            </div>
           </div>
 
           {/* ========================================================================= */}
