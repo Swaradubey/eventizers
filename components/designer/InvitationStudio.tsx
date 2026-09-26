@@ -379,67 +379,82 @@ const PRESET_BACKGROUNDS = [
 ];
 
 const ENVELOPE_COLORS = [
-  { id: "cornflower", hex: "#5384db", name: "Sky Cornflower" },
-  { id: "babyblue", hex: "#7ba3e8", name: "Soft Light Blue" },
-  { id: "plum", hex: "#781d60", name: "Rich Berry" },
+  { id: "burgundy", hex: "#7A1C28", name: "Deep Burgundy" },
   { id: "mint", hex: "#9fd0c4", name: "Pale Mint" },
   { id: "kraft", hex: "#d8be9b", name: "Kraft Paper" },
   { id: "sage", hex: "#88b398", name: "Sage Green" },
-  { id: "holographic", hex: "linear-gradient(135deg, #fbcfe8, #c4b5fd, #67e8f9)", name: "Holographic" },
+  { id: "holographic", hex: "linear-gradient(135deg, #fbcfe8, #c4b5fd, #67e8f9)", name: "Pastel Iridescent" },
   { id: "olive", hex: "#59664e", name: "Deep Olive" },
   { id: "espresso", hex: "#4b382a", name: "Dark Espresso" },
   { id: "sand", hex: "#e2d6c3", name: "Sand Tint" },
   { id: "camel", hex: "#cb9b6a", name: "Camel Tan" },
   { id: "coral", hex: "#e75836", name: "Sunset Coral" },
-  { id: "rosegold", hex: "linear-gradient(135deg, #e0a899, #f7cac9)", name: "Rose Gold" },
+  { id: "rosegold", hex: "linear-gradient(135deg, #e0a899, #f7cac9)", name: "Rose Gold Foil" },
   { id: "lavender", hex: "linear-gradient(135deg, #f3e8ff, #e9d5ff)", name: "Lavender Confetti" },
   { id: "ivory", hex: "#fbfbfa", name: "Crisp Ivory" },
   { id: "blackglitter", hex: "#18181b", name: "Midnight Onyx" },
   { id: "cyan", hex: "#54a8b7", name: "Ocean Cyan" },
-  { id: "navy", hex: "#1d2c4d", name: "Classic Navy" },
+  { id: "cornflower", hex: "#5384db", name: "Sky Cornflower" },
+  { id: "babyblue", hex: "#7ba3e8", name: "Soft Light Blue" },
+  { id: "plum", hex: "#781d60", name: "Rich Berry" },
   { id: "yellow", hex: "#facc15", name: "Electric Gold" },
   { id: "pink", hex: "#f472b6", name: "Bubblegum" },
-  { id: "sagegreen", hex: "#A8C3B0", name: "Pastel Sage" },
-  { id: "warmkraft", hex: "#C4A482", name: "Rustic Kraft" },
-  { id: "powderblue", hex: "#9BB4CE", name: "Powder Blue" },
-  { id: "warmlinen", hex: "#ECE8E1", name: "Warm Linen" },
-  { id: "midnightnavy", hex: "#102A54", name: "Midnight Navy" },
-  { id: "burgundy", hex: "#7A1C28", name: "Deep Burgundy" },
   { id: "dustyblue", hex: "#8FA9C4", name: "Dusty Soft Blue" },
+  { id: "charcoal", hex: "#374151", name: "Charcoal Slate" },
+  { id: "navy", hex: "#1d2c4d", name: "Classic Navy" },
   { id: "terracotta", hex: "#C37A3E", name: "Warm Terracotta" },
 ];
 
 const ENVELOPE_LINERS = [
-  { id: "autumn-gingham", name: "Autumn Gingham (Evite)", style: "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)" },
+  { id: "blush-burgundy-liner", name: "Blush Burgundy Floral", style: "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat" },
+  { id: "autumn-gingham-liner", name: "Autumn Gingham Plaid", style: "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat" },
+  { id: "something-blue-liner", name: "Something Blue Floral", style: "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat" },
+  { id: "terracotta-checkered", name: "Terracotta Checkered", style: "repeating-conic-gradient(#cb4e2c 0% 25%, #ffffff 0% 50%) 0 0 / 20px 20px" },
   { id: "vertical-pink-stripes", name: "Pink Candy Stripes", style: "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)" },
-  { id: "none", name: "Plain Solid", style: "rgba(0,0,0,0.02)" },
   { id: "gold-foil", name: "Gold Leaf Foil", style: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)" },
+  { id: "rose-gold", name: "Rose Gold Foil", style: "linear-gradient(135deg, #e8c4c4, #d4a0a8, #b87898)" },
   { id: "silver-foil", name: "Silver Leaf Foil", style: "linear-gradient(135deg, #cfd9df 0%, #e2ebf0 40%, #b8c6db 70%, #f5f7fa 100%)" },
-  { id: "pink-gingham", name: "Pink Gingham", style: "repeating-linear-gradient(0deg, #fcdde3, #fcdde3 14px, #ffffff 14px, #ffffff 28px), repeating-linear-gradient(90deg, rgba(244,114,182,0.3), rgba(244,114,182,0.3) 14px, transparent 14px, transparent 28px)" },
-  { id: "sage-mist", name: "Sage Mist", style: "linear-gradient(135deg, #a3b899 0%, #8ea383 100%)" },
-  { id: "ivory-linen", name: "Ivory Cotton", style: "linear-gradient(135deg, #fdfbf7 0%, #f4f0e8 100%)" },
-  { id: "pink-glitter", name: "Pink Glitter", style: "radial-gradient(circle at 50% 50%, #f472b6, #db2777)" },
-  { id: "sprinkles", name: "Cake Sprinkles", style: "repeating-linear-gradient(45deg, #fbcfe8, #fbcfe8 10px, #fef08a 10px, #fef08a 20px, #67e8f9 20px, #67e8f9 30px)" },
-  { id: "electric-gradient", name: "Electric Rainbow", style: "conic-gradient(at top left, #f43f5e, #eab308, #06b6d4, #8b5cf6, #f43f5e)" },
+  { id: "pink-gingham", name: "Pink Gingham", style: "repeating-linear-gradient(0deg, #fcdde3 0px, #fcdde3 12px, #ffffff 12px, #ffffff 24px), repeating-linear-gradient(90deg, rgba(244,114,182,0.3) 0px, rgba(244,114,182,0.3) 12px, transparent 12px, transparent 24px)" },
+  { id: "sage-mist", name: "Sage Mist Watercolor", style: "linear-gradient(135deg, #a3b899 0%, #8ea383 100%)" },
+  { id: "ivory-linen", name: "Ivory Cotton Linen", style: "linear-gradient(135deg, #fdfbf7 0%, #f4f0e8 100%)" },
+  { id: "sprinkles", name: "Celebration Confetti", style: "repeating-linear-gradient(45deg, #fbcfe8 0px, #fbcfe8 8px, #fef08a 8px, #fef08a 16px, #67e8f9 16px, #67e8f9 24px)" },
   { id: "marble", name: "Carrara Marble", style: "linear-gradient(120deg, #f1f5f9 0%, #e2e8f0 50%, #ffffff 100%)" },
   { id: "botanical", name: "Botanical Florals", style: "linear-gradient(135deg, #dcfce7, #86efac)" },
-  { id: "blush-burgundy-liner", name: "Blush Burgundy Floral", style: "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat" },
-  { id: "something-blue-liner", name: "Blue Hydrangea Floral", style: "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat" },
-  { id: "autumn-gingham-liner", name: "Autumn Terracotta Gingham", style: "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat" },
+  { id: "none", name: "Plain Solid Paper", style: "rgba(255,255,255,0.95)" },
 ];
 
 const STAMPS = [
-  { id: "airmail", name: "Vintage Airmail", emoji: "✈️" },
-  { id: "rose", name: "Botanical Rose", emoji: "🌹" },
-  { id: "wax", name: "Gold Seal", emoji: "⚜️" },
-  { id: "cake", name: "Birthday Cake", emoji: "🎂" },
+  { id: "blush-floral", name: "Blush Floral", emoji: "🌸", color: "#fdf2f4" },
+  { id: "pink-roses", name: "Vintage Roses", emoji: "🌹", color: "#fce7f3" },
+  { id: "red-rose", name: "Crimson Rose", emoji: "🥀", color: "#ffe4e6" },
+  { id: "sweet-heart", name: "Heart Love", emoji: "❤️", color: "#fef2f2" },
+  { id: "party-neon", name: "Party Time", emoji: "🎉", color: "#18181b" },
+  { id: "holiday-ornament", name: "Celebration", emoji: "✨", color: "#fef3c7" },
+  { id: "cherries", name: "Sweet Cherries", emoji: "🍒", color: "#fff1f2" },
+  { id: "strawberry", name: "Wild Strawberry", emoji: "🍓", color: "#fdf2f8" },
+  { id: "moon-stars", name: "Moon & Stars", emoji: "🌙", color: "#1e1b4b" },
+  { id: "celebrate", name: "Golden Celebrate", emoji: "🥂", color: "#fffbeb" },
+  { id: "olive-branch", name: "Olive Branch", emoji: "🌿", color: "#f0fdf4" },
+  { id: "sparkle-magic", name: "Magic Sparkle", emoji: "⭐", color: "#faf5ff" },
+  { id: "birthday-cake", name: "Birthday Cake", emoji: "🎂", color: "#fdf4ff" },
+  { id: "vintage-airmail", name: "Vintage Airmail", emoji: "✈️", color: "#eff6ff" },
 ];
 
 const STICKERS = [
-  { id: "star", name: "Golden Star", emoji: "⭐" },
-  { id: "heart", name: "Rose Heart", emoji: "💖" },
-  { id: "love", name: "Wax 'LOVE'", emoji: "💌" },
-  { id: "sparkle", name: "Sparkle Magic", emoji: "✨" },
+  { id: "gold-wax-seal", name: "Gold Wax Seal", emoji: "⚜️" },
+  { id: "rose-wax-seal", name: "Rose Quartz Seal", emoji: "💌" },
+  { id: "tulip-bloom", name: "Spring Tulip", emoji: "🌷" },
+  { id: "party-balloons", name: "Festive Balloons", emoji: "🎈" },
+  { id: "heart-friends", name: "Love Hearts", emoji: "💖" },
+  { id: "love-you-mom", name: "Love You", emoji: "💕" },
+  { id: "gratitude-wreath", name: "Gratitude Wreath", emoji: "🌿" },
+  { id: "bride-banner", name: "Bride Ribbon", emoji: "👰" },
+  { id: "margarita", name: "Cocktail", emoji: "🍸" },
+  { id: "star-badge", name: "Golden Star", emoji: "⭐" },
+  { id: "sparkles", name: "Shimmer Sparkles", emoji: "✨" },
+  { id: "butterfly", name: "Butterfly", emoji: "🦋" },
+  { id: "diamond-ring", name: "Diamond Ring", emoji: "💍" },
+  { id: "crown-royal", name: "Royal Crown", emoji: "👑" },
 ];
 
 export default function InvitationStudio({
@@ -1233,8 +1248,17 @@ export default function InvitationStudio({
   const [activeTab, setActiveTab] = useState<"text" | "backgrounds" | "envelope" | "effects" | "backside" | "details">("text");
   const [showingBackside, setShowingBackside] = useState(false);
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
+  const [canvasEnvelopeView, setCanvasEnvelopeView] = useState<"peek" | "open" | "closed" | null>(null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+
+  const effectiveEnvelopeView: "peek" | "open" | "closed" =
+    canvasEnvelopeView !== null
+      ? canvasEnvelopeView
+      : activeTab === "envelope"
+      ? (envelopeSubTab === "stamps" || envelopeSubTab === "stickers" ? "closed" : "open")
+      : "peek";
 
   // Clear all canvas state, localStorage caches, and present the template gallery.
   // Called ONLY when the user clicks "Back to browse" — never on send.
@@ -4504,7 +4528,46 @@ export default function InvitationStudio({
               </>
             )}
 
-
+            {/* Envelope View Mode Switcher (Evite Style) */}
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="flex items-center gap-1 shrink-0 bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setCanvasEnvelopeView("peek")}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  effectiveEnvelopeView === "peek"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="View envelope peeking behind the card (Evite authentic)"
+              >
+                <span>✉️</span> Behind Card
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanvasEnvelopeView("open")}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  effectiveEnvelopeView === "open"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="View open envelope pocket with card tucked in"
+              >
+                <span>📬</span> Inside Envelope
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanvasEnvelopeView("closed")}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  effectiveEnvelopeView === "closed"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="View addressed envelope front with stamp & seal"
+              >
+                <span>🏷️</span> Envelope Front
+              </button>
+            </div>
           </div>
 
           {/* ========================================================================= */}
@@ -5339,10 +5402,15 @@ export default function InvitationStudio({
                     {/* Sub-Tab 1: Envelope Flap Colors */}
                     {envelopeSubTab === "colors" && (
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                          Envelope Flap Colors
-                        </span>
-                        <div className="grid grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Envelope Colors
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {ENVELOPE_COLORS.length} shades
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-[420px] overflow-y-auto pr-1 pb-2">
                           {ENVELOPE_COLORS.map((env) => {
                             const isSelected = designState.envelope.color === env.hex;
                             return (
@@ -5352,22 +5420,45 @@ export default function InvitationStudio({
                                 onClick={() =>
                                   pushStateToHistory({
                                     ...designState,
-                                    envelope: { ...designState.envelope, color: env.hex },
+                                    envelope: { ...designState.envelope, color: env.hex, flapColor: env.hex },
                                   })
                                 }
-                                className={`group aspect-[5/3.5] rounded-xl relative overflow-hidden border transition-all cursor-pointer shadow-2xs ${isSelected
-                                  ? "ring-2 ring-slate-900 ring-offset-2 border-transparent"
-                                  : "border-slate-200/80 hover:scale-102 hover:shadow-xs"
-                                  }`}
+                                className={`group aspect-[4/3] rounded-xl relative overflow-hidden transition-all duration-150 cursor-pointer shadow-2xs ${
+                                  isSelected
+                                    ? "ring-2 ring-slate-900 ring-offset-2 border-transparent scale-102 shadow-xs"
+                                    : "border border-slate-200/90 hover:scale-105 hover:shadow-xs"
+                                }`}
                                 style={{ background: env.hex }}
                                 title={env.name}
                               >
-                                {/* Realistic Envelope Flap SVG Silhouette */}
-                                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" viewBox="0 0 100 70">
-                                  <polygon points="0,0 100,0 50,42" fill="none" stroke="#000" strokeWidth="2" />
+                                {/* Miniature Folded Envelope Flap (Evite Exact) */}
+                                <div
+                                  className="absolute inset-x-0 top-0 h-[52%] pointer-events-none"
+                                  style={{
+                                    clipPath: "polygon(0% 0%, 100% 0%, 50% 100%)",
+                                    backgroundColor: env.hex,
+                                    filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.2))",
+                                  }}
+                                >
+                                  <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                      background:
+                                        "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%, rgba(0,0,0,0.12) 100%)",
+                                    }}
+                                  />
+                                </div>
+                                {/* Subtle fold crease lines */}
+                                <svg
+                                  className="absolute inset-0 w-full h-full pointer-events-none opacity-20"
+                                  viewBox="0 0 100 75"
+                                  preserveAspectRatio="none"
+                                >
+                                  <line x1="0" y1="75" x2="50" y2="40" stroke="#000" strokeWidth="1.5" />
+                                  <line x1="100" y1="75" x2="50" y2="40" stroke="#000" strokeWidth="1.5" />
                                 </svg>
                                 {isSelected && (
-                                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-xs">
                                     <Check className="w-2.5 h-2.5" />
                                   </div>
                                 )}
@@ -5381,12 +5472,20 @@ export default function InvitationStudio({
                     {/* Sub-Tab 2: Liners */}
                     {envelopeSubTab === "liners" && (
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                          Interior Liner Patterns
-                        </span>
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Interior Liner Patterns
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {ENVELOPE_LINERS.length} patterns
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-[420px] overflow-y-auto pr-1 pb-2">
                           {ENVELOPE_LINERS.map((liner) => {
-                            const isSelected = designState.envelope.liner === liner.id;
+                            const isSelected =
+                              designState.envelope.liner === liner.id ||
+                              (designState.envelope as any)?.innerLiner === liner.id ||
+                              (designState.envelope as any)?.linerCss === liner.style;
                             return (
                               <button
                                 key={liner.id}
@@ -5394,19 +5493,27 @@ export default function InvitationStudio({
                                 onClick={() =>
                                   pushStateToHistory({
                                     ...designState,
-                                    envelope: { ...designState.envelope, liner: liner.id, linerCss: liner.style },
+                                    envelope: {
+                                      ...designState.envelope,
+                                      liner: liner.id,
+                                      innerLiner: liner.id,
+                                      linerCss: liner.style,
+                                    },
                                   })
                                 }
-                                className={`p-2.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${isSelected
-                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                  : "border-slate-200 hover:border-slate-300"
-                                  }`}
+                                className={`group aspect-[4/3] rounded-xl relative overflow-hidden border transition-all duration-150 cursor-pointer shadow-2xs ${
+                                  isSelected
+                                    ? "ring-2 ring-slate-900 ring-offset-2 border-transparent scale-102 shadow-xs"
+                                    : "border-slate-200 hover:border-slate-400 hover:scale-105 hover:shadow-xs"
+                                }`}
+                                style={{ background: liner.style, backgroundColor: "#ffffff" }}
+                                title={liner.name}
                               >
-                                <div
-                                  className="w-full h-12 rounded-lg border border-black/10 shadow-inner"
-                                  style={{ background: liner.style }}
-                                />
-                                <span className="text-xs font-semibold text-slate-800 truncate">{liner.name}</span>
+                                {isSelected && (
+                                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-xs">
+                                    <Check className="w-2.5 h-2.5" />
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
@@ -5417,10 +5524,26 @@ export default function InvitationStudio({
                     {/* Sub-Tab 3: Stamps */}
                     {envelopeSubTab === "stamps" && (
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                          Envelope Postal Stamps
-                        </span>
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Postage Stamps
+                          </span>
+                          {designState.envelope.stamp && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  envelope: { ...designState.envelope, stamp: null },
+                                })
+                              }
+                              className="text-[11px] text-slate-400 hover:text-red-600 font-semibold cursor-pointer underline"
+                            >
+                              Remove stamp
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-[420px] overflow-y-auto pr-1 pb-2">
                           {STAMPS.map((stamp) => {
                             const isSelected = designState.envelope.stamp === stamp.id;
                             return (
@@ -5436,13 +5559,22 @@ export default function InvitationStudio({
                                     },
                                   })
                                 }
-                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                  : "border-slate-200 hover:border-slate-300"
-                                  }`}
+                                className={`group aspect-[3/4] p-1.5 rounded-lg border flex flex-col items-center justify-between transition-all duration-150 cursor-pointer bg-white shadow-2xs ${
+                                  isSelected
+                                    ? "ring-2 ring-slate-900 ring-offset-2 border-slate-900 bg-slate-50"
+                                    : "border-dashed border-slate-300 hover:border-slate-500 hover:scale-105"
+                                }`}
+                                title={stamp.name}
                               >
-                                <span className="text-2xl">{stamp.emoji}</span>
-                                <span className="text-xs font-semibold text-slate-800">{stamp.name}</span>
+                                <div
+                                  className="w-full flex-1 rounded flex items-center justify-center text-2xl shadow-inner"
+                                  style={{ backgroundColor: stamp.color || "#f8fafc" }}
+                                >
+                                  {stamp.emoji}
+                                </div>
+                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider truncate w-full text-center mt-1">
+                                  {stamp.name}
+                                </span>
                               </button>
                             );
                           })}
@@ -5453,12 +5585,62 @@ export default function InvitationStudio({
                     {/* Sub-Tab 4: Stickers */}
                     {envelopeSubTab === "stickers" && (
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-3">
-                          Flap Seals & Stickers
-                        </span>
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="block text-[11px] font-bold tracking-wider uppercase text-slate-500">
+                            Flap Seals & Stickers
+                          </span>
+                          {designState.envelope.sticker && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                pushStateToHistory({
+                                  ...designState,
+                                  envelope: { ...designState.envelope, sticker: null },
+                                })
+                              }
+                              className="text-[11px] text-slate-400 hover:text-red-600 font-semibold cursor-pointer underline"
+                            >
+                              Remove sticker
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Upload your own sticker button */}
+                        <div className="mb-3">
+                          <input
+                            ref={stickerInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                const result = evt.target?.result as string;
+                                if (result) {
+                                  pushStateToHistory({
+                                    ...designState,
+                                    envelope: { ...designState.envelope, sticker: result },
+                                  });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => stickerInputRef.current?.click()}
+                            className="w-full p-2.5 rounded-xl border border-dashed border-slate-300 hover:border-slate-500 bg-slate-50/50 hover:bg-slate-100 flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 transition-all cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Upload your own sticker</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1 pb-2">
                           {STICKERS.map((sticker) => {
-                            const isSelected = designState.envelope.sticker === sticker.id;
+                            const isSelected = designState.envelope.sticker === sticker.id || designState.envelope.sticker === sticker.emoji;
                             return (
                               <button
                                 key={sticker.id}
@@ -5468,17 +5650,21 @@ export default function InvitationStudio({
                                     ...designState,
                                     envelope: {
                                       ...designState.envelope,
-                                      sticker: isSelected ? null : sticker.id,
+                                      sticker: isSelected ? null : sticker.emoji,
                                     },
                                   })
                                 }
-                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${isSelected
-                                  ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                  : "border-slate-200 hover:border-slate-300"
-                                  }`}
+                                className={`group aspect-square p-2 rounded-xl border flex flex-col items-center justify-center transition-all duration-150 cursor-pointer bg-white shadow-2xs ${
+                                  isSelected
+                                    ? "ring-2 ring-slate-900 ring-offset-2 border-slate-900 bg-slate-50 scale-105"
+                                    : "border-slate-200 hover:border-slate-400 hover:scale-105 hover:shadow-xs"
+                                }`}
+                                title={sticker.name}
                               >
-                                <span className="text-2xl">{sticker.emoji}</span>
-                                <span className="text-xs font-semibold text-slate-800">{sticker.name}</span>
+                                <span className="text-3xl drop-shadow-sm">{sticker.emoji}</span>
+                                <span className="text-[9px] font-semibold text-slate-600 truncate w-full text-center mt-1">
+                                  {sticker.name}
+                                </span>
                               </button>
                             );
                           })}
@@ -5908,6 +6094,7 @@ export default function InvitationStudio({
               showingBackside={showingBackside}
               onFlipCard={() => setShowingBackside((prev) => !prev)}
               isEnvelopeTabActive={activeTab === "envelope"}
+              envelopeViewMode={effectiveEnvelopeView}
               className="order-1 lg:order-2 flex-1 min-w-0 max-w-full overflow-auto"
             />
 
