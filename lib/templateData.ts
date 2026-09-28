@@ -42,7 +42,7 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
   if (target === "networking") {
     return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup") || cat.includes("founders") || cat.includes("connect");
   }
-  if (target === "birthday") {
+  if (target === "birthday" || target === "adult birthday") {
     return cat.includes("birthday") || cat.includes("bday") || cat.includes("milestone") || cat.includes("celebration");
   }
   if (target === "wedding") {

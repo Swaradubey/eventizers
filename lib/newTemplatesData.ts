@@ -25,7 +25,7 @@ export interface CssCardConfig {
   backgroundColor: string;
   backgroundGradient?: string;   // overrides solid bg if set
   paperShadow?: string;          // inset box-shadow for paper texture
-  border: CssBorderConfig;
+  border?: CssBorderConfig;
   // Optional shape modifiers
   borderRadius?: string;         // e.g. '140px 140px 0 0' for arch
   clipPath?: string;
@@ -86,6 +86,16 @@ export interface EviteTemplateSchema {
   name?: string;
   category: 'Baby Shower' | 'Wedding' | 'Birthday' | 'All' | 'bridal_shower' | string;
   badge?: 'Trending' | 'FREE' | 'Free' | 'PREMIUM' | 'Premium' | string;
+  envelopeColor?: string;
+  linerColor?: string;
+  envelopeLiner?: string;
+  innerCardLayer?: {
+    backgroundColor?: string;
+    borderRadius?: string;
+    border?: any;
+    paperShadow?: string;
+    aspectRatio?: string;
+  };
   backdrop: {
     type: 'color' | 'texture';
     value: string; // e.g. '#9c7cb6' or a pure CSS gradient string
@@ -97,6 +107,7 @@ export interface EviteTemplateSchema {
     flapColor?: string;
     linerPatternUrl: string; // empty string for pure-CSS templates
     innerLiner?: string;     // image URL or pattern for liner
+    linerColor?: string;
     shadowColor?: string;    // custom shadow color
     linerCss?: string;       // pure CSS gradient/pattern string for liner
     linerPattern?: string;
@@ -197,6 +208,7 @@ export interface PhotoSlot {
 export interface NewTemplateData {
   id: string;
   isPureCss?: boolean;
+  isPremium?: boolean;
   type: string;
   category: string;
   tags?: string[];
@@ -228,6 +240,7 @@ export interface NewTemplateData {
   isLandscape?: boolean;
   swatches?: string[];
   envelopeColor: string;
+  linerColor?: string;
   envelopeLiner: string;
   textLayers?: TemplateTextLayer[];
   photoSlot?: PhotoSlot | null;
@@ -235,6 +248,7 @@ export interface NewTemplateData {
   backdrop: EviteTemplateSchema['backdrop'];
   envelope: EviteTemplateSchema['envelope'];
   card: EviteTemplateSchema['card'];
+  innerCardLayer?: EviteTemplateSchema['innerCardLayer'];
   defaultTextLayers: EviteTemplateSchema['defaultTextLayers'];
 }
 
@@ -242,6 +256,185 @@ export interface NewTemplateData {
 // STANDARDIZED EVITE TEMPLATES REGISTRY (4-Layer Decoupled Architecture)
 // -----------------------------------------------------------------------------
 export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
+  {
+    "id": "tpl-chic-dinner-cake",
+    "title": "Chic Dinner & Cake Celebration",
+    "category": "Adult Birthday",
+    "badge": "Premium",
+    "envelopeColor": "#1A1A1A",
+    "linerColor": "#D4AF37",
+    "envelopeLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+    "backdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/white-embossed-floral.svg",
+      "color": "#FAF7F2",
+      "gradient": "url('/assets/backdrops/white-embossed-floral.svg') center / cover no-repeat, linear-gradient(135deg, #FAF7F2 0%, #EDE6D8 100%)"
+    },
+    "envelope": {
+      "outerColor": "#1A1A1A",
+      "flapColor": "#1A1A1A",
+      "linerPatternUrl": "gold-foil",
+      "linerColor": "#D4AF37",
+      "innerLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+      "linerCss": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/chic-dinner-cake-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/chic-dinner-cake-bg.svg",
+      "borderIllustration": "/assets/templates/chic-dinner-cake-bg.svg",
+      "backgroundColor": "#F4EFE6",
+      "aspectRatio": "5x7",
+      "cssConfig": {
+        "backgroundColor": "#F4EFE6",
+        "borderRadius": "12px",
+        "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)"
+      }
+    },
+    "innerCardLayer": {
+      "backgroundColor": "#F4EFE6",
+      "borderRadius": "12px",
+      "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)",
+      "aspectRatio": "5/7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-header",
+        "key": "header",
+        "text": "Let's celebrate",
+        "fontFamily": "'Great Vibes', cursive",
+        "fontSize": 24,
+        "color": "#1A1A1A",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 18,
+        "left": 50
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "LAURA'S 30TH BIRTHDAY",
+        "fontFamily": "'Cinzel', serif",
+        "fontSize": 22,
+        "letterSpacing": 2,
+        "color": "#1A1A1A",
+        "fontWeight": "700",
+        "textAlign": "center",
+        "top": 28,
+        "left": 50
+      },
+      {
+        "id": "layer-details",
+        "key": "details",
+        "text": "AUGUST 31ST AT 7 PM\nOUR PLACE",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 12,
+        "letterSpacing": 1.5,
+        "lineHeight": 1.6,
+        "color": "#1A1A1A",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 38,
+        "left": 50
+      }
+    ]
+  },
+  {
+    "id": "tpl-modern-gold-black-balloon",
+    "title": "Modern Gold & Black Balloon Bash",
+    "category": "Adult Birthday",
+    "badge": "Premium",
+    "envelopeColor": "#1A1A1A",
+    "linerColor": "#D4AF37",
+    "envelopeLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+    "backdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/subtle-white-marble.svg",
+      "color": "#F8F9FA",
+      "gradient": "url('/assets/backdrops/subtle-white-marble.svg') center / cover no-repeat, linear-gradient(135deg, #F8F9FA 0%, #EAECEF 100%)"
+    },
+    "envelope": {
+      "outerColor": "#1A1A1A",
+      "flapColor": "#1A1A1A",
+      "linerPatternUrl": "gold-foil",
+      "linerColor": "#D4AF37",
+      "innerLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+      "linerCss": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+      "isOpen": true
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/modern-gold-black-balloon-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/modern-gold-black-balloon-bg.svg",
+      "borderIllustration": "/assets/templates/modern-gold-black-balloon-bg.svg",
+      "backgroundColor": "#FAFAFA",
+      "aspectRatio": "5x7",
+      "cssConfig": {
+        "backgroundColor": "#FAFAFA",
+        "borderRadius": "12px",
+        "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)"
+      }
+    },
+    "innerCardLayer": {
+      "backgroundColor": "#FAFAFA",
+      "borderRadius": "12px",
+      "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)",
+      "aspectRatio": "5/7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-heading",
+        "key": "heading",
+        "text": "let's party",
+        "fontFamily": "'Alex Brush', cursive",
+        "fontSize": 38,
+        "color": "#111111",
+        "fontWeight": "400",
+        "textAlign": "center",
+        "top": 22,
+        "left": 55
+      },
+      {
+        "id": "layer-intro",
+        "key": "intro",
+        "text": "PLEASE JOIN US TO CELEBRATE",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 11,
+        "letterSpacing": 2,
+        "color": "#555555",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 33,
+        "left": 55
+      },
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "MORGAN ANDERSON",
+        "fontFamily": "'Playfair Display', serif",
+        "fontSize": 20,
+        "letterSpacing": 1.5,
+        "color": "#111111",
+        "fontWeight": "700",
+        "textAlign": "center",
+        "top": 43,
+        "left": 55
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "SATURDAY, JUNE 24 AT 6 PM\nWILLOW TERRACE",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 11,
+        "letterSpacing": 1.5,
+        "lineHeight": 1.6,
+        "color": "#333333",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 54,
+        "left": 55
+      }
+    ]
+  },
   {
     "id": "tpl-abstract-nature-party",
     "title": "Abstract Nature Party",
@@ -1139,8 +1332,8 @@ export const EVITE_TEMPLATES_CONFIG: Record<string, EviteTemplateSchema> = EVITE
 // -----------------------------------------------------------------------------
 export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
   const titleLayer = ev.defaultTextLayers.find(l => l.key === 'title') || ev.defaultTextLayers[0];
-  const subLayer = ev.defaultTextLayers.find(l => l.key === 'subtitle') || ev.defaultTextLayers[1];
-  const dateLayer = ev.defaultTextLayers.find(l => l.key === 'datetime' || l.key === 'date');
+  const subLayer = ev.defaultTextLayers.find(l => l.key === 'subtitle' || l.key === 'intro' || l.key === 'header' || l.key === 'heading') || ev.defaultTextLayers[1];
+  const dateLayer = ev.defaultTextLayers.find(l => l.key === 'datetime' || l.key === 'date' || l.key === 'details');
   const venueLayer = ev.defaultTextLayers.find(l => l.key === 'venue');
   const hostLayer = ev.defaultTextLayers.find(l => l.key === 'host');
 
@@ -1169,13 +1362,16 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
   const innerLiner = (ev.envelope as any)?.innerLiner || (ev.envelope as any)?.linerCss || (ev.envelope as any)?.linerPatternUrl;
   const shadowColor = (ev.envelope as any)?.shadowColor;
 
+  const isBirthday = ev.category.toLowerCase().includes('birthday');
+
   return {
     id: ev.id,
     type: ev.category,
     category: ev.category,
-    tags: [ev.category, 'All'],
+    tags: [ev.category, ...(isBirthday ? ['Birthday', 'Adult Birthday'] : []), 'All'],
     title: ev.title,
     badge: ev.badge || 'Free',
+    isPremium: (ev.badge || '').toUpperCase() === 'PREMIUM',
     subtitle: subLayer ? subLayer.text : ev.title,
     date: dateLayer ? dateLayer.text : 'Upcoming',
     time: '4:00 PM',
@@ -1200,8 +1396,9 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     sections: [],
     isLandscape: false,
     swatches: [ev.envelope.outerColor, ev.card.backgroundColor],
-    envelopeColor: ev.envelope?.outerColor || "#5384db",
-    envelopeLiner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+    envelopeColor: (ev as any).envelopeColor || ev.envelope?.outerColor || "#5384db",
+    linerColor: (ev as any).linerColor || (ev.envelope as any)?.linerColor || "#D4AF37",
+    envelopeLiner: (ev as any).envelopeLiner || (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
     textLayers,
     photoSlot: null,
     isPureCss: ev.isPureCss || false,
@@ -1212,9 +1409,10 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
       type: ev.backdrop.type,
     },
     envelope: {
-      outerColor: ev.envelope?.outerColor || "#5384db",
-      flapColor: (ev.envelope as any)?.flapColor || (ev.envelope as any)?.outerColor || "#7ba3e8",
+      outerColor: ev.envelope?.outerColor || (ev as any).envelopeColor || "#5384db",
+      flapColor: (ev.envelope as any)?.flapColor || ev.envelope?.outerColor || (ev as any).envelopeColor || "#7ba3e8",
       innerLiner,
+      linerColor: (ev.envelope as any)?.linerColor || (ev as any).linerColor || "#D4AF37",
       shadowColor,
       liner: (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
       linerPattern: ev.envelope?.linerPatternUrl || (ev.envelope as any)?.innerLiner || "vertical-pink-stripes",
@@ -1231,6 +1429,13 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
       decorativeBorderSvgUrl: borderIllustration || ev.card.decorativeBorderSvgUrl || ev.card.artworkUrl,
       aspectRatio: ev.card.aspectRatio === 'square' ? 'square' : 'portrait',
       cssConfig: (ev.card as any)?.cssConfig,
+    },
+    innerCardLayer: (ev as any).innerCardLayer || {
+      backgroundColor: ev.card.backgroundColor,
+      borderRadius: (ev.card as any)?.cssConfig?.borderRadius || "14px",
+      border: (ev.card as any)?.cssConfig?.border,
+      paperShadow: (ev.card as any)?.cssConfig?.paperShadow || "0 12px 24px -4px rgba(0,0,0,0.25)",
+      aspectRatio: "5/7",
     },
     defaultTextLayers: ev.defaultTextLayers,
     defaultTextBlocks: (ev as any).defaultTextBlocks,
@@ -1305,6 +1510,29 @@ export const getTemplateConfig = (templateId?: string | null): NewTemplateData |
   );
   if (byPartial) return byPartial;
   return null;
+};
+
+export const isTemplatePremium = (tplOrId?: any): boolean => {
+  if (!tplOrId) return false;
+  if (typeof tplOrId === 'string') {
+    const cfg = getTemplateConfig(tplOrId);
+    return isTemplatePremium(cfg);
+  }
+  if (tplOrId.isPremium === true) return true;
+  const badge = (tplOrId.badge || '').trim().toUpperCase();
+  if (badge === 'PREMIUM') return true;
+  const tplId = tplOrId.id || tplOrId.templateId || tplOrId.activeTemplateId;
+  if (tplId && typeof tplId === 'string') {
+    const cfg = getTemplateConfig(tplId);
+    if (cfg && cfg !== tplOrId) {
+      return isTemplatePremium(cfg);
+    }
+  }
+  return false;
+};
+
+export const isTemplateFree = (tplOrId?: any): boolean => {
+  return !isTemplatePremium(tplOrId);
 };
 
 export const getEviteCardTemplate = (templateId?: string | null): EviteCardTemplate | null => {

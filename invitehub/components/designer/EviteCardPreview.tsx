@@ -55,13 +55,22 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const handleTextSelect = onSelectText || onTextClick;
   const [imgError, setImgError] = React.useState(false);
 
-  // 1. Resolve Backdrop color or gradient
-  const backdropBg =
+  // 1. Resolve Backdrop color or gradient or texture image
+  const rawBackdrop =
     resolvedTemplate.backdrop?.gradient ||
     resolvedTemplate.backdrop?.color ||
     (typeof resolvedTemplate.backdrop?.value === "string" ? resolvedTemplate.backdrop.value : null) ||
     resolvedTemplate.gradient ||
     "#F3F4F6";
+
+  let backdropBg = rawBackdrop;
+  if (
+    rawBackdrop &&
+    (rawBackdrop.startsWith("/") || rawBackdrop.startsWith("http")) &&
+    !rawBackdrop.includes("url(")
+  ) {
+    backdropBg = `url('${rawBackdrop}') center / cover no-repeat`;
+  }
 
   // 2. Resolve Envelope & Liner
   const envelopeOuter =
@@ -69,25 +78,51 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     resolvedTemplate.envelopeColor ||
     "#1A1A1A";
 
+  const envelopeFlap =
+    resolvedTemplate.envelope?.flapColor ||
+    resolvedTemplate.envelope?.outerColor ||
+    resolvedTemplate.envelopeColor ||
+    envelopeOuter;
+
+  const envelopeLinerColor =
+    resolvedTemplate.envelope?.linerColor ||
+    resolvedTemplate.linerColor;
+
   const envelopeLiner =
     resolvedTemplate.envelope?.innerLiner ||
     resolvedTemplate.envelope?.liner ||
     resolvedTemplate.envelope?.linerCss ||
+    (envelopeLinerColor === "#D4AF37"
+      ? "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)"
+      : null) ||
     resolvedTemplate.envelope?.linerPatternUrl ||
     resolvedTemplate.envelopeLiner ||
     "linear-gradient(135deg, #D4AF37 0%, #AA771C 100%)";
 
+  // Parse canvasState if available
+  let canvasState: any = null;
+  if (event?.canvasState) {
+    canvasState = typeof event.canvasState === 'string' 
+      ? (() => { try { return JSON.parse(event.canvasState); } catch(e) { return null; } })()
+      : event.canvasState;
+  }
+
   // 3. Resolve Card Surface
-  const cardData = resolvedTemplate.card || {};
+  const cardData = canvasState?.card || resolvedTemplate.card || {};
   const cssConfig = cardData.cssConfig;
 
-  const cardBg =
+  let cardBg =
+    canvasState?.cardBg?.value ||
+    canvasState?.background?.value ||
+    canvasState?.innerCardLayer?.backgroundColor ||
     resolvedTemplate.innerCardLayer?.backgroundColor ||
     cssConfig?.backgroundGradient ||
     cssConfig?.backgroundColor ||
     cardData.backgroundColor ||
     resolvedTemplate.backgroundColor ||
     "#FFFFFF";
+    
+  if (typeof cardBg === 'object') cardBg = cardBg.value || "#FFFFFF";
 
   const borderConfig = cssConfig?.border || resolvedTemplate.innerCardLayer?.border;
   const cardBorder =
@@ -99,17 +134,25 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       ? `${borderConfig.thickness || 1}px ${borderConfig.style || borderConfig.type || "solid"} ${borderConfig.color || "#D4AF37"}`
       : "1px solid rgba(0,0,0,0.08)";
 
+  const isAdultBirthday =
+    effectiveTemplateId === "tpl-chic-dinner-cake" ||
+    effectiveTemplateId === "tpl-modern-gold-black-balloon";
+
   const cardShadow =
     cssConfig?.paperShadow ||
-    "0 10px 25px -5px rgba(0,0,0,0.18), 0 4px 10px -3px rgba(0,0,0,0.1)";
+    (resolvedTemplate as any)?.innerCardLayer?.paperShadow ||
+    (isAdultBirthday || !cardOnly
+      ? "0 12px 24px -4px rgba(0,0,0,0.25)"
+      : "0 10px 25px -5px rgba(0,0,0,0.18), 0 4px 10px -3px rgba(0,0,0,0.1)");
 
   const accentIcon = cardData.accentIcon || resolvedTemplate.accentIcon;
 
   // Artwork resolution
   const rawCardArtwork =
-    cardData.borderIllustration ||
+    canvasState?.backgroundImageUrl ||
     cardData.artworkUrl ||
     cardData.decorativeBorderSvgUrl ||
+    cardData.borderIllustration ||
     resolvedTemplate.borderIllustration ||
     resolvedTemplate.artworkUrl ||
     resolvedTemplate.decorationImage ||
@@ -275,9 +318,10 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           }}
         >
           <EnvelopeBackdrop
-            color={envelopeOuter || "#b47b48"}
-            flapColor="#9c6838"
-            liner={envelopeLiner || "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)"}
+            color={envelopeOuter}
+            flapColor={envelopeFlap}
+            liner={envelopeLiner}
+            linerColor={envelopeLinerColor}
           />
         </div>
       )}
@@ -286,7 +330,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       <div
         className={`relative z-10 ${
           cardOnly ? "w-full h-full" : "w-[78%] h-[88%]"
-        } rounded-xl shadow-xl flex flex-col items-center justify-between p-3.5 sm:p-4 overflow-hidden`}
+        } rounded-xl flex flex-col items-center justify-between p-3.5 sm:p-4 overflow-hidden`}
         style={{
           background: cardBg,
           border: cardBorder,

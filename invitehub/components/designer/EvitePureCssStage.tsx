@@ -3,6 +3,7 @@
 import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
+import { isTemplateFree } from "../../lib/newTemplatesData";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -443,8 +444,15 @@ export default function EvitePureCssStage({
   );
   const textLayers = deduplicateTextLayers(rawTextLayers as any) as StageTextLayer[];
 
-  const envelopeOuter = template?.envelope?.outerColor || template?.envelopeColor || "#888888";
-  const linerCss = template?.envelope?.linerCss || template?.envelope?.linerPatternUrl || "linear-gradient(135deg, #f5f5f5, #e0e0e0)";
+  const envelopeOuter = template?.envelope?.outerColor || template?.envelopeColor || "#1A1A1A";
+  const envelopeFlap = template?.envelope?.flapColor || envelopeOuter;
+  const envelopeLinerColor = template?.envelope?.linerColor || template?.linerColor;
+  const linerCss =
+    template?.envelope?.linerCss ||
+    (envelopeLinerColor === "#D4AF37" ? "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)" : null) ||
+    template?.envelope?.innerLiner ||
+    template?.envelope?.linerPatternUrl ||
+    "linear-gradient(135deg, #f5f5f5, #e0e0e0)";
   const backdropGradient =
     (template as any)?.canvasWorkspaceBg ||
     (template as any)?.backdropBackground ||
@@ -452,10 +460,17 @@ export default function EvitePureCssStage({
     (template.backdrop as any)?.value ||
     "radial-gradient(circle, #2d3238 0%, #181a1d 100%)";
 
+  const isAdultBirthday =
+    template?.id === "tpl-chic-dinner-cake" ||
+    template?.id === "tpl-modern-gold-black-balloon";
+
   const cardInlineStyle: React.CSSProperties = {
     backgroundColor: cssConfig?.backgroundColor || (template as any)?.innerCardLayer?.backgroundColor || "#ffffff",
     background: cssConfig?.backgroundGradient || undefined,
-    boxShadow: cssConfig?.paperShadow || "0 10px 25px rgba(0,0,0,0.15)",
+    boxShadow:
+      cssConfig?.paperShadow ||
+      (template as any)?.innerCardLayer?.paperShadow ||
+      (isAdultBirthday ? "0 12px 24px -4px rgba(0,0,0,0.25)" : "0 10px 25px rgba(0,0,0,0.15)"),
     borderRadius: cssConfig?.borderRadius || (template as any)?.innerCardLayer?.borderRadius || "14px",
     clipPath: cssConfig?.clipPath,
   };
@@ -477,6 +492,14 @@ export default function EvitePureCssStage({
     );
   }
 
+  const hideEnvelope = Boolean(
+    template?.hideEnvelope ||
+    template?.cardOnly ||
+    (mode as string) === "card-only" ||
+    (template?.id && isTemplateFree(template.id) && template?.hideEnvelope !== false)
+  );
+  const showEnvelope = !hideEnvelope;
+
   // ── THUMBNAIL MODE (Pure CSS Stationery Presentation: Envelope Behind + Card in Front) ──
   if (mode === "thumbnail") {
     return (
@@ -485,29 +508,31 @@ export default function EvitePureCssStage({
         className={`relative w-full h-[330px] sm:h-[350px] flex items-end justify-start select-none ${className}`}
       >
         {/* Layer 2: Open Envelope & Liner Behind */}
-        <div
-          className="absolute pointer-events-none select-none transition-transform duration-300"
-          style={{
-            zIndex: 1,
-            width: "78%",
-            height: "94%",
-            left: "56%",
-            top: "47%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <EnvelopeBackdrop color={envelopeOuter} liner={linerCss} />
-        </div>
+        {showEnvelope && (
+          <div
+            className="absolute pointer-events-none select-none transition-transform duration-300"
+            style={{
+              zIndex: 1,
+              width: "78%",
+              height: "94%",
+              left: "56%",
+              top: "47%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} />
+          </div>
+        )}
 
         {/* Layer 3: Pure CSS Invitation Card in Front */}
         <div
-          className={`relative z-10 w-[70%] sm:w-[72%] ml-1.5 sm:ml-2.5 mb-2 rounded-lg overflow-hidden transition-all duration-300 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)] ${
+          className={`relative z-10 ${showEnvelope ? "w-[70%] sm:w-[72%] ml-1.5 sm:ml-2.5" : "w-[85%] sm:w-[88%] mx-auto"} mb-2 rounded-lg overflow-hidden transition-all duration-300 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)] ${
             hoverScale ? "group-hover:-translate-y-2 group-hover:shadow-[0_18px_35px_-8px_rgba(0,0,0,0.32)]" : ""
           }`}
           style={{
             aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
-            transform: "translateX(-3%)",
+            transform: showEnvelope ? "translateX(-3%)" : undefined,
             ...cardInlineStyle,
           }}
         >
@@ -541,20 +566,22 @@ export default function EvitePureCssStage({
         }}
       >
         {/* LAYER 2: Open Envelope & Liner positioned behind the card */}
-        <div
-          data-layer="2-envelope-container"
-          className="absolute pointer-events-none transition-all duration-300 select-none"
-          style={{
-            zIndex: 10,
-            width: "78%",
-            height: "96%",
-            left: "56%",
-            top: "46%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <EnvelopeBackdrop color={envelopeOuter} liner={linerCss} />
-        </div>
+        {showEnvelope && (
+          <div
+            data-layer="2-envelope-container"
+            className="absolute pointer-events-none transition-all duration-300 select-none"
+            style={{
+              zIndex: 10,
+              width: "78%",
+              height: "96%",
+              left: "56%",
+              top: "46%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} />
+          </div>
+        )}
 
         {/* LAYER 3: Card Surface in foreground */}
         <div
@@ -566,11 +593,11 @@ export default function EvitePureCssStage({
           className="relative rounded-2xl overflow-hidden transition-all duration-300"
           style={{
             zIndex: 20,
-            width: "78%",
-            transform: "translateX(-3%)",
+            width: showEnvelope ? "78%" : "84%",
+            transform: showEnvelope ? "translateX(-3%)" : undefined,
             aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
-            boxShadow: cssConfig?.paperShadow || "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)",
+            boxShadow: cssConfig?.paperShadow || (isAdultBirthday ? "0 12px 24px -4px rgba(0,0,0,0.25)" : "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)"),
             ...cardInlineStyle,
           }}
         >

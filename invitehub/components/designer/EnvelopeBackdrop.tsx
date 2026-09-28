@@ -19,6 +19,7 @@ export interface EnvelopeBackdropProps {
   /** Interior liner pattern (CSS gradient string or image URL) */
   liner?: string;
   innerLiner?: string;
+  linerColor?: string;
   shadowColor?: string;
   stamp?: string | null;
   stampEmoji?: string | null;
@@ -63,6 +64,7 @@ export default function EnvelopeBackdrop({
   flapColor,
   liner = DEFAULT_ENVELOPE_LINER,
   innerLiner,
+  linerColor,
   shadowColor,
   stamp = null,
   stampEmoji = null,
@@ -77,9 +79,20 @@ export default function EnvelopeBackdrop({
   const flapPaperColor = flapColor || bodyColor;
 
   // Resolve Liner
-  let rawLiner = innerLiner || liner || DEFAULT_ENVELOPE_LINER;
+  let rawLiner = innerLiner || liner || linerColor || DEFAULT_ENVELOPE_LINER;
   if (!rawLiner || rawLiner === "none") {
     rawLiner = "rgba(255,255,255,0.95)";
+  }
+
+  // Metallic gold foil accent resolution
+  if (
+    rawLiner === "#D4AF37" ||
+    linerColor === "#D4AF37" ||
+    rawLiner === "gold-foil" ||
+    rawLiner === "metallic-gold"
+  ) {
+    rawLiner =
+      "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)";
   }
 
   // Check if liner is image URL or CSS gradient

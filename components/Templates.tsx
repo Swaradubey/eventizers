@@ -17,7 +17,41 @@ export interface CuratedTemplate {
   category: string;
 }
 
+export interface TemplatesProps {
+  onSelectTemplate?: (templateId: string) => void;
+}
+
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
+  {
+    id: "tpl-chic-dinner-cake",
+    title: "Chic Dinner & Cake Celebration",
+    badge: "Premium",
+    category: "Adult Birthday",
+  },
+  {
+    id: "tpl-modern-gold-black-balloon",
+    title: "Modern Gold & Black Balloon Bash",
+    badge: "Premium",
+    category: "Adult Birthday",
+  },
+  {
+    id: "tpl-gold-ribbons-confetti",
+    title: "Gold Ribbons & Confetti",
+    badge: "Free",
+    category: "Birthday",
+  },
+  {
+    id: "tpl-sparkle-balloons",
+    title: "Sparkle Balloons",
+    badge: "Free",
+    category: "Birthday",
+  },
+  {
+    id: "tpl-celestial-flora",
+    title: "Celestial Flora",
+    badge: "Free",
+    category: "Birthday",
+  },
   {
     id: "tpl-abstract-nature-party",
     title: "Abstract Nature Party",
@@ -43,24 +77,6 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     category: "Wedding",
   },
   {
-    id: "tpl-gold-ribbons-confetti",
-    title: "Gold Ribbons & Confetti",
-    badge: "Free",
-    category: "Birthday",
-  },
-  {
-    id: "tpl-sparkle-balloons",
-    title: "Sparkle Balloons",
-    badge: "Free",
-    category: "Birthday",
-  },
-  {
-    id: "tpl-celestial-flora",
-    title: "Celestial Flora",
-    badge: "Free",
-    category: "Birthday",
-  },
-  {
     id: "blush-burgundy-blooms",
     title: "Blush & Burgundy Blooms",
     badge: "Premium",
@@ -80,9 +96,9 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
   },
 ];
 
-const CATEGORIES = ["All", "Bridal Shower", "Wedding", "Birthday"];
+const CATEGORIES = ["All", "Birthday", "Bridal Shower", "Wedding"];
 
-export default function Templates() {
+export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const { user } = useAuth();
   const router = useRouter();
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -99,6 +115,9 @@ export default function Templates() {
       const cat = (t.category || "").toLowerCase();
       if (target === "bridal shower") {
         return cat.includes("bridal") || cat.includes("shower");
+      }
+      if (target === "birthday" || target === "adult birthday") {
+        return cat.includes("birthday") || cat.includes("bday");
       }
       return cat === target || cat.includes(target);
     });
@@ -117,13 +136,21 @@ export default function Templates() {
   };
 
   const handleCardClick = (templateId: string) => {
+    if (onSelectTemplate) {
+      onSelectTemplate(templateId);
+      return;
+    }
     try {
       const guestDraft = {
         type: "template",
         templateId,
-        templateName: filteredTemplates.find((t) => t.id === templateId)?.title || "Event",
+        templateName:
+          (filteredTemplates.find((t) => t.id === templateId) ||
+            CURATED_TEMPLATES.find((t) => t.id === templateId))?.title || "Event",
       };
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+      sessionStorage.setItem("pending_template_id", templateId);
+      localStorage.setItem("pending_template_id", templateId);
     } catch (e) {}
     router.push(`/canvas?guest=true&templateId=${encodeURIComponent(templateId)}`);
   };
@@ -247,7 +274,12 @@ export default function Templates() {
                       <EviteCardPreview
                         template={tplConfig || template}
                         hoverScale={false}
-                        cardOnly={template.category !== "Bridal Shower" && template.category !== "bridal_shower"}
+                        cardOnly={
+                          template.id !== "tpl-chic-dinner-cake" &&
+                          template.id !== "tpl-modern-gold-black-balloon" &&
+                          template.category !== "Bridal Shower" &&
+                          template.category !== "bridal_shower"
+                        }
                       />
                     </div>
 

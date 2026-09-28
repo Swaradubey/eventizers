@@ -6,7 +6,7 @@ import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw } from "lucide
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
 import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas } from "./canvasBackgroundUtils";
-import { getTemplateConfig } from "../../lib/newTemplatesData";
+import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
@@ -421,19 +421,63 @@ export default function InvitationCanvasStage({
     };
   }, []);
 
+  // Check if there is an explicit user upload
+  const isUploadedBg = Boolean(
+    config.cardBg?.type === "image" && config.cardBg.value && isUserUploadedImage(config.cardBg.value)
+  );
+  const isUploadedCard = Boolean(
+    config.card?.artworkUrl && isUserUploadedImage(config.card.artworkUrl)
+  );
+  const isUploadedBgUrl = Boolean(
+    (config as any)?.backgroundImageUrl && isUserUploadedImage((config as any).backgroundImageUrl)
+  );
+  const isUserUpload = isUploadedBg || isUploadedCard || isUploadedBgUrl;
+
+  const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
+  const fallbackTpl = (!isUserUpload && activeTplId) ? getTemplateConfig(activeTplId) : null;
+  const isPremiumTpl = isTemplatePremium(config) || isTemplatePremium(fallbackTpl);
+  const isFreeTpl = Boolean(fallbackTpl || activeTplId) && !isPremiumTpl;
+
   // Resolve Envelope Outer Color, Flap Color & Liner Style
-  // Default: warm caramel kraft tan with autumn gingham liner (Evite Fall Blooms style)
   const envelopeOuterColor =
-    (config.envelope as any)?.outerColor || config.envelope?.color || "#b47b48";
+    (config.envelope as any)?.outerColor ||
+    config.envelope?.color ||
+    (config as any)?.envelopeColor ||
+    (fallbackTpl as any)?.envelope?.outerColor ||
+    fallbackTpl?.envelopeColor ||
+    "#b47b48";
+
   const envelopeFlapColor =
-    (config.envelope as any)?.flapColor || (config.envelope as any)?.outerColor || "#9c6838";
+    (config.envelope as any)?.flapColor ||
+    (config.envelope as any)?.outerColor ||
+    config.envelope?.color ||
+    (config as any)?.envelopeColor ||
+    envelopeOuterColor;
+
+  const rawLinerColor =
+    (config.envelope as any)?.linerColor ||
+    (config as any)?.linerColor ||
+    (fallbackTpl as any)?.envelope?.linerColor ||
+    (fallbackTpl as any)?.linerColor;
+
   const linerRaw =
     (config.envelope as any)?.innerLiner ||
     (config.envelope as any)?.linerPatternUrl ||
+    (config.envelope as any)?.linerColor ||
+    (config as any)?.linerColor ||
     config.envelope?.liner ||
+    (fallbackTpl as any)?.envelope?.innerLiner ||
+    fallbackTpl?.envelopeLiner ||
     "autumn-gingham";
-  // Support pure-CSS liner (linerCss) OR legacy lookup-table liner OR image URL liner
-  const envelopeLinerCss = (config.envelope as any)?.linerCss || "";
+
+  // Support pure-CSS liner (linerCss) OR metallic gold foil OR legacy lookup-table liner OR image URL liner
+  const envelopeLinerCss =
+    (config.envelope as any)?.linerCss ||
+    (fallbackTpl as any)?.envelope?.linerCss ||
+    (rawLinerColor === "#D4AF37" || linerRaw === "#D4AF37" || linerRaw === "gold-foil"
+      ? "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)"
+      : "");
+
   const isImageLiner = Boolean(
     linerRaw &&
       (linerRaw.startsWith("/") ||
@@ -444,6 +488,9 @@ export default function InvitationCanvasStage({
   const linerStyle =
     envelopeLinerCss ||
     (isImageLiner ? `url('${linerRaw}') center / cover no-repeat` : null) ||
+    (rawLinerColor === "#D4AF37" || linerRaw === "#D4AF37" || linerRaw === "gold-foil"
+      ? "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)"
+      : null) ||
     ENVELOPE_LINERS_DATA[linerRaw] ||
     (linerRaw && linerRaw.includes("gradient") ? linerRaw : null) ||
     (linerRaw && linerRaw.includes("conic") ? linerRaw : null) ||
@@ -458,22 +505,12 @@ export default function InvitationCanvasStage({
     ? STICKERS_DATA[config.envelope.sticker] || config.envelope.sticker
     : null;
 
-  // Check if there is an explicit user upload
-  const isUploadedBg = Boolean(
-    config.cardBg?.type === "image" && config.cardBg.value && isUserUploadedImage(config.cardBg.value)
-  );
-  const isUploadedCard = Boolean(
-    config.card?.artworkUrl && isUserUploadedImage(config.card.artworkUrl)
-  );
-  const isUploadedBgUrl = Boolean(
-    (config as any)?.backgroundImageUrl && isUserUploadedImage((config as any).backgroundImageUrl)
-  );
-  const isUserUpload = isUploadedBg || isUploadedCard || isUploadedBgUrl;
-
-  // View mode / Envelope visibility: In standalone "Card Only" mode or by default for custom uploaded images
+  // View mode / Envelope visibility: In standalone "Card Only" mode, by default for custom uploaded images,
+  // or for free templates (unless explicitly set to envelope view mode)
   const isCardOnlyMode = Boolean(
     config.hideEnvelope ||
     config.viewMode === "card" ||
+    (isFreeTpl && config.hideEnvelope !== false && config.viewMode !== "envelope") ||
     (isUserUpload && config.viewMode !== "envelope" && config.hideEnvelope !== false)
   );
   const showEnvelope = !isCardOnlyMode;
@@ -481,10 +518,6 @@ export default function InvitationCanvasStage({
   const uploadedImageSrc = isUploadedBg
     ? config.cardBg.value
     : (isUploadedCard ? config.card!.artworkUrl : ((config as any)?.backgroundImageUrl || null));
-
-  // Resolve fallback template configuration if preset template ID exists
-  const activeTplId = (config as any)?.activeTemplateId || (config as any)?.templateId;
-  const fallbackTpl = (!isUserUpload && activeTplId) ? getTemplateConfig(activeTplId) : null;
 
   // Helper to filter out snapshot / raster captures from being used as card background artwork
   const sanitizeBackgroundCandidate = (url?: string | null): string | null => {
@@ -730,6 +763,9 @@ export default function InvitationCanvasStage({
     const pureCssTpl = {
       id: (config as any).templateId || config.activeTemplateId || "unknown",
       isPureCss: true,
+      hideEnvelope: !showEnvelope,
+      cardOnly: !showEnvelope,
+      isPremium: isPremiumTpl,
       canvasWorkspaceBg: backdropGradient || backdropValue,
       backdropBackground: backdropGradient || backdropValue,
       backdrop: {
@@ -818,11 +854,11 @@ export default function InvitationCanvasStage({
       <div
         ref={stageRef as any}
         data-testid="invitation-stage-container"
-        className="relative w-full flex items-center justify-center transition-transform duration-300"
+        className="relative w-full flex items-center justify-center transition-transform duration-300 touch-pan-x touch-pan-y"
         style={{
           maxWidth: `${Math.round((maxW || 540) * 1.25)}px`,
           aspectRatio: isLandscape ? "4 / 3" : "5 / 7",
-          minHeight: isLandscape ? "520px" : "620px",
+          minHeight: isLandscape ? "min(520px, 70vh)" : "min(620px, 75vh)",
           transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
           transformOrigin: "top center",
           overflow: "visible",
@@ -872,6 +908,7 @@ export default function InvitationCanvasStage({
                     flapColor={envelopeFlapColor}
                     liner={linerStyle}
                     innerLiner={(config.envelope as any)?.innerLiner}
+                    linerColor={rawLinerColor}
                     shadowColor={(config.envelope as any)?.shadowColor}
                     stamp={config.envelope?.stamp}
                     stampEmoji={stampEmoji}
@@ -925,7 +962,7 @@ export default function InvitationCanvasStage({
                       ? config.cardBg.value
                       : undefined,
                   boxShadow: resolvedEnvelopeView === "peek"
-                    ? "0 14px 38px -4px rgba(0,0,0,0.28), 0 4px 12px rgba(0,0,0,0.12), -2px 0 8px rgba(0,0,0,0.06)"
+                    ? (config as any)?.innerCardLayer?.paperShadow || "0 12px 24px -4px rgba(0,0,0,0.25)"
                     : cardShadowStyle,
                 }}
               >

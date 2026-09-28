@@ -50,7 +50,7 @@ import { Invitation, TextLayer, GiftItem, GiftingState } from "../../types/invit
 export type { TextLayer, GiftItem, GiftingState };
 import guestService from "../../services/guestService";
 import templateService from "../../services/templateService";
-import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
+import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, isTemplatePremium, isTemplateFree, NewTemplateData, PhotoSlot } from "../../lib/newTemplatesData";
 import GuestSelectionModal from "./GuestSelectionModal";
 import FullScreenCardPreview from "./FullScreenCardPreview";
 import InvitationCanvasStage from "./InvitationCanvasStage";
@@ -280,6 +280,8 @@ export interface StudioDesignState {
   selectedTextId: string | null;
   photoSlot?: PhotoSlot | null;
   isLandscape?: boolean;
+  envelopeColor?: string;
+  linerColor?: string;
   cardBg: {
     type: "color" | "gradient" | "image" | "preset";
     value: string;
@@ -880,9 +882,11 @@ export default function InvitationStudio({
       defaultNeutralBackdrop;
 
     const savedEnvelope = invite?.envelope || {
-      color: (tplConfig as any)?.envelope?.outerColor || tplConfig?.envelopeColor || "#5384db",
-      flapColor: (tplConfig as any)?.envelope?.flapColor || (tplConfig as any)?.envelope?.outerColor || "#7ba3e8",
+      color: (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || tplConfig?.envelopeColor || "#5384db",
+      outerColor: (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || tplConfig?.envelopeColor || "#5384db",
+      flapColor: (tplConfig as any)?.envelope?.flapColor || (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || tplConfig?.envelopeColor || "#7ba3e8",
       liner: (tplConfig as any)?.envelope?.linerPatternUrl || (tplConfig as any)?.envelope?.innerLiner || tplConfig?.envelopeLiner || "vertical-pink-stripes",
+      linerColor: (tplConfig as any)?.envelope?.linerColor || (tplConfig as any)?.linerColor || tplConfig?.linerColor,
       linerCss: (tplConfig?.envelope as any)?.linerCss,
       innerLiner: (tplConfig?.envelope as any)?.innerLiner,
       shadowColor: (tplConfig?.envelope as any)?.shadowColor,
@@ -948,6 +952,13 @@ export default function InvitationStudio({
       aspectRatio: "5/7",
     };
 
+    const isPremiumTemplate = Boolean(
+      isTemplatePremium(tplConfig) ||
+      isTemplatePremium(invite)
+    );
+    const isFreeTemplate = Boolean(tplConfig || effectiveTplId) && !isPremiumTemplate;
+    const shouldHideEnvelope = Boolean(pendingUploadUrl || isFreeTemplate);
+
     return {
       activeTemplateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
       templateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
@@ -978,17 +989,23 @@ export default function InvitationStudio({
       backdropBackground: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
       envelope: {
         ...savedEnvelope,
+        color: (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || (savedEnvelope as any).color,
+        outerColor: (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || (savedEnvelope as any).outerColor,
+        flapColor: (tplConfig as any)?.envelope?.flapColor || (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || (savedEnvelope as any).flapColor,
         linerCss: (tplConfig?.envelope as any)?.linerCss || (savedEnvelope as any)?.linerCss,
         innerLiner: (tplConfig?.envelope as any)?.innerLiner || (savedEnvelope as any)?.innerLiner,
+        linerColor: (tplConfig as any)?.envelope?.linerColor || (tplConfig as any)?.linerColor || (savedEnvelope as any)?.linerColor,
         shadowColor: (tplConfig?.envelope as any)?.shadowColor || (savedEnvelope as any)?.shadowColor,
-      },
+      } as any,
+      envelopeColor: (tplConfig as any)?.envelopeColor || (tplConfig as any)?.envelope?.outerColor || savedEnvelope.color,
+      linerColor: (tplConfig as any)?.linerColor || (tplConfig as any)?.envelope?.linerColor || (savedEnvelope as any)?.linerColor || "gold-foil",
       effects: savedEffects,
       backside: savedBackside,
       backgroundLayer: resolvedBackgroundLayer,
       frameLayers: resolvedFrameLayers,
       innerCardLayer: resolvedInnerCardLayer,
-      viewMode: pendingUploadUrl ? "card" : "envelope",
-      hideEnvelope: Boolean(pendingUploadUrl),
+      viewMode: shouldHideEnvelope ? "card" : "envelope",
+      hideEnvelope: shouldHideEnvelope,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
@@ -1157,6 +1174,12 @@ export default function InvitationStudio({
     })();
 
     const baseState = createDesignStateFromTemplate(resolvedTemplateId, initialEvent, mergedInvite as any);
+
+    // If template is free, enforce envelope hidden by default when opening in canvas
+    if (resolvedTemplateId && isTemplateFree(resolvedTemplateId)) {
+      baseState.hideEnvelope = true;
+      baseState.viewMode = "card";
+    }
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
@@ -1396,6 +1419,23 @@ export default function InvitationStudio({
 
   const handleZoomIn = () => setCanvasZoom((z) => Math.min(150, z + 10));
   const handleZoomOut = () => setCanvasZoom((z) => Math.max(50, z - 10));
+
+  // Auto-scale canvas viewport to fit seamlessly within screen bounds on mobile devices
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const calculateMobileScale = () => {
+      const vw = window.innerWidth;
+      if (vw < 640) {
+        const availableW = vw - 24;
+        const targetW = activePreset.maxW || 480;
+        const scale = Math.max(50, Math.min(100, Math.floor((availableW / targetW) * 100)));
+        setCanvasZoom(scale);
+      }
+    };
+    calculateMobileScale();
+    window.addEventListener("resize", calculateMobileScale);
+    return () => window.removeEventListener("resize", calculateMobileScale);
+  }, [activePreset.maxW]);
 
   // Template tracking for re-hydration
   const loadedTemplateIdRef = useRef<string | null>(
@@ -4611,6 +4651,13 @@ export default function InvitationStudio({
                     } else {
                       setActiveTab("envelope");
                       setMobileToolsOpen(true);
+                      if (designState.hideEnvelope) {
+                        setDesignState((prev) => ({
+                          ...prev,
+                          hideEnvelope: false,
+                          viewMode: "envelope",
+                        }));
+                      }
                     }
                   }}
                   className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "envelope"
