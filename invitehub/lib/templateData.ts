@@ -15,6 +15,8 @@ export interface TemplateItem {
   accentColor: string;
   emoji: string;
   image: string;
+  mockupUrl?: string;
+  thumbnailUrl?: string;
   description?: string;
   backgroundColor?: string;
   textColor?: string;
@@ -34,7 +36,7 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
   const cat = (itemCategory || "").toLowerCase();
 
   if (target === "baby shower") {
-    return cat.includes("baby shower") || cat.includes("baby");
+    return cat.includes("baby shower") || cat.includes("baby") || cat.includes("bridal shower") || cat.includes("bridal");
   }
   if (target === "corporate") {
     return cat.includes("corporate") || cat.includes("conference") || cat.includes("business") || cat.includes("summit") || cat.includes("enterprise");
@@ -42,7 +44,7 @@ export const matchesCategory = (itemCategory: string, selectedCategory: string):
   if (target === "networking") {
     return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup") || cat.includes("founders") || cat.includes("connect");
   }
-  if (target === "birthday") {
+  if (target === "birthday" || target === "adult birthday") {
     return cat.includes("birthday") || cat.includes("bday") || cat.includes("milestone") || cat.includes("celebration");
   }
   if (target === "wedding") {

@@ -15,6 +15,8 @@ export interface TemplateItem {
   accentColor: string;
   emoji: string;
   image: string;
+  mockupUrl?: string;
+  thumbnailUrl?: string;
   description?: string;
   backgroundColor?: string;
   textColor?: string;

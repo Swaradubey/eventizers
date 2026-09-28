@@ -244,10 +244,9 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                     <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
                       <span className={`pointer-events-auto text-[11px] px-2.5 py-1 rounded-md shadow-2xs flex items-center gap-1 ${
                         template.badge?.toLowerCase() === "premium"
-                          ? "bg-[#FAF5EE] text-[#6B2D38] border border-[#E8DCCB] font-semibold"
+                          ? "bg-[#FCFBF7]/95 text-[#967026] border border-[#C5A059] font-semibold"
                           : "bg-white/95 text-neutral-800 font-medium"
                       }`}>
-                        {template.badge?.toLowerCase() === "premium" && <span>👑</span>}
                         <span>{template.badge || "Free"}</span>
                       </span>
                       <button

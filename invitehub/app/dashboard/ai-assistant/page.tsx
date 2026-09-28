@@ -23,7 +23,6 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import templateService, { Template } from "@/services/templateService";
 import eventService from "@/services/eventService";
 import API, { getApiErrorMessage } from "@/services/api";
@@ -77,18 +76,23 @@ const getDefaultVenueForTemplate = (tpl?: Template | null) => {
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
+  const cfg = getTemplateConfig(templateId);
+  if (cfg?.mockupUrl) return cfg.mockupUrl;
   const card = templateCards.find(c => c.id === templateId);
+  if (card?.mockupUrl) return card.mockupUrl;
   if (card?.image) return card.image;
   return NEW_TEMPLATE_IMAGES[templateId] || null;
 };
 
 const getCardImageUrl = (tpl: any) => {
   let url = null;
-  if (tpl.imageUrl) url = tpl.imageUrl;
+  if (tpl.mockupUrl) url = tpl.mockupUrl;
+  else if (tpl.imageUrl) url = tpl.imageUrl;
   else if (tpl.content) {
     try {
       const parsed = JSON.parse(tpl.content);
-      if (parsed.image) url = parsed.image;
+      if (parsed.mockupUrl) url = parsed.mockupUrl;
+      else if (parsed.image) url = parsed.image;
     } catch (e) {}
   }
   if (!url) url = getTemplateImage(tpl.id);
@@ -993,26 +997,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         </div>
       </div>
 
-      <Navbar />
-
       <main className="ai-assistant-page flex-1 flex flex-col w-full mx-auto relative overflow-hidden overflow-x-clip py-8 px-4 sm:px-6 lg:px-8 z-10">
 
-        {/* Top Header & Mobile Hamburger */}
+        {/* Top Header & Content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center items-center overflow-x-clip">
-          {/* Mobile hamburger row */}
-          <div className="w-full flex items-center justify-between md:hidden mb-4">
-            <button
-              onClick={() => setIsOpen(true)}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs focus:outline-none"
-              aria-label="Open navigation"
-            >
-              <Menu className="w-5 h-5 text-slate-700" />
-            </button>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-semibold">
-              <Bot className="w-3.5 h-3.5" />
-              <span>AI Assistant</span>
-            </div>
-          </div>
+
 
           {/* Top Pill Badge */}
           <div className="rounded-full bg-white/90 backdrop-blur-sm border border-slate-200/80 px-4 py-1.5 shadow-sm inline-flex items-center gap-2 mb-4">
@@ -1383,7 +1372,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                       : badgeText.toUpperCase() === "POPULAR"
                                       ? "bg-indigo-500/90 text-white border-indigo-400/90"
                                       : isPremium || badgeText.toUpperCase() === "FEATURED"
-                                      ? "bg-amber-500/95 text-white border-amber-400/90"
+                                      ? "bg-[#FCFBF7]/95 text-[#967026] border-[#C5A059]"
                                       : "bg-white/90 text-gray-800 border-white/70"
                                   }`}>
                                     {badgeText}
@@ -1404,6 +1393,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     hoverScale={false}
                                     aspectRatio="full"
                                     className="w-full h-full"
+                                    cardOnly={
+                                      tpl.id !== "tpl-chic-dinner-cake" &&
+                                      tpl.id !== "tpl-modern-gold-black-balloon" &&
+                                      tpl.category !== "Bridal Shower" &&
+                                      tpl.category !== "bridal_shower"
+                                    }
                                   />
                                 </div>
 

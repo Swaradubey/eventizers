@@ -76,18 +76,23 @@ const getDefaultVenueForTemplate = (tpl?: Template | null) => {
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
+  const cfg = getTemplateConfig(templateId);
+  if (cfg?.mockupUrl) return cfg.mockupUrl;
   const card = templateCards.find(c => c.id === templateId);
+  if (card?.mockupUrl) return card.mockupUrl;
   if (card?.image) return card.image;
   return NEW_TEMPLATE_IMAGES[templateId] || null;
 };
 
 const getCardImageUrl = (tpl: any) => {
   let url = null;
-  if (tpl.imageUrl) url = tpl.imageUrl;
+  if (tpl.mockupUrl) url = tpl.mockupUrl;
+  else if (tpl.imageUrl) url = tpl.imageUrl;
   else if (tpl.content) {
     try {
       const parsed = JSON.parse(tpl.content);
-      if (parsed.image) url = parsed.image;
+      if (parsed.mockupUrl) url = parsed.mockupUrl;
+      else if (parsed.image) url = parsed.image;
     } catch (e) {}
   }
   if (!url) url = getTemplateImage(tpl.id);
@@ -1367,7 +1372,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                       : badgeText.toUpperCase() === "POPULAR"
                                       ? "bg-indigo-500/90 text-white border-indigo-400/90"
                                       : isPremium || badgeText.toUpperCase() === "FEATURED"
-                                      ? "bg-amber-500/95 text-white border-amber-400/90"
+                                      ? "bg-[#FCFBF7]/95 text-[#967026] border-[#C5A059]"
                                       : "bg-white/90 text-gray-800 border-white/70"
                                   }`}>
                                     {badgeText}
@@ -1388,6 +1393,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     hoverScale={false}
                                     aspectRatio="full"
                                     className="w-full h-full"
+                                    cardOnly={
+                                      tpl.id !== "tpl-chic-dinner-cake" &&
+                                      tpl.id !== "tpl-modern-gold-black-balloon" &&
+                                      tpl.category !== "Bridal Shower" &&
+                                      tpl.category !== "bridal_shower"
+                                    }
                                   />
                                 </div>
 

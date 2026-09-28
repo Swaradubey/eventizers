@@ -142,7 +142,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     cssConfig?.paperShadow ||
     (resolvedTemplate as any)?.innerCardLayer?.paperShadow ||
     (isAdultBirthday || !cardOnly
-      ? "0 12px 24px -4px rgba(0,0,0,0.25)"
+      ? "0 12px 28px -6px rgba(0,0,0,0.3)"
       : "0 10px 25px -5px rgba(0,0,0,0.18), 0 4px 10px -3px rgba(0,0,0,0.1)");
 
   const accentIcon = cardData.accentIcon || resolvedTemplate.accentIcon;
@@ -162,8 +162,14 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     ? (getCleanTemplateSvg(rawCardArtwork) || rawCardArtwork)
     : null;
 
-  // Check if event or template has a raster snapshot (PNG/JPEG/WebP or dataUrl)
+  // Check if event or template has a raster snapshot (PNG/JPEG/WebP or dataUrl or standalone mockup SVG)
+  const candidateMockup =
+    resolvedTemplate?.mockupUrl ||
+    resolvedTemplate?.thumbnailUrl ||
+    (typeof resolvedTemplate?.image === "string" && resolvedTemplate.image.includes("-mockup.svg") ? resolvedTemplate.image : null);
+
   const candidateSnapshot =
+    candidateMockup ||
     event?.previewUrl ||
     event?.templatePreviewUrl ||
     event?.previewImage ||
@@ -173,9 +179,16 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     event?.thumbnail ||
     null;
 
+  const isFullMockup = Boolean(
+    candidateSnapshot &&
+      typeof candidateSnapshot === "string" &&
+      candidateSnapshot.includes("-mockup.svg")
+  );
+
   const isRasterSnapshot = Boolean(
     candidateSnapshot &&
-      (candidateSnapshot.startsWith("data:image/") ||
+      (isFullMockup ||
+        candidateSnapshot.startsWith("data:image/") ||
         candidateSnapshot.includes("/uploads/") ||
         (/\.(png|jpe?g|webp)($|\?)/i.test(candidateSnapshot) && !candidateSnapshot.endsWith("-bg.svg")))
   );
@@ -296,32 +309,62 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       ? "w-full aspect-square"
       : "w-full aspect-[5/7]";
 
+  if (isFullMockup && !hasDynamicLayers) {
+    return (
+      <div
+        data-testid={`evite-card-preview-${effectiveTemplateId || "custom"}`}
+        className={`relative ${aspectClass} overflow-hidden rounded-xl flex items-center justify-center select-none transition-transform duration-300 ${
+          hoverScale ? "group-hover:scale-[1.02]" : ""
+        } ${className}`}
+      >
+        <img
+          src={candidateSnapshot}
+          alt={resolvedTemplate.title || ""}
+          loading="lazy"
+          className="w-full h-full object-cover pointer-events-none select-none"
+        />
+      </div>
+    );
+  }
+
+  const isOpenUpward = Boolean(
+    isAdultBirthday ||
+    resolvedTemplate?.envelope?.isOpenUpward ||
+    resolvedTemplate?.isOpenUpward
+  );
+
+  const effectiveCardOnly =
+    cardOnly !== undefined
+      ? cardOnly
+      : !isOpenUpward;
+
   return (
     <div
       data-testid={`evite-card-preview-${effectiveTemplateId || "custom"}`}
       className={`relative ${aspectClass} overflow-hidden rounded-xl flex items-center justify-center select-none transition-transform duration-300 ${
         hoverScale ? "group-hover:scale-[1.02]" : ""
       } ${className}`}
-      style={{ background: cardOnly ? undefined : backdropBg }}
+      style={{ background: effectiveCardOnly ? undefined : backdropBg }}
     >
-      {/* 1. Envelope & Liner (Behind Card) — only when cardOnly is false */}
-      {!cardOnly && (
+      {/* 1. Envelope & Liner (Behind Card) — only when effectiveCardOnly is false */}
+      {!effectiveCardOnly && (
         <div
           className="absolute pointer-events-none select-none"
           style={{
             zIndex: 5,
-            width: "84%",
-            height: "98%",
-            left: "56%",
-            top: "46%",
+            width: isOpenUpward ? "84%" : "84%",
+            height: isOpenUpward ? "92%" : "98%",
+            left: isOpenUpward ? "50%" : "56%",
+            top: isOpenUpward ? "50%" : "46%",
             transform: "translate(-50%, -50%)",
           }}
         >
           <EnvelopeBackdrop
-            color={envelopeOuter}
-            flapColor={envelopeFlap}
-            liner={envelopeLiner}
-            linerColor={envelopeLinerColor}
+            color={isOpenUpward ? "#111111" : envelopeOuter}
+            flapColor={isOpenUpward ? "#111111" : envelopeFlap}
+            liner={isOpenUpward ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)" : envelopeLiner}
+            linerColor={isOpenUpward ? "#D4AF37" : envelopeLinerColor}
+            viewMode={isOpenUpward ? "open-upward" : "peek"}
           />
         </div>
       )}
@@ -329,14 +372,14 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       {/* 2. Clean Card Surface (White/Theme Paper Box) */}
       <div
         className={`relative z-10 ${
-          cardOnly ? "w-full h-full" : "w-[78%] h-[88%]"
+          effectiveCardOnly ? "w-full h-full" : isOpenUpward ? "w-[68%] h-[78%]" : "w-[78%] h-[88%]"
         } rounded-xl flex flex-col items-center justify-between p-3.5 sm:p-4 overflow-hidden`}
         style={{
           background: cardBg,
           border: cardBorder,
-          boxShadow: cardShadow,
+          boxShadow: isOpenUpward ? "0 12px 28px -6px rgba(0,0,0,0.3)" : cardShadow,
           borderRadius: cssConfig?.borderRadius || "12px",
-          transform: cardOnly ? undefined : "translateX(-3%)",
+          transform: effectiveCardOnly ? undefined : isOpenUpward ? "translateY(5%)" : "translateX(-3%)",
         }}
       >
         {/* Inset Border if defined (e.g. dotted frame) */}

@@ -89,6 +89,8 @@ export interface EviteTemplateSchema {
   envelopeColor?: string;
   linerColor?: string;
   envelopeLiner?: string;
+  mockupUrl?: string;
+  thumbnailUrl?: string;
   innerCardLayer?: {
     backgroundColor?: string;
     borderRadius?: string;
@@ -112,6 +114,7 @@ export interface EviteTemplateSchema {
     linerCss?: string;       // pure CSS gradient/pattern string for liner
     linerPattern?: string;
     isOpen: boolean;
+    isOpenUpward?: boolean;
   };
   card: {
     artworkUrl: string;             // '' for pure-CSS templates
@@ -224,6 +227,8 @@ export interface NewTemplateData {
   accentColor: string;
   emoji: string;
   image: string;
+  mockupUrl?: string;
+  thumbnailUrl?: string;
   decorationImage?: string;
   description: string;
   backgroundColor: string;
@@ -261,9 +266,11 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "title": "Chic Dinner & Cake Celebration",
     "category": "Adult Birthday",
     "badge": "Premium",
-    "envelopeColor": "#1A1A1A",
+    "envelopeColor": "#111111",
     "linerColor": "#D4AF37",
     "envelopeLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+    "mockupUrl": "/assets/templates/chic-dinner-cake-mockup.svg",
+    "thumbnailUrl": "/assets/templates/chic-dinner-cake-mockup.svg",
     "backdrop": {
       "type": "texture",
       "value": "/assets/backdrops/white-embossed-floral.svg",
@@ -271,13 +278,14 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       "gradient": "url('/assets/backdrops/white-embossed-floral.svg') center / cover no-repeat, linear-gradient(135deg, #FAF7F2 0%, #EDE6D8 100%)"
     },
     "envelope": {
-      "outerColor": "#1A1A1A",
-      "flapColor": "#1A1A1A",
+      "outerColor": "#111111",
+      "flapColor": "#111111",
       "linerPatternUrl": "gold-foil",
       "linerColor": "#D4AF37",
       "innerLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
       "linerCss": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
-      "isOpen": true
+      "isOpen": true,
+      "isOpenUpward": true
     },
     "card": {
       "artworkUrl": "/assets/templates/chic-dinner-cake-bg.svg",
@@ -288,13 +296,13 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       "cssConfig": {
         "backgroundColor": "#F4EFE6",
         "borderRadius": "12px",
-        "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)"
+        "paperShadow": "0 12px 28px -6px rgba(0,0,0,0.3)"
       }
     },
     "innerCardLayer": {
       "backgroundColor": "#F4EFE6",
       "borderRadius": "12px",
-      "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)",
+      "paperShadow": "0 12px 28px -6px rgba(0,0,0,0.3)",
       "aspectRatio": "5/7"
     },
     "defaultTextLayers": [
@@ -344,9 +352,11 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "title": "Modern Gold & Black Balloon Bash",
     "category": "Adult Birthday",
     "badge": "Premium",
-    "envelopeColor": "#1A1A1A",
+    "envelopeColor": "#111111",
     "linerColor": "#D4AF37",
     "envelopeLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
+    "mockupUrl": "/assets/templates/modern-gold-black-balloon-mockup.svg",
+    "thumbnailUrl": "/assets/templates/modern-gold-black-balloon-mockup.svg",
     "backdrop": {
       "type": "texture",
       "value": "/assets/backdrops/subtle-white-marble.svg",
@@ -354,13 +364,14 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       "gradient": "url('/assets/backdrops/subtle-white-marble.svg') center / cover no-repeat, linear-gradient(135deg, #F8F9FA 0%, #EAECEF 100%)"
     },
     "envelope": {
-      "outerColor": "#1A1A1A",
-      "flapColor": "#1A1A1A",
+      "outerColor": "#111111",
+      "flapColor": "#111111",
       "linerPatternUrl": "gold-foil",
       "linerColor": "#D4AF37",
       "innerLiner": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
       "linerCss": "linear-gradient(135deg, #D4AF37 0%, #FFF2A1 25%, #AA771C 50%, #FDF4B8 75%, #B8860B 100%)",
-      "isOpen": true
+      "isOpen": true,
+      "isOpenUpward": true
     },
     "card": {
       "artworkUrl": "/assets/templates/modern-gold-black-balloon-bg.svg",
@@ -371,13 +382,13 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       "cssConfig": {
         "backgroundColor": "#FAFAFA",
         "borderRadius": "12px",
-        "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)"
+        "paperShadow": "0 12px 28px -6px rgba(0,0,0,0.3)"
       }
     },
     "innerCardLayer": {
       "backgroundColor": "#FAFAFA",
       "borderRadius": "12px",
-      "paperShadow": "0 12px 24px -4px rgba(0,0,0,0.25)",
+      "paperShadow": "0 12px 28px -6px rgba(0,0,0,0.3)",
       "aspectRatio": "5/7"
     },
     "defaultTextLayers": [
@@ -1380,7 +1391,9 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     gradient: ev.backdrop.value,
     accentColor: titleLayer ? titleLayer.color : '#C9A84C',
     emoji: ev.category === 'Wedding' ? '💍' : ev.category === 'bridal_shower' ? '💐' : ev.category === 'Baby Shower' ? '🍼' : '🎉',
-    image: borderIllustration || ev.card.artworkUrl,
+    image: (ev as any).mockupUrl || (ev as any).thumbnailUrl || borderIllustration || ev.card.artworkUrl,
+    mockupUrl: (ev as any).mockupUrl,
+    thumbnailUrl: (ev as any).thumbnailUrl,
     decorationImage: borderIllustration || ev.card.artworkUrl,
     description: subLayer ? subLayer.text : `Join us for ${ev.title}`,
     backgroundColor: ev.card.backgroundColor,
@@ -1419,6 +1432,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
       linerPatternUrl: ev.envelope?.linerPatternUrl || (ev.envelope as any)?.innerLiner || "vertical-pink-stripes",
       linerCss: (ev.envelope as any)?.linerCss || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
       isOpen: true,
+      isOpenUpward: (ev.envelope as any)?.isOpenUpward || false,
     },
     card: {
       backgroundColor: ev.card.backgroundColor,
@@ -1459,6 +1473,8 @@ export const NEW_TEMPLATES_CARD_ITEMS = NEW_TEMPLATES.map((t) => ({
   accentColor: t.accentColor,
   emoji: t.emoji,
   image: t.image,
+  mockupUrl: (t as any).mockupUrl,
+  thumbnailUrl: (t as any).thumbnailUrl,
   description: t.description,
   backgroundColor: t.backgroundColor,
   textColor: t.textColor,
