@@ -28,8 +28,16 @@ import {
   ImageIcon,
   MapPin,
   KeyRound,
+  LucideIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+interface MobileNavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: string;
+}
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed, isOpen, setIsOpen } = useSidebar();
@@ -142,7 +150,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   // Primary mobile navigation items
-  const defaultNavItems = [
+  const defaultNavItems: MobileNavItem[] = [
     {
       label: "AI Assistant",
       href: "/dashboard/ai-assistant",
@@ -186,7 +194,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  const staffNavItems = [
+  const staffNavItems: MobileNavItem[] = [
     {
       label: "Check In",
       href: "/dashboard/check-in",
@@ -214,7 +222,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  const guestNavItems = [
+  const guestNavItems: MobileNavItem[] = [
     {
       label: "Guest Portal",
       href: "/dashboard/guest",
