@@ -500,6 +500,19 @@ export default function EvitePureCssStage({
   );
   const showEnvelope = !hideEnvelope;
 
+  const isOpenUpward = Boolean(
+    isAdultBirthday ||
+    template?.envelope?.isOpenUpward ||
+    template?.isOpenUpward ||
+    template?.envelope?.flapStyle === "triangle" ||
+    template?.flapStyle === "triangle" ||
+    template?.category === "bridal_shower" ||
+    template?.category === "Bridal Shower" ||
+    template?.id === "blush-burgundy-blooms" ||
+    template?.id === "something-blue" ||
+    template?.id === "autumn-blooms"
+  );
+
   // ── THUMBNAIL MODE (Pure CSS Stationery Presentation: Envelope Behind + Card in Front) ──
   if (mode === "thumbnail") {
     return (
@@ -513,26 +526,28 @@ export default function EvitePureCssStage({
             className="absolute pointer-events-none select-none transition-transform duration-300"
             style={{
               zIndex: 1,
-              width: "78%",
-              height: "94%",
-              left: "56%",
-              top: "47%",
+              width: isOpenUpward ? "84%" : "78%",
+              height: isOpenUpward ? "92%" : "94%",
+              left: isOpenUpward ? "50%" : "56%",
+              top: isOpenUpward ? "52%" : "47%",
               transform: "translate(-50%, -50%)",
             }}
           >
-            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} />
+            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} viewMode={isOpenUpward ? "open-upward" : "peek"} />
           </div>
         )}
 
         {/* Layer 3: Pure CSS Invitation Card in Front */}
         <div
-          className={`relative z-10 ${showEnvelope ? "w-[70%] sm:w-[72%] ml-1.5 sm:ml-2.5" : "w-[85%] sm:w-[88%] mx-auto"} mb-2 rounded-lg overflow-hidden transition-all duration-300 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)] ${
+          className={`relative z-10 ${showEnvelope ? (isOpenUpward ? "w-[68%] mx-auto" : "w-[70%] sm:w-[72%] ml-1.5 sm:ml-2.5") : "w-[85%] sm:w-[88%] mx-auto"} mb-2 rounded-lg overflow-hidden transition-all duration-300 ${
+            isOpenUpward ? "shadow-[0_14px_30px_-6px_rgba(0,0,0,0.28)]" : "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.22)]"
+          } ${
             hoverScale ? "group-hover:-translate-y-2 group-hover:shadow-[0_18px_35px_-8px_rgba(0,0,0,0.32)]" : ""
           }`}
           style={{
             aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
-            transform: showEnvelope ? "translateX(-3%)" : undefined,
+            transform: showEnvelope && !isOpenUpward ? "translateX(-3%)" : undefined,
             ...cardInlineStyle,
           }}
         >
@@ -572,14 +587,14 @@ export default function EvitePureCssStage({
             className="absolute pointer-events-none transition-all duration-300 select-none"
             style={{
               zIndex: 10,
-              width: "78%",
-              height: "96%",
-              left: "56%",
-              top: "46%",
+              width: isOpenUpward ? "84%" : "78%",
+              height: isOpenUpward ? "92%" : "96%",
+              left: isOpenUpward ? "50%" : "56%",
+              top: isOpenUpward ? "52%" : "46%",
               transform: "translate(-50%, -50%)",
             }}
           >
-            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} />
+            <EnvelopeBackdrop color={envelopeOuter} flapColor={envelopeFlap} liner={linerCss} linerColor={envelopeLinerColor} viewMode={isOpenUpward ? "open-upward" : "peek"} />
           </div>
         )}
 
@@ -593,11 +608,13 @@ export default function EvitePureCssStage({
           className="relative rounded-2xl overflow-hidden transition-all duration-300"
           style={{
             zIndex: 20,
-            width: showEnvelope ? "78%" : "84%",
-            transform: showEnvelope ? "translateX(-3%)" : undefined,
+            width: showEnvelope ? (isOpenUpward ? "72%" : "78%") : "84%",
+            transform: showEnvelope && !isOpenUpward ? "translateX(-3%)" : undefined,
             aspectRatio: resolvedAspect === "square" ? "1 / 1" : "5 / 7",
             containerType: "inline-size",
-            boxShadow: cssConfig?.paperShadow || (isAdultBirthday ? "0 12px 24px -4px rgba(0,0,0,0.25)" : "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)"),
+            boxShadow: isOpenUpward
+              ? "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+              : cssConfig?.paperShadow || (isAdultBirthday ? "0 12px 24px -4px rgba(0,0,0,0.25)" : "0 22px 50px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)"),
             ...cardInlineStyle,
           }}
         >

@@ -330,7 +330,14 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const isOpenUpward = Boolean(
     isAdultBirthday ||
     resolvedTemplate?.envelope?.isOpenUpward ||
-    resolvedTemplate?.isOpenUpward
+    resolvedTemplate?.isOpenUpward ||
+    resolvedTemplate?.envelope?.flapStyle === "triangle" ||
+    resolvedTemplate?.flapStyle === "triangle" ||
+    resolvedTemplate?.category === "bridal_shower" ||
+    resolvedTemplate?.category === "Bridal Shower" ||
+    effectiveTemplateId === "blush-burgundy-blooms" ||
+    effectiveTemplateId === "something-blue" ||
+    effectiveTemplateId === "autumn-blooms"
   );
 
   const effectiveCardOnly =
@@ -353,17 +360,21 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           style={{
             zIndex: 5,
             width: isOpenUpward ? "84%" : "84%",
-            height: isOpenUpward ? "92%" : "98%",
+            height: isOpenUpward ? "90%" : "98%",
             left: isOpenUpward ? "50%" : "56%",
-            top: isOpenUpward ? "50%" : "46%",
+            top: isOpenUpward ? "52%" : "46%",
             transform: "translate(-50%, -50%)",
           }}
         >
           <EnvelopeBackdrop
-            color={isOpenUpward ? "#111111" : envelopeOuter}
-            flapColor={isOpenUpward ? "#111111" : envelopeFlap}
-            liner={isOpenUpward ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)" : envelopeLiner}
-            linerColor={isOpenUpward ? "#D4AF37" : envelopeLinerColor}
+            color={isAdultBirthday ? "#111111" : envelopeOuter}
+            flapColor={isAdultBirthday ? "#111111" : envelopeFlap}
+            liner={
+              isAdultBirthday
+                ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)"
+                : envelopeLiner
+            }
+            linerColor={isAdultBirthday ? "#D4AF37" : envelopeLinerColor}
             viewMode={isOpenUpward ? "open-upward" : "peek"}
           />
         </div>
@@ -377,9 +388,9 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
         style={{
           background: cardBg,
           border: cardBorder,
-          boxShadow: isOpenUpward ? "0 12px 28px -6px rgba(0,0,0,0.3)" : cardShadow,
+          boxShadow: isOpenUpward ? "0 14px 30px -6px rgba(0, 0, 0, 0.28)" : cardShadow,
           borderRadius: cssConfig?.borderRadius || "12px",
-          transform: effectiveCardOnly ? undefined : isOpenUpward ? "translateY(5%)" : "translateX(-3%)",
+          transform: effectiveCardOnly ? undefined : isOpenUpward ? "translateY(6%)" : "translateX(-3%)",
         }}
       >
         {/* Inset Border if defined (e.g. dotted frame) */}

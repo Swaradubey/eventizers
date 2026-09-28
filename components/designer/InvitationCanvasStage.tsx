@@ -46,8 +46,12 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   botanical: "linear-gradient(135deg, #dcfce7, #86efac)",
   "blush-burgundy-liner": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
   "/templates/envelopes/blush-burgundy-liner.png": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "blush-gold-foil-liner": "url('/templates/envelopes/blush-gold-foil-liner.svg') center / cover no-repeat",
+  "/templates/envelopes/blush-gold-foil-liner.svg": "url('/templates/envelopes/blush-gold-foil-liner.svg') center / cover no-repeat",
   "something-blue-liner": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
   "/templates/envelopes/something-blue-liner.png": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "something-blue-toile-liner": "url('/templates/envelopes/something-blue-toile-liner.svg') center / cover no-repeat",
+  "/templates/envelopes/something-blue-toile-liner.svg": "url('/templates/envelopes/something-blue-toile-liner.svg') center / cover no-repeat",
   "autumn-gingham-liner": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
   "/templates/envelopes/autumn-gingham-liner.png": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
 };
@@ -871,10 +875,28 @@ export default function InvitationCanvasStage({
         {/* Resolve envelope presentation mode:
             Default in canvas is "peek" view behind the card (Evite authentic) */}
         {(() => {
-          const resolvedEnvelopeView: "peek" | "open" | "closed" =
+          const isOpenUpwardTemplate = Boolean(
+            (config.envelope as any)?.isOpenUpward ||
+            (config.envelope as any)?.flapStyle === "triangle" ||
+            (config as any)?.flapStyle === "triangle" ||
+            (config as any)?.category === "bridal_shower" ||
+            (config as any)?.category === "Bridal Shower" ||
+            (config as any)?.id === "blush-burgundy-blooms" ||
+            (config as any)?.id === "something-blue" ||
+            (config as any)?.id === "autumn-blooms" ||
+            (config as any)?.id === "tpl-chic-dinner-cake" ||
+            (config as any)?.id === "tpl-modern-gold-black-balloon" ||
+            (config as any)?.templateId === "blush-burgundy-blooms" ||
+            (config as any)?.templateId === "something-blue" ||
+            (config as any)?.templateId === "autumn-blooms"
+          );
+
+          const resolvedEnvelopeView: "peek" | "open" | "closed" | "open-upward" =
             envelopeViewMode ||
             (isEnvelopeTabActive
               ? ((config.envelope?.stamp || config.envelope?.sticker) ? "closed" : "open")
+              : isOpenUpwardTemplate
+              ? "open-upward"
               : "peek");
 
           return (
@@ -895,11 +917,14 @@ export default function InvitationCanvasStage({
               {showEnvelope && (
                 <div
                   data-layer="2-envelope-container"
-                  className="absolute inset-0 pointer-events-none select-none"
+                  className="absolute pointer-events-none select-none"
                   style={{
                     zIndex: 10,
-                    width: "100%",
-                    height: "100%",
+                    width: resolvedEnvelopeView === "open-upward" ? "88%" : "100%",
+                    height: resolvedEnvelopeView === "open-upward" ? "92%" : "100%",
+                    left: "50%",
+                    top: resolvedEnvelopeView === "open-upward" ? "52%" : "50%",
+                    transform: "translate(-50%, -50%)",
                     overflow: "visible",
                   }}
                 >
@@ -931,8 +956,8 @@ export default function InvitationCanvasStage({
                   opacity: 0.85,
                 }}
                 animate={{
-                  y: resolvedEnvelopeView === "open" ? 24 : 0,
-                  scale: resolvedEnvelopeView === "open" ? 0.94 : 1,
+                  y: resolvedEnvelopeView === "open" ? 24 : resolvedEnvelopeView === "open-upward" ? 14 : 0,
+                  scale: resolvedEnvelopeView === "open" ? 0.94 : resolvedEnvelopeView === "open-upward" ? 0.95 : 1,
                   opacity: resolvedEnvelopeView === "closed" ? 0 : 1,
                 }}
                 transition={{
@@ -947,7 +972,7 @@ export default function InvitationCanvasStage({
                     if (setEditingTextId) setEditingTextId(null);
                   }
                 }}
-                className={`relative w-full h-full rounded-2xl overflow-hidden transition-all duration-300 ${cardTextureClass} ${
+                className={`relative ${resolvedEnvelopeView === "open-upward" ? "w-[84%] h-[88%]" : "w-full h-full"} rounded-2xl overflow-hidden transition-all duration-300 ${cardTextureClass} ${
                   resolvedEnvelopeView === "closed" ? "pointer-events-none" : ""
                 }`}
                 style={{
@@ -961,7 +986,9 @@ export default function InvitationCanvasStage({
                     config.cardBg.value !== backdropValue
                       ? config.cardBg.value
                       : undefined,
-                  boxShadow: resolvedEnvelopeView === "peek"
+                  boxShadow: resolvedEnvelopeView === "open-upward"
+                    ? "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+                    : resolvedEnvelopeView === "peek"
                     ? (config as any)?.innerCardLayer?.paperShadow || "0 12px 24px -4px rgba(0,0,0,0.25)"
                     : cardShadowStyle,
                 }}

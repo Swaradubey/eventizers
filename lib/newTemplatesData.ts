@@ -115,6 +115,7 @@ export interface EviteTemplateSchema {
     linerPattern?: string;
     isOpen: boolean;
     isOpenUpward?: boolean;
+    flapStyle?: 'triangle' | 'hexagon' | 'square' | string;
   };
   card: {
     artworkUrl: string;             // '' for pure-CSS templates
@@ -247,6 +248,8 @@ export interface NewTemplateData {
   envelopeColor: string;
   linerColor?: string;
   envelopeLiner: string;
+  flapStyle?: string;
+  isOpenUpward?: boolean;
   textLayers?: TemplateTextLayer[];
   photoSlot?: PhotoSlot | null;
   // 4-Layer Evite Decoupled Fields
@@ -993,62 +996,83 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     title: "Blush & Burgundy Blooms",
     category: "bridal_shower",
     badge: "Premium",
+    envelopeColor: "#722F37",
+    linerColor: "#FAE8EC",
+    envelopeLiner: "/templates/envelopes/blush-gold-foil-liner.svg",
+    mockupUrl: "/assets/templates/blush-burgundy-blooms-mockup.svg",
+    thumbnailUrl: "/assets/templates/blush-burgundy-blooms-mockup.svg",
     backdrop: {
-      type: "color",
-      value: "linear-gradient(135deg, #FAF7F2 0%, #F5EFEB 100%)",
+      type: "texture",
+      value: "/assets/backdrops/off-white-linen.svg",
       color: "#FAF7F2",
-      gradient: "linear-gradient(135deg, #FAF7F2 0%, #F5EFEB 100%)"
+      gradient: "url('/assets/backdrops/off-white-linen.svg') center / cover no-repeat, linear-gradient(135deg, #FAF7F2 0%, #F5EFEB 100%)"
     },
     envelope: {
-      outerColor: "#7A1C28", // Deep burgundy
-      innerLiner: "/templates/envelopes/blush-burgundy-liner.png", // Floral liner
-      linerPatternUrl: "/templates/envelopes/blush-burgundy-liner.png",
-      linerCss: "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+      outerColor: "#722F37", // Deep burgundy / wine red (#722F37)
+      flapColor: "#722F37",
+      flapStyle: "triangle",
+      isOpenUpward: true,
+      innerLiner: "/templates/envelopes/blush-gold-foil-liner.svg", // Soft blush pink with subtle golden foil floral line-art or shimmer
+      linerPatternUrl: "/templates/envelopes/blush-gold-foil-liner.svg",
+      linerPattern: "/templates/envelopes/blush-gold-foil-liner.svg",
+      linerCss: "url('/templates/envelopes/blush-gold-foil-liner.svg') center / cover no-repeat",
+      linerColor: "#FAE8EC",
       shadowColor: "rgba(0, 0, 0, 0.28)",
       isOpen: true
     },
     card: {
-      backgroundColor: "#FDFBF7",
-      safeArea: { top: "20%", bottom: "16%", left: "22%", right: "22%" }, // prevents floral border collision
+      backgroundColor: "#FFFFFF",
+      safeArea: { top: "20%", bottom: "16%", left: "22%", right: "22%" },
       borderIllustration: "/templates/bridal/blush-burgundy-frame.png",
       artworkUrl: "/templates/bridal/blush-burgundy-frame.png",
       decorativeBorderSvgUrl: "/templates/bridal/blush-burgundy-frame.png",
-      aspectRatio: "5x7"
+      aspectRatio: "5x7",
+      cssConfig: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: "12px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: "12px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      aspectRatio: "5/7"
     },
     defaultTextBlocks: [
       {
         id: "subtitle",
-        text: "Please join us as we shower\nbride-to-be",
+        text: "Something\nold...something new...\nsomething borrowed...\nsomething red and\npink too",
         fontFamily: "Playfair Display, Georgia, serif",
         fontSize: 15,
-        lineHeight: 1.4,
+        lineHeight: 1.45,
         fontStyle: "italic",
         color: "#5A4A42",
         align: "center",
-        position: { top: "22%", left: "50%", transform: "translateX(-50%)" },
-        maxHeight: "50px",
+        position: { top: "45%", left: "50%", transform: "translate(-50%, -50%)" },
+        maxHeight: "140px",
       },
       {
         id: "title-name",
-        text: "taylor\nmadison",
+        text: "taylor madison",
         fontFamily: "Great Vibes, Alex Brush, cursive",
-        fontSize: 42,
+        fontSize: 38,
         lineHeight: 1.15,
-        color: "#6B1D28",
+        color: "#722F37",
         align: "center",
-        position: { top: "37%", left: "50%", transform: "translateX(-50%)" },
-        maxHeight: "110px",
+        position: { top: "62%", left: "50%", transform: "translate(-50%, -50%)" },
+        maxHeight: "80px",
       },
       {
         id: "details",
         text: "Sunday, April 3rd at 1 pm\nThe Rosewood Cafe",
         fontFamily: "Playfair Display, Georgia, serif",
-        fontSize: 14,
+        fontSize: 13,
         lineHeight: 1.5,
         fontStyle: "italic",
         color: "#5A4A42",
         align: "center",
-        position: { top: "66%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "74%", left: "50%", transform: "translate(-50%, -50%)" },
         maxHeight: "60px",
       }
     ],
@@ -1056,46 +1080,43 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       {
         id: "subtitle",
         key: "subtitle",
-        text: "Please join us as we shower\nbride-to-be",
+        text: "Something\nold...something new...\nsomething borrowed...\nsomething red and\npink too",
         fontFamily: "Playfair Display, Georgia, serif",
         fontSize: 15,
-        lineHeight: 1.4,
+        lineHeight: 1.45,
         fontStyle: "italic",
         color: "#5A4A42",
         fontWeight: "400",
         textAlign: "center",
-        top: 22,
+        top: 45,
         left: 50,
-        maxHeight: "50px",
       },
       {
         id: "title-name",
         key: "title",
-        text: "taylor\nmadison",
+        text: "taylor madison",
         fontFamily: "Great Vibes, Alex Brush, cursive",
-        fontSize: 42,
+        fontSize: 38,
         lineHeight: 1.15,
-        color: "#6B1D28",
+        color: "#722F37",
         fontWeight: "600",
         textAlign: "center",
-        top: 37,
+        top: 62,
         left: 50,
-        maxHeight: "110px",
       },
       {
         id: "details",
         key: "datetime",
         text: "Sunday, April 3rd at 1 pm\nThe Rosewood Cafe",
         fontFamily: "Playfair Display, Georgia, serif",
-        fontSize: 14,
+        fontSize: 13,
         lineHeight: 1.5,
         fontStyle: "italic",
         color: "#5A4A42",
         fontWeight: "400",
         textAlign: "center",
-        top: 66,
+        top: 74,
         left: 50,
-        maxHeight: "60px",
       }
     ]
   },
@@ -1105,17 +1126,27 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     title: "Something Blue",
     category: "bridal_shower",
     badge: "Premium",
+    envelopeColor: "#5B7C99",
+    linerColor: "#FFFFFF",
+    envelopeLiner: "/templates/envelopes/something-blue-toile-liner.svg",
+    mockupUrl: "/assets/templates/something-blue-mockup.svg",
+    thumbnailUrl: "/assets/templates/something-blue-mockup.svg",
     backdrop: {
-      type: "color",
-      value: "linear-gradient(135deg, #F2F6FA 0%, #E6EEF5 100%)",
-      color: "#F2F6FA",
-      gradient: "linear-gradient(135deg, #F2F6FA 0%, #E6EEF5 100%)"
+      type: "texture",
+      value: "/assets/backdrops/subtle-white-marble.svg",
+      color: "#F8F9FA",
+      gradient: "url('/assets/backdrops/subtle-white-marble.svg') center / cover no-repeat, linear-gradient(135deg, #F8F9FA 0%, #EAECEF 100%)"
     },
     envelope: {
-      outerColor: "#8FA9C4", // Dusty soft blue
-      innerLiner: "/templates/envelopes/something-blue-liner.png",
-      linerPatternUrl: "/templates/envelopes/something-blue-liner.png",
-      linerCss: "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+      outerColor: "#5B7C99", // Dusty slate blue / french blue (#5B7C99)
+      flapColor: "#5B7C99",
+      flapStyle: "triangle",
+      isOpenUpward: true,
+      innerLiner: "/templates/envelopes/something-blue-toile-liner.svg", // Classic delicate blue-and-white botanical toile
+      linerPatternUrl: "/templates/envelopes/something-blue-toile-liner.svg",
+      linerPattern: "/templates/envelopes/something-blue-toile-liner.svg",
+      linerCss: "url('/templates/envelopes/something-blue-toile-liner.svg') center / cover no-repeat",
+      linerColor: "#FFFFFF",
       shadowColor: "rgba(0, 0, 0, 0.22)",
       isOpen: true
     },
@@ -1125,7 +1156,18 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       borderIllustration: "/templates/bridal/something-blue-frame.png",
       artworkUrl: "/templates/bridal/something-blue-frame.png",
       decorativeBorderSvgUrl: "/templates/bridal/something-blue-frame.png",
-      aspectRatio: "5x7"
+      aspectRatio: "5x7",
+      cssConfig: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: "12px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: "12px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      aspectRatio: "5/7"
     },
     defaultTextBlocks: [
       {
@@ -1137,17 +1179,17 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         letterSpacing: "2px",
         color: "#355B82",
         align: "center",
-        position: { top: "24%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "44%", left: "50%", transform: "translate(-50%, -50%)" },
       },
       {
         id: "subtitle",
-        text: "Please join us for a\nhonoring",
+        text: "Please join us for a bridal shower honoring",
         fontFamily: "Montserrat, sans-serif",
         fontSize: 11,
         lineHeight: 1.4,
         color: "#5C768D",
         align: "center",
-        position: { top: "42%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "54%", left: "50%", transform: "translate(-50%, -50%)" },
       },
       {
         id: "title-name",
@@ -1157,7 +1199,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         lineHeight: 1.2,
         color: "#2D5175",
         align: "center",
-        position: { top: "50%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "62%", left: "50%", transform: "translate(-50%, -50%)" },
       },
       {
         id: "details",
@@ -1167,7 +1209,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         lineHeight: 1.5,
         color: "#5C768D",
         align: "center",
-        position: { top: "68%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "72%", left: "50%", transform: "translate(-50%, -50%)" },
       }
     ],
     defaultTextLayers: [
@@ -1182,20 +1224,20 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         color: "#355B82",
         fontWeight: "600",
         textAlign: "center",
-        top: 24,
+        top: 44,
         left: 50,
       },
       {
         id: "subtitle",
         key: "subtitle",
-        text: "Please join us for a\nhonoring",
+        text: "Please join us for a bridal shower honoring",
         fontFamily: "Montserrat, sans-serif",
         fontSize: 11,
         lineHeight: 1.4,
         color: "#5C768D",
         fontWeight: "400",
         textAlign: "center",
-        top: 42,
+        top: 54,
         left: 50,
       },
       {
@@ -1208,7 +1250,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         color: "#2D5175",
         fontWeight: "600",
         textAlign: "center",
-        top: 50,
+        top: 62,
         left: 50,
       },
       {
@@ -1221,7 +1263,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         color: "#5C768D",
         fontWeight: "400",
         textAlign: "center",
-        top: 68,
+        top: 72,
         left: 50,
       }
     ]
@@ -1232,17 +1274,27 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     title: "Autumn Blooms",
     category: "bridal_shower",
     badge: "Premium",
+    envelopeColor: "#B3673B",
+    linerColor: "#F8EFE4",
+    envelopeLiner: "/templates/envelopes/autumn-gingham-liner.png",
+    mockupUrl: "/assets/templates/autumn-blooms-mockup.svg",
+    thumbnailUrl: "/assets/templates/autumn-blooms-mockup.svg",
     backdrop: {
-      type: "color",
-      value: "linear-gradient(135deg, #FBF8F2 0%, #F5EDE2 100%)",
-      color: "#FBF8F2",
-      gradient: "linear-gradient(135deg, #FBF8F2 0%, #F5EDE2 100%)"
+      type: "texture",
+      value: "/assets/backdrops/warm-artisan-kraft.svg",
+      color: "#CDBAA6",
+      gradient: "url('/assets/backdrops/warm-artisan-kraft.svg') center / cover no-repeat, linear-gradient(135deg, #D4C2AE 0%, #C3AF9B 100%)"
     },
     envelope: {
-      outerColor: "#C37A3E", // Warm terracotta / pumpkin spice
-      innerLiner: "/templates/envelopes/autumn-gingham-liner.png", // Gingham/floral liner
+      outerColor: "#B3673B", // Warm terracotta / camel brown (#B3673B)
+      flapColor: "#B3673B",
+      flapStyle: "triangle",
+      isOpenUpward: true,
+      innerLiner: "/templates/envelopes/autumn-gingham-liner.png", // Warm beige & brown buffalo/gingham plaid check
       linerPatternUrl: "/templates/envelopes/autumn-gingham-liner.png",
-      linerCss: "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
+      linerPattern: "/templates/envelopes/autumn-gingham-liner.png",
+      linerCss: "url('/templates/envelopes/autumn-gingham-liner.png') center / 150px repeat",
+      linerColor: "#F8EFE4",
       shadowColor: "rgba(0, 0, 0, 0.25)",
       isOpen: true
     },
@@ -1252,28 +1304,39 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       borderIllustration: "/templates/bridal/autumn-blooms-frame.png",
       artworkUrl: "/templates/bridal/autumn-blooms-frame.png",
       decorativeBorderSvgUrl: "/templates/bridal/autumn-blooms-frame.png",
-      aspectRatio: "5x7"
+      aspectRatio: "5x7",
+      cssConfig: {
+        backgroundColor: "#FCFAF6",
+        borderRadius: "12px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FCFAF6",
+      borderRadius: "12px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      aspectRatio: "5/7"
     },
     defaultTextBlocks: [
       {
         id: "subtitle",
         text: "Fall in love",
         fontFamily: "Great Vibes, cursive",
-        fontSize: 32,
-        color: "#B4652A",
+        fontSize: 34,
+        color: "#B3673B",
         align: "center",
-        position: { top: "28%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "45%", left: "50%", transform: "translate(-50%, -50%)" },
       },
       {
         id: "title-name",
         text: "JENNIFER\nHAYWARD",
         fontFamily: "Cinzel, Cormorant Garamond, serif",
-        fontSize: 22,
+        fontSize: 20,
         letterSpacing: "3px",
         lineHeight: 1.3,
         color: "#6D4427",
         align: "center",
-        position: { top: "40%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "56%", left: "50%", transform: "translate(-50%, -50%)" },
       },
       {
         id: "details",
@@ -1284,7 +1347,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         letterSpacing: "1.5px",
         color: "#8B6B55",
         align: "center",
-        position: { top: "54%", left: "50%", transform: "translateX(-50%)" },
+        position: { top: "67%", left: "50%", transform: "translate(-50%, -50%)" },
       }
     ],
     defaultTextLayers: [
@@ -1293,11 +1356,11 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         key: "subtitle",
         text: "Fall in love",
         fontFamily: "Great Vibes, cursive",
-        fontSize: 32,
-        color: "#B4652A",
+        fontSize: 34,
+        color: "#B3673B",
         fontWeight: "400",
         textAlign: "center",
-        top: 28,
+        top: 45,
         left: 50,
       },
       {
@@ -1305,13 +1368,13 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         key: "title",
         text: "JENNIFER\nHAYWARD",
         fontFamily: "Cinzel, Cormorant Garamond, serif",
-        fontSize: 22,
+        fontSize: 20,
         letterSpacing: 3,
         lineHeight: 1.3,
         color: "#6D4427",
         fontWeight: "600",
         textAlign: "center",
-        top: 40,
+        top: 56,
         left: 50,
       },
       {
@@ -1323,9 +1386,9 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         lineHeight: 1.6,
         letterSpacing: 1.5,
         color: "#8B6B55",
-        fontWeight: "500",
+        fontWeight: "400",
         textAlign: "center",
-        top: 54,
+        top: 67,
         left: 50,
       }
     ]
@@ -1412,6 +1475,9 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     envelopeColor: (ev as any).envelopeColor || ev.envelope?.outerColor || "#5384db",
     linerColor: (ev as any).linerColor || (ev.envelope as any)?.linerColor || "#D4AF37",
     envelopeLiner: (ev as any).envelopeLiner || (ev.envelope as any)?.linerCss || (ev.envelope as any)?.liner || (ev.envelope as any)?.innerLiner || "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
+    linerPattern: ev.envelope?.linerPatternUrl || (ev.envelope as any)?.innerLiner,
+    flapStyle: (ev.envelope as any)?.flapStyle || (ev as any).flapStyle || "triangle",
+    isOpenUpward: (ev.envelope as any)?.isOpenUpward || false,
     textLayers,
     photoSlot: null,
     isPureCss: ev.isPureCss || false,
@@ -1424,6 +1490,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     envelope: {
       outerColor: ev.envelope?.outerColor || (ev as any).envelopeColor || "#5384db",
       flapColor: (ev.envelope as any)?.flapColor || ev.envelope?.outerColor || (ev as any).envelopeColor || "#7ba3e8",
+      flapStyle: (ev.envelope as any)?.flapStyle || (ev as any).flapStyle || "triangle",
       innerLiner,
       linerColor: (ev.envelope as any)?.linerColor || (ev as any).linerColor || "#D4AF37",
       shadowColor,
@@ -1573,6 +1640,9 @@ export const getEviteCardTemplate = (templateId?: string | null): EviteCardTempl
     },
     envelope: {
       outerColor: (t.envelope as any)?.outerColor || t.envelopeColor || "#781d60",
+      flapColor: (t.envelope as any)?.flapColor || (t.envelope as any)?.outerColor || t.envelopeColor || "#781d60",
+      flapStyle: (t.envelope as any)?.flapStyle || (t as any).flapStyle || "triangle",
+      isOpenUpward: (t.envelope as any)?.isOpenUpward ?? (t as any).isOpenUpward ?? false,
       linerPattern: innerLiner,
       linerPatternUrl: innerLiner,
       innerLiner,

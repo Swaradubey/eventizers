@@ -238,10 +238,20 @@ export default function EnvelopeBackdrop({
   }
 
   // =========================================================================
-  // VIEW MODE: OPEN UPWARD (Upward triangular flap pointing UP with gold foil liner)
-  // Realistic open envelope presentation: Deep matte black #111111 + Gold #D4AF37
+  // VIEW MODE: OPEN UPWARD (Upward triangular flap pointing UP with custom liner)
+  // Authentic open envelope presentation with open triangular flap & pocket liner
   // =========================================================================
   if (viewMode === "open-upward") {
+    const isGoldFoil =
+      linerPattern === "#D4AF37" ||
+      linerColor === "#D4AF37" ||
+      rawLiner === "gold-foil" ||
+      rawLiner === "metallic-gold";
+    const resolvedLiner = isGoldFoil
+      ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)"
+      : linerPattern;
+    const resolvedLinerBgColor = isGoldFoil ? "#D4AF37" : (linerColor || "#FFFFFF");
+
     return (
       <div
         data-testid="evite-envelope-open-upward"
@@ -254,14 +264,14 @@ export default function EnvelopeBackdrop({
       >
         <div
           className="relative w-full h-full rounded-2xl overflow-visible"
-          style={{ backgroundColor: bodyColor || "#111111" }}
+          style={{ backgroundColor: bodyColor }}
         >
           {/* Open Triangular Flap Pointing UPWARD */}
           <div
-            className="absolute -top-[34%] inset-x-0 h-[42%] pointer-events-none overflow-hidden"
+            className="absolute -top-[36%] inset-x-0 h-[44%] pointer-events-none overflow-hidden"
             style={{
               clipPath: "polygon(0% 100%, 50% 0%, 100% 100%)",
-              backgroundColor: flapPaperColor || "#111111",
+              backgroundColor: flapPaperColor,
             }}
           >
             {/* Flap Outer Paper Lighting */}
@@ -269,11 +279,11 @@ export default function EnvelopeBackdrop({
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 50%, rgba(0,0,0,0.18) 100%)",
+                  "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, transparent 50%, rgba(0,0,0,0.18) 100%)",
               }}
             />
 
-            {/* Inset Liner Pattern inside open upward flap (#D4AF37 Metallic Gold) */}
+            {/* Inset Liner Pattern inside open upward flap */}
             <div
               className="absolute overflow-hidden"
               style={{
@@ -281,29 +291,53 @@ export default function EnvelopeBackdrop({
                 left: "14px",
                 right: "14px",
                 bottom: "0px",
-                clipPath: "polygon(6% 100%, 50% 8%, 94% 100%)",
-                background:
-                  linerPattern === "#D4AF37" || linerColor === "#D4AF37"
-                    ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)"
-                    : linerPattern,
-                backgroundColor: "#D4AF37",
+                clipPath: "polygon(5% 100%, 50% 6%, 95% 100%)",
+                background: resolvedLiner,
+                backgroundColor: resolvedLinerBgColor,
               }}
             >
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 45%, rgba(0,0,0,0.12) 100%)",
+                    "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 45%, rgba(0,0,0,0.12) 100%)",
                 }}
               />
             </div>
           </div>
 
-          {/* Envelope Pocket Base (Matte Black #111111) */}
+          {/* Envelope Pocket Base */}
           <div
             className="absolute inset-x-0 bottom-0 h-full rounded-2xl overflow-hidden"
-            style={{ backgroundColor: bodyColor || "#111111" }}
-          />
+            style={{ backgroundColor: bodyColor }}
+          >
+            {/* Interior Liner visible at top throat of envelope behind card */}
+            <div
+              className="absolute inset-x-3.5 top-0 h-[48%] pointer-events-none overflow-hidden rounded-t-xl"
+              style={{
+                background: resolvedLiner,
+                backgroundColor: resolvedLinerBgColor,
+                boxShadow: "inset 0 4px 14px rgba(0,0,0,0.22)",
+              }}
+            />
+
+            {/* Flap Fold Crease Shadow */}
+            <div
+              className="absolute inset-x-0 top-0 h-1 pointer-events-none z-10"
+              style={{
+                background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)",
+              }}
+            />
+
+            {/* Ambient Lighting on Envelope Pocket */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(145deg, rgba(255,255,255,0.08) 0%, transparent 40%, rgba(0,0,0,0.18) 100%)",
+              }}
+            />
+          </div>
         </div>
       </div>
     );
