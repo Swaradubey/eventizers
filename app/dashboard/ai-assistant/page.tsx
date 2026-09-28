@@ -994,22 +994,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
 
       <main className="ai-assistant-page flex-1 flex flex-col w-full mx-auto relative overflow-hidden overflow-x-clip py-8 px-4 sm:px-6 lg:px-8 z-10">
 
-        {/* Top Header & Mobile Hamburger */}
+        {/* Top Header & Content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center items-center overflow-x-clip">
-          {/* Mobile hamburger row */}
-          <div className="w-full flex items-center justify-between md:hidden mb-4">
-            <button
-              onClick={() => setIsOpen(true)}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-xs focus:outline-none"
-              aria-label="Open navigation"
-            >
-              <Menu className="w-5 h-5 text-slate-700" />
-            </button>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-semibold">
-              <Bot className="w-3.5 h-3.5" />
-              <span>AI Assistant</span>
-            </div>
-          </div>
+
 
           {/* Top Pill Badge */}
           <div className="rounded-full bg-white/90 backdrop-blur-sm border border-slate-200/80 px-4 py-1.5 shadow-sm inline-flex items-center gap-2 mb-4">

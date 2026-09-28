@@ -21,6 +21,18 @@ module.exports = {
         sans: ["'Inter'", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       colors: {
+        primary: {
+          DEFAULT: "#2563eb",
+          foreground: "#ffffff",
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
+        },
         ivory: "#FAF8F5",
         "deep-plum": "#2D1B3D",
         "soft-gold": "#C9A84C",
