@@ -46,8 +46,12 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   botanical: "linear-gradient(135deg, #dcfce7, #86efac)",
   "blush-burgundy-liner": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
   "/templates/envelopes/blush-burgundy-liner.png": "url('/templates/envelopes/blush-burgundy-liner.png') center / cover no-repeat",
+  "blush-gold-foil-liner": "url('/templates/envelopes/blush-gold-foil-liner.svg') center / cover no-repeat",
+  "/templates/envelopes/blush-gold-foil-liner.svg": "url('/templates/envelopes/blush-gold-foil-liner.svg') center / cover no-repeat",
   "something-blue-liner": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
   "/templates/envelopes/something-blue-liner.png": "url('/templates/envelopes/something-blue-liner.png') center / cover no-repeat",
+  "something-blue-toile-liner": "url('/templates/envelopes/something-blue-toile-liner.svg') center / cover no-repeat",
+  "/templates/envelopes/something-blue-toile-liner.svg": "url('/templates/envelopes/something-blue-toile-liner.svg') center / cover no-repeat",
   "autumn-gingham-liner": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
   "/templates/envelopes/autumn-gingham-liner.png": "url('/templates/envelopes/autumn-gingham-liner.png') center / cover no-repeat",
 };
@@ -71,6 +75,8 @@ export interface InvitationCanvasStageProps {
   config: CanvasStageConfig;
   readOnly?: boolean;
   selectedTextId?: string | null;
+  selectedLayer?: string | null;
+  onSelectEnvelope?: () => void;
   onSelectLayer?: (id: string) => void;
   onUpdateLayer?: (id: string, updates: Partial<TextLayer>) => void;
   onDeleteLayer?: (id: string) => void;
@@ -90,13 +96,15 @@ export interface InvitationCanvasStageProps {
   showingBackside?: boolean;
   onFlipCard?: () => void;
   isEnvelopeTabActive?: boolean;
-  envelopeViewMode?: "peek" | "open" | "closed";
+  envelopeViewMode?: "peek" | "open" | "closed" | "open-upward";
 }
 
 export default function InvitationCanvasStage({
   config,
   readOnly = false,
   selectedTextId = null,
+  selectedLayer = null,
+  onSelectEnvelope,
   onSelectLayer,
   onUpdateLayer,
   onDeleteLayer,
@@ -121,6 +129,22 @@ export default function InvitationCanvasStage({
   const localCardRef = useRef<HTMLDivElement>(null);
   const effectiveCardRef: any = cardRef || localCardRef;
   const isLandscape = Boolean(config.isLandscape);
+
+  const isEnvelopeSelected = Boolean(
+    isEnvelopeTabActive ||
+    selectedLayer === "envelope" ||
+    selectedTextId === "envelope"
+  );
+
+  const handleEnvelopeClick = useCallback((e: React.MouseEvent) => {
+    if (readOnly) return;
+    e.stopPropagation();
+    if (onSelectEnvelope) {
+      onSelectEnvelope();
+    } else if (onSelectLayer) {
+      onSelectLayer("envelope");
+    }
+  }, [readOnly, onSelectEnvelope, onSelectLayer]);
 
   const [cardDimensions, setCardDimensions] = useState<ContainerDimensions>({
     width: maxW || 500,
@@ -445,7 +469,7 @@ export default function InvitationCanvasStage({
     (config as any)?.envelopeColor ||
     (fallbackTpl as any)?.envelope?.outerColor ||
     fallbackTpl?.envelopeColor ||
-    "#b47b48";
+    "#111111";
 
   const envelopeFlapColor =
     (config.envelope as any)?.flapColor ||
@@ -468,7 +492,7 @@ export default function InvitationCanvasStage({
     config.envelope?.liner ||
     (fallbackTpl as any)?.envelope?.innerLiner ||
     fallbackTpl?.envelopeLiner ||
-    "autumn-gingham";
+    "gold-foil";
 
   // Support pure-CSS liner (linerCss) OR metallic gold foil OR legacy lookup-table liner OR image URL liner
   const envelopeLinerCss =
@@ -822,6 +846,25 @@ export default function InvitationCanvasStage({
     );
   }
 
+  const resolvedStageAspect =
+    aspectRatio === "square" || aspectRatio === "1/1" || aspectRatio === "1 / 1"
+      ? "1 / 1"
+      : aspectRatio === "story-9x16" || aspectRatio === "9/16" || aspectRatio === "9 / 16"
+      ? "9 / 16"
+      : aspectRatio === "portrait-5x7" || aspectRatio === "3/4.2"
+      ? "3 / 4.2"
+      : aspectRatio === "landscape-4x3" || aspectRatio === "4/3" || aspectRatio === "4 / 3" || isLandscape
+      ? "4 / 3"
+      : aspectRatio || "5 / 7";
+
+  const resolvedEnvelopeView: "peek" | "open" | "closed" | "open-upward" =
+    envelopeViewMode ||
+    (isEnvelopeTabActive
+      ? ((config.envelope?.stamp || config.envelope?.sticker) ? "closed" : "peek")
+      : "peek");
+
+  const cardWidth = Math.round(maxW || 480);
+
   return (
     /* ========================================================================= */
     /* LAYER 1: Canvas Backdrop (z-index: 1)                                     */
@@ -854,118 +897,120 @@ export default function InvitationCanvasStage({
       <div
         ref={stageRef as any}
         data-testid="invitation-stage-container"
-        className="relative w-full flex items-center justify-center transition-transform duration-300 touch-pan-x touch-pan-y"
+        className="relative flex items-center justify-center min-h-[600px] w-full p-8 sm:p-12 transition-transform duration-300 touch-pan-x touch-pan-y"
         style={{
-          maxWidth: `${Math.round((maxW || 540) * 1.25)}px`,
-          aspectRatio: isLandscape ? "4 / 3" : "5 / 7",
-          minHeight: isLandscape ? "min(520px, 70vh)" : "min(620px, 75vh)",
           transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
-          transformOrigin: "top center",
+          transformOrigin: "center center",
           overflow: "visible",
         }}
       >
         {/* ========================================================================= */}
-        {/* CARD & ENVELOPE COMPOSITE UNIT (Keeps Card & Envelope locked together)     */}
-        {/* Envelope starts AT THE TOP of card, never hangs down, never cuts off      */}
+        {/* CARD & ENVELOPE COMPOSITE UNIT (Positions Envelope & Card relative to each other) */}
         {/* ========================================================================= */}
-        {/* Resolve envelope presentation mode:
-            Default in canvas is "peek" view behind the card (Evite authentic) */}
-        {(() => {
-          const resolvedEnvelopeView: "peek" | "open" | "closed" =
-            envelopeViewMode ||
-            (isEnvelopeTabActive
-              ? ((config.envelope?.stamp || config.envelope?.sticker) ? "closed" : "open")
-              : "peek");
-
-          return (
+        <div
+          data-layer="card-envelope-unit"
+          className="relative flex items-center justify-center"
+          style={{
+            width: `${Math.round(cardWidth)}px`,
+            maxWidth: "min(100%, 82vw)",
+            aspectRatio: resolvedStageAspect,
+            overflow: "visible",
+          }}
+        >
+          {/* 1. Envelope Layer (Behind) */}
+          {showEnvelope && (
             <div
-              data-layer="card-envelope-unit"
-              className="relative flex items-center justify-center"
-              style={{
-                width: isCardOnlyMode ? (isLandscape ? "92%" : "84%") : (isLandscape ? "88%" : "78%"),
-                aspectRatio: cardAspectRatio,
-                // Optically center composite unit when envelope peeks right (exact Evite match)
-                transform: !isCardOnlyMode && resolvedEnvelopeView === "peek"
-                  ? "translateX(-6%)"
-                  : undefined,
-                transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
+              data-layer="2-envelope-container"
+              data-testid="canvas-envelope-layer"
+              onClick={handleEnvelopeClick}
+              className={`absolute cursor-pointer transition-transform duration-200 select-none z-0 ${
+                isEnvelopeSelected ? "ring-2 ring-blue-500 rounded-sm" : ""
+              }`}
+              style={
+                resolvedEnvelopeView === "closed"
+                  ? {
+                      zIndex: 20,
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      overflow: "visible",
+                    }
+                  : {
+                      zIndex: 0,
+                      right: "-28%",
+                      top: "-6%",
+                      width: "100%",
+                      height: "112%",
+                      overflow: "visible",
+                    }
+              }
+              title="Click to customize envelope & liner"
             >
-              {/* LAYER 2: Envelope & Liner (z-index: 10) — Sits directly behind the card */}
-              {showEnvelope && (
-                <div
-                  data-layer="2-envelope-container"
-                  className="absolute inset-0 pointer-events-none select-none"
-                  style={{
-                    zIndex: 10,
-                    width: "100%",
-                    height: "100%",
-                    overflow: "visible",
-                  }}
-                >
-                  <EnvelopeBackdrop
-                    color={envelopeOuterColor}
-                    flapColor={envelopeFlapColor}
-                    liner={linerStyle}
-                    innerLiner={(config.envelope as any)?.innerLiner}
-                    linerColor={rawLinerColor}
-                    shadowColor={(config.envelope as any)?.shadowColor}
-                    stamp={config.envelope?.stamp}
-                    stampEmoji={stampEmoji}
-                    sticker={config.envelope?.sticker}
-                    stickerEmoji={stickerEmoji}
-                    viewMode={resolvedEnvelopeView}
-                  />
-                </div>
-              )}
+              <EnvelopeBackdrop
+                color={envelopeOuterColor}
+                flapColor={envelopeFlapColor}
+                liner={linerStyle}
+                innerLiner={(config.envelope as any)?.innerLiner}
+                linerColor={rawLinerColor}
+                shadowColor={(config.envelope as any)?.shadowColor}
+                stamp={config.envelope?.stamp}
+                stampEmoji={stampEmoji}
+                sticker={config.envelope?.sticker}
+                stickerEmoji={stickerEmoji}
+                viewMode={resolvedEnvelopeView}
+                isSelected={isEnvelopeSelected}
+                interactive={!readOnly}
+                onClick={handleEnvelopeClick}
+              />
+            </div>
+          )}
 
-              {/* LAYER 3: Invitation Card Surface (z-index: 20) */}
-              <motion.div
-                ref={effectiveCardRef}
-                id="invitation-card-container"
-                data-layer="3-card-surface"
-                data-testid="preview-card"
-                initial={{
-                  y: 60,
-                  scale: 0.93,
-                  opacity: 0.85,
-                }}
-                animate={{
-                  y: resolvedEnvelopeView === "open" ? 24 : 0,
-                  scale: resolvedEnvelopeView === "open" ? 0.94 : 1,
-                  opacity: resolvedEnvelopeView === "closed" ? 0 : 1,
-                }}
-                transition={{
-                  duration: 0.5,
-                  ease: [0.16, 1, 0.3, 1],
-                  delay: 0.05,
-                }}
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) {
-                    if (onCardClick) onCardClick();
-                    if (onSelectLayer) onSelectLayer("");
-                    if (setEditingTextId) setEditingTextId(null);
-                  }
-                }}
-                className={`relative w-full h-full rounded-2xl overflow-hidden transition-all duration-300 ${cardTextureClass} ${
-                  resolvedEnvelopeView === "closed" ? "pointer-events-none" : ""
-                }`}
-                style={{
-                  zIndex: 20,
-                  aspectRatio: cardAspectRatio,
-                  backgroundColor: cardBgColor,
-                  background:
-                    (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
-                    !(config as any).innerCardLayer?.backgroundColor &&
-                    config.cardBg.value !== backdropGradient &&
-                    config.cardBg.value !== backdropValue
-                      ? config.cardBg.value
-                      : undefined,
-                  boxShadow: resolvedEnvelopeView === "peek"
-                    ? (config as any)?.innerCardLayer?.paperShadow || "0 12px 24px -4px rgba(0,0,0,0.25)"
-                    : cardShadowStyle,
-                }}
-              >
+          {/* 2. Invitation Card Layer (Foreground) */}
+          <motion.div
+            ref={effectiveCardRef}
+            id="invitation-card-container"
+            data-layer="3-card-surface"
+            data-testid="preview-card"
+            initial={{
+              y: 60,
+              scale: 0.93,
+              opacity: 0.85,
+            }}
+            animate={{
+              y: 0,
+              scale: 1,
+              opacity: resolvedEnvelopeView === "closed" ? 0 : 1,
+            }}
+            transition={{
+              duration: 0.5,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.05,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                if (onCardClick) onCardClick();
+                if (onSelectLayer) onSelectLayer("");
+                if (setEditingTextId) setEditingTextId(null);
+              }
+            }}
+            className={`relative z-10 w-full h-full shadow-2xl bg-white rounded-sm overflow-hidden transition-all duration-300 ${cardTextureClass} ${
+              resolvedEnvelopeView === "closed" ? "pointer-events-none" : ""
+            }`}
+            style={{
+              zIndex: 10,
+              backgroundColor: cardBgColor,
+              background:
+                (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
+                !(config as any).innerCardLayer?.backgroundColor &&
+                config.cardBg.value !== backdropGradient &&
+                config.cardBg.value !== backdropValue
+                  ? config.cardBg.value
+                  : undefined,
+              boxShadow: showEnvelope
+                ? "0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 10px 25px -5px rgba(0, 0, 0, 0.2)"
+                : cardShadowStyle,
+            }}
+          >
           {showingBackside ? (
             <div className="absolute inset-0 flex flex-col items-center justify-between p-8 sm:p-12 text-center bg-[#FAF8F5] select-none">
               <div className="w-full flex justify-between items-center text-[11px] font-bold tracking-wider uppercase text-slate-400">
@@ -1298,8 +1343,6 @@ export default function InvitationCanvasStage({
           )}
         </motion.div>
         </div>
-          );
-        })()}
 
         {/* Floating Toolbar for Fabric / Window Canvas when active */}
         {toolbarPosition.visible && !readOnly && (

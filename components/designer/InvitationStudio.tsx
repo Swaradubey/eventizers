@@ -1275,7 +1275,7 @@ export default function InvitationStudio({
   const [isGuestSelectionModalOpen, setIsGuestSelectionModalOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
-  const effectiveEnvelopeView: "peek" | "open" | "closed" =
+  const effectiveEnvelopeView: "peek" | "open" | "closed" | "open-upward" =
     activeTab === "envelope" && (envelopeSubTab === "stamps" || envelopeSubTab === "stickers")
       ? "closed"
       : "peek";
@@ -1806,8 +1806,22 @@ export default function InvitationStudio({
     ? designState.textLayers.find((l) => l.id === designState.selectedTextId) || null
     : null;
 
-  // Selection handler to activate any text layer and sync with toolbar
+  // Selection handler to activate any text layer or envelope and sync with toolbar
   const handleSelectLayer = (layerId: string) => {
+    if (layerId === "envelope") {
+      setActiveTab("envelope");
+      setMobileToolsOpen(true);
+      setDesignState((prev) => ({ ...prev, selectedTextId: null }));
+      setEditingTextId(null);
+      if (designState.hideEnvelope) {
+        setDesignState((prev) => ({
+          ...prev,
+          hideEnvelope: false,
+          viewMode: "envelope",
+        }));
+      }
+      return;
+    }
     setDesignState((prev) => ({ ...prev, selectedTextId: layerId }));
     setActiveTab("text");
   };
@@ -6060,8 +6074,14 @@ export default function InvitationStudio({
               config={designState}
               readOnly={false}
               selectedTextId={designState.selectedTextId}
+              selectedLayer={activeTab === "envelope" ? "envelope" : designState.selectedTextId}
+              onSelectEnvelope={() => {
+                handleSelectLayer("envelope");
+              }}
               onSelectLayer={(id) => {
-                if (id) {
+                if (id === "envelope") {
+                  handleSelectLayer("envelope");
+                } else if (id) {
                   handleSelectLayer(id);
                   setActiveTab("text");
                   setMobileToolsOpen(true);

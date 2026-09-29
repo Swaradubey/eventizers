@@ -356,41 +356,39 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       {/* 1. Envelope & Liner (Behind Card) — only when effectiveCardOnly is false */}
       {!effectiveCardOnly && (
         <div
-          className="absolute pointer-events-none select-none"
-          style={{
-            zIndex: 5,
-            width: isOpenUpward ? "84%" : "84%",
-            height: isOpenUpward ? "90%" : "98%",
-            left: isOpenUpward ? "50%" : "56%",
-            top: isOpenUpward ? "52%" : "46%",
-            transform: "translate(-50%, -50%)",
-          }}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+          style={{ zIndex: 5 }}
         >
-          <EnvelopeBackdrop
-            color={isAdultBirthday ? "#111111" : envelopeOuter}
-            flapColor={isAdultBirthday ? "#111111" : envelopeFlap}
-            liner={
-              isAdultBirthday
-                ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)"
-                : envelopeLiner
-            }
-            linerColor={isAdultBirthday ? "#D4AF37" : envelopeLinerColor}
-            viewMode={isOpenUpward ? "open-upward" : "peek"}
-          />
+          <div
+            className="relative w-[84%] h-[90%] pointer-events-none select-none flex items-center justify-center"
+            style={{ transform: "translateY(2%)" }}
+          >
+            <EnvelopeBackdrop
+              color={isAdultBirthday ? "#111111" : envelopeOuter}
+              flapColor={isAdultBirthday ? "#111111" : envelopeFlap}
+              liner={
+                isAdultBirthday
+                  ? "linear-gradient(135deg, #C2932E 0%, #E5C158 18%, #FFF2A1 35%, #D4AF37 52%, #AA771C 70%, #FDF4B8 85%, #9A6B12 100%)"
+                  : envelopeLiner
+              }
+              linerColor={isAdultBirthday ? "#D4AF37" : envelopeLinerColor}
+              viewMode="open-upward"
+            />
+          </div>
         </div>
       )}
 
       {/* 2. Clean Card Surface (White/Theme Paper Box) */}
       <div
         className={`relative z-10 ${
-          effectiveCardOnly ? "w-full h-full" : isOpenUpward ? "w-[68%] h-[78%]" : "w-[78%] h-[88%]"
+          effectiveCardOnly ? "w-full h-full" : "w-[68%] h-[78%]"
         } rounded-xl flex flex-col items-center justify-between p-3.5 sm:p-4 overflow-hidden`}
         style={{
           background: cardBg,
           border: cardBorder,
-          boxShadow: isOpenUpward ? "0 14px 30px -6px rgba(0, 0, 0, 0.28)" : cardShadow,
+          boxShadow: effectiveCardOnly ? cardShadow : "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
           borderRadius: cssConfig?.borderRadius || "12px",
-          transform: effectiveCardOnly ? undefined : isOpenUpward ? "translateY(6%)" : "translateX(-3%)",
+          transform: effectiveCardOnly ? undefined : "translateY(6%)",
         }}
       >
         {/* Inset Border if defined (e.g. dotted frame) */}
