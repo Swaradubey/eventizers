@@ -1570,6 +1570,40 @@ export const NEW_TEMPLATE_DEFAULTS = NEW_TEMPLATES.reduce((acc, t) => {
   return acc;
 }, {} as Record<string, any>);
 
+/**
+ * Dynamically register or update templates fetched from backend API.
+ * Ensures website components, studio, and canvas seamlessly use templates from backend.
+ */
+export const registerDynamicTemplates = (backendTemplates: any[]) => {
+  if (!Array.isArray(backendTemplates)) return;
+  for (const bt of backendTemplates) {
+    if (!bt || !bt.id) continue;
+    const transformed: NewTemplateData = {
+      id: bt.id,
+      title: bt.name || bt.title || "Template",
+      category: bt.category || "General",
+      badge: bt.badge || (bt.isPremium ? "Premium" : "Free"),
+      isPremium: Boolean(bt.isPremium),
+      image: bt.thumbnailUrl || bt.imageUrl || "/assets/templates/chic-dinner-cake-mockup.svg",
+      gradient: bt.gradient || bt.backdrop?.gradient || "linear-gradient(135deg, #FAF7F2 0%, #EDE6D8 100%)",
+      accentColor: bt.accentColor || bt.envelope?.linerColor || "#D4AF37",
+      backdrop: bt.backdrop || { color: "#FAF7F2", type: "texture", value: "/assets/backdrops/white-embossed-floral.svg" },
+      envelope: bt.envelope || { outerColor: "#111111", flapColor: "#111111", linerCss: "", linerColor: "#D4AF37", isOpen: true },
+      card: bt.card || { artworkUrl: bt.thumbnailUrl, backgroundColor: "#ffffff", aspectRatio: "5x7" },
+      defaultTextLayers: bt.defaultTextLayers || [],
+      textLayers: bt.defaultTextLayers || [],
+      ...bt,
+    };
+    NEW_TEMPLATES_CONFIG[bt.id] = transformed;
+    const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id);
+    if (existingIdx >= 0) {
+      NEW_TEMPLATES[existingIdx] = transformed;
+    } else {
+      NEW_TEMPLATES.push(transformed);
+    }
+  }
+};
+
 export const getEviteTemplate = (templateId?: string | null): EviteTemplateSchema | null => {
   if (!templateId) return null;
   if (EVITE_TEMPLATES_CONFIG[templateId]) return EVITE_TEMPLATES_CONFIG[templateId];

@@ -96,7 +96,9 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
   },
 ];
 
-const CATEGORIES = ["All", "Birthday", "Bridal Shower", "Wedding"];
+import templateService from "@/services/templateService";
+
+const DEFAULT_CATEGORIES = ["All", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"];
 
 export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const { user } = useAuth();
@@ -105,10 +107,43 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
+  const [curatedList, setCuratedList] = useState<CuratedTemplate[]>(CURATED_TEMPLATES);
   const shouldReduceMotion = useReducedMotion();
 
+  // Dynamically fetch templates from backend
+  React.useEffect(() => {
+    let isMounted = true;
+    templateService.getTemplates()
+      .then((tpls) => {
+        if (!isMounted || !tpls || tpls.length === 0) return;
+        const mapped: CuratedTemplate[] = tpls.map((t) => ({
+          id: t.id,
+          title: t.title || (t as any).name || "Invitation",
+          badge: t.badge || (t.isPremium ? "Premium" : "Free"),
+          category: t.category || "General",
+        }));
+        setCuratedList(mapped);
+      })
+      .catch((err) => {
+        console.warn("[Templates] Could not fetch backend templates:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const categories = React.useMemo(() => {
+    const cats = new Set<string>(["All"]);
+    curatedList.forEach((t) => {
+      if (t.category) cats.add(t.category);
+    });
+    // Ensure standard defaults appear nicely
+    DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
+    return Array.from(cats);
+  }, [curatedList]);
+
   const filteredTemplates = React.useMemo(() => {
-    const base = CURATED_TEMPLATES;
+    const base = curatedList;
     if (selectedCategory === "All") return base;
     const target = selectedCategory.toLowerCase();
     return base.filter((t) => {
@@ -121,7 +156,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       }
       return cat === target || cat.includes(target);
     });
-  }, [selectedCategory]);
+  }, [selectedCategory, curatedList]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -196,7 +231,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
 
         {/* Category Pills Filter */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
               <button
