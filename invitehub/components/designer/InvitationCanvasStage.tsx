@@ -863,6 +863,18 @@ export default function InvitationCanvasStage({
       ? ((config.envelope?.stamp || config.envelope?.sticker) ? "closed" : "peek")
       : "peek");
 
+  const isEnvelopeLeft = Boolean(
+    (config.envelope as any)?.position === "left" ||
+    (fallbackTpl as any)?.envelope?.position === "left" ||
+    (config as any)?.envelopePosition === "left" ||
+    activeTplId === "o-tannenbaum" ||
+    activeTplId === "metallic-paint-splatter" ||
+    activeTplId === "golden-foliage-holiday" ||
+    activeTplId === "tpl-o-tannenbaum" ||
+    activeTplId === "tpl-metallic-paint-splatter" ||
+    activeTplId === "tpl-golden-foliage-holiday"
+  );
+
   const cardWidth = Math.round(maxW || 480);
 
   return (
@@ -935,6 +947,15 @@ export default function InvitationCanvasStage({
                       height: "100%",
                       overflow: "visible",
                     }
+                  : isEnvelopeLeft
+                  ? {
+                      zIndex: 0,
+                      left: "-25%",
+                      top: "-5%",
+                      width: "100%",
+                      height: "110%",
+                      overflow: "visible",
+                    }
                   : {
                       zIndex: 0,
                       right: "-28%",
@@ -958,6 +979,7 @@ export default function InvitationCanvasStage({
                 sticker={config.envelope?.sticker}
                 stickerEmoji={stickerEmoji}
                 viewMode={resolvedEnvelopeView}
+                position={isEnvelopeLeft ? "left" : "right"}
                 isSelected={isEnvelopeSelected}
                 interactive={!readOnly}
                 onClick={handleEnvelopeClick}

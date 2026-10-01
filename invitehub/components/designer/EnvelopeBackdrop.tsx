@@ -29,6 +29,7 @@ export interface EnvelopeBackdropProps {
   stickerImage?: string | null;
   className?: string;
   viewMode?: "peek" | "open" | "closed" | "open-upward";
+  position?: "left" | "right";
   cardDimensions?: { width: number; height: number };
   isSelected?: boolean;
   interactive?: boolean;
@@ -76,12 +77,14 @@ export default function EnvelopeBackdrop({
   stickerImage = null,
   className = "",
   viewMode = "peek",
+  position = "right",
   isSelected = false,
   interactive = false,
   onClick,
 }: EnvelopeBackdropProps) {
   const bodyColor = color || DEFAULT_ENVELOPE_BODY_COLOR;
   const flapPaperColor = flapColor || bodyColor;
+  const isLeft = position === "left";
 
   // Resolve Liner
   let rawLiner = innerLiner || liner || linerColor || DEFAULT_ENVELOPE_LINER;
@@ -130,7 +133,7 @@ export default function EnvelopeBackdrop({
 
   // =========================================================================
   // VIEW MODE 1: PEEK VIEW (Default in studio behind card - Reference 2 Target)
-  // Sits behind the card with open top-angled flap extending to top-right,
+  // Sits behind the card with open top-angled flap extending to top-right (or top-left if isLeft),
   // displaying textured gold liner with dark side flap and body.
   // =========================================================================
   if (viewMode === "peek") {
@@ -194,12 +197,12 @@ export default function EnvelopeBackdrop({
           />
         </div>
 
-        {/* 2. Top Angled Flap Paper (Extends up to peak at 82% X, slopes down to 100% X at 36% Y) */}
+        {/* 2. Top Angled Flap Paper */}
         <div
           className="absolute inset-x-0 top-0 pointer-events-none"
           style={{
             height: "37%",
-            clipPath: "polygon(0% 100%, 82% 0%, 100% 100%)",
+            clipPath: isLeft ? "polygon(0% 100%, 18% 0%, 100% 100%)" : "polygon(0% 100%, 82% 0%, 100% 100%)",
             backgroundColor: flapPaperColor || bodyColor || "#111111",
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
           }}
@@ -222,7 +225,7 @@ export default function EnvelopeBackdrop({
             left: "10px",
             right: "10px",
             height: "calc(37% - 8px)",
-            clipPath: "polygon(4% 100%, 82% 4%, 96% 100%)",
+            clipPath: isLeft ? "polygon(4% 100%, 18% 4%, 96% 100%)" : "polygon(4% 100%, 82% 4%, 96% 100%)",
             background: isImageLiner ? `url('${linerImgUrl}') center / cover no-repeat` : resolvedLinerPattern,
             backgroundColor: resolvedLinerBg,
             boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.2)",

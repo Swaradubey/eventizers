@@ -321,6 +321,10 @@ export function resolveCleanTemplateSvg(url?: string | null): string | null {
     const baseName = svgMatch[2];
     const query = svgMatch[3] || "";
     if (baseName.endsWith("-bg")) return url;
+    if (baseName.endsWith("-mockup")) {
+      const actualBase = baseName.replace(/-mockup$/, "");
+      return `${prefix}${actualBase}-bg.svg${query}`;
+    }
     return `${prefix}${baseName}-bg.svg${query}`;
   }
   return url;

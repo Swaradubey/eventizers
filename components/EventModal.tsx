@@ -508,8 +508,8 @@ export default function EventModal({
                     </span>
                     <span className="text-[11px] text-[#C9A84C] font-normal">opens in studio</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-h-64 overflow-y-auto pr-1">
-                    {NEW_TEMPLATES.filter((t) => t.isPureCss || t.id.startsWith("tpl-golden") || t.id.startsWith("tpl-modern") || t.id.startsWith("tpl-classic") || t.id.startsWith("tpl-retro") || t.id.startsWith("tpl-midnight") || t.id.startsWith("tpl-emerald") || t.id.startsWith("tpl-champagne") || t.id.startsWith("tpl-noir") || t.id.startsWith("tpl-rustic") || t.id.startsWith("tpl-lavender")).slice(0, 10).map((tpl) => {
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                    {NEW_TEMPLATES.map((tpl) => {
                       const isSelected = selectedTemplateId === tpl.id;
                       return (
                         <button

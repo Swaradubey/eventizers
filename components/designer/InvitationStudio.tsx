@@ -1041,9 +1041,15 @@ export default function InvitationStudio({
           const scopedKey = preResolvedTplId
             ? `invitation_4layer_${targetEvtId}_${preResolvedTplId}`
             : null;
-          const raw = (scopedKey && localStorage.getItem(scopedKey))
-            || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
-          if (raw) cachedDraft = JSON.parse(raw);
+          const raw = scopedKey ? localStorage.getItem(scopedKey) : localStorage.getItem(`invitation_4layer_${targetEvtId}`);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (!preResolvedTplId || !parsed.templateId || parsed.templateId === preResolvedTplId || parsed.activeTemplateId === preResolvedTplId) {
+                cachedDraft = parsed;
+              }
+            } catch (_) {}
+          }
         }
       } catch (e) { }
     }
@@ -1052,7 +1058,11 @@ export default function InvitationStudio({
     const rawEvtCanvasState = (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
     if (rawEvtCanvasState) {
       try {
-        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+        const parsedState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+        const preResolvedTplId = templateIdQuery || (typeof window !== "undefined" ? sessionStorage.getItem("pending_template_id") : null);
+        if (!preResolvedTplId || !parsedState.templateId || parsedState.templateId === preResolvedTplId || parsedState.activeTemplateId === preResolvedTplId) {
+          persistentCanvasState = parsedState;
+        }
       } catch (_) {}
     }
 
@@ -1268,7 +1278,8 @@ export default function InvitationStudio({
   };
 
   const [designState, setDesignState] = useState<StudioDesignState>(getInitialDesign);
-  const [activeTab, setActiveTab] = useState<"text" | "backgrounds" | "envelope" | "effects" | "backside" | "details">("text");
+  const [activeTab, setActiveTab] = useState<"templates" | "text" | "backgrounds" | "envelope" | "effects" | "backside" | "details">("text");
+  const [sidebarTemplateCategory, setSidebarTemplateCategory] = useState<string>("All");
   const [showingBackside, setShowingBackside] = useState(false);
   const [envelopeSubTab, setEnvelopeSubTab] = useState<"colors" | "liners" | "stamps" | "stickers">("colors");
   const stickerInputRef = useRef<HTMLInputElement>(null);
@@ -4591,6 +4602,27 @@ export default function InvitationStudio({
             <div className="order-2 lg:order-1 flex flex-col-reverse lg:flex-row h-auto lg:h-full z-20 shadow-xl flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-slate-200/90 text-slate-800">
               {/* Icon Strip (Bottom bar on mobile, Left column on desktop) */}
               <div className="w-full lg:w-[76px] h-14 lg:h-full bg-white border-t lg:border-t-0 lg:border-r border-slate-200/70 flex flex-row lg:flex-col items-center justify-around lg:justify-start py-1 lg:py-4 gap-1 lg:gap-3 flex-shrink-0">
+                {/* 0. Templates Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "templates" && mobileToolsOpen) {
+                      setMobileToolsOpen(false);
+                    } else {
+                      setActiveTab("templates");
+                      setMobileToolsOpen(true);
+                    }
+                  }}
+                  className={`w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 lg:gap-1 transition-all cursor-pointer ${activeTab === "templates"
+                    ? "bg-slate-100 text-slate-950 font-bold shadow-xs border border-slate-200/80"
+                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    }`}
+                  title="Choose Template"
+                >
+                  <LayoutTemplate className="w-4 h-4 lg:w-5 lg:h-5 stroke-[1.8]" />
+                  <span className="text-[10px] tracking-tight">Templates</span>
+                </button>
+
                 {/* 1. Text Tab */}
                 <button
                   type="button"
@@ -4720,6 +4752,111 @@ export default function InvitationStudio({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
+                {/* -------------------- TAB 0: TEMPLATES GALLERY -------------------- */}
+                {activeTab === "templates" && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">Template Gallery</span>
+                        <span className="text-[10px] text-slate-400">Select a design to load onto canvas</span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                        {NEW_TEMPLATES.length} Designs
+                      </span>
+                    </div>
+
+                    {/* Category Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+                      {["All", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"].map((cat) => {
+                        const isCatSelected = sidebarTemplateCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSidebarTemplateCategory(cat)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                              isCatSelected
+                                ? "bg-slate-900 text-white shadow-2xs"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Template Cards Grid */}
+                    <div className="grid grid-cols-2 gap-2.5 max-h-[68vh] overflow-y-auto pr-1">
+                      {NEW_TEMPLATES.filter((t) => {
+                        if (sidebarTemplateCategory === "All") return true;
+                        const target = sidebarTemplateCategory.toLowerCase();
+                        const cat = (t.category || "").toLowerCase();
+                        const tags = (t.tags || []).map((tg) => tg.toLowerCase());
+                        if (target === "holiday") {
+                          return cat.includes("holiday") || tags.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
+                        }
+                        if (target === "corporate") {
+                          return cat.includes("corporate") || tags.includes("corporate") || t.id.includes("splatter") || t.id.includes("sketch");
+                        }
+                        if (target === "bridal shower") {
+                          return cat.includes("bridal") || cat.includes("shower") || tags.includes("bridal shower");
+                        }
+                        if (target === "birthday" || target === "adult birthday") {
+                          return cat.includes("birthday") || cat.includes("bday") || tags.includes("birthday") || tags.includes("adult birthday");
+                        }
+                        return cat.includes(target) || tags.includes(target);
+                      }).map((tpl) => {
+                        const isCurrent =
+                          designState.activeTemplateId === tpl.id ||
+                          designState.templateId === tpl.id ||
+                          loadedTemplateIdRef.current === tpl.id;
+                        const isTplPremium = isTemplatePremium(tpl);
+                        const imgSrc = tpl.mockupUrl || tpl.thumbnailUrl || tpl.image;
+
+                        return (
+                          <div
+                            key={tpl.id}
+                            onClick={() => handleSelectTemplate(tpl.id)}
+                            className={`group relative rounded-xl border p-1.5 transition-all cursor-pointer flex flex-col select-none ${
+                              isCurrent
+                                ? "border-slate-900 ring-2 ring-slate-900 bg-slate-50 shadow-sm"
+                                : "border-slate-200/80 hover:border-slate-400 bg-white hover:shadow-md"
+                            }`}
+                          >
+                            {/* Card Item Preview Container */}
+                            <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-[#FAF8F5] mb-1.5 border border-slate-100">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgSrc}
+                                alt={tpl.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                loading="lazy"
+                              />
+                              {/* Badge */}
+                              <div className={`absolute top-1.5 left-1.5 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded backdrop-blur-xs shadow-2xs text-[9px] font-bold ${
+                                isTplPremium
+                                  ? "bg-white/95 text-[#581C87] border border-purple-100/50"
+                                  : "bg-white/95 text-slate-700 border border-slate-200/60"
+                              }`}>
+                                {isTplPremium && (
+                                  <svg className="w-2.5 h-2.5 fill-[#581C87] text-[#581C87]" viewBox="0 0 24 24">
+                                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                                  </svg>
+                                )}
+                                <span>{tpl.badge || (isTplPremium ? "Premium" : "Free")}</span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-800 truncate block text-center">
+                              {tpl.title}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* -------------------- TAB 1: TEXT -------------------- */}
                 {activeTab === "text" && (
                   activeLayer ? (

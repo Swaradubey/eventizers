@@ -124,6 +124,7 @@ export interface EviteTemplateSchema {
     decorativeBorderSvgUrl?: string;// '' for pure-CSS templates
     backgroundColor: string;
     aspectRatio: '5x7' | 'square' | 'portrait';
+    border?: any;
     cssConfig?: CssCardConfig;      // populated for pure-CSS templates
     decorations?: any[];
     decorativeImages?: string[];
@@ -264,6 +265,79 @@ export interface NewTemplateData {
 // STANDARDIZED EVITE TEMPLATES REGISTRY (4-Layer Decoupled Architecture)
 // -----------------------------------------------------------------------------
 export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
+  {
+    "id": "botanical-sketch-art",
+    "title": "Botanical Sketch (Art)",
+    "name": "Botanical Sketch (Art)",
+    "category": "Workshop & Art",
+    "badge": "Premium",
+    "envelopeColor": "#CFC4B5",
+    "linerColor": "#ECE4D8",
+    "envelopeLiner": "linear-gradient(135deg, #DDD2C3 0%, #CFC4B5 100%)",
+    "mockupUrl": "/assets/templates/botanical-sketch-art-mockup.svg",
+    "thumbnailUrl": "/assets/templates/botanical-sketch-art-mockup.svg",
+    "backdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/terrazzo.svg",
+      "color": "#FAF8F5",
+      "gradient": "url('/assets/backdrops/terrazzo.svg') center / cover no-repeat, linear-gradient(135deg, #FAF8F5 0%, #EDE9E1 100%)"
+    },
+    "envelope": {
+      "outerColor": "#CFC4B5",
+      "flapColor": "#DDD2C3",
+      "linerPatternUrl": "",
+      "linerColor": "#ECE4D8",
+      "innerLiner": "linear-gradient(135deg, #DDD2C3 0%, #CFC4B5 100%)",
+      "linerCss": "linear-gradient(135deg, #DDD2C3 0%, #CFC4B5 100%)",
+      "isOpen": true,
+      "isOpenUpward": true,
+      "shadowColor": "rgba(0,0,0,0.28)"
+    },
+    "card": {
+      "artworkUrl": "/assets/templates/botanical-sketch-art-bg.svg",
+      "decorativeBorderSvgUrl": "/assets/templates/botanical-sketch-art-bg.svg",
+      "backgroundColor": "#A3B899",
+      "aspectRatio": "5x7",
+      "border": "1px solid rgba(0,0,0,0.06)",
+      "cssConfig": {
+        "backgroundColor": "#A3B899",
+        "borderRadius": "14px",
+        "paperShadow": "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+      }
+    },
+    "innerCardLayer": {
+      "backgroundColor": "#A3B899",
+      "borderRadius": "14px",
+      "paperShadow": "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      "aspectRatio": "5/7"
+    },
+    "defaultTextLayers": [
+      {
+        "id": "layer-title",
+        "key": "title",
+        "text": "Botanical Illustration Workshop",
+        "fontFamily": "'Playfair Display', Georgia, serif",
+        "fontSize": 20,
+        "color": "#1C2D1A",
+        "fontWeight": "600",
+        "textAlign": "center",
+        "top": 72,
+        "left": 50
+      },
+      {
+        "id": "layer-datetime",
+        "key": "datetime",
+        "text": "Artisans June 21 at 12 PM",
+        "fontFamily": "'Inter', sans-serif",
+        "fontSize": 12,
+        "color": "#30442D",
+        "fontWeight": "500",
+        "textAlign": "center",
+        "top": 86,
+        "left": 50
+      }
+    ]
+  },
   {
     "id": "tpl-chic-dinner-cake",
     "title": "Chic Dinner & Cake Celebration",
@@ -1392,6 +1466,288 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         left: 50,
       }
     ]
+  },
+  {
+    id: "o-tannenbaum",
+    title: "O Tannenbaum",
+    name: "O Tannenbaum",
+    category: "Holiday",
+    badge: "Premium",
+    envelopeColor: "#DACFBC",
+    linerColor: "#D4AF37",
+    envelopeLiner: "linear-gradient(135deg, #A67C1E 0%, #D4AF37 25%, #FFF2A1 50%, #D4AF37 75%, #8E6516 100%)",
+    mockupUrl: "/assets/templates/o-tannenbaum-mockup.svg",
+    thumbnailUrl: "/assets/templates/o-tannenbaum-mockup.svg",
+    backdrop: {
+      type: "texture",
+      value: "linear-gradient(135deg, #FAF7F2 0%, #F4EFE6 50%, #EAE3D6 100%)",
+      color: "#FAF7F2",
+      gradient: "linear-gradient(135deg, #FAF7F2 0%, #F4EFE6 50%, #EAE3D6 100%)"
+    },
+    envelope: {
+      outerColor: "#DACFBC",
+      flapColor: "#DACFBC",
+      linerPatternUrl: "",
+      linerColor: "#D4AF37",
+      innerLiner: "linear-gradient(135deg, #A67C1E 0%, #D4AF37 25%, #FFF2A1 50%, #D4AF37 75%, #8E6516 100%)",
+      linerCss: "linear-gradient(135deg, #A67C1E 0%, #D4AF37 25%, #FFF2A1 50%, #D4AF37 75%, #8E6516 100%)",
+      isOpen: true,
+      isOpenUpward: false,
+      shadowColor: "rgba(0,0,0,0.28)",
+      position: "left"
+    } as any,
+    card: {
+      artworkUrl: "/assets/templates/o-tannenbaum-bg.svg",
+      borderIllustration: "/assets/templates/o-tannenbaum-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/o-tannenbaum-bg.svg",
+      backgroundColor: "#1C1F1E",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(255,255,255,0.08)",
+      cssConfig: {
+        backgroundColor: "#1C1F1E",
+        borderRadius: "14px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.35)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#1C1F1E",
+      borderRadius: "14px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.35)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: [
+      {
+        id: "ot-title",
+        key: "title",
+        text: "Holiday Party",
+        fontFamily: "'Great Vibes', cursive",
+        fontSize: 38,
+        color: "#F6F4ED",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 30,
+        left: 64
+      },
+      {
+        id: "ot-subtitle",
+        key: "subtitle",
+        text: "Join us for light bites & good times",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 12,
+        color: "#CDC9BC",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 48,
+        left: 64
+      },
+      {
+        id: "ot-datetime",
+        key: "datetime",
+        text: "Saturday, December 16\nat 7 PM",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 12,
+        color: "#E2DDD2",
+        fontWeight: "500",
+        textAlign: "center",
+        top: 60,
+        left: 64
+      },
+      {
+        id: "ot-venue",
+        key: "venue",
+        text: "The Smith Home\n5555 Willow Brook St.",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 11,
+        color: "#B3ADA0",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 74,
+        left: 64
+      }
+    ]
+  },
+  {
+    id: "metallic-paint-splatter",
+    title: "Metallic Paint Splatter",
+    name: "Metallic Paint Splatter",
+    category: "Corporate",
+    badge: "Premium",
+    envelopeColor: "#141414",
+    linerColor: "#111111",
+    envelopeLiner: "#111111",
+    mockupUrl: "/assets/templates/metallic-paint-splatter-mockup.svg",
+    thumbnailUrl: "/assets/templates/metallic-paint-splatter-mockup.svg",
+    backdrop: {
+      type: "texture",
+      value: "linear-gradient(135deg, #F2EEE7 0%, #EBE5DC 50%, #DFD7CB 100%)",
+      color: "#F2EEE7",
+      gradient: "linear-gradient(135deg, #F2EEE7 0%, #EBE5DC 50%, #DFD7CB 100%)"
+    },
+    envelope: {
+      outerColor: "#141414",
+      flapColor: "#181818",
+      linerPatternUrl: "",
+      linerColor: "#111111",
+      innerLiner: "#111111",
+      linerCss: "#111111",
+      isOpen: true,
+      isOpenUpward: false,
+      shadowColor: "rgba(0,0,0,0.32)",
+      position: "left"
+    } as any,
+    card: {
+      artworkUrl: "/assets/templates/metallic-paint-splatter-bg.svg",
+      borderIllustration: "/assets/templates/metallic-paint-splatter-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/metallic-paint-splatter-bg.svg",
+      backgroundColor: "#FAF8F5",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.06)",
+      cssConfig: {
+        backgroundColor: "#FAF8F5",
+        borderRadius: "14px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FAF8F5",
+      borderRadius: "14px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: [
+      {
+        id: "mps-header",
+        key: "title",
+        text: "JOIN US",
+        fontFamily: "'Cinzel', 'Playfair Display', Georgia, serif",
+        fontSize: 28,
+        letterSpacing: 4,
+        color: "#1C1C1C",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 36,
+        left: 50
+      },
+      {
+        id: "mps-subtext",
+        key: "subtitle",
+        text: "Come raise a glass... we've got so much to celebrate!",
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontStyle: "italic",
+        fontSize: 13,
+        lineHeight: 1.4,
+        color: "#4A4A4A",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 48,
+        left: 50
+      },
+      {
+        id: "mps-details",
+        key: "datetime",
+        text: "Friday, February 3 at 7 PM\n835 South Hill St.",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: "#5A5A5A",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 66,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "golden-foliage-holiday",
+    title: "Golden Foliage Holiday",
+    name: "Golden Foliage Holiday",
+    category: "Holiday",
+    badge: "Premium",
+    envelopeColor: "#DACFBC",
+    linerColor: "#D4AF37",
+    envelopeLiner: "linear-gradient(135deg, #9E7318 0%, #D4AF37 25%, #FFF4B3 50%, #D4AF37 75%, #7C540C 100%)",
+    mockupUrl: "/assets/templates/golden-foliage-holiday-mockup.svg",
+    thumbnailUrl: "/assets/templates/golden-foliage-holiday-mockup.svg",
+    backdrop: {
+      type: "texture",
+      value: "linear-gradient(135deg, #FAF7F2 0%, #F3ECE2 50%, #E8DFCFA 100%)",
+      color: "#FAF7F2",
+      gradient: "linear-gradient(135deg, #FAF7F2 0%, #F3ECE2 50%, #E8DFCFA 100%)"
+    },
+    envelope: {
+      outerColor: "#DACFBC",
+      flapColor: "#DACFBC",
+      linerPatternUrl: "",
+      linerColor: "#D4AF37",
+      innerLiner: "linear-gradient(135deg, #9E7318 0%, #D4AF37 25%, #FFF4B3 50%, #D4AF37 75%, #7C540C 100%)",
+      linerCss: "linear-gradient(135deg, #9E7318 0%, #D4AF37 25%, #FFF4B3 50%, #D4AF37 75%, #7C540C 100%)",
+      isOpen: true,
+      isOpenUpward: false,
+      shadowColor: "rgba(0,0,0,0.28)",
+      position: "left"
+    } as any,
+    card: {
+      artworkUrl: "/assets/templates/golden-foliage-holiday-bg.svg",
+      borderIllustration: "/assets/templates/golden-foliage-holiday-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/golden-foliage-holiday-bg.svg",
+      backgroundColor: "#223326",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(255,255,255,0.08)",
+      cssConfig: {
+        backgroundColor: "#223326",
+        borderRadius: "14px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.35)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#223326",
+      borderRadius: "14px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.35)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: [
+      {
+        id: "gfh-heading",
+        key: "title",
+        text: "LET'S CELEBRATE\nTHE SEASON",
+        fontFamily: "'Cinzel', 'Playfair Display', Georgia, serif",
+        fontSize: 22,
+        letterSpacing: 2,
+        lineHeight: 1.3,
+        color: "#222222",
+        fontWeight: "600",
+        textAlign: "center",
+        top: 36,
+        left: 50
+      },
+      {
+        id: "gfh-subtitle",
+        key: "subtitle",
+        text: "JOIN US FOR OUR\nannual holiday party",
+        fontFamily: "'Great Vibes', cursive",
+        fontSize: 20,
+        lineHeight: 1.4,
+        color: "#555555",
+        fontWeight: "400",
+        textAlign: "center",
+        top: 50,
+        left: 50
+      },
+      {
+        id: "gfh-details",
+        key: "datetime",
+        text: "SATURDAY, DECEMBER 15TH AT 6 PM\nTHE ANDERSON HOME, 819 HOLLY LANE",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 9.5,
+        letterSpacing: 1.1,
+        lineHeight: 1.6,
+        color: "#555555",
+        fontWeight: "500",
+        textAlign: "center",
+        top: 66,
+        left: 50
+      }
+    ]
   }
 ];
 
@@ -1437,12 +1793,14 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
   const shadowColor = (ev.envelope as any)?.shadowColor;
 
   const isBirthday = ev.category.toLowerCase().includes('birthday');
+  const isHoliday = ev.category.toLowerCase().includes('holiday') || (ev as any).tags?.includes('Holiday');
+  const isCorporate = ev.category.toLowerCase().includes('corporate') || (ev as any).tags?.includes('Corporate');
 
   return {
     id: ev.id,
     type: ev.category,
     category: ev.category,
-    tags: [ev.category, ...(isBirthday ? ['Birthday', 'Adult Birthday'] : []), 'All'],
+    tags: [ev.category, ...(isBirthday ? ['Birthday', 'Adult Birthday'] : []), ...(isHoliday ? ['Holiday', 'Corporate'] : []), ...(isCorporate ? ['Corporate', 'Holiday'] : []), 'All'],
     title: ev.title,
     badge: ev.badge || 'Free',
     isPremium: (ev.badge || '').toUpperCase() === 'PREMIUM',
@@ -1453,7 +1811,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     venue: venueLayer ? venueLayer.text : 'Venue TBD',
     gradient: ev.backdrop.value,
     accentColor: titleLayer ? titleLayer.color : '#C9A84C',
-    emoji: ev.category === 'Wedding' ? '💍' : ev.category === 'bridal_shower' ? '💐' : ev.category === 'Baby Shower' ? '🍼' : '🎉',
+    emoji: ev.category === 'Wedding' ? '💍' : ev.category === 'bridal_shower' ? '💐' : ev.category === 'Baby Shower' ? '🍼' : ev.category === 'Holiday' ? '🎄' : '🎉',
     image: (ev as any).mockupUrl || (ev as any).thumbnailUrl || borderIllustration || ev.card.artworkUrl,
     mockupUrl: (ev as any).mockupUrl,
     thumbnailUrl: (ev as any).thumbnailUrl,
@@ -1491,6 +1849,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
       outerColor: ev.envelope?.outerColor || (ev as any).envelopeColor || "#5384db",
       flapColor: (ev.envelope as any)?.flapColor || ev.envelope?.outerColor || (ev as any).envelopeColor || "#7ba3e8",
       flapStyle: (ev.envelope as any)?.flapStyle || (ev as any).flapStyle || "triangle",
+      position: (ev.envelope as any)?.position || "right",
       innerLiner,
       linerColor: (ev.envelope as any)?.linerColor || (ev as any).linerColor || "#D4AF37",
       shadowColor,

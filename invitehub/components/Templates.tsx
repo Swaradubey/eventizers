@@ -6,14 +6,26 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "./AuthModal";
+import templateService from "@/services/templateService";
 import EviteCardPreview from "./designer/EviteCardPreview";
-import { getTemplateConfig } from "@/lib/newTemplatesData";
+import { registerDynamicTemplates } from "@/lib/newTemplatesData";
+
+export const isBlockedTemplate = (id?: string | null, title?: string | null): boolean => {
+  const cleanId = (id || "").toLowerCase();
+  const cleanTitle = (title || "").toLowerCase();
+  return (
+    cleanId.includes("basic-black") ||
+    cleanId.includes("modern-typewriter") ||
+    cleanTitle.includes("basic black") ||
+    cleanTitle.includes("modern typewriter")
+  );
+};
 
 export interface CuratedTemplate {
   id: string;
   title: string;
   designer?: string;
-  badge?: "Trending" | "Popular" | "Featured" | "Free" | string;
+  badge?: "Trending" | "Popular" | "Featured" | "Free" | "Premium" | string;
   category: string;
 }
 
@@ -21,7 +33,32 @@ export interface TemplatesProps {
   onSelectTemplate?: (templateId: string) => void;
 }
 
+// All 16 Templates (The 3 new premium templates + the 13 existing templates)
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
+  {
+    id: "o-tannenbaum",
+    title: "O Tannenbaum",
+    badge: "Premium",
+    category: "Holiday",
+  },
+  {
+    id: "metallic-paint-splatter",
+    title: "Metallic Paint Splatter",
+    badge: "Premium",
+    category: "Corporate",
+  },
+  {
+    id: "golden-foliage-holiday",
+    title: "Golden Foliage Holiday",
+    badge: "Premium",
+    category: "Holiday",
+  },
+  {
+    id: "botanical-sketch-art",
+    title: "Botanical Sketch (Art)",
+    badge: "Premium",
+    category: "Workshop",
+  },
   {
     id: "tpl-chic-dinner-cake",
     title: "Chic Dinner & Cake Celebration",
@@ -96,9 +133,26 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
   },
 ];
 
-import templateService from "@/services/templateService";
+const DEFAULT_CATEGORIES = ["All", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"];
 
-const DEFAULT_CATEGORIES = ["All", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"];
+const getTemplateImageSrc = (id: string) => {
+  const mockupList = [
+    "o-tannenbaum",
+    "metallic-paint-splatter",
+    "golden-foliage-holiday",
+    "botanical-sketch-art",
+    "tpl-chic-dinner-cake",
+    "tpl-modern-gold-black-balloon",
+    "blush-burgundy-blooms",
+    "something-blue",
+    "autumn-blooms",
+  ];
+  const assetId = id.startsWith("tpl-") ? id.slice(4) : id;
+  if (mockupList.includes(id)) {
+    return `/assets/templates/${assetId}-mockup.svg`;
+  }
+  return `/assets/templates/${assetId}-bg.svg`;
+};
 
 export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const { user } = useAuth();
@@ -110,19 +164,26 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const [curatedList, setCuratedList] = useState<CuratedTemplate[]>(CURATED_TEMPLATES);
   const shouldReduceMotion = useReducedMotion();
 
-  // Dynamically fetch templates from backend
+  // Fetch all templates from backend
   React.useEffect(() => {
     let isMounted = true;
     templateService.getTemplates()
       .then((tpls) => {
         if (!isMounted || !tpls || tpls.length === 0) return;
-        const mapped: CuratedTemplate[] = tpls.map((t) => ({
-          id: t.id,
-          title: t.title || (t as any).name || "Invitation",
-          badge: t.badge || (t.isPremium ? "Premium" : "Free"),
-          category: t.category || "General",
-        }));
-        setCuratedList(mapped);
+        try {
+          registerDynamicTemplates(tpls);
+        } catch (_) { }
+        const mapped: CuratedTemplate[] = tpls
+          .filter((t) => !isBlockedTemplate(t.id, t.title || (t as any).name))
+          .map((t) => ({
+            id: t.id,
+            title: t.title || (t as any).name || "Invitation",
+            badge: t.badge || (t.isPremium ? "Premium" : "Free"),
+            category: t.category || "General",
+          }));
+        if (mapped.length > 0) {
+          setCuratedList(mapped);
+        }
       })
       .catch((err) => {
         console.warn("[Templates] Could not fetch backend templates:", err);
@@ -132,21 +193,23 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
     };
   }, []);
 
-  const categories = React.useMemo(() => {
-    const cats = new Set<string>(["All"]);
-    curatedList.forEach((t) => {
-      if (t.category) cats.add(t.category);
-    });
-    // Ensure standard defaults appear nicely
-    DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
-    return Array.from(cats);
+  const cleanCuratedList = React.useMemo(() => {
+    return curatedList.filter((t) => !isBlockedTemplate(t.id, t.title));
   }, [curatedList]);
 
+  const categories = React.useMemo(() => {
+    const cats = new Set<string>(["All"]);
+    cleanCuratedList.forEach((t) => {
+      if (t.category) cats.add(t.category);
+    });
+    DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
+    return Array.from(cats);
+  }, [cleanCuratedList]);
+
   const filteredTemplates = React.useMemo(() => {
-    const base = curatedList;
-    if (selectedCategory === "All") return base;
+    if (selectedCategory === "All") return cleanCuratedList;
     const target = selectedCategory.toLowerCase();
-    return base.filter((t) => {
+    const filtered = cleanCuratedList.filter((t) => {
       const cat = (t.category || "").toLowerCase();
       if (target === "bridal shower") {
         return cat.includes("bridal") || cat.includes("shower");
@@ -154,9 +217,16 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       if (target === "birthday" || target === "adult birthday") {
         return cat.includes("birthday") || cat.includes("bday");
       }
-      return cat === target || cat.includes(target);
+      if (target === "holiday") {
+        return cat.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
+      }
+      if (target === "corporate") {
+        return cat.includes("corporate") || t.id.includes("splatter") || t.id.includes("sketch");
+      }
+      return cat.includes(target) || target.includes(cat);
     });
-  }, [selectedCategory, curatedList]);
+    return filtered.length > 0 ? filtered : cleanCuratedList;
+  }, [selectedCategory, cleanCuratedList]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -186,7 +256,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
       sessionStorage.setItem("pending_template_id", templateId);
       localStorage.setItem("pending_template_id", templateId);
-    } catch (e) {}
+    } catch (e) { }
     router.push(`/canvas?guest=true&templateId=${encodeURIComponent(templateId)}`);
   };
 
@@ -207,7 +277,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       className="relative py-20 md:py-28 bg-transparent text-neutral-900 border-t border-slate-200/40"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Paperless Post / Evite Editorial Header */}
+        {/* Editorial Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -216,7 +286,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           className="text-center max-w-2xl mx-auto mb-10"
         >
           <span className="text-[12px] tracking-[0.2em] uppercase text-neutral-500 font-medium font-sans">
-            Stationery & Botanical Collection
+
           </span>
           <h2
             className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3"
@@ -238,11 +308,10 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer ${
-                  isActive
+                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer ${isActive
                     ? "bg-neutral-900 text-white shadow-sm"
                     : "bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/80"
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -250,15 +319,16 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           })}
         </div>
 
-        {/* 2-3 Column Card Grid matching Evite gallery cards */}
+        {/* Responsive Grid for all templates */}
         <motion.div
           layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto items-start"
         >
           <AnimatePresence mode="popLayout">
-            {filteredTemplates.slice(0, 10).map((template) => {
+            {filteredTemplates.map((template) => {
               const isFav = favorites.has(template.id);
-              const tplConfig = getTemplateConfig(template.id);
+              const isPremium = template.badge?.toLowerCase() === "premium";
+              const imgSrc = getTemplateImageSrc(template.id);
 
               return (
                 <motion.div
@@ -270,73 +340,79 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="group flex flex-col select-none"
                 >
-                  {/* Outer Card Display Container matching Evite screenshot */}
+                  {/* Outer Card Item Preview Container */}
                   <div
                     onClick={() => handleCardClick(template.id)}
-                    className="relative w-full bg-[#f3f4f6]/80 hover:bg-[#eceff3] rounded-2xl p-6 sm:p-7 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 min-h-[360px] shadow-xs hover:shadow-md"
+                    className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-xs hover:shadow-xl transition-all duration-300 group/card border border-neutral-200/70 bg-[#FAF8F5]"
                   >
-                    {/* Top Header: Free/Premium badge on left, Heart button on right */}
+                    {/* Render Template Card Preview with Typography & Artwork */}
+                    <div className="w-full h-full transition-transform duration-500 group-hover/card:scale-[1.03] select-none pointer-events-none">
+                      <EviteCardPreview
+                        templateId={template.id}
+                        template={template}
+                        aspectRatio="3/4"
+                        cardOnly={true}
+                        hoverScale={false}
+                        className="w-full h-full"
+                      />
+                    </div>
+
+                    {/* Top Header Overlay: Badge on left, Heart on right */}
                     <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
-                      <span className={`pointer-events-auto text-[11px] px-2.5 py-1 rounded-md shadow-2xs flex items-center gap-1 ${
-                        template.badge?.toLowerCase() === "premium"
-                          ? "bg-[#FCFBF7]/95 text-[#967026] border border-[#C5A059] font-semibold"
-                          : "bg-white/95 text-neutral-800 font-medium"
-                      }`}>
-                        <span>{template.badge || "Free"}</span>
-                      </span>
+                      {/* Premium / Free Badge */}
+                      <div className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md backdrop-blur-xs shadow-2xs border ${isPremium
+                          ? "bg-white/95 border-purple-100/50 text-[#581C87]"
+                          : "bg-white/95 border-neutral-200/60 text-neutral-800"
+                        }`}>
+                        {isPremium && (
+                          <svg className="w-3.5 h-3.5 fill-[#581C87] text-[#581C87]" viewBox="0 0 24 24">
+                            <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                          </svg>
+                        )}
+                        <span className="text-[11px] font-semibold tracking-tight">
+                          {template.badge || (isPremium ? "Premium" : "Free")}
+                        </span>
+                      </div>
+
+                      {/* Favorite Heart Button */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleFavorite(template.id);
                         }}
-                        className="pointer-events-auto p-1.5 rounded-full hover:bg-white/80 text-neutral-400 hover:text-rose-500 transition-colors cursor-pointer focus:outline-none"
+                        className="pointer-events-auto w-8 h-8 rounded-full bg-white/80 hover:bg-white backdrop-blur-xs flex items-center justify-center shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
                         aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Heart
-                          className={`w-4 h-4 transition-transform duration-200 hover:scale-115 ${
-                            isFav
-                              ? "fill-rose-500 text-rose-500 scale-110"
-                              : "stroke-[1.6] text-neutral-400"
-                          }`}
+                          className={`w-4 h-4 transition-transform duration-200 hover:scale-110 ${isFav
+                              ? "fill-rose-500 text-rose-500 scale-105"
+                              : "stroke-[1.8] text-neutral-400 hover:text-neutral-600"
+                            }`}
                         />
                       </button>
                     </div>
 
-                    {/* Centered Invitation Card Preview */}
-                    <div className="w-full max-w-[230px] mx-auto py-2 group-hover:scale-[1.02] transition-transform duration-300 drop-shadow-md">
-                      <EviteCardPreview
-                        template={tplConfig || template}
-                        hoverScale={false}
-                        cardOnly={
-                          template.id !== "tpl-chic-dinner-cake" &&
-                          template.id !== "tpl-modern-gold-black-balloon" &&
-                          template.category !== "Bridal Shower" &&
-                          template.category !== "bridal_shower"
-                        }
-                      />
-                    </div>
-
-                    {/* Hover Pill "Customize" Button */}
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors duration-200 rounded-2xl">
+                    {/* Hover Action Pill: "Customize" */}
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none bg-black/0 group-hover/card:bg-black/15 transition-colors duration-200">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCardClick(template.id);
                         }}
-                        className="pointer-events-auto bg-neutral-900 hover:bg-black text-white text-xs font-semibold px-5 py-2.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-md hover:scale-105 cursor-pointer font-sans"
+                        className="pointer-events-auto bg-neutral-900 hover:bg-black text-white text-xs font-semibold px-6 py-2.5 rounded-full opacity-0 group-hover/card:opacity-100 transition-all duration-200 shadow-lg hover:scale-105 cursor-pointer font-sans tracking-wide"
                       >
                         Customize
                       </button>
                     </div>
                   </div>
 
-                  {/* Template Title Below Card */}
+                  {/* Title Text Below Card */}
                   <div className="mt-3.5 text-left">
                     <h3
                       onClick={() => handleCardClick(template.id)}
-                      className="text-neutral-900 text-base font-sans font-medium hover:text-black cursor-pointer transition-colors"
+                      className="text-neutral-900 text-[15px] sm:text-base font-sans font-medium hover:text-black cursor-pointer transition-colors"
                     >
                       {template.title}
                     </h3>
