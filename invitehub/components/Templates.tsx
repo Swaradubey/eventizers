@@ -136,22 +136,8 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
 const DEFAULT_CATEGORIES = ["All", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"];
 
 const getTemplateImageSrc = (id: string) => {
-  const mockupList = [
-    "o-tannenbaum",
-    "metallic-paint-splatter",
-    "golden-foliage-holiday",
-    "botanical-sketch-art",
-    "tpl-chic-dinner-cake",
-    "tpl-modern-gold-black-balloon",
-    "blush-burgundy-blooms",
-    "something-blue",
-    "autumn-blooms",
-  ];
   const assetId = id.startsWith("tpl-") ? id.slice(4) : id;
-  if (mockupList.includes(id)) {
-    return `/assets/templates/${assetId}-mockup.svg`;
-  }
-  return `/assets/templates/${assetId}-bg.svg`;
+  return `/assets/templates/${assetId}-mockup.svg`;
 };
 
 export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {

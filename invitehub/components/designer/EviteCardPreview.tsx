@@ -147,10 +147,11 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
     event?.templateId ||
     null;
 
+  const configFromId = effectiveTemplateId ? getTemplateConfig(effectiveTemplateId) : null;
   const resolvedTemplate =
-    template ||
-    (effectiveTemplateId ? getTemplateConfig(effectiveTemplateId) : null) ||
-    {};
+    (template?.defaultTextLayers || template?.textLayers || template?.card)
+      ? { ...(configFromId || {}), ...template }
+      : (configFromId || template || {});
 
   const activeInteractive = isInteractive || interactive;
   const handleTextSelect = onSelectText || onTextClick;

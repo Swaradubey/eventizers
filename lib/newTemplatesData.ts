@@ -527,6 +527,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-abstract-nature-party",
     "title": "Abstract Nature Party",
     "category": "Wedding",
+    "mockupUrl": "/assets/templates/abstract-nature-party-mockup.svg",
+    "thumbnailUrl": "/assets/templates/abstract-nature-party-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #F9F5EE 0%, #EFE7DA 100%)",
@@ -601,6 +603,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-bright-blooms-garden",
     "title": "Bright Blooms Garden",
     "category": "Wedding",
+    "mockupUrl": "/assets/templates/bright-blooms-garden-mockup.svg",
+    "thumbnailUrl": "/assets/templates/bright-blooms-garden-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #F8F9FA 0%, #EEF1F5 100%)",
@@ -677,6 +681,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-vibrant-blooms-wedding",
     "title": "Vibrant Blooms Wedding",
     "category": "Wedding",
+    "mockupUrl": "/assets/templates/vibrant-blooms-wedding-mockup.svg",
+    "thumbnailUrl": "/assets/templates/vibrant-blooms-wedding-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #FBF2E8 0%, #F5DEC7 100%)",
@@ -750,6 +756,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-lily-of-the-valley",
     "title": "Lily of the Valley",
     "category": "Wedding",
+    "mockupUrl": "/assets/templates/lily-of-the-valley-mockup.svg",
+    "thumbnailUrl": "/assets/templates/lily-of-the-valley-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #F8F5ED 0%, #EDE7D8 100%)",
@@ -823,6 +831,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-gold-ribbons-confetti",
     "title": "Gold Ribbons & Confetti",
     "category": "Birthday",
+    "mockupUrl": "/assets/templates/gold-ribbons-confetti-mockup.svg",
+    "thumbnailUrl": "/assets/templates/gold-ribbons-confetti-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #F6F6F6 0%, #E8E8E8 100%)",
@@ -909,6 +919,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-sparkle-balloons",
     "title": "Sparkle Balloons",
     "category": "Birthday",
+    "mockupUrl": "/assets/templates/sparkle-balloons-mockup.svg",
+    "thumbnailUrl": "/assets/templates/sparkle-balloons-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #F5F2EA 0%, #E8E3D7 100%)",
@@ -983,6 +995,8 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     "id": "tpl-celestial-flora",
     "title": "Celestial Flora",
     "category": "Birthday",
+    "mockupUrl": "/assets/templates/celestial-flora-mockup.svg",
+    "thumbnailUrl": "/assets/templates/celestial-flora-mockup.svg",
     "backdrop": {
       "type": "color",
       "value": "linear-gradient(135deg, #FCF8F0 0%, #F5EDE0 100%)",
