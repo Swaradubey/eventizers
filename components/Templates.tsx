@@ -11,16 +11,18 @@ import templateService from "@/services/templateService";
 export interface CuratedTemplate {
   id: string;
   title: string;
+  name?: string;
   designer?: string;
   badge?: "Trending" | "Popular" | "Featured" | "Free" | "Premium" | string;
   category: string;
+  tags?: string[];
 }
 
 export interface TemplatesProps {
   onSelectTemplate?: (templateId: string) => void;
 }
 
-// All 16 Templates (The 3 new premium templates + the 13 existing templates)
+// All 18 Templates
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
   {
     id: "o-tannenbaum",
@@ -33,6 +35,7 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     title: "Metallic Paint Splatter",
     badge: "Premium",
     category: "Corporate",
+    tags: ["Corporate", "Holiday", "All"],
   },
   {
     id: "golden-foliage-holiday",
@@ -45,6 +48,22 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     title: "Botanical Sketch (Art)",
     badge: "Premium",
     category: "Workshop",
+  },
+  {
+    id: "citrus-splash",
+    title: "Farewell Party",
+    name: "Citrus Splash",
+    badge: "Premium",
+    category: "Corporate",
+    tags: ["Corporate", "Farewell", "Party"],
+  },
+  {
+    id: "garden-blooms",
+    title: "Annual Charity Gala",
+    name: "Garden Blooms",
+    badge: "Premium",
+    category: "Corporate",
+    tags: ["Corporate", "Charity", "Gala", "Annual"],
   },
   {
     id: "tpl-chic-dinner-cake",
@@ -146,8 +165,10 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
         const mapped: CuratedTemplate[] = tpls.map((t) => ({
           id: t.id,
           title: t.title || (t as any).name || "Invitation",
+          name: (t as any).name || t.title || "Invitation",
           badge: t.badge || (t.isPremium ? "Premium" : "Free"),
           category: t.category || "General",
+          tags: (t as any).tags || [],
         }));
         setCuratedList(mapped);
       })
@@ -169,10 +190,29 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   }, [curatedList]);
 
   const filteredTemplates = React.useMemo(() => {
-    if (selectedCategory === "All") return curatedList;
-    const target = selectedCategory.toLowerCase();
-    const filtered = curatedList.filter((t) => {
+    const target = selectedCategory.trim().toLowerCase();
+
+    // 1. Exclude Citrus Splash and Garden Blooms from homepage default ("All") and non-Corporate tabs
+    // When "Corporate" category tab is selected, these templates MUST be displayed.
+    const visibleList = curatedList.filter((t) => {
+      const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+      if (isCorporateExclusive && target !== "corporate") {
+        return false;
+      }
+      return true;
+    });
+
+    if (target === "all") return visibleList;
+
+    const filtered = visibleList.filter((t) => {
       const cat = (t.category || "").toLowerCase();
+      const rawTags = (t as any).tags || [];
+      const tags = Array.isArray(rawTags) ? rawTags.map((tg: any) => String(tg).toLowerCase()) : [];
+      const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+
+      if (target === "corporate") {
+        return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || isCorporateExclusive || t.id.includes("splatter") || t.id.includes("sketch");
+      }
       if (target === "bridal shower") {
         return cat.includes("bridal") || cat.includes("shower");
       }
@@ -182,12 +222,10 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       if (target === "holiday") {
         return cat.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
       }
-      if (target === "corporate") {
-        return cat.includes("corporate") || t.id.includes("splatter") || t.id.includes("sketch");
-      }
-      return cat.includes(target) || target.includes(cat);
+      return cat.includes(target) || target.includes(cat) || tags.includes(target);
     });
-    return filtered.length > 0 ? filtered : curatedList;
+
+    return filtered;
   }, [selectedCategory, curatedList]);
 
   const toggleFavorite = (id: string) => {

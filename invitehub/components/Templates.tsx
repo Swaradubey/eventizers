@@ -7,33 +7,22 @@ import { Heart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "./AuthModal";
 import templateService from "@/services/templateService";
-import EviteCardPreview from "./designer/EviteCardPreview";
-import { registerDynamicTemplates } from "@/lib/newTemplatesData";
-
-export const isBlockedTemplate = (id?: string | null, title?: string | null): boolean => {
-  const cleanId = (id || "").toLowerCase();
-  const cleanTitle = (title || "").toLowerCase();
-  return (
-    cleanId.includes("basic-black") ||
-    cleanId.includes("modern-typewriter") ||
-    cleanTitle.includes("basic black") ||
-    cleanTitle.includes("modern typewriter")
-  );
-};
 
 export interface CuratedTemplate {
   id: string;
   title: string;
+  name?: string;
   designer?: string;
   badge?: "Trending" | "Popular" | "Featured" | "Free" | "Premium" | string;
   category: string;
+  tags?: string[];
 }
 
 export interface TemplatesProps {
   onSelectTemplate?: (templateId: string) => void;
 }
 
-// All 16 Templates (The 3 new premium templates + the 13 existing templates)
+// All 18 Templates
 export const CURATED_TEMPLATES: CuratedTemplate[] = [
   {
     id: "o-tannenbaum",
@@ -46,6 +35,7 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     title: "Metallic Paint Splatter",
     badge: "Premium",
     category: "Corporate",
+    tags: ["Corporate", "Holiday", "All"],
   },
   {
     id: "golden-foliage-holiday",
@@ -58,6 +48,22 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     title: "Botanical Sketch (Art)",
     badge: "Premium",
     category: "Workshop",
+  },
+  {
+    id: "citrus-splash",
+    title: "Farewell Party",
+    name: "Citrus Splash",
+    badge: "Premium",
+    category: "Corporate",
+    tags: ["Corporate", "Farewell", "Party"],
+  },
+  {
+    id: "garden-blooms",
+    title: "Annual Charity Gala",
+    name: "Garden Blooms",
+    badge: "Premium",
+    category: "Corporate",
+    tags: ["Corporate", "Charity", "Gala", "Annual"],
   },
   {
     id: "tpl-chic-dinner-cake",
@@ -156,20 +162,15 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
     templateService.getTemplates()
       .then((tpls) => {
         if (!isMounted || !tpls || tpls.length === 0) return;
-        try {
-          registerDynamicTemplates(tpls);
-        } catch (_) { }
-        const mapped: CuratedTemplate[] = tpls
-          .filter((t) => !isBlockedTemplate(t.id, t.title || (t as any).name))
-          .map((t) => ({
-            id: t.id,
-            title: t.title || (t as any).name || "Invitation",
-            badge: t.badge || (t.isPremium ? "Premium" : "Free"),
-            category: t.category || "General",
-          }));
-        if (mapped.length > 0) {
-          setCuratedList(mapped);
-        }
+        const mapped: CuratedTemplate[] = tpls.map((t) => ({
+          id: t.id,
+          title: t.title || (t as any).name || "Invitation",
+          name: (t as any).name || t.title || "Invitation",
+          badge: t.badge || (t.isPremium ? "Premium" : "Free"),
+          category: t.category || "General",
+          tags: (t as any).tags || [],
+        }));
+        setCuratedList(mapped);
       })
       .catch((err) => {
         console.warn("[Templates] Could not fetch backend templates:", err);
@@ -179,24 +180,39 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
     };
   }, []);
 
-  const cleanCuratedList = React.useMemo(() => {
-    return curatedList.filter((t) => !isBlockedTemplate(t.id, t.title));
-  }, [curatedList]);
-
   const categories = React.useMemo(() => {
     const cats = new Set<string>(["All"]);
-    cleanCuratedList.forEach((t) => {
+    curatedList.forEach((t) => {
       if (t.category) cats.add(t.category);
     });
     DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
     return Array.from(cats);
-  }, [cleanCuratedList]);
+  }, [curatedList]);
 
   const filteredTemplates = React.useMemo(() => {
-    if (selectedCategory === "All") return cleanCuratedList;
-    const target = selectedCategory.toLowerCase();
-    const filtered = cleanCuratedList.filter((t) => {
+    const target = selectedCategory.trim().toLowerCase();
+
+    // 1. Exclude Citrus Splash and Garden Blooms from homepage default ("All") and non-Corporate tabs
+    // When "Corporate" category tab is selected, these templates MUST be displayed.
+    const visibleList = curatedList.filter((t) => {
+      const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+      if (isCorporateExclusive && target !== "corporate") {
+        return false;
+      }
+      return true;
+    });
+
+    if (target === "all") return visibleList;
+
+    const filtered = visibleList.filter((t) => {
       const cat = (t.category || "").toLowerCase();
+      const rawTags = (t as any).tags || [];
+      const tags = Array.isArray(rawTags) ? rawTags.map((tg: any) => String(tg).toLowerCase()) : [];
+      const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+
+      if (target === "corporate") {
+        return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || isCorporateExclusive || t.id.includes("splatter") || t.id.includes("sketch");
+      }
       if (target === "bridal shower") {
         return cat.includes("bridal") || cat.includes("shower");
       }
@@ -206,13 +222,11 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       if (target === "holiday") {
         return cat.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
       }
-      if (target === "corporate") {
-        return cat.includes("corporate") || t.id.includes("splatter") || t.id.includes("sketch");
-      }
-      return cat.includes(target) || target.includes(cat);
+      return cat.includes(target) || target.includes(cat) || tags.includes(target);
     });
-    return filtered.length > 0 ? filtered : cleanCuratedList;
-  }, [selectedCategory, cleanCuratedList]);
+
+    return filtered;
+  }, [selectedCategory, curatedList]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -242,7 +256,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
       sessionStorage.setItem("pending_template_id", templateId);
       localStorage.setItem("pending_template_id", templateId);
-    } catch (e) { }
+    } catch (e) {}
     router.push(`/canvas?guest=true&templateId=${encodeURIComponent(templateId)}`);
   };
 
@@ -272,7 +286,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           className="text-center max-w-2xl mx-auto mb-10"
         >
           <span className="text-[12px] tracking-[0.2em] uppercase text-neutral-500 font-medium font-sans">
-
+            Curated Stationery Collection
           </span>
           <h2
             className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 tracking-tight mt-3"
@@ -294,10 +308,11 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer ${isActive
+                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer ${
+                  isActive
                     ? "bg-neutral-900 text-white shadow-sm"
                     : "bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200/80"
-                  }`}
+                }`}
               >
                 {cat}
               </button>
@@ -331,25 +346,26 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                     onClick={() => handleCardClick(template.id)}
                     className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-xs hover:shadow-xl transition-all duration-300 group/card border border-neutral-200/70 bg-[#FAF8F5]"
                   >
-                    {/* Render Template Card Preview with Typography & Artwork */}
-                    <div className="w-full h-full transition-transform duration-500 group-hover/card:scale-[1.03] select-none pointer-events-none">
-                      <EviteCardPreview
-                        templateId={template.id}
-                        template={template}
-                        aspectRatio="3/4"
-                        cardOnly={true}
-                        hoverScale={false}
-                        className="w-full h-full"
-                      />
-                    </div>
+                    {/* Render Image / Mockup */}
+                    <img
+                      src={imgSrc}
+                      alt={template.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-[1.03] select-none pointer-events-none"
+                      loading="lazy"
+                      onError={(e) => {
+                        const assetId = template.id.startsWith("tpl-") ? template.id.slice(4) : template.id;
+                        e.currentTarget.src = `/assets/templates/${assetId}-bg.svg`;
+                      }}
+                    />
 
                     {/* Top Header Overlay: Badge on left, Heart on right */}
                     <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
                       {/* Premium / Free Badge */}
-                      <div className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md backdrop-blur-xs shadow-2xs border ${isPremium
+                      <div className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md backdrop-blur-xs shadow-2xs border ${
+                        isPremium 
                           ? "bg-white/95 border-purple-100/50 text-[#581C87]"
                           : "bg-white/95 border-neutral-200/60 text-neutral-800"
-                        }`}>
+                      }`}>
                         {isPremium && (
                           <svg className="w-3.5 h-3.5 fill-[#581C87] text-[#581C87]" viewBox="0 0 24 24">
                             <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
@@ -371,10 +387,11 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                         aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Heart
-                          className={`w-4 h-4 transition-transform duration-200 hover:scale-110 ${isFav
+                          className={`w-4 h-4 transition-transform duration-200 hover:scale-110 ${
+                            isFav
                               ? "fill-rose-500 text-rose-500 scale-105"
                               : "stroke-[1.8] text-neutral-400 hover:text-neutral-600"
-                            }`}
+                          }`}
                         />
                       </button>
                     </div>

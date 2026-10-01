@@ -493,9 +493,6 @@ export default function InvitationStudio({
       tplConfig?.textColor?.toLowerCase() === "#f8fafc" ||
       tplConfig?.backgroundColor?.toLowerCase() === "#0a0b10" ||
       tplConfig?.backgroundColor?.toLowerCase() === "#14131a" ||
-      tplConfig?.backgroundColor?.toLowerCase() === "#1c1f1e" ||
-      tplConfig?.backgroundColor?.toLowerCase() === "#223326" ||
-      tplConfig?.backgroundColor?.toLowerCase() === "#111111" ||
       false;
 
     const pendingUploadTitle = typeof window !== "undefined"
@@ -859,7 +856,7 @@ export default function InvitationStudio({
           y: 80,
           fontSize: 12,
           fontFamily: "'Inter', sans-serif",
-          color: isDark ? "rgba(255, 255, 255, 0.65)" : "#94a3b8",
+          color: isDark ? "rgba(255, 255, 0.65)" : "#94a3b8",
           casing: "none",
           align: "center",
           letterSpacing: 0.5,
@@ -4792,15 +4789,21 @@ export default function InvitationStudio({
                     {/* Template Cards Grid */}
                     <div className="grid grid-cols-2 gap-2.5 max-h-[68vh] overflow-y-auto pr-1">
                       {NEW_TEMPLATES.filter((t) => {
-                        if (sidebarTemplateCategory === "All") return true;
-                        const target = sidebarTemplateCategory.toLowerCase();
+                        const target = sidebarTemplateCategory.trim().toLowerCase();
+                        if (target === "all") return true;
+
+                        const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+                        if (isCorporateExclusive && target !== "corporate") {
+                          return false;
+                        }
+
                         const cat = (t.category || "").toLowerCase();
                         const tags = (t.tags || []).map((tg) => tg.toLowerCase());
+                        if (target === "corporate") {
+                          return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || isCorporateExclusive || t.id.includes("splatter") || t.id.includes("sketch");
+                        }
                         if (target === "holiday") {
                           return cat.includes("holiday") || tags.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
-                        }
-                        if (target === "corporate") {
-                          return cat.includes("corporate") || tags.includes("corporate") || t.id.includes("splatter") || t.id.includes("sketch");
                         }
                         if (target === "bridal shower") {
                           return cat.includes("bridal") || cat.includes("shower") || tags.includes("bridal shower");

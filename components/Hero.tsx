@@ -64,6 +64,7 @@ const fallbackTemplates: Template[] = templateCards.map((tc) => ({
   id: tc.id,
   name: tc.title,
   category: tc.category || tc.type,
+  tags: (tc as any).tags || [],
   badge: tc.badge || "FREE",
   content: JSON.stringify({
     gradient: tc.gradient,
@@ -149,7 +150,7 @@ export default function Hero() {
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
     return list.filter(
-      (t) => matchesCategory(t.category, selectedCategory)
+      (t) => matchesCategory(t, selectedCategory)
     );
   }, [templates, selectedCategory]);
 
