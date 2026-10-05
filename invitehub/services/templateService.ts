@@ -173,10 +173,73 @@ export const uploadTemplateImage = async (
   };
 };
 
+/**
+ * Invalidate in-memory template cache so subsequent calls fetch fresh DB data
+ */
+export const invalidateTemplateCache = () => {
+  cachedTemplates = null;
+  fetchPromise = null;
+};
+
+/**
+ * Create a new template (Admin)
+ */
+export const createTemplate = async (templateData: {
+  title?: string;
+  name?: string;
+  category: string;
+  badge?: string;
+  isPremium?: boolean;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  tags?: string[];
+  description?: string;
+}): Promise<Template> => {
+  const response = await API.post<{ success: boolean; template: any }>("/templates", templateData);
+  invalidateTemplateCache();
+  const created = mapToTemplate(response.data.template || response.data);
+  registerDynamicTemplates([created]);
+  return created;
+};
+
+/**
+ * Resolve, validate and pre-cache a remote image URL via backend
+ */
+export const resolveImageUrl = async (url: string): Promise<{ success: boolean; url: string; error?: string }> => {
+  try {
+    const response = await API.post<{ success: boolean; url: string }>("/templates/resolve-image", { url });
+    return {
+      success: true,
+      url: response.data.url,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      url,
+      error: err?.response?.data?.error || err.message || "Failed to resolve image",
+    };
+  }
+};
+
+/**
+ * Delete a template by ID (Admin)
+ */
+export const deleteTemplate = async (templateId: string): Promise<boolean> => {
+  await API.delete(`/templates/${templateId}`);
+  invalidateTemplateCache();
+  return true;
+};
+
 const templateService = {
   getTemplates,
   getTemplateById,
   uploadTemplateImage,
+  createTemplate,
+  deleteTemplate,
+  resolveImageUrl,
+  invalidateTemplateCache,
 };
 
 export default templateService;
+
+

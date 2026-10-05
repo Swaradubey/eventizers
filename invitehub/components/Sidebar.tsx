@@ -96,6 +96,11 @@ export default function Sidebar() {
           icon: Mail,
         },
         {
+          label: "Templates",
+          href: "/admin/templates",
+          icon: ImageIcon,
+        },
+        {
           label: "Ticketing",
           href: "/admin/ticketing",
           icon: Ticket,

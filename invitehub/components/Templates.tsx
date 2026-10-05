@@ -16,6 +16,8 @@ export interface CuratedTemplate {
   badge?: "Trending" | "Popular" | "Featured" | "Free" | "Premium" | string;
   category: string;
   tags?: string[];
+  thumbnailUrl?: string;
+  imageUrl?: string;
 }
 
 export interface TemplatesProps {
@@ -141,8 +143,10 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
 
 const DEFAULT_CATEGORIES = ["All", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"];
 
-const getTemplateImageSrc = (id: string) => {
-  const assetId = id.startsWith("tpl-") ? id.slice(4) : id;
+const getTemplateImageSrc = (template: CuratedTemplate) => {
+  if (template.thumbnailUrl) return template.thumbnailUrl;
+  if (template.imageUrl) return template.imageUrl;
+  const assetId = template.id.startsWith("tpl-") ? template.id.slice(4) : template.id;
   return `/assets/templates/${assetId}-mockup.svg`;
 };
 
@@ -169,8 +173,20 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           badge: t.badge || (t.isPremium ? "Premium" : "Free"),
           category: t.category || "General",
           tags: (t as any).tags || [],
+          thumbnailUrl: t.thumbnailUrl || (t as any).fullThumbnailUrl || (t as any).imageUrl,
+          imageUrl: t.imageUrl || (t as any).fullImageUrl,
         }));
-        setCuratedList(mapped);
+
+        // Guarantee ALL baseline CURATED_TEMPLATES remain 100% preserved
+        const mappedIds = new Set(mapped.map((t) => t.id));
+        const combined = [...mapped];
+        CURATED_TEMPLATES.forEach((c) => {
+          if (!mappedIds.has(c.id)) {
+            combined.push(c);
+          }
+        });
+
+        setCuratedList(combined);
       })
       .catch((err) => {
         console.warn("[Templates] Could not fetch backend templates:", err);
@@ -329,7 +345,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
             {filteredTemplates.map((template) => {
               const isFav = favorites.has(template.id);
               const isPremium = template.badge?.toLowerCase() === "premium";
-              const imgSrc = getTemplateImageSrc(template.id);
+              const imgSrc = getTemplateImageSrc(template);
 
               return (
                 <motion.div
@@ -350,11 +366,14 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                     <img
                       src={imgSrc}
                       alt={template.title}
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-[1.03] select-none pointer-events-none"
                       loading="lazy"
                       onError={(e) => {
-                        const assetId = template.id.startsWith("tpl-") ? template.id.slice(4) : template.id;
-                        e.currentTarget.src = `/assets/templates/${assetId}-bg.svg`;
+                        if (!template.thumbnailUrl && !template.imageUrl) {
+                          const assetId = template.id.startsWith("tpl-") ? template.id.slice(4) : template.id;
+                          e.currentTarget.src = `/assets/templates/${assetId}-bg.svg`;
+                        }
                       }}
                     />
 
