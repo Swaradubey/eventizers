@@ -5,6 +5,7 @@ import {
   registerDynamicTemplates, 
   NewTemplateData 
 } from "../lib/newTemplatesData";
+import { normalizeTemplateImageUrl } from "../components/designer/canvasBackgroundUtils";
 
 export interface Template {
   id: string;
@@ -70,9 +71,11 @@ const mapToTemplate = (t: any): Template => {
     t.image ||
     null;
 
-  const bgImageUrl = typeof rawBg === 'object' && rawBg !== null
+  const rawBgUrl = typeof rawBg === 'object' && rawBg !== null
     ? (rawBg.url || rawBg.src || null)
     : (typeof rawBg === 'string' ? rawBg : null);
+
+  const cleanBgUrl = normalizeTemplateImageUrl(rawBgUrl);
 
   const rawLayers =
     t.layers ||
@@ -84,6 +87,15 @@ const mapToTemplate = (t: any): Template => {
     contentParsed.canvasData?.layers ||
     [];
 
+  const cleanCard = {
+    backgroundColor: "#ffffff",
+    aspectRatio: "5x7",
+    ...(t.card || {}),
+    ...(contentParsed.card || {}),
+    artworkUrl: cleanBgUrl || normalizeTemplateImageUrl(t.card?.artworkUrl || contentParsed.card?.artworkUrl),
+    fullArtworkUrl: cleanBgUrl || normalizeTemplateImageUrl(t.card?.fullArtworkUrl || t.card?.artworkUrl),
+  };
+
   const contentStr = typeof t.content === 'string' && t.content
     ? t.content
     : JSON.stringify({
@@ -93,18 +105,14 @@ const mapToTemplate = (t: any): Template => {
         host: t.host || contentParsed.host,
         venue: t.venue || contentParsed.venue,
         description: t.description || contentParsed.description,
-        image: bgImageUrl || t.image || t.thumbnailUrl || t.imageUrl,
-        backgroundImage: bgImageUrl,
-        backgroundUrl: bgImageUrl,
+        image: cleanBgUrl || t.image || t.thumbnailUrl || t.imageUrl,
+        backgroundImage: cleanBgUrl,
+        backgroundUrl: cleanBgUrl,
         backdrop: t.backdrop || contentParsed.backdrop,
         envelope: t.envelope || contentParsed.envelope,
-        card: {
-          ...(contentParsed.card || {}),
-          ...(t.card || {}),
-          artworkUrl: bgImageUrl || t.card?.artworkUrl || contentParsed.card?.artworkUrl,
-        },
+        card: cleanCard,
         canvasData: {
-          backgroundImage: bgImageUrl,
+          backgroundImage: cleanBgUrl,
           layers: rawLayers,
           ...(t.canvasData || contentParsed.canvasData || {}),
         },
@@ -112,6 +120,7 @@ const mapToTemplate = (t: any): Template => {
       });
 
   return {
+    ...t,
     id: t.id,
     name: t.name || t.title || "Template",
     title: t.title || t.name || "Template",
@@ -119,27 +128,21 @@ const mapToTemplate = (t: any): Template => {
     badge: t.badge || (t.isPremium ? "Premium" : "Free"),
     isPremium: Boolean(t.isPremium),
     content: contentStr,
-    thumbnailUrl: t.thumbnailUrl || bgImageUrl || t.imageUrl || t.image,
-    fullThumbnailUrl: t.fullThumbnailUrl,
-    imageUrl: t.imageUrl || bgImageUrl || t.thumbnailUrl || t.image,
-    fullImageUrl: t.fullImageUrl,
-    coverImage: t.coverImage || bgImageUrl || t.imageUrl || t.image,
-    backgroundImage: bgImageUrl,
-    backgroundUrl: bgImageUrl,
+    thumbnailUrl: normalizeTemplateImageUrl(t.thumbnailUrl || cleanBgUrl || t.imageUrl || t.image),
+    fullThumbnailUrl: t.fullThumbnailUrl ? normalizeTemplateImageUrl(t.fullThumbnailUrl) : undefined,
+    imageUrl: normalizeTemplateImageUrl(t.imageUrl || cleanBgUrl || t.thumbnailUrl || t.image),
+    fullImageUrl: t.fullImageUrl ? normalizeTemplateImageUrl(t.fullImageUrl) : undefined,
+    coverImage: normalizeTemplateImageUrl(t.coverImage || cleanBgUrl || t.imageUrl || t.image),
+    backgroundImage: cleanBgUrl,
+    backgroundUrl: cleanBgUrl,
     canvasData: {
-      backgroundImage: bgImageUrl,
+      backgroundImage: cleanBgUrl,
       layers: rawLayers,
       ...(t.canvasData || contentParsed.canvasData || {}),
     },
     backdrop: t.backdrop || contentParsed.backdrop,
     envelope: t.envelope || contentParsed.envelope,
-    card: {
-      backgroundColor: "#ffffff",
-      aspectRatio: "5x7",
-      ...(contentParsed.card || {}),
-      ...(t.card || {}),
-      artworkUrl: bgImageUrl || t.card?.artworkUrl || contentParsed.card?.artworkUrl,
-    },
+    card: cleanCard,
     defaultTextLayers: rawLayers,
     textElements: rawLayers,
     layers: rawLayers,
@@ -149,8 +152,7 @@ const mapToTemplate = (t: any): Template => {
     host: t.host || contentParsed.host,
     venue: t.venue || contentParsed.venue,
     description: t.description || contentParsed.description,
-    image: bgImageUrl || t.image || t.thumbnailUrl || t.imageUrl,
-    ...t,
+    image: cleanBgUrl || t.image || t.thumbnailUrl || t.imageUrl,
   };
 };
 

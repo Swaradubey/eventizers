@@ -8,27 +8,78 @@
 declare const fabric: any;
 
 /**
- * Returns a proxy URL for external image links to bypass CORS restrictions
+ * Normalizes template background image URLs:
+ * - Detects frontend static asset paths (/assets/, /templates/) and strips foreign backend/localhost hosts
+ * - Upgrades insecure http:// URLs to https:// on HTTPS pages (preventing Mixed Content blocking)
+ * - Safely handles relative paths, data URLs, and uploads
+ */
+export const normalizeTemplateImageUrl = (url?: string | null): string => {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  // 1. If URL contains /assets/ or /templates/, this is a frontend static asset.
+  // Strip any foreign host prefix (http://localhost:5000, https://eventizersbackend.vercel.app, etc.)
+  // so the client always loads it directly from the current frontend origin without CORS or 404 issues.
+  const assetMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+  if (assetMatch) {
+    return assetMatch[1];
+  }
+
+  // 2. If running on HTTPS in production, upgrade insecure http:// URLs to https:// (except localhost)
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    trimmed.startsWith("http://") &&
+    !trimmed.includes("localhost") &&
+    !trimmed.includes("127.0.0.1")
+  ) {
+    return trimmed.replace(/^http:\/\//i, "https://");
+  }
+
+  // 3. If running in production and URL points to localhost /uploads/
+  if (
+    typeof window !== "undefined" &&
+    !window.location.hostname.includes("localhost") &&
+    (trimmed.includes("localhost") || trimmed.includes("127.0.0.1"))
+  ) {
+    const uploadMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/uploads\/.*)$/i);
+    if (uploadMatch) {
+      return uploadMatch[1];
+    }
+  }
+
+  return trimmed;
+};
+
+/**
+ * Returns a proxy URL for external image links to bypass CORS and Mixed-Content restrictions
  * when loaded onto an HTML5 or Fabric canvas.
  */
 export const getProxyImageUrl = (url?: string | null): string => {
   if (!url || typeof url !== "string") return "";
-  const trimmed = url.trim();
-  if (!trimmed) return "";
+  const normalized = normalizeTemplateImageUrl(url);
+  if (!normalized) return "";
   if (
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("data:") ||
-    trimmed.startsWith("blob:")
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:") ||
+    normalized.startsWith("/api/proxy-image")
   ) {
-    return trimmed;
+    return normalized;
   }
-  if (trimmed.startsWith("/api/proxy-image")) {
-    return trimmed;
+  // Frontend static assets never need proxying
+  if (normalized.startsWith("/assets/") || normalized.startsWith("/templates/")) {
+    return normalized;
   }
-  if (typeof window !== "undefined" && trimmed.startsWith(window.location.origin)) {
-    return trimmed;
+  if (
+    typeof window !== "undefined" &&
+    normalized.startsWith(window.location.origin) &&
+    !normalized.includes("/uploads/")
+  ) {
+    return normalized;
   }
-  return `/api/proxy-image?url=${encodeURIComponent(trimmed)}`;
+  return `/api/proxy-image?url=${encodeURIComponent(normalized)}`;
 };
 
 /** Get the live Fabric canvas instance from the global window references. */
@@ -160,7 +211,15 @@ export const applyCanvasBackground = (
     };
 
     imgElement.onerror = (err) => {
-      // If direct load failed on an external URL and we haven't tried the CORS proxy yet, retry once via proxy
+      // 1. If direct load failed on an absolute asset/template URL, try relative
+      const assetMatch = srcUrl.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+      if (assetMatch && srcUrl !== assetMatch[1]) {
+        console.info("[applyCanvasBackground] Retrying with relative asset path:", assetMatch[1]);
+        tryLoadImage(assetMatch[1]);
+        return;
+      }
+
+      // 2. If direct load failed on an external URL and we haven't tried the CORS proxy yet, retry once via proxy
       if (
         !attemptProxy &&
         (srcUrl.startsWith("http://") || srcUrl.startsWith("https://")) &&
@@ -168,9 +227,11 @@ export const applyCanvasBackground = (
       ) {
         attemptProxy = true;
         const proxied = getProxyImageUrl(srcUrl);
-        console.info("[applyCanvasBackground] Direct load blocked, retrying with proxy:", proxied);
-        tryLoadImage(proxied);
-        return;
+        if (proxied && proxied !== srcUrl) {
+          console.info("[applyCanvasBackground] Direct load blocked, retrying with proxy:", proxied);
+          tryLoadImage(proxied);
+          return;
+        }
       }
 
       console.warn("[applyCanvasBackground] Failed to load background image:", srcUrl, err);
@@ -178,7 +239,8 @@ export const applyCanvasBackground = (
     };
   };
 
-  tryLoadImage(imageUrl);
+  const initialUrl = normalizeTemplateImageUrl(imageUrl);
+  tryLoadImage(initialUrl);
 };
 
 /**

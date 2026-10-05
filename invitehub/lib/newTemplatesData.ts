@@ -2181,6 +2181,52 @@ export const NEW_TEMPLATE_DEFAULTS = NEW_TEMPLATES.reduce((acc, t) => {
 }, {} as Record<string, any>);
 
 /**
+ * Normalizes template background image URLs:
+ * - Detects frontend static asset paths (/assets/, /templates/) and strips foreign backend/localhost hosts
+ * - Upgrades insecure http:// URLs to https:// on HTTPS pages (preventing Mixed Content blocking)
+ * - Safely handles relative paths, data URLs, and uploads
+ */
+export const normalizeTemplateImageUrl = (url?: string | null): string => {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  // 1. If URL contains /assets/ or /templates/, this is a frontend static asset.
+  // Strip any foreign host prefix (http://localhost:5000, https://eventizersbackend.vercel.app, etc.)
+  // so the client always loads it directly from the current frontend origin without CORS or 404 issues.
+  const assetMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+  if (assetMatch) {
+    return assetMatch[1];
+  }
+
+  // 2. If running on HTTPS in production, upgrade insecure http:// URLs to https:// (except localhost)
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    trimmed.startsWith("http://") &&
+    !trimmed.includes("localhost") &&
+    !trimmed.includes("127.0.0.1")
+  ) {
+    return trimmed.replace(/^http:\/\//i, "https://");
+  }
+
+  // 3. If running in production and URL points to localhost /uploads/
+  if (
+    typeof window !== "undefined" &&
+    !window.location.hostname.includes("localhost") &&
+    (trimmed.includes("localhost") || trimmed.includes("127.0.0.1"))
+  ) {
+    const uploadMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/uploads\/.*)$/i);
+    if (uploadMatch) {
+      return uploadMatch[1];
+    }
+  }
+
+  return trimmed;
+};
+
+/**
  * Dynamically register or update templates fetched from backend API.
  * Ensures website components, studio, and canvas seamlessly use templates from backend.
  */
@@ -2195,11 +2241,11 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       contentObj = bt.content;
     }
 
-    const bgUrl =
-      (typeof bt.backgroundImage === 'string' ? bt.backgroundImage : bt.backgroundImage?.url || bt.backgroundImage?.src) ||
-      (typeof bt.canvasData?.backgroundImage === 'string' ? bt.canvasData.backgroundImage : bt.canvasData?.backgroundImage?.url || bt.canvasData?.backgroundImage?.src) ||
-      (typeof contentObj.backgroundImage === 'string' ? contentObj.backgroundImage : contentObj.backgroundImage?.url || contentObj.backgroundImage?.src) ||
-      (typeof contentObj.canvasData?.backgroundImage === 'string' ? contentObj.canvasData.backgroundImage : contentObj.canvasData?.backgroundImage?.url) ||
+    const rawBg =
+      bt.backgroundImage ||
+      bt.canvasData?.backgroundImage ||
+      contentObj.backgroundImage ||
+      contentObj.canvasData?.backgroundImage ||
       bt.backgroundUrl ||
       contentObj.backgroundUrl ||
       bt.card?.artworkUrl ||
@@ -2208,6 +2254,12 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       bt.thumbnailUrl ||
       bt.image ||
       null;
+
+    const rawBgStr = typeof rawBg === 'object' && rawBg !== null
+      ? (rawBg.url || rawBg.src || null)
+      : (typeof rawBg === 'string' ? rawBg : null);
+
+    const bgUrl = normalizeTemplateImageUrl(rawBgStr);
 
     const layers =
       bt.layers ||
@@ -2218,13 +2270,23 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       contentObj.layers ||
       [];
 
+    const cleanCard = {
+      backgroundColor: "#ffffff",
+      aspectRatio: "5x7",
+      ...(contentObj.card || {}),
+      ...(bt.card || {}),
+      artworkUrl: bgUrl || normalizeTemplateImageUrl(bt.card?.artworkUrl || contentObj.card?.artworkUrl),
+      fullArtworkUrl: bgUrl || normalizeTemplateImageUrl(bt.card?.fullArtworkUrl || bt.card?.artworkUrl),
+    };
+
     const transformed: NewTemplateData = {
+      ...bt,
       id: bt.id,
       title: bt.name || bt.title || "Template",
       category: bt.category || "General",
       badge: bt.badge || (bt.isPremium ? "Premium" : "Free"),
       isPremium: Boolean(bt.isPremium),
-      image: bgUrl || bt.thumbnailUrl || bt.imageUrl || bt.image || "/assets/templates/chic-dinner-cake-mockup.svg",
+      image: bgUrl || normalizeTemplateImageUrl(bt.thumbnailUrl || bt.imageUrl || bt.image) || "/assets/templates/chic-dinner-cake-mockup.svg",
       backgroundImage: bgUrl,
       canvasData: {
         backgroundImage: bgUrl,
@@ -2235,17 +2297,10 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       accentColor: bt.accentColor || contentObj.accentColor || bt.envelope?.linerColor || "#D4AF37",
       backdrop: bt.backdrop || contentObj.backdrop || { color: "#FAF7F2", type: "texture", value: "/assets/backdrops/white-embossed-floral.svg" },
       envelope: bt.envelope || contentObj.envelope || { outerColor: "#111111", flapColor: "#111111", linerCss: "", linerColor: "#D4AF37", isOpen: true },
-      card: {
-        backgroundColor: "#ffffff",
-        aspectRatio: "5x7",
-        ...(contentObj.card || {}),
-        ...(bt.card || {}),
-        artworkUrl: bgUrl || bt.card?.artworkUrl || contentObj.card?.artworkUrl,
-      },
+      card: cleanCard,
       defaultTextLayers: layers,
       textLayers: layers,
       layers: layers,
-      ...bt,
     };
     NEW_TEMPLATES_CONFIG[bt.id] = transformed;
     const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id);

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
-import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl } from "./canvasBackgroundUtils";
+import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
 import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
@@ -605,7 +605,9 @@ export default function InvitationCanvasStage({
 
   const cardImageRaw = resolvedArtCandidate;
   const cleanCardImage =
-    cardImageRaw && !cardImageRaw.startsWith("#") ? getCleanTemplateSvg(cardImageRaw) || cardImageRaw : null;
+    cardImageRaw && !cardImageRaw.startsWith("#")
+      ? normalizeTemplateImageUrl(getCleanTemplateSvg(cardImageRaw) || cardImageRaw)
+      : null;
 
   // Collect decorative illustrations (balloons, cake, party hats, candles, gifts) only for non-upload templates
   const rawDecorations: any[] = isUserUpload ? [] : [
@@ -734,17 +736,31 @@ export default function InvitationCanvasStage({
 
   const handleImageError = () => {
     console.warn("[InvitationCanvasStage] Background image failed to load:", imgSrc);
-    // If -bg.svg clean variant failed to load, fallback to cardImageRaw
-    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw && !imgSrc.includes("/api/proxy-image")) {
-      setImgSrc(cardImageRaw);
-      return;
+    // 1. If absolute URL was pointing to frontend static assets (/assets/ or /templates/), retry with clean relative path
+    if (imgSrc) {
+      const assetMatch = imgSrc.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+      if (assetMatch && imgSrc !== assetMatch[1]) {
+        console.info("[InvitationCanvasStage] Retrying with relative asset path:", assetMatch[1]);
+        setImgSrc(assetMatch[1]);
+        return;
+      }
     }
-    // If external link failed (likely CORS restriction), retry via CORS proxy endpoint
+    // 2. If -bg.svg clean variant failed to load, fallback to normalized cardImageRaw
+    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw && !imgSrc.includes("/api/proxy-image")) {
+      const fallbackUrl = normalizeTemplateImageUrl(cardImageRaw);
+      if (fallbackUrl && fallbackUrl !== imgSrc) {
+        setImgSrc(fallbackUrl);
+        return;
+      }
+    }
+    // 3. If external link failed (likely CORS restriction or Mixed Content), retry via CORS proxy endpoint
     if (imgSrc && (imgSrc.startsWith("http://") || imgSrc.startsWith("https://")) && !imgSrc.includes("/api/proxy-image")) {
       const proxied = getProxyImageUrl(imgSrc);
-      console.info("[InvitationCanvasStage] Retrying image via proxy:", proxied);
-      setImgSrc(proxied);
-      return;
+      if (proxied && proxied !== imgSrc) {
+        console.info("[InvitationCanvasStage] Retrying image via proxy:", proxied);
+        setImgSrc(proxied);
+        return;
+      }
     }
     // All fallback attempts failed — mark error state to display user-friendly UI
     setHasImgError(true);
@@ -1164,7 +1180,12 @@ export default function InvitationCanvasStage({
                     onClick={() => {
                       setHasImgError(false);
                       if (cardImageRaw) {
-                        setImgSrc(getProxyImageUrl(cardImageRaw));
+                        const normalized = normalizeTemplateImageUrl(cardImageRaw);
+                        if (normalized.startsWith("/assets/") || normalized.startsWith("/templates/")) {
+                          setImgSrc(normalized);
+                        } else {
+                          setImgSrc(getProxyImageUrl(cardImageRaw));
+                        }
                       }
                     }}
                     className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
