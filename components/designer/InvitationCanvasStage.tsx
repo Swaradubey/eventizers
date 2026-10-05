@@ -2,10 +2,10 @@
 
 import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw } from "lucide-react";
+import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
-import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas } from "./canvasBackgroundUtils";
+import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl } from "./canvasBackgroundUtils";
 import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
@@ -236,6 +236,14 @@ export default function InvitationCanvasStage({
       (config.card as any)?.safeArea
     );
   }, [deduplicatedLayers, cardDimensions, (config.card as any)?.safeArea]);
+
+  // Extract dynamic image layers (type: 'image' or layers with imageUrl/src)
+  const imageLayers = useMemo(() => {
+    const rawLayers = ((config.textLayers || (config as any).layers || []) as any[]);
+    return rawLayers.filter(
+      (l) => l && (l.type === "image" || (!l.text && (l.imageUrl || l.src || l.url)))
+    );
+  }, [config.textLayers, (config as any).layers]);
 
   const dragSessionRef = useRef<{
     layerId: string;
@@ -543,18 +551,21 @@ export default function InvitationCanvasStage({
     ? config.cardBg.value
     : (isUploadedCard ? config.card!.artworkUrl : ((config as any)?.backgroundImageUrl || null));
 
-  // Helper to filter out snapshot / raster captures from being used as card background artwork
-  const sanitizeBackgroundCandidate = (url?: string | null): string | null => {
-    if (!url || typeof url !== "string") return null;
-    const trimmed = url.trim();
-    if (
-      trimmed === "" ||
-      trimmed.startsWith("#") ||
-      isSnapshotOrRasterUrl(trimmed)
-    ) {
-      return null;
+  // Helper to extract clean image URL from string or object schema
+  const extractImageSource = (src: any): string | null => {
+    if (!src) return null;
+    if (typeof src === "string") {
+      const trimmed = src.trim();
+      if (!trimmed || trimmed.startsWith("#") || isSnapshotOrRasterUrl(trimmed)) return null;
+      return trimmed;
     }
-    return trimmed;
+    if (typeof src === "object") {
+      const candidate = src.url || src.src || src.imageUrl || src.artworkUrl || src.backgroundImage;
+      if (candidate && typeof candidate === "string") {
+        return extractImageSource(candidate);
+      }
+    }
+    return null;
   };
 
   // Resolve Clean Card Artwork: user uploaded image takes absolute precedence over template defaults
@@ -563,25 +574,36 @@ export default function InvitationCanvasStage({
   const rawCardBgValue = rawCardBg?.type === "image" ? rawCardBg.value : (typeof rawCardBg === "string" ? rawCardBg : null);
   const rawBgValue = rawBg?.type === "image" ? rawBg.value : (rawBg?.image || rawBg?.url || (typeof rawBg === "string" ? rawBg : null));
 
-  const validBgVal = (isUserUploadedImage(rawCardBgValue) && !isSnapshotOrRasterUrl(rawCardBgValue))
-    ? rawCardBgValue
-    : sanitizeBackgroundCandidate(rawCardBgValue);
-  const validFallbackBgVal = (isUserUploadedImage(rawBgValue) && !isSnapshotOrRasterUrl(rawBgValue))
-    ? rawBgValue
-    : sanitizeBackgroundCandidate(rawBgValue);
+  const candidateSources = [
+    uploadedImageSrc,
+    (config as any)?.backgroundImage,
+    (config as any)?.canvasData?.backgroundImage,
+    (config as any)?.backgroundImageUrl,
+    config.card?.artworkUrl,
+    (config.card as any)?.backgroundImage,
+    (config.card as any)?.borderIllustration,
+    (config as any)?.template?.backgroundImage,
+    (config as any)?.template?.canvasData?.backgroundImage,
+    rawCardBgValue,
+    rawBgValue,
+    (fallbackTpl as any)?.backgroundImage,
+    (fallbackTpl as any)?.canvasData?.backgroundImage,
+    (fallbackTpl as any)?.card?.borderIllustration,
+    (fallbackTpl as any)?.card?.artworkUrl,
+    fallbackTpl?.decorationImage,
+    fallbackTpl?.image,
+  ];
 
-  const bgImg = validBgVal || validFallbackBgVal || null;
+  let resolvedArtCandidate: string | null = null;
+  for (const item of candidateSources) {
+    const extracted = extractImageSource(item);
+    if (extracted) {
+      resolvedArtCandidate = extracted;
+      break;
+    }
+  }
 
-  const cardImageRaw =
-    (uploadedImageSrc && !isSnapshotOrRasterUrl(uploadedImageSrc) ? uploadedImageSrc : null) ||
-    sanitizeBackgroundCandidate((config as any)?.backgroundImageUrl) ||
-    sanitizeBackgroundCandidate(config.card?.artworkUrl) ||
-    sanitizeBackgroundCandidate((config.card as any)?.borderIllustration) ||
-    bgImg ||
-    (fallbackTpl as any)?.card?.borderIllustration ||
-    (fallbackTpl as any)?.card?.artworkUrl ||
-    fallbackTpl?.decorationImage ||
-    null;
+  const cardImageRaw = resolvedArtCandidate;
   const cleanCardImage =
     cardImageRaw && !cardImageRaw.startsWith("#") ? getCleanTemplateSvg(cardImageRaw) || cardImageRaw : null;
 
@@ -626,10 +648,27 @@ export default function InvitationCanvasStage({
         aspectRatio: `${w} / ${h}`,
       });
     };
+    probe.onerror = () => {
+      // If direct probe fails and image is external, probe via proxy
+      if (isProbeActive && (cleanCardImage.startsWith("http://") || cleanCardImage.startsWith("https://")) && !cleanCardImage.includes("/api/proxy-image")) {
+        probe.src = getProxyImageUrl(cleanCardImage);
+      }
+    };
     return () => {
       isProbeActive = false;
     };
   }, [cleanCardImage]);
+
+  const resolvedStageAspect =
+    aspectRatio === "square" || aspectRatio === "1/1" || aspectRatio === "1 / 1" || aspectRatio === "1:1" || aspectRatio === "square-5x5" || aspectRatio === "5x5" || aspectRatio === "5/5"
+      ? "1 / 1"
+      : aspectRatio === "story-9x16" || aspectRatio === "9/16" || aspectRatio === "9 / 16" || aspectRatio === "9:16" || aspectRatio === "story"
+      ? "9 / 16"
+      : aspectRatio === "portrait-5x7" || aspectRatio === "3/4.2" || aspectRatio === "5/7" || aspectRatio === "5x7" || aspectRatio === "5 / 7" || aspectRatio === "portrait"
+      ? "3 / 4.2"
+      : aspectRatio === "landscape-4x3" || aspectRatio === "4/3" || aspectRatio === "4 / 3" || aspectRatio === "4x3" || aspectRatio === "landscape" || isLandscape
+      ? "4 / 3"
+      : aspectRatio || "5 / 7";
 
   useEffect(() => {
     let isMounted = true;
@@ -644,21 +683,30 @@ export default function InvitationCanvasStage({
       cleanFabricCanvas(activeCanvas, {
         preserveBackground: true,
         backgroundUrl: cleanCardImage,
+        aspectRatio: resolvedStageAspect,
       });
       if (!isMounted) return;
       if (cleanCardImage) {
-        applyCanvasBackground(activeCanvas, cleanCardImage, (info) => {
-          if (!isMounted) return;
-          if (info && info.width && info.height) {
-            setBgNaturalDimensions({
-              width: info.width,
-              height: info.height,
-              aspectRatio: `${info.width} / ${info.height}`,
-            });
+        applyCanvasBackground(
+          activeCanvas,
+          cleanCardImage,
+          (info) => {
+            if (!isMounted) return;
+            if (info && info.width && info.height) {
+              setBgNaturalDimensions({
+                width: info.width,
+                height: info.height,
+                aspectRatio: `${info.width} / ${info.height}`,
+              });
+            }
+            // Ensure typography layers are rendered ON TOP of the loaded background image
+            syncCanvasTextLayers(activeCanvas, deduplicatedLayers);
+          },
+          {
+            aspectRatio: resolvedStageAspect,
+            width: cardWidth,
           }
-          // Ensure typography layers are rendered ON TOP of the loaded background image
-          syncCanvasTextLayers(activeCanvas, deduplicatedLayers);
-        });
+        );
       } else {
         syncCanvasTextLayers(activeCanvas, deduplicatedLayers);
         if (typeof activeCanvas.requestRenderAll === "function") {
@@ -679,15 +727,27 @@ export default function InvitationCanvasStage({
     config.card?.artworkUrl,
     config.cardBg,
     (config as any)?.background,
+    resolvedStageAspect,
+    aspectRatio,
+    maxW,
   ]);
 
   const handleImageError = () => {
+    console.warn("[InvitationCanvasStage] Background image failed to load:", imgSrc);
     // If -bg.svg clean variant failed to load, fallback to cardImageRaw
-    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw) {
+    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw && !imgSrc.includes("/api/proxy-image")) {
       setImgSrc(cardImageRaw);
-    } else {
-      setHasImgError(true);
+      return;
     }
+    // If external link failed (likely CORS restriction), retry via CORS proxy endpoint
+    if (imgSrc && (imgSrc.startsWith("http://") || imgSrc.startsWith("https://")) && !imgSrc.includes("/api/proxy-image")) {
+      const proxied = getProxyImageUrl(imgSrc);
+      console.info("[InvitationCanvasStage] Retrying image via proxy:", proxied);
+      setImgSrc(proxied);
+      return;
+    }
+    // All fallback attempts failed — mark error state to display user-friendly UI
+    setHasImgError(true);
   };
 
   const cardImageFit = config.cardImageFit || (isUserUpload ? "contain" : "cover");
@@ -845,17 +905,6 @@ export default function InvitationCanvasStage({
       />
     );
   }
-
-  const resolvedStageAspect =
-    aspectRatio === "square" || aspectRatio === "1/1" || aspectRatio === "1 / 1"
-      ? "1 / 1"
-      : aspectRatio === "story-9x16" || aspectRatio === "9/16" || aspectRatio === "9 / 16"
-      ? "9 / 16"
-      : aspectRatio === "portrait-5x7" || aspectRatio === "3/4.2"
-      ? "3 / 4.2"
-      : aspectRatio === "landscape-4x3" || aspectRatio === "4/3" || aspectRatio === "4 / 3" || isLandscape
-      ? "4 / 3"
-      : aspectRatio || "5 / 7";
 
   const resolvedEnvelopeView: "peek" | "open" | "closed" | "open-upward" =
     envelopeViewMode ||
@@ -1087,12 +1136,43 @@ export default function InvitationCanvasStage({
                       });
                     }
                   }}
-                  className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-200 ${
+                  className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-300 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
                   }`}
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />
+              )}
+
+              {/* 3A-Error: Broken or Unreachable Background Image State */}
+              {imgSrc && hasImgError && (
+                <div
+                  data-testid="canvas-image-error-state"
+                  className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-slate-50/95 border-2 border-dashed border-rose-300/80 text-center select-none"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-2.5 shadow-xs">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-slate-800 mb-1">
+                    Background Image Unreachable
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-xs mb-3 leading-relaxed">
+                    Failed to load template background image. The link may have CORS restrictions or be unavailable.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasImgError(false);
+                      if (cardImageRaw) {
+                        setImgSrc(getProxyImageUrl(cardImageRaw));
+                      }
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Retry via Proxy</span>
+                  </button>
+                </div>
               )}
 
               {/* 3A-2: Additional decorative illustrations & stickers (balloons, cake, hats, candles, gifts) */}
@@ -1109,6 +1189,40 @@ export default function InvitationCanvasStage({
                     style={{ zIndex: 2 }}
                     draggable={false}
                   />
+                );
+              })}
+
+              {/* 3A-3: Dynamic Image Layers (type: 'image') */}
+              {imageLayers.map((layer: any, idx: number) => {
+                const layerSrc = layer.url || layer.src || layer.imageUrl;
+                if (!layerSrc || layerSrc === imgSrc) return null;
+                const imgW = layer.width ? (typeof layer.width === "number" ? `${layer.width}px` : layer.width) : "auto";
+                const imgH = layer.height ? (typeof layer.height === "number" ? `${layer.height}px` : layer.height) : "auto";
+                return (
+                  <div
+                    key={layer.id || `canvas-img-layer-${idx}`}
+                    data-layer="image-layer"
+                    data-testid={`image-layer-${layer.id || idx}`}
+                    style={{
+                      position: "absolute",
+                      left: `${layer.x ?? layer.left ?? 50}%`,
+                      top: `${layer.y ?? layer.top ?? 50}%`,
+                      transform: "translate(-50%, -50%)",
+                      width: imgW,
+                      height: imgH,
+                      opacity: layer.opacity ?? 1,
+                      pointerEvents: "none",
+                      zIndex: 15,
+                    }}
+                  >
+                    <img
+                      src={layerSrc}
+                      alt={layer.name || "Template image layer"}
+                      crossOrigin={layerSrc.startsWith("http") ? "anonymous" : undefined}
+                      className="w-full h-full object-contain pointer-events-none select-none"
+                      draggable={false}
+                    />
+                  </div>
                 );
               })}
 

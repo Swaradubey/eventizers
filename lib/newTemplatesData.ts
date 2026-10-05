@@ -261,6 +261,13 @@ export interface NewTemplateData {
   card: EviteTemplateSchema['card'];
   innerCardLayer?: EviteTemplateSchema['innerCardLayer'];
   defaultTextLayers: EviteTemplateSchema['defaultTextLayers'];
+  backgroundImage?: string | { url?: string; src?: string };
+  backgroundUrl?: string;
+  canvasData?: {
+    backgroundImage?: string | { url?: string; src?: string };
+    layers?: any[];
+    [key: string]: any;
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -2181,20 +2188,63 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
   if (!Array.isArray(backendTemplates)) return;
   for (const bt of backendTemplates) {
     if (!bt || !bt.id) continue;
+    let contentObj: any = {};
+    if (typeof bt.content === 'string' && bt.content) {
+      try { contentObj = JSON.parse(bt.content); } catch (_) {}
+    } else if (typeof bt.content === 'object' && bt.content) {
+      contentObj = bt.content;
+    }
+
+    const bgUrl =
+      (typeof bt.backgroundImage === 'string' ? bt.backgroundImage : bt.backgroundImage?.url || bt.backgroundImage?.src) ||
+      (typeof bt.canvasData?.backgroundImage === 'string' ? bt.canvasData.backgroundImage : bt.canvasData?.backgroundImage?.url || bt.canvasData?.backgroundImage?.src) ||
+      (typeof contentObj.backgroundImage === 'string' ? contentObj.backgroundImage : contentObj.backgroundImage?.url || contentObj.backgroundImage?.src) ||
+      (typeof contentObj.canvasData?.backgroundImage === 'string' ? contentObj.canvasData.backgroundImage : contentObj.canvasData?.backgroundImage?.url) ||
+      bt.backgroundUrl ||
+      contentObj.backgroundUrl ||
+      bt.card?.artworkUrl ||
+      contentObj.card?.artworkUrl ||
+      bt.imageUrl ||
+      bt.thumbnailUrl ||
+      bt.image ||
+      null;
+
+    const layers =
+      bt.layers ||
+      bt.defaultTextLayers ||
+      bt.textLayers ||
+      bt.canvasData?.layers ||
+      contentObj.defaultTextLayers ||
+      contentObj.layers ||
+      [];
+
     const transformed: NewTemplateData = {
       id: bt.id,
       title: bt.name || bt.title || "Template",
       category: bt.category || "General",
       badge: bt.badge || (bt.isPremium ? "Premium" : "Free"),
       isPremium: Boolean(bt.isPremium),
-      image: bt.thumbnailUrl || bt.imageUrl || bt.image || bt.card?.artworkUrl || "/assets/templates/chic-dinner-cake-mockup.svg",
-      gradient: bt.gradient || bt.backdrop?.gradient || "linear-gradient(135deg, #FAF7F2 0%, #EDE6D8 100%)",
-      accentColor: bt.accentColor || bt.envelope?.linerColor || "#D4AF37",
-      backdrop: bt.backdrop || { color: "#FAF7F2", type: "texture", value: "/assets/backdrops/white-embossed-floral.svg" },
-      envelope: bt.envelope || { outerColor: "#111111", flapColor: "#111111", linerCss: "", linerColor: "#D4AF37", isOpen: true },
-      card: bt.card || { artworkUrl: bt.thumbnailUrl || bt.imageUrl || bt.image, backgroundColor: "#ffffff", aspectRatio: "5x7" },
-      defaultTextLayers: bt.defaultTextLayers || [],
-      textLayers: bt.defaultTextLayers || [],
+      image: bgUrl || bt.thumbnailUrl || bt.imageUrl || bt.image || "/assets/templates/chic-dinner-cake-mockup.svg",
+      backgroundImage: bgUrl,
+      canvasData: {
+        backgroundImage: bgUrl,
+        layers: layers,
+        ...(bt.canvasData || contentObj.canvasData || {}),
+      },
+      gradient: bt.gradient || contentObj.gradient || bt.backdrop?.gradient || (bgUrl ? undefined : "linear-gradient(135deg, #FAF7F2 0%, #EDE6D8 100%)"),
+      accentColor: bt.accentColor || contentObj.accentColor || bt.envelope?.linerColor || "#D4AF37",
+      backdrop: bt.backdrop || contentObj.backdrop || { color: "#FAF7F2", type: "texture", value: "/assets/backdrops/white-embossed-floral.svg" },
+      envelope: bt.envelope || contentObj.envelope || { outerColor: "#111111", flapColor: "#111111", linerCss: "", linerColor: "#D4AF37", isOpen: true },
+      card: {
+        backgroundColor: "#ffffff",
+        aspectRatio: "5x7",
+        ...(contentObj.card || {}),
+        ...(bt.card || {}),
+        artworkUrl: bgUrl || bt.card?.artworkUrl || contentObj.card?.artworkUrl,
+      },
+      defaultTextLayers: layers,
+      textLayers: layers,
+      layers: layers,
       ...bt,
     };
     NEW_TEMPLATES_CONFIG[bt.id] = transformed;

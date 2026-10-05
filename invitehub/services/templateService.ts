@@ -32,26 +32,83 @@ export interface Template {
   venue?: string;
   description?: string;
   image?: string;
+  backgroundImage?: string | { url?: string; src?: string };
+  backgroundUrl?: string;
+  canvasData?: {
+    backgroundImage?: string | { url?: string; src?: string };
+    layers?: any[];
+    [key: string]: any;
+  };
+  layers?: any[];
   [key: string]: any;
 }
 
 export type BackendTemplate = Template;
 
 const mapToTemplate = (t: any): Template => {
+  let contentParsed: any = {};
+  if (typeof t.content === 'string' && t.content) {
+    try {
+      contentParsed = JSON.parse(t.content);
+    } catch (_) {}
+  } else if (typeof t.content === 'object' && t.content) {
+    contentParsed = t.content;
+  }
+
+  // Extract background image URL from all schema variations
+  const rawBg =
+    t.backgroundImage ||
+    t.backgroundUrl ||
+    t.canvasData?.backgroundImage ||
+    contentParsed.backgroundImage ||
+    contentParsed.backgroundUrl ||
+    contentParsed.canvasData?.backgroundImage ||
+    contentParsed.card?.artworkUrl ||
+    t.card?.artworkUrl ||
+    t.imageUrl ||
+    t.thumbnailUrl ||
+    t.image ||
+    null;
+
+  const bgImageUrl = typeof rawBg === 'object' && rawBg !== null
+    ? (rawBg.url || rawBg.src || null)
+    : (typeof rawBg === 'string' ? rawBg : null);
+
+  const rawLayers =
+    t.layers ||
+    t.defaultTextLayers ||
+    t.textElements ||
+    t.canvasData?.layers ||
+    contentParsed.layers ||
+    contentParsed.defaultTextLayers ||
+    contentParsed.canvasData?.layers ||
+    [];
+
   const contentStr = typeof t.content === 'string' && t.content
     ? t.content
     : JSON.stringify({
-        gradient: t.gradient,
-        accentColor: t.accentColor,
-        emoji: t.emoji,
-        host: t.host,
-        venue: t.venue,
-        description: t.description,
-        image: t.image || t.thumbnailUrl || t.imageUrl,
-        backdrop: t.backdrop,
-        envelope: t.envelope,
-        card: t.card,
-        defaultTextLayers: t.defaultTextLayers,
+        gradient: t.gradient || contentParsed.gradient,
+        accentColor: t.accentColor || contentParsed.accentColor,
+        emoji: t.emoji || contentParsed.emoji,
+        host: t.host || contentParsed.host,
+        venue: t.venue || contentParsed.venue,
+        description: t.description || contentParsed.description,
+        image: bgImageUrl || t.image || t.thumbnailUrl || t.imageUrl,
+        backgroundImage: bgImageUrl,
+        backgroundUrl: bgImageUrl,
+        backdrop: t.backdrop || contentParsed.backdrop,
+        envelope: t.envelope || contentParsed.envelope,
+        card: {
+          ...(contentParsed.card || {}),
+          ...(t.card || {}),
+          artworkUrl: bgImageUrl || t.card?.artworkUrl || contentParsed.card?.artworkUrl,
+        },
+        canvasData: {
+          backgroundImage: bgImageUrl,
+          layers: rawLayers,
+          ...(t.canvasData || contentParsed.canvasData || {}),
+        },
+        defaultTextLayers: rawLayers,
       });
 
   return {
@@ -62,23 +119,37 @@ const mapToTemplate = (t: any): Template => {
     badge: t.badge || (t.isPremium ? "Premium" : "Free"),
     isPremium: Boolean(t.isPremium),
     content: contentStr,
-    thumbnailUrl: t.thumbnailUrl || t.imageUrl || t.image,
+    thumbnailUrl: t.thumbnailUrl || bgImageUrl || t.imageUrl || t.image,
     fullThumbnailUrl: t.fullThumbnailUrl,
-    imageUrl: t.imageUrl || t.thumbnailUrl || t.image,
+    imageUrl: t.imageUrl || bgImageUrl || t.thumbnailUrl || t.image,
     fullImageUrl: t.fullImageUrl,
-    coverImage: t.coverImage || t.imageUrl || t.image,
-    backdrop: t.backdrop,
-    envelope: t.envelope,
-    card: t.card,
-    defaultTextLayers: t.defaultTextLayers || [],
-    textElements: t.textElements || t.defaultTextLayers || [],
-    gradient: t.gradient,
-    accentColor: t.accentColor,
-    emoji: t.emoji,
-    host: t.host,
-    venue: t.venue,
-    description: t.description,
-    image: t.image || t.thumbnailUrl || t.imageUrl,
+    coverImage: t.coverImage || bgImageUrl || t.imageUrl || t.image,
+    backgroundImage: bgImageUrl,
+    backgroundUrl: bgImageUrl,
+    canvasData: {
+      backgroundImage: bgImageUrl,
+      layers: rawLayers,
+      ...(t.canvasData || contentParsed.canvasData || {}),
+    },
+    backdrop: t.backdrop || contentParsed.backdrop,
+    envelope: t.envelope || contentParsed.envelope,
+    card: {
+      backgroundColor: "#ffffff",
+      aspectRatio: "5x7",
+      ...(contentParsed.card || {}),
+      ...(t.card || {}),
+      artworkUrl: bgImageUrl || t.card?.artworkUrl || contentParsed.card?.artworkUrl,
+    },
+    defaultTextLayers: rawLayers,
+    textElements: rawLayers,
+    layers: rawLayers,
+    gradient: t.gradient || contentParsed.gradient,
+    accentColor: t.accentColor || contentParsed.accentColor,
+    emoji: t.emoji || contentParsed.emoji,
+    host: t.host || contentParsed.host,
+    venue: t.venue || contentParsed.venue,
+    description: t.description || contentParsed.description,
+    image: bgImageUrl || t.image || t.thumbnailUrl || t.imageUrl,
     ...t,
   };
 };
@@ -193,6 +264,8 @@ export const createTemplate = async (templateData: {
   imageUrl?: string;
   thumbnailUrl?: string;
   backgroundUrl?: string;
+  backgroundImage?: string;
+  canvasData?: any;
   tags?: string[];
   description?: string;
   defaultTextLayers?: any[];
@@ -247,5 +320,3 @@ const templateService = {
 };
 
 export default templateService;
-
-

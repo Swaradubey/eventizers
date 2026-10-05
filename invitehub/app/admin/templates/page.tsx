@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,12 @@ interface TextLayerDraft {
 
 const makeLayerId = () => `layer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;
 
+const getProxyImageUrl = (url: string) => {
+  if (!url) return "";
+  if (url.startsWith("/") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+};
+
 const DEFAULT_LAYERS: TextLayerDraft[] = [
   { id:"layer-title", key:"title", text:"Your Event Title",
     fontFamily:"'Playfair Display', Georgia, serif", fontSize:22,
@@ -78,6 +84,7 @@ export default function AdminTemplatesPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [previewStatus, setPreviewStatus] = useState<"loading"|"loaded"|"error">("loading");
+  const [previewTriedProxy, setPreviewTriedProxy] = useState(false);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [layers, setLayers] = useState<TextLayerDraft[]>(DEFAULT_LAYERS);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-title");
@@ -107,8 +114,12 @@ export default function AdminTemplatesPage() {
     if (/^https?:\/\/(?:www\.)?imgur\.com\/([a-zA-Z0-9]+)$/i.test(cleaned)) {
       const id = cleaned.split("/").pop(); cleaned = `https://i.imgur.com/${id}.jpg`;
     }
-    setImageUrl(cleaned); setPreviewStatus("loading");
+    setImageUrl(cleaned); setPreviewStatus("loading"); setPreviewTriedProxy(false);
   };
+
+  useEffect(() => {
+    setPreviewTriedProxy(false);
+  }, [imageUrl, filePreview, addMode]);
 
   const handleResolveImage = async () => {
     if (!imageUrl.trim()) { showToast("Please enter an image link first","error"); return; }
@@ -221,7 +232,12 @@ export default function AdminTemplatesPage() {
         category:effectiveCategory, badge,
         isPremium:badge==="Premium",
         imageUrl:finalImageUrl, thumbnailUrl:finalImageUrl,
-        backgroundUrl:withLayers?finalImageUrl:undefined,
+        backgroundImage:finalImageUrl,
+        backgroundUrl:finalImageUrl,
+        canvasData:{
+          backgroundImage:finalImageUrl,
+          layers:withLayers&&layers.length>0?layers:[],
+        },
         tags:[effectiveCategory,badge],
         description:description.trim(),
         defaultTextLayers:withLayers&&layers.length>0?layers:undefined,
@@ -272,12 +288,18 @@ export default function AdminTemplatesPage() {
 
   const getDisplayImage = (t:Template) => {
     if (t.thumbnailUrl) return t.thumbnailUrl;
-    if (t.imageUrl) return t.imageUrl; if (t.image) return t.image;
+    if (t.imageUrl) return t.imageUrl;
+    if (t.backgroundImage) return t.backgroundImage;
+    if (t.backgroundUrl) return t.backgroundUrl;
+    if (t.card?.artworkUrl) return t.card.artworkUrl;
+    if (t.canvasData?.backgroundImage) return t.canvasData.backgroundImage;
+    if (t.image) return t.image;
     const assetId = t.id.startsWith("tpl-")?t.id.slice(4):t.id;
     return `/assets/templates/${assetId}-mockup.svg`;
   };
 
-  const livePreviewImage = addMode==="upload"?filePreview:imageUrl;
+  const rawPreviewImage = addMode==="upload"?filePreview:imageUrl;
+  const livePreviewImage = previewTriedProxy && rawPreviewImage ? getProxyImageUrl(rawPreviewImage) : rawPreviewImage;
 
   if (authLoading||!user||user.role!=="ADMIN") {
     return (<div className="min-h-screen bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-100/80 flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div></div>);
@@ -369,7 +391,17 @@ export default function AdminTemplatesPage() {
                   <div className="relative aspect-[3/4] bg-[#FAF8F5] overflow-hidden border-b border-slate-100">
                     <img src={imgSrc} alt={t.title||t.name} referrerPolicy="no-referrer"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy"
-                      onError={(e) => { if (!t.thumbnailUrl&&!t.imageUrl) { const assetId=t.id.startsWith("tpl-")?t.id.slice(4):t.id; e.currentTarget.src=`/assets/templates/${assetId}-bg.svg`; } }} />
+                      onError={(e) => {
+                        if (!e.currentTarget.dataset.retriedProxy && imgSrc && (imgSrc.startsWith("http://") || imgSrc.startsWith("https://"))) {
+                          e.currentTarget.dataset.retriedProxy = "true";
+                          e.currentTarget.src = getProxyImageUrl(imgSrc);
+                          return;
+                        }
+                        if (!t.thumbnailUrl&&!t.imageUrl) {
+                          const assetId=t.id.startsWith("tpl-")?t.id.slice(4):t.id;
+                          e.currentTarget.src=`/assets/templates/${assetId}-bg.svg`;
+                        }
+                      }} />
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold backdrop-blur-sm shadow-2xs ${isPremium?"bg-purple-900/90 text-purple-100":"bg-slate-900/80 text-white"}`}>
                         {isPremium&&<Crown className="w-3 h-3 text-amber-300" />}
@@ -522,9 +554,16 @@ export default function AdminTemplatesPage() {
                         {previewStatus==="error"?(
                           <div className="flex flex-col items-center justify-center text-center p-2 text-rose-500 z-10"><AlertCircle className="w-5 h-5 mb-1" /><span className="text-[9px] font-semibold leading-tight">Image load failed</span></div>
                         ):(
-                          <img key={livePreviewImage} src={livePreviewImage} alt="Preview" referrerPolicy="no-referrer" crossOrigin="anonymous"
+                          <img key={livePreviewImage} src={livePreviewImage} alt="Preview" referrerPolicy="no-referrer"
                             className={`w-full h-full object-cover transition-opacity duration-300 ${previewStatus==="loaded"?"opacity-100":"opacity-0"}`}
-                            onLoad={() => setPreviewStatus("loaded")} onError={() => setPreviewStatus("error")} />
+                            onLoad={() => setPreviewStatus("loaded")}
+                            onError={() => {
+                              if (!previewTriedProxy && rawPreviewImage && (rawPreviewImage.startsWith("http://") || rawPreviewImage.startsWith("https://"))) {
+                                setPreviewTriedProxy(true);
+                              } else {
+                                setPreviewStatus("error");
+                              }
+                            }} />
                         )}
                       </div>
                       <div className="text-xs text-slate-600 flex-1">
