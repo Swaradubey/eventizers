@@ -192,8 +192,14 @@ export const createTemplate = async (templateData: {
   isPremium?: boolean;
   imageUrl?: string;
   thumbnailUrl?: string;
+  backgroundUrl?: string;
   tags?: string[];
   description?: string;
+  defaultTextLayers?: any[];
+  layers?: any[];
+  isLayered?: boolean;
+  aspectRatio?: string;
+  backgroundColor?: string;
 }): Promise<Template> => {
   const response = await API.post<{ success: boolean; template: any }>("/templates", templateData);
   invalidateTemplateCache();

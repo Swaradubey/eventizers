@@ -2875,6 +2875,37 @@ export default function InvitationStudio({
     });
   };
 
+  // Pre-load backend templates into registry so newly created admin templates appear in the gallery and canvas
+  useEffect(() => {
+    let isMounted = true;
+    templateService
+      .getTemplates()
+      .then(() => {
+        if (!isMounted) return;
+        const targetId =
+          templateIdQuery ||
+          initialInvitation?.templateId ||
+          initialEvent?.selectedTemplateId ||
+          (typeof window !== "undefined"
+            ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
+            : null);
+
+        if (targetId) {
+          const cfg = getTemplateConfig(targetId);
+          if (cfg && (designState.activeTemplateId !== targetId || !designState.card?.artworkUrl)) {
+            handleSelectTemplate(targetId);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("[InvitationStudio] Could not preload templates:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [templateIdQuery, initialInvitation?.templateId, initialEvent?.selectedTemplateId]);
+
   // Fetch guests for selected event
   useEffect(() => {
     const targetEvtId = currentEvent?.id || initialEvent?.id;
