@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, Clock, Sparkles, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
+import AnimatedHeading from "./AnimatedHeading";
 import { BLOG_POSTS, BlogPost } from "@/src/data/blogs";
 
 export interface BlogSectionProps {
@@ -58,12 +59,14 @@ export default function BlogSection({
             </div>
 
             {/* Title */}
-            <h2
-              className="text-3xl sm:text-4xl lg:text-[42px] font-normal tracking-tight text-slate-900 leading-[1.2]"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              Ideas & Inspiration for Unforgettable Events
-            </h2>
+            <AnimatedHeading>
+              <h2
+                className="text-3xl sm:text-4xl lg:text-[42px] font-normal tracking-tight text-slate-900 leading-[1.2]"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                Ideas & Inspiration for Unforgettable Events
+              </h2>
+            </AnimatedHeading>
 
             {/* Subtitle */}
             <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed font-sans">

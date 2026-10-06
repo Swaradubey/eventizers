@@ -15,6 +15,7 @@ export interface Template {
   badge?: "FREE" | "PREMIUM" | "Trending" | "Free" | "Premium" | string;
   content: string; // JSON string containing styling design (gradient, accentColor, emoji, description)
   isPremium: boolean;
+  isLayered?: boolean;
   createdAt?: string;
   thumbnailUrl?: string;
   fullThumbnailUrl?: string;
@@ -127,6 +128,7 @@ const mapToTemplate = (t: any): Template => {
     category: t.category || "General",
     badge: t.badge || (t.isPremium ? "Premium" : "Free"),
     isPremium: Boolean(t.isPremium),
+    isLayered: Boolean(t.isLayered || contentParsed.isLayered),
     content: contentStr,
     thumbnailUrl: normalizeTemplateImageUrl(t.thumbnailUrl || cleanBgUrl || t.imageUrl || t.image),
     fullThumbnailUrl: t.fullThumbnailUrl ? normalizeTemplateImageUrl(t.fullThumbnailUrl) : undefined,

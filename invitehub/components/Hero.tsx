@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+
 import { 
   Sparkles, 
   Wand2, 
   Send, 
   LayoutTemplate, 
   Upload, 
-  Cake, 
-  Heart, 
   SlidersHorizontal,
   FileUp,
   Check,
@@ -34,6 +34,7 @@ import { compressAndNormalizeImage } from "../utils/imageCompressor";
 import { templateCards, matchesCategory } from "../lib/templateData";
 import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl } from "../lib/newTemplatesData";
 import EviteCardPreview from "./designer/EviteCardPreview";
+import AnimatedHeading from "./AnimatedHeading";
 
 const getDefaultEventDate = () => {
   const d = new Date();
@@ -130,7 +131,135 @@ const tabs = [
   { id: 2, label: "Upload Existing", icon: Upload },
 ];
 
-export default function Hero() {
+// Framer Motion variants for Floating Cards (Continuous subtle floating animation)
+const leftCardVariants = {
+  animate: {
+    y: [-6, 6, -6],
+    rotate: [-4, -2, -4],
+    transition: {
+      duration: 5,
+      repeat: Infinity,
+      ease: "easeInOut",
+    },
+  },
+};
+
+const rightCardVariants = {
+  animate: {
+    y: [6, -6, 6],
+    rotate: [4, 6, 4],
+    transition: {
+      duration: 5.5,
+      repeat: Infinity,
+      ease: "easeInOut",
+    },
+  },
+};
+
+// Seasonal prompts for animated typewriter placeholder effect
+const SEASONAL_TYPEWRITER_PROMPTS = [
+  "e.g. Spooky Haunted House costume party with pumpkin decor, scary cocktails, and costume contest...",
+  "e.g. Cozy Thanksgiving harvest dinner for 20 guests with roast turkey, autumn candles, and warm cider...",
+  "e.g. Festive Friendsgiving potluck with fall foliage arrangements, pumpkin pie bar, and acoustic music...",
+  "e.g. Victorian Halloween masquerade ball with fog effects, antique candelabras, and live DJ...",
+];
+
+function SeasonalTypewriterTextarea({
+  value,
+  onChange,
+  onKeyDown,
+  disabled,
+  className,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  disabled?: boolean;
+  className?: string;
+  rows?: number;
+}) {
+  const [placeholder, setPlaceholder] = useState(SEASONAL_TYPEWRITER_PROMPTS[0]);
+  const [promptIdx, setPromptIdx] = useState(0);
+  const [charIdx, setCharIdx] = useState(SEASONAL_TYPEWRITER_PROMPTS[0].length);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    // If user has already entered text, stop cycling to save CPU
+    if (value && value.trim().length > 0) return;
+
+    const currentPrompt = SEASONAL_TYPEWRITER_PROMPTS[promptIdx];
+    let timeout: NodeJS.Timeout;
+
+    if (!isDeleting) {
+      if (charIdx < currentPrompt.length) {
+        timeout = setTimeout(() => {
+          setPlaceholder(currentPrompt.slice(0, charIdx + 1));
+          setCharIdx((prev) => prev + 1);
+        }, 36);
+      } else {
+        // Pause at full text
+        timeout = setTimeout(() => {
+          setIsDeleting(true);
+        }, 2400);
+      }
+    } else {
+      if (charIdx > 0) {
+        timeout = setTimeout(() => {
+          setPlaceholder(currentPrompt.slice(0, charIdx - 1));
+          setCharIdx((prev) => prev - 1);
+        }, 18);
+      } else {
+        // Paused at empty, advance to next prompt and pause briefly
+        setIsDeleting(false);
+        setPromptIdx((prev) => (prev + 1) % SEASONAL_TYPEWRITER_PROMPTS.length);
+        timeout = setTimeout(() => {}, 400);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [charIdx, isDeleting, promptIdx, value]);
+
+  return (
+    <textarea
+      rows={rows}
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
+export interface HeroAnimationProps {
+  className?: string;
+}
+
+export default function Hero({ className = "" }: HeroAnimationProps = {}) {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  // Left Floating Template Card Scroll Parallax Transforms:
+  const leftY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  const leftRotate = useTransform(scrollYProgress, [0, 1], [-7, 0]);
+  const leftFade = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.9, 0]);
+  const leftScale = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.95, 0.9]);
+
+  // Right Floating Template Card Scroll Parallax Transforms:
+  const rightY = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const rightRotate = useTransform(scrollYProgress, [0, 1], [7, 0]);
+  const rightFade = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.9, 0]);
+  const rightScale = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.95, 0.9]);
+
+  // Center AI Event Builder Card Depth & Subtle Scale:
+  const centerScale = useTransform(scrollYProgress, [0, 1], [1, 0.98]);
+  const centerPerspectiveY = useTransform(scrollYProgress, [0, 1], [0, -12]);
+
   const { user } = useAuth();
   const router = useRouter();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -150,6 +279,7 @@ export default function Hero() {
   const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-abstract-nature-party");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const templateGridRef = useRef<HTMLDivElement>(null);
 
   // Tab 2: Upload Existing states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,17 +318,24 @@ export default function Hero() {
     }
   };
 
+  // Reveal the complete unified template list inside this tab instead of navigating away
+  const handleViewAllTemplates = () => {
+    setSelectedCategory("All");
+    setVisibleCount(Number.MAX_SAFE_INTEGER);
+    templateGridRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const quickPrompts = [
     {
-      label: "A whimsical garden birthday party for my daughter turning 5",
-      promptText: "Plan a whimsical garden birthday party for my daughter turning 5 with pastel floral decor, face painting, acoustic fairy music, and kid-friendly treats under string lights.",
+      label: "🎃 Halloween Haunted House & Costume Bash",
+      promptText: "Plan a spooky Halloween haunted house party for 40 guests with Victorian gothic decor, fog machines, themed cocktails, scary trivia, and a costume contest.",
     },
     {
-      label: "An elegant black-tie wedding reception for 150 guests",
-      promptText: "An elegant black-tie wedding reception for 150 guests featuring candlelight dinner, live jazz quartet, champagne tower, and modern luxury floral arrangements.",
+      label: "🦃 Cozy Friendsgiving & Thanksgiving Harvest Dinner",
+      promptText: "Organize a warm Thanksgiving harvest dinner for 20 guests with rustic autumn table settings, roast turkey feast, spiced cider, and a gratitude toast.",
     },
   ];
 
@@ -502,6 +639,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleCreateFromTemplate = async (tplToUse?: Template) => {
+    if (creatingEvent) return;
     const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
     const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
     const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
@@ -1053,17 +1191,22 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   return (
-    <section className="relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent">
+    <section
+      ref={heroRef}
+      className={`relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent will-change-transform ${className}`}
+    >
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col justify-center items-center overflow-x-clip">
         {/* Main Heading */}
-        <h1
-          className="font-normal font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
-          style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.6rem, 3.5vw, 3.2rem)" }}
-        >
-          Create Any Event in Under 60 Seconds
-        </h1>
+        <AnimatedHeading>
+          <h1
+            className="font-normal font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
+            style={{ fontFamily: "Georgia, serif", fontSize: "clamp(1.6rem, 3.5vw, 3.2rem)" }}
+          >
+            Create Any Event in Under 60 Seconds
+          </h1>
+        </AnimatedHeading>
 
         {/* Subtitle */}
         <p className="text-sm sm:text-base text-slate-500 font-normal leading-relaxed text-center max-w-2xl mx-auto mt-3 mb-8">
@@ -1072,114 +1215,257 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         </p>
 
         {/* Central Hero Card Container with Side Floating Cards */}
-        <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10">
-          {/* Left Side Floating Card (Birthday) */}
-          <div
-            className="hidden lg:flex flex-col justify-between absolute top-6 right-full mr-3 lg:mr-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left transition-transform duration-300 ease-out"
+        <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10 [perspective:1200px]">
+          {/* Left Side Floating Card (Haunted House Party) with Parallax Scroll & Floating Motion */}
+          <motion.div
             style={{
-              background: "linear-gradient(160deg, #FF1E56 0%, #E81C65 35%, #FF7A00 80%, #FF9057 100%)",
-              transform: "rotate(-6deg)",
-              boxShadow: "0 25px 50px -12px rgba(255, 30, 86, 0.45)",
+              y: leftY,
+              opacity: leftFade,
+              scale: leftScale,
             }}
-            aria-hidden="true"
+            className="hidden lg:block absolute top-6 right-full mr-3 lg:mr-5 xl:mr-7 z-20 will-change-transform select-none"
           >
-            {/* Concentric arc SVG overlay */}
+            <motion.div
+              variants={leftCardVariants}
+              animate="animate"
+              whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.25 } }}
+              className="w-48 sm:w-56 md:w-60 aspect-[3/4.2] flex flex-col justify-between p-4 sm:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
+              style={{
+                background: "linear-gradient(160deg, #0C0906 0%, #1A140D 42%, #241A11 74%, #0A0705 100%)",
+                boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.65), 0 0 28px rgba(255, 138, 0, 0.4)",
+              }}
+              onClick={() => {
+                setPrompt("Plan a spooky Halloween haunted house party for 40 guests with Victorian gothic decor, fog machines, themed cocktails, scary trivia, and a costume contest.");
+              }}
+              title="Click to use Haunted House party prompt"
+            >
+            {/* Sepia gothic overlay: glowing full moon, clouds, bats & Victorian haunted mansion */}
             <svg
               aria-hidden="true"
               className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 220 270"
+              viewBox="0 0 180 250"
               fill="none"
+              preserveAspectRatio="xMidYMid slice"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <ellipse cx="110" cy="135" rx="85" ry="105" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="65" ry="82" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="45" ry="58" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="25" ry="34" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
-              <path d="M0 135 Q55 60 110 135 Q165 210 220 135" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2" />
-              <path d="M0 100 Q55 30 110 100 Q165 170 220 100" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-              <path d="M0 170 Q55 95 110 170 Q165 245 220 170" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+              <defs>
+                <linearGradient id="hhSky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#17110A" />
+                  <stop offset="48%" stopColor="#241B11" />
+                  <stop offset="100%" stopColor="#0A0705" />
+                </linearGradient>
+                <radialGradient id="hhMoonGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#F6EBD2" stopOpacity="0.8" />
+                  <stop offset="55%" stopColor="#E4D2A8" stopOpacity="0.26" />
+                  <stop offset="100%" stopColor="#E4D2A8" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="hhMoon" cx="38%" cy="34%" r="72%">
+                  <stop offset="0%" stopColor="#FCF6E6" />
+                  <stop offset="60%" stopColor="#EADFC2" />
+                  <stop offset="100%" stopColor="#C9B892" />
+                </radialGradient>
+                <radialGradient id="hhVignette" cx="50%" cy="45%" r="72%">
+                  <stop offset="55%" stopColor="#000000" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#000000" stopOpacity="0.7" />
+                </radialGradient>
+                <radialGradient id="hhWindowGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#E9C87F" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#E9C87F" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              {/* Sepia night sky */}
+              <rect width="180" height="250" fill="url(#hhSky)" />
+
+              {/* Cloud bands drifting across the sky */}
+              <g fill="#0E0B07">
+                <ellipse cx="54" cy="30" rx="48" ry="9" opacity="0.75" />
+                <ellipse cx="124" cy="20" rx="52" ry="8" opacity="0.7" />
+                <ellipse cx="28" cy="80" rx="40" ry="7" opacity="0.6" />
+                <ellipse cx="146" cy="70" rx="46" ry="7" opacity="0.55" />
+              </g>
+
+              {/* Glowing full moon */}
+              <circle cx="46" cy="56" r="44" fill="url(#hhMoonGlow)" />
+              <circle cx="46" cy="56" r="25" fill="url(#hhMoon)" />
+              <circle cx="38" cy="49" r="4.6" fill="#D6C9A5" opacity="0.55" />
+              <circle cx="56" cy="63" r="3.4" fill="#D6C9A5" opacity="0.5" />
+              <circle cx="51" cy="45" r="2.3" fill="#D6C9A5" opacity="0.45" />
+              <ellipse cx="62" cy="68" rx="34" ry="5" fill="#100C08" opacity="0.7" />
+
+              {/* Bats flying overhead */}
+              <g fill="#080503">
+                <path
+                  transform="translate(98, 38)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+                <path
+                  transform="translate(132, 56) scale(0.68)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+                <path
+                  transform="translate(72, 104) scale(0.5)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+              </g>
+
+              {/* Victorian haunted mansion silhouette */}
+              <g fill="#070402">
+                <polygon points="30,132 51,98 72,132" />
+                <rect x="40" y="132" width="22" height="86" />
+                <polygon points="110,138 129,106 148,138" />
+                <rect x="118" y="138" width="22" height="80" />
+                <polygon points="56,154 90,124 124,154" />
+                <rect x="60" y="154" width="60" height="64" />
+                <rect x="86" y="196" width="12" height="22" />
+              </g>
+              {/* Lit windows + porch glow */}
+              <g fill="#E9C87F">
+                <rect x="47" y="146" width="7" height="9" opacity="0.85" />
+                <rect x="126" y="152" width="7" height="9" opacity="0.8" />
+                <rect x="69" y="166" width="7" height="9" opacity="0.75" />
+                <rect x="98" y="166" width="7" height="9" opacity="0.7" />
+                <rect x="69" y="184" width="7" height="9" opacity="0.6" />
+                <rect x="98" y="184" width="7" height="9" opacity="0.65" />
+                <rect x="88" y="200" width="8" height="18" opacity="0.75" />
+              </g>
+              <circle cx="90" cy="208" r="26" fill="url(#hhWindowGlow)" opacity="0.5" />
+
+              {/* Fog rolling at the base */}
+              <g fill="#C9B48A">
+                <ellipse cx="40" cy="224" rx="46" ry="7" opacity="0.14" />
+                <ellipse cx="132" cy="230" rx="52" ry="8" opacity="0.12" />
+                <ellipse cx="86" cy="240" rx="70" ry="9" opacity="0.1" />
+              </g>
+
+              {/* Ground */}
+              <rect x="0" y="218" width="180" height="32" fill="#060402" />
+
+              {/* Sepia vignette */}
+              <rect width="180" height="250" fill="url(#hhVignette)" />
             </svg>
 
             {/* Badge row */}
             <div className="relative flex justify-between items-center w-full z-10">
-              <span className="inline-flex items-center text-[8px] font-bold px-1.5 py-0.5 tracking-wider uppercase text-white bg-white/20 rounded-full backdrop-blur-sm border border-white/30">
-                BIRTHDAY
+              <span className="inline-flex items-center text-[9px] sm:text-[10px] font-extrabold px-2.5 py-1 tracking-[0.14em] uppercase text-[#1E1B4B] bg-orange-400 rounded-full border border-orange-200/80 shadow-[0_0_14px_rgba(255,138,0,0.7)]">
+                PREMIUM
               </span>
-              <div className="w-5 h-5 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
-                <Cake className="w-3 h-3 text-white" />
+              <div className="w-6 h-6 rounded-full bg-orange-400/90 border border-orange-200/70 flex items-center justify-center backdrop-blur-sm shadow-[0_0_14px_rgba(255,138,0,0.7)]">
+                <Sparkles className="w-3.5 h-3.5 text-[#1E1B4B]" />
               </div>
             </div>
 
             {/* Center content */}
             <div className="relative my-auto z-10">
-              <div className="text-[8.5px] text-white/80 leading-none">You&apos;re invited to</div>
-              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
-                Maya&apos;s 5th<br />Birthday
+              <div className="text-[9px] sm:text-[10px] text-[#E8DCC0]/90 leading-none uppercase tracking-[0.2em] font-semibold">
+                You&apos;re invited to a
               </div>
-              <div className="text-[8px] text-white/85 leading-tight mt-0.5">Sat, June 14 · 2:00 PM</div>
+              <div
+                className="text-[18px] sm:text-[21px] font-black uppercase text-white leading-[0.95] tracking-tight mt-1.5 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]"
+                style={{
+                  fontFamily: "'Arial Black', 'Impact', 'Haettenschweiler', sans-serif",
+                  transform: "skewX(-5deg)",
+                }}
+              >
+                Haunted House<br />Party
+              </div>
+              <div
+                className="text-[8.5px] sm:text-[10px] text-white/90 leading-relaxed mt-2.5 font-semibold uppercase tracking-wide"
+                style={{ fontFamily: "'Courier New', Courier, monospace" }}
+              >
+                October 18th at 7 PM
+                <br />
+                The Jackson Residence
+              </div>
             </div>
 
-            {/* Host row */}
-            <div className="relative text-[7.5px] text-white/75 mt-auto pt-1.5 border-t border-white/20 z-10">
-              Hosted by The Patels
+            {/* Footer row */}
+            <div className="relative text-[9px] sm:text-[10px] text-[#D9C7A4]/95 mt-auto pt-2 border-t border-white/20 z-10 uppercase tracking-wide flex items-center justify-between">
+              <span>Haunted House Party</span>
+              <span className="text-orange-400 font-bold">RSVP Now</span>
             </div>
-          </div>
+          </motion.div>
+        </motion.div>
 
-          {/* Right Side Floating Card (Wedding) */}
-          <div
-            className="hidden lg:flex flex-col justify-between absolute top-10 left-full ml-3 lg:ml-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left transition-transform duration-300 ease-out"
+        {/* Right Side Floating Card (Spooky Witch & Cauldron) with Parallax Scroll & Floating Motion */}
+        <motion.div
+          style={{
+            y: rightY,
+            opacity: rightFade,
+            scale: rightScale,
+          }}
+          className="hidden lg:block absolute top-10 left-full ml-3 lg:ml-5 xl:ml-7 z-20 will-change-transform select-none"
+        >
+          <motion.div
+            variants={rightCardVariants}
+            animate="animate"
+            whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.25 } }}
+            className="w-48 sm:w-56 md:w-60 aspect-[3/4.2] flex flex-col justify-between p-4 sm:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
             style={{
-              background: "linear-gradient(145deg, #4A1FB8 0%, #5825E3 30%, #1565C0 65%, #00D2FF 90%, #00F0FF 100%)",
-              transform: "rotate(6deg)",
-              boxShadow: "0 25px 50px -12px rgba(74, 31, 184, 0.4), 0 15px 30px -10px rgba(0, 210, 255, 0.3)",
+              background: "#050302 url('/templates/halloween-feast-bg.png') center / cover no-repeat",
+              boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.6), 0 0 26px rgba(192, 132, 252, 0.45)",
             }}
-            aria-hidden="true"
+            onClick={() => {
+              setPrompt("Organize a festive Halloween feast & dinner party with eerie cocktail pairings, pumpkin carving, haunted mansion music, and wicked treats.");
+            }}
+            title="Click to use Halloween Feast party prompt"
           >
-            {/* Orbital ellipse SVG overlay */}
-            <svg
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 220 270"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(0,240,255,0.18)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(0,210,255,0.12)" strokeWidth="1" transform="rotate(40 110 135)" />
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(150,100,255,0.13)" strokeWidth="1" transform="rotate(80 110 135)" />
-              <ellipse cx="110" cy="135" rx="70" ry="42" stroke="rgba(0,240,255,0.14)" strokeWidth="1" transform="rotate(20 110 135)" />
-              <ellipse cx="110" cy="135" rx="70" ry="42" stroke="rgba(150,100,255,0.10)" strokeWidth="1" transform="rotate(60 110 135)" />
-              <circle cx="110" cy="135" r="4" fill="rgba(0,240,255,0.35)" />
-              <circle cx="110" cy="75" r="2.5" fill="rgba(0,240,255,0.25)" />
-              <circle cx="185" cy="135" r="2" fill="rgba(150,100,255,0.3)" />
-            </svg>
+            {/* Artwork provided by /templates/halloween-feast-bg.png (spiderwebs, chandelier, cauldron & props) */}
 
             {/* Badge row */}
             <div className="relative flex justify-between items-center w-full z-10">
-              <span className="inline-flex items-center text-[8px] font-bold px-1.5 py-0.5 tracking-wider uppercase text-white bg-white/20 rounded-full backdrop-blur-sm border border-white/30">
-                WEDDING
+              <span className="inline-flex items-center text-[9px] sm:text-[10px] font-extrabold px-2.5 py-1 tracking-[0.14em] uppercase text-[#2E1065] bg-lime-300 rounded-full border border-lime-200/80 shadow-[0_0_14px_rgba(190,243,192,0.7)]">
+                TRENDING
               </span>
-              <div className="w-5 h-5 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
-                <Heart className="w-3 h-3 text-white" />
+              <div className="w-6 h-6 rounded-full bg-fuchsia-400/90 border border-fuchsia-200/70 flex items-center justify-center backdrop-blur-sm shadow-[0_0_14px_rgba(232,121,249,0.7)]">
+                <Wand2 className="w-3.5 h-3.5 text-[#1A0533]" />
               </div>
             </div>
 
             {/* Center content */}
             <div className="relative my-auto z-10">
-              <div className="text-[8.5px] text-white/80 leading-none">You&apos;re invited to</div>
-              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
-                Liam &amp;<br />Sofia
+              <div
+                className="text-[18px] sm:text-[21px] text-[#F7E9CC] leading-[1.05] tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]"
+                style={{
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontStyle: "italic",
+                  fontWeight: 700,
+                }}
+              >
+                Let&apos;s eat, drink,<br />&amp; be scary!
               </div>
-              <div className="text-[8px] text-white/85 leading-tight mt-0.5">Sept 21 · 5:00 PM<br />Vineyard Estate</div>
+              <div className="text-[8.5px] sm:text-[9.5px] text-white/90 leading-none uppercase tracking-[0.14em] font-semibold mt-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                You&apos;re invited to a spooky
+                <br />
+                Halloween party!
+              </div>
+              <div
+                className="text-[8.5px] sm:text-[9.5px] text-[#F5C97E] leading-snug mt-2.5 font-semibold uppercase tracking-wide"
+                style={{ fontFamily: "'Courier New', Courier, monospace" }}
+              >
+                Saturday, October 20th at 7 PM
+              </div>
             </div>
 
-            {/* Host row */}
-            <div className="relative text-[7.5px] text-white/75 mt-auto pt-1.5 border-t border-white/20 z-10">
-              Together with their families
+            {/* Smooth dark bottom vignette to ensure footer text sits on rich seamless backdrop */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050302] via-[#050302]/80 to-transparent pointer-events-none z-0" />
+
+            {/* Footer row */}
+            <div className="relative text-[9px] sm:text-[10px] text-white/85 mt-auto pt-2 border-t border-white/20 z-10 uppercase tracking-wide flex items-center justify-between">
+              <span>Spooky Halloween Party</span>
+              <span className="text-lime-300 font-bold">RSVP Now</span>
             </div>
-          </div>
+          </motion.div>
+        </motion.div>
 
           {/* Central Interactive Hero Card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left">
+          <motion.div
+            style={{
+              scale: centerScale,
+              y: centerPerspectiveY,
+            }}
+            className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left will-change-transform"
+          >
             {/* Tabs (Top of Card) */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {tabs.map((tab) => {
@@ -1223,10 +1509,15 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             {activeTab === 0 && (
               <div className="space-y-4 sm:space-y-5">
                 {/* Heading with Wand icon */}
-                <div className="flex items-center gap-2 text-gray-800">
-                  <Wand2 className="w-4 h-4 text-[#7C3AED]" />
-                  <span className="font-semibold text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif" }}>
-                    Describe your event and let AI build it
+                <div className="flex items-center justify-between text-gray-800">
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-[#7C3AED]" />
+                    <span className="font-semibold text-xs sm:text-sm font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                      Describe your event and let AI build it
+                    </span>
+                  </div>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
+                    <Sparkles className="w-3 h-3 text-[#7C3AED]" /> Seasonal Prompts
                   </span>
                 </div>
                 
@@ -1234,7 +1525,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 <div 
                   className="relative bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-text min-h-[125px]"
                 >
-                  <textarea
+                  <SeasonalTypewriterTextarea
                     rows={3}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
@@ -1244,7 +1535,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         handleGenerate();
                       }
                     }}
-                    placeholder="e.g. Plan a rustic outdoor wedding for 120 guests with a warm autumn palette, live acoustic music, and a relaxed dinner under string lights..."
+                    disabled={generating}
                     className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none pr-12 leading-relaxed min-h-[80px]"
                   />
 
@@ -1274,13 +1565,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {quickPrompts.map((item, idx) => (
                     <button
                       key={idx}
+                      type="button"
                       onClick={() => {
                         setPrompt(item.promptText);
                       }}
-                      className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-4 py-2 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center"
+                      className="flex-1 text-left sm:text-center text-[11px] sm:text-xs font-medium px-4 py-2.5 rounded-full bg-[#F3F0FF] hover:bg-[#ECE8FF] text-gray-700 border border-[#E0D7FE] transition-all truncate cursor-pointer active:scale-95 flex items-center gap-1.5 justify-center hover:border-purple-300 hover:shadow-sm group"
                       title={item.promptText}
                     >
-                      <span className="text-[#7C3AED] text-xs">✨</span>
+                      <span className="text-[#7C3AED] text-xs transition-transform group-hover:scale-125">✨</span>
                       <span className="truncate">{item.label}</span>
                     </button>
                   ))}
@@ -1413,35 +1705,29 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                   {/* Heading & Counter Badge + View All CTA */}
                   <div className="flex items-center justify-between gap-2 mb-2.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xs sm:text-sm font-normal text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
-                        Choose from editable templates
-                      </h3>
+                      <AnimatedHeading delay={0.05}>
+                        <h3 className="text-xs sm:text-sm font-normal text-gray-900 font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                          Choose from editable templates
+                        </h3>
+                      </AnimatedHeading>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#F0EEFF] text-[#6C5CE7] border border-[#6C5CE7]/20">
                         {filteredTemplates.length} available
                       </span>
                     </div>
 
-                    <a
-                      href="#templates"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const el = document.getElementById("templates");
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth" });
-                        } else {
-                          router.push("/dashboard/invitations");
-                        }
-                      }}
+                    <button
+                      type="button"
+                      onClick={handleViewAllTemplates}
                       className="text-[11px] font-semibold text-[#6C5CE7] hover:text-[#5E35B1] hover:underline whitespace-nowrap flex items-center gap-1 transition-colors cursor-pointer group"
                     >
                       <span>View All Templates</span>
                       <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-                    </a>
+                    </button>
                   </div>
                   
                   {/* Category Pills */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
+                    {["All", "Halloween", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
                       const isSelected = selectedCategory === cat;
                       return (
                         <button
@@ -1471,6 +1757,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     </div>
                   ) : (
                     <div 
+                      ref={templateGridRef}
                       onScroll={handleTemplateScroll}
                       className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 max-h-[380px] sm:max-h-[440px] overflow-y-auto pr-1.5 pb-2 custom-scrollbar scrollbar-thin scrollbar-thumb-gray-300"
                     >
@@ -1482,37 +1769,59 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         const isPremium = badgeText === "PREMIUM";
 
                         // Build comprehensive template design configuration to match Home page
-                        const resolvedTemplate = tplConfig || {
-                          id: tpl.id,
-                          title: tpl.name,
-                          category: tpl.category,
-                          image: imgUrl,
-                          card: {
-                            artworkUrl: imgUrl,
-                            backgroundColor: "#FFFFFF",
-                          },
-                          defaultTextLayers: [
-                            {
-                              id: "title",
-                              key: "title",
-                              text: tpl.name,
-                              fontFamily: "'Playfair Display', serif",
-                              fontSize: 24,
-                              fontWeight: "700",
-                              color: "#111827",
-                              textAlign: "center",
-                              top: 40,
-                              left: 50,
-                            },
-                          ],
-                        };
+                        const resolvedTemplate = tplConfig
+                          ? {
+                              ...tplConfig,
+                              isLayered: Boolean(tpl.isLayered || (tplConfig as any).isLayered),
+                              defaultTextLayers:
+                                tplConfig.defaultTextLayers && tplConfig.defaultTextLayers.length > 0
+                                  ? tplConfig.defaultTextLayers
+                                  : tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0
+                                  ? tpl.defaultTextLayers
+                                  : tplConfig.defaultTextLayers,
+                              canvasData:
+                                tplConfig.canvasData && tplConfig.canvasData.layers && tplConfig.canvasData.layers.length > 0
+                                  ? tplConfig.canvasData
+                                  : tpl.canvasData && tpl.canvasData.layers && tpl.canvasData.layers.length > 0
+                                  ? tpl.canvasData
+                                  : tplConfig.canvasData,
+                            }
+                          : {
+                              id: tpl.id,
+                              title: tpl.name,
+                              category: tpl.category,
+                              image: imgUrl,
+                              isLayered: Boolean(tpl.isLayered),
+                              canvasData: tpl.canvasData,
+                              card: {
+                                artworkUrl: imgUrl,
+                                backgroundColor: "#FFFFFF",
+                              },
+                              defaultTextLayers:
+                                tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0
+                                  ? tpl.defaultTextLayers
+                                  : [
+                                      {
+                                        id: "title",
+                                        key: "title",
+                                        text: tpl.name,
+                                        fontFamily: "'Playfair Display', serif",
+                                        fontSize: 24,
+                                        fontWeight: "700",
+                                        color: "#111827",
+                                        textAlign: "center",
+                                        top: 40,
+                                        left: 50,
+                                      },
+                                    ],
+                            };
 
                         return (
                           <div
                             key={tpl.id}
                             onClick={() => {
                               handleSelectTemplate(tpl);
-                              router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
+                              handleCreateFromTemplate(tpl);
                             }}
                             className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white shadow-sm hover:shadow-xl ${
                               isSelected
@@ -1567,7 +1876,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelectTemplate(tpl);
-                                    router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
+                                    // Create the event from THIS template first so the canvas
+                                    // opens against a real event that carries the exact
+                                    // template id/canvasData (instead of a previous event).
+                                    handleCreateFromTemplate(tpl);
                                   }}
                                   className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
                                 >
@@ -1865,7 +2177,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 

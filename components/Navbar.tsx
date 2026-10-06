@@ -16,6 +16,7 @@ export interface NavLinkItem {
 }
 
 const navLinks: NavLinkItem[] = [
+  { label: "Home", href: "/" },
   { label: "Features", href: "#features" },
   { label: "Templates", href: "#templates" },
   { label: "Pricing", href: "/pricing" },
@@ -86,6 +87,16 @@ export default function Navbar() {
       router.push("/dashboard/ai-assistant");
     } else {
       router.push("/dashboard/ai-assistant");
+    }
+  };
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    if (isHomePage) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (typeof window !== "undefined" && window.location.hash) {
+        window.history.pushState(null, "", "/");
+      }
     }
   };
 
@@ -210,6 +221,22 @@ export default function Navbar() {
         {!isDashboard && (
         <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-serif" style={{ fontFamily: "Georgia, serif" }}>
           {visibleNavLinks.map((link) => {
+            if (link.label === "Home") {
+              const active = isHomePage && (!pathname || pathname === "/");
+              return (
+                <Link
+                  key={link.label}
+                  href="/"
+                  onClick={handleHomeClick}
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
+                    active ? "text-gray-900 font-semibold" : "text-gray-800 hover:text-black"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            }
             if (link.label === "Features") {
               return (
                 <div
@@ -337,6 +364,25 @@ export default function Navbar() {
       {open && !isDashboard && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-serif shadow-lg" style={{ fontFamily: "Georgia, serif" }}>
           {visibleNavLinks.map((link) => {
+            if (link.label === "Home") {
+              const active = isHomePage && (!pathname || pathname === "/");
+              return (
+                <Link
+                  key={link.label}
+                  href="/"
+                  onClick={(e) => {
+                    setOpen(false);
+                    handleHomeClick(e);
+                  }}
+                  style={{ fontFamily: "Georgia, serif" }}
+                  className={`text-base font-serif font-medium transition-colors ${
+                    active ? "text-gray-900 font-semibold" : "text-[#4B5563] hover:text-gray-900"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            }
             if (link.label === "Features") {
               return (
                 <div key={link.label} className="flex flex-col">

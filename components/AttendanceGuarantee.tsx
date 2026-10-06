@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Users, Briefcase, Heart, Building2 } from "lucide-react";
+import AnimatedHeading from "./AnimatedHeading";
 
 const steps = [
   {
@@ -93,9 +94,11 @@ export default function AttendanceGuarantee() {
           </div>
 
           {/* Heading */}
-          <h2 className="text-3xl md:text-4xl font-normal text-slate-900 mt-4 tracking-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
-            Reduce no-shows with confidence
-          </h2>
+          <AnimatedHeading>
+            <h2 className="text-3xl md:text-4xl font-normal text-slate-900 mt-4 tracking-tight font-serif" style={{ fontFamily: "Georgia, serif" }}>
+              Reduce no-shows with confidence
+            </h2>
+          </AnimatedHeading>
 
           {/* Subheading */}
           <p className="text-slate-600 mt-2 text-base md:text-lg leading-relaxed">
@@ -137,9 +140,11 @@ export default function AttendanceGuarantee() {
         <div className="mt-16 md:mt-20 pt-4">
           {/* Section Header (Centered) */}
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-normal text-slate-900 text-center font-serif tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
-              Built for every kind of event
-            </h2>
+            <AnimatedHeading>
+              <h2 className="text-3xl md:text-4xl font-normal text-slate-900 text-center font-serif tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
+                Built for every kind of event
+              </h2>
+            </AnimatedHeading>
           </div>
 
           {/* 4-Column Feature Cards Grid */}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
+import AnimatedHeading from "./AnimatedHeading";
 
 const productLinks = [
   { label: "Invitations", href: "/features/invitations-rsvp" },
@@ -138,9 +139,11 @@ export default function Footer() {
           {/* Top-Right (Newsletter Subscription) */}
           <div className="lg:col-span-6 lg:flex lg:flex-col lg:items-end">
             <div className="w-full max-w-md">
-              <h3 className="text-base font-normal text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
-                Join the celebration
-              </h3>
+              <AnimatedHeading delay={0.1}>
+                <h3 className="text-base font-normal text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                  Join the celebration
+                </h3>
+              </AnimatedHeading>
               <p className="text-sm text-[#64748b] mb-4">
                 Get product updates, event tips and templates in your inbox.
               </p>
@@ -252,9 +255,11 @@ export default function Footer() {
           {/* Right CTA Card */}
           <div className="md:col-span-2 lg:col-span-5">
             <div className="rounded-2xl shadow-md p-6 sm:p-7 bg-white border border-slate-100/90 hover:shadow-lg transition-shadow">
-              <h4 className="text-xl font-normal text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
-                Ready to start?
-              </h4>
+              <AnimatedHeading delay={0.15}>
+                <h4 className="text-xl font-normal text-slate-900 mb-1 font-serif" style={{ fontFamily: "Georgia, serif" }}>
+                  Ready to start?
+                </h4>
+              </AnimatedHeading>
               <p className="text-sm text-[#64748b] mb-6">
                 Your first event is free.
               </p>

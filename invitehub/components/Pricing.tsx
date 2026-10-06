@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight } from "lucide-react";
+import AnimatedHeading from "./AnimatedHeading";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -44,9 +45,11 @@ export default function Pricing() {
             <Sparkles className="w-4 h-4" />
             Plans for everyone
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance">
-            Pricing that fits how you gather
-          </h2>
+          <AnimatedHeading>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance">
+              Pricing that fits how you gather
+            </h2>
+          </AnimatedHeading>
           <p className="text-foreground/60 text-slate-600 mb-8 max-w-xl mx-auto">
             Whether you&apos;re planning a birthday, a company offsite, or a nonprofit gala — there&apos;s a plan built for you.
           </p>

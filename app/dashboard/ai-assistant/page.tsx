@@ -1373,30 +1373,52 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           const isPremium = badgeText === "PREMIUM";
 
                           // Build comprehensive template design configuration to match Home page
-                          const resolvedTemplate = tplConfig || {
-                            id: tpl.id,
-                            title: tpl.name,
-                            category: tpl.category,
-                            image: imgUrl,
-                            card: {
-                              artworkUrl: imgUrl,
-                              backgroundColor: "#FFFFFF",
-                            },
-                            defaultTextLayers: [
-                              {
-                                id: "title",
-                                key: "title",
-                                text: tpl.name,
-                                fontFamily: "'Playfair Display', serif",
-                                fontSize: 24,
-                                fontWeight: "700",
-                                color: "#111827",
-                                textAlign: "center",
-                                top: 40,
-                                left: 50,
-                              },
-                            ],
-                          };
+                          const resolvedTemplate = tplConfig
+                            ? {
+                                ...tplConfig,
+                                isLayered: Boolean(tpl.isLayered || (tplConfig as any).isLayered),
+                                defaultTextLayers:
+                                  tplConfig.defaultTextLayers && tplConfig.defaultTextLayers.length > 0
+                                    ? tplConfig.defaultTextLayers
+                                    : tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0
+                                    ? tpl.defaultTextLayers
+                                    : tplConfig.defaultTextLayers,
+                                canvasData:
+                                  tplConfig.canvasData && tplConfig.canvasData.layers && tplConfig.canvasData.layers.length > 0
+                                    ? tplConfig.canvasData
+                                    : tpl.canvasData && tpl.canvasData.layers && tpl.canvasData.layers.length > 0
+                                    ? tpl.canvasData
+                                    : tplConfig.canvasData,
+                              }
+                            : {
+                                id: tpl.id,
+                                title: tpl.name,
+                                category: tpl.category,
+                                image: imgUrl,
+                                isLayered: Boolean(tpl.isLayered),
+                                canvasData: tpl.canvasData,
+                                card: {
+                                  artworkUrl: imgUrl,
+                                  backgroundColor: "#FFFFFF",
+                                },
+                                defaultTextLayers:
+                                  tpl.defaultTextLayers && tpl.defaultTextLayers.length > 0
+                                    ? tpl.defaultTextLayers
+                                    : [
+                                        {
+                                          id: "title",
+                                          key: "title",
+                                          text: tpl.name,
+                                          fontFamily: "'Playfair Display', serif",
+                                          fontSize: 24,
+                                          fontWeight: "700",
+                                          color: "#111827",
+                                          textAlign: "center",
+                                          top: 40,
+                                          left: 50,
+                                        },
+                                      ],
+                              };
 
                           return (
                             <div

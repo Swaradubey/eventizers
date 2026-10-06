@@ -7,6 +7,14 @@ import { Heart, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "./AuthModal";
 import templateService from "@/services/templateService";
+import eventService from "@/services/eventService";
+import AnimatedHeading from "./AnimatedHeading";
+
+const getDefaultEventDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().split("T")[0];
+};
 
 export interface CuratedTemplate {
   id: string;
@@ -22,161 +30,342 @@ export interface CuratedTemplate {
   accentColor?: string;
   description?: string;
   isPremium?: boolean;
+  aspectRatio?: "square" | "vertical";
+  isSquare?: boolean;
+  // Serialized canvas payload (layers/background) when the template carries one.
+  canvasData?: any;
 }
 
 export interface TemplatesProps {
   onSelectTemplate?: (templateId: string) => void;
 }
 
-// 9 Curated Halloween & Fall Event Templates
-export const HALLOWEEN_TEMPLATES: CuratedTemplate[] = [
+// Curated Square / Landscape Stationery Templates (Envelope & flatlay format)
+export const SQUARE_TEMPLATES: CuratedTemplate[] = [
   {
-    id: "halloween-feast",
-    title: "Halloween Feast",
+    id: "retro-little-monsters",
+    title: "Retro Little Monsters",
     category: "Halloween",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/halloween-feast.png",
-    imageUrl: "/templates/halloween-feast.png",
-    thumbnailUrl: "/templates/halloween-feast.png",
-    accentColor: "from-amber-500/20 to-orange-600/30",
-    description: "Let's eat, drink, & be scary dinner party theme"
-  },
-  {
-    id: "glowing-pumpkins",
-    title: "Glowing Pumpkins",
-    category: "Halloween",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/glowing-pumpkins.png",
-    imageUrl: "/templates/glowing-pumpkins.png",
-    thumbnailUrl: "/templates/glowing-pumpkins.png",
-    accentColor: "from-orange-500/20 to-yellow-600/30",
-    description: "Halloween Bash with classic glowing jack-o'-lanterns"
-  },
-  {
-    id: "sweet-not-scary",
-    title: "Sweet, Not Scary",
-    category: "Kids Halloween",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/sweet-not-scary.png",
-    imageUrl: "/templates/sweet-not-scary.png",
-    thumbnailUrl: "/templates/sweet-not-scary.png",
-    accentColor: "from-pink-400/20 to-rose-500/30",
-    description: "Soft pink cute BOO! theme for kids and treats"
-  },
-  {
-    id: "dramatic-doily",
-    title: "Dramatic Doily",
-    category: "Gothic & Dinner",
     badge: "Premium",
     isPremium: true,
-    image: "/templates/dramatic-doily.png",
-    imageUrl: "/templates/dramatic-doily.png",
-    thumbnailUrl: "/templates/dramatic-doily.png",
-    accentColor: "from-red-900/30 to-rose-950/40",
-    description: "Dying to party with you vintage lace & candlelight"
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/retro-little-monsters.svg",
+    imageUrl: "/templates/retro-little-monsters.svg",
+    thumbnailUrl: "/templates/retro-little-monsters.svg",
+    accentColor: "from-violet-500/20 to-emerald-500/30",
+    description: "Groovy monsters throw a monstrously good time"
   },
   {
-    id: "candy-cauldron",
-    title: "Candy Cauldron",
-    category: "Trick or Treat",
+    id: "creepy-cake",
+    title: "Creepy Cake",
+    category: "Halloween",
     badge: "Premium",
     isPremium: true,
-    image: "/templates/candy-cauldron.png",
-    imageUrl: "/templates/candy-cauldron.png",
-    thumbnailUrl: "/templates/candy-cauldron.png",
-    accentColor: "from-emerald-500/20 to-teal-700/30",
-    description: "A party is brewing witch cauldron full of candy"
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/creepy-cake.svg",
+    imageUrl: "/templates/creepy-cake.svg",
+    thumbnailUrl: "/templates/creepy-cake.svg",
+    accentColor: "from-orange-500/20 to-red-600/30",
+    description: "Spooky three-tier cake for a frighteningly fun bash"
   },
   {
     id: "holographic-hey-boo",
     title: "Holographic Hey Boo",
-    category: "Trendy / Disco",
+    category: "Halloween",
     badge: "Premium",
     isPremium: true,
-    image: "/templates/holographic-hey-boo.png",
-    imageUrl: "/templates/holographic-hey-boo.png",
-    thumbnailUrl: "/templates/holographic-hey-boo.png",
-    accentColor: "from-purple-500/20 to-fuchsia-600/30",
-    description: "Modern iridescent pastel holographic spooky party"
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/holographic-hey-boo.svg",
+    imageUrl: "/templates/holographic-hey-boo.svg",
+    thumbnailUrl: "/templates/holographic-hey-boo.svg",
+    accentColor: "from-pink-400/20 to-sky-400/30",
+    description: "Iridescent pastel ghosts, cats & pumpkins"
   },
   {
-    id: "halloween-string-lights",
-    title: "Halloween String Lights",
-    category: "Party & Night",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/halloween-string-lights.png",
-    imageUrl: "/templates/halloween-string-lights.png",
-    thumbnailUrl: "/templates/halloween-string-lights.png",
-    accentColor: "from-amber-400/20 to-orange-500/30",
-    description: "Bunting banner and pumpkin string light party"
+    id: "gilded-horror",
+    title: "Gilded Horror",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/gilded-horror.svg",
+    imageUrl: "/templates/gilded-horror.svg",
+    thumbnailUrl: "/templates/gilded-horror.svg",
+    accentColor: "from-amber-500/20 to-yellow-700/30",
+    description: "Ornate antique gold frame with spiderweb detailing"
   },
   {
-    id: "lets-boogie",
-    title: "Let's Boogie",
-    category: "Costume Party",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/lets-boogie.png",
-    imageUrl: "/templates/lets-boogie.png",
-    thumbnailUrl: "/templates/lets-boogie.png",
-    accentColor: "from-indigo-500/20 to-purple-600/30",
-    description: "Spooky costume dance party with cute monsters"
+    id: "ribbons-bows",
+    title: "Ribbons, Bows",
+    category: "Bridal Shower",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/ribbons-bows-mockup.svg",
+    imageUrl: "/assets/templates/ribbons-bows-mockup.svg",
+    accentColor: "from-zinc-800/20 to-zinc-950/30",
+    description: "Sharp black-and-white striped liner with minimalist silk bow"
   },
   {
-    id: "peanuts-spooky-snoopy",
-    title: "Vintage Spooky Snoopy",
-    category: "Vintage / Classic",
-    badge: "Free",
-    isPremium: false,
-    image: "/templates/spooky-snoopy.png",
-    imageUrl: "/templates/spooky-snoopy.png",
-    thumbnailUrl: "/templates/spooky-snoopy.png",
-    accentColor: "from-lime-500/20 to-amber-700/30",
-    description: "Retro cartoon pumpkin patch & candlelit invitation"
+    id: "painted-petals",
+    title: "Painted Petals",
+    category: "Wedding",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/painted-petals-mockup.svg",
+    imageUrl: "/assets/templates/painted-petals-mockup.svg",
+    accentColor: "from-rose-400/20 to-pink-600/30",
+    description: "Delicate hand-painted watercolor petals with romantic script"
+  },
+  {
+    id: "lemons-blossoms",
+    title: "Lemons & Blossoms",
+    category: "Bridal Shower",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/lemons-blossoms-mockup.svg",
+    imageUrl: "/assets/templates/lemons-blossoms-mockup.svg",
+    accentColor: "from-amber-400/20 to-yellow-500/30",
+    description: "Sun-drenched Amalfi citrus and fragrant blossoms"
+  },
+  {
+    id: "mamma-mia",
+    title: "Mamma Mia",
+    category: "Birthday",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/mamma-mia-mockup.svg",
+    imageUrl: "/assets/templates/mamma-mia-mockup.svg",
+    accentColor: "from-sky-500/20 to-blue-600/30",
+    description: "Vibrant Mediterranean Greek isle celebration"
+  },
+  {
+    id: "moonlit-grove",
+    title: "Moonlit Grove",
+    category: "Corporate",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/moonlit-grove-mockup.svg",
+    imageUrl: "/assets/templates/moonlit-grove-mockup.svg",
+    accentColor: "from-emerald-600/20 to-teal-800/30",
+    description: "Mystical twilight forest with deep emerald shadows"
+  },
+  {
+    id: "taste-of-italy",
+    title: "Taste of Italy",
+    category: "Holiday",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "square",
+    isSquare: true,
+    thumbnailUrl: "/assets/templates/taste-of-italy-mockup.svg",
+    imageUrl: "/assets/templates/taste-of-italy-mockup.svg",
+    accentColor: "from-orange-600/20 to-red-700/30",
+    description: "Warm rustic Italian dinner under string lights"
   }
 ];
 
-// All Curated Stationery Templates
-export const CURATED_TEMPLATES: CuratedTemplate[] = [
-  ...HALLOWEEN_TEMPLATES,
+export const HALLOWEEN_TEMPLATES: CuratedTemplate[] = SQUARE_TEMPLATES.slice(0, 4);
+
+// Curated Vertical / Portrait Stationery Templates (Portrait card format)
+export const VERTICAL_TEMPLATES: CuratedTemplate[] = [
   {
     id: "o-tannenbaum",
     title: "O Tannenbaum",
     badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
     category: "Holiday",
     accentColor: "from-emerald-500/20 to-green-700/30",
+    description: "Evergreen pine flatlay with festive gold accents"
   },
   {
     id: "metallic-paint-splatter",
     title: "Metallic Paint Splatter",
     badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
     category: "Corporate",
     tags: ["Corporate", "Holiday", "All"],
     accentColor: "from-amber-400/20 to-yellow-600/30",
+    description: "Contemporary metallic gold spatter on obsidian paper"
   },
   {
     id: "golden-foliage-holiday",
     title: "Golden Foliage Holiday",
     badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
     category: "Holiday",
     accentColor: "from-yellow-500/20 to-amber-600/30",
+    description: "Gilded winter botanicals and lustrous typography"
+  },
+  {
+    id: "template-everyones-family",
+    title: "Everyone's Family",
+    name: "Everyone's Family",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
+    category: "Thanksgiving",
+    tags: ["Thanksgiving", "Autumn", "Fall", "Holiday"],
+    thumbnailUrl: "/assets/templates/template-everyones-family-mockup.svg",
+    imageUrl: "/assets/templates/template-everyones-family-mockup.svg",
+    accentColor: "from-amber-600/20 to-orange-700/30",
+    description: "Woodland feast table with family-style place settings",
   },
   {
     id: "botanical-sketch-art",
     title: "Botanical Sketch (Art)",
     badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
     category: "Workshop",
     accentColor: "from-teal-500/20 to-emerald-600/30",
+    description: "Delicate pressed wild botanicals in hand-drawn charcoal"
+  },
+  {
+    id: "template-give-thanks",
+    title: "Give Thanks",
+    name: "Give Thanks",
+    badge: "Premium",
+    isPremium: true,
+    aspectRatio: "vertical",
+    category: "Thanksgiving",
+    tags: ["Thanksgiving", "Autumn", "Fall", "Holiday"],
+    thumbnailUrl: "/assets/templates/template-give-thanks-mockup.svg",
+    imageUrl: "/assets/templates/template-give-thanks-mockup.svg",
+    accentColor: "from-orange-500/20 to-red-600/30",
+    description: "Folk-art turkey framed by warm autumn leaves",
+  },
+  {
+    id: "template-thanksgiving-branches",
+    title: "Thanksgiving Branches",
+    name: "Thanksgiving Branches",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Thanksgiving",
+    tags: ["Thanksgiving", "Autumn", "Fall", "Holiday"],
+    thumbnailUrl: "/assets/templates/template-thanksgiving-branches-mockup.svg",
+    imageUrl: "/assets/templates/template-thanksgiving-branches-mockup.svg",
+    accentColor: "from-stone-400/20 to-amber-700/30",
+    description: "Delicate botanical branch etchings with a pumpkin vignette",
+  },
+  {
+    id: "tpl-chic-dinner-cake",
+    title: "Chic Dinner & Cake Celebration",
+    badge: "Premium",
+    aspectRatio: "vertical",
+    category: "Adult Birthday",
+    accentColor: "from-purple-500/20 to-indigo-600/30",
+  },
+  {
+    id: "tpl-modern-gold-black-balloon",
+    title: "Modern Gold & Black Balloon Bash",
+    badge: "Premium",
+    aspectRatio: "vertical",
+    category: "Adult Birthday",
+    accentColor: "from-amber-500/20 to-yellow-500/30",
+  },
+  {
+    id: "tpl-gold-ribbons-confetti",
+    title: "Gold Ribbons & Confetti",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Birthday",
+    accentColor: "from-yellow-400/20 to-amber-500/30",
+  },
+  {
+    id: "tpl-sparkle-balloons",
+    title: "Sparkle Balloons",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Birthday",
+    accentColor: "from-cyan-400/20 to-blue-500/30",
+  },
+  {
+    id: "tpl-celestial-flora",
+    title: "Celestial Flora",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Birthday",
+    accentColor: "from-indigo-400/20 to-purple-500/30",
+  },
+  {
+    id: "blush-burgundy-blooms",
+    title: "Blush & Burgundy Blooms",
+    badge: "Premium",
+    aspectRatio: "vertical",
+    category: "Bridal Shower",
+    accentColor: "from-rose-500/20 to-red-600/30",
+  },
+  {
+    id: "something-blue",
+    title: "Something Blue",
+    badge: "Premium",
+    aspectRatio: "vertical",
+    category: "Bridal Shower",
+    accentColor: "from-blue-400/20 to-indigo-500/30",
+  },
+  {
+    id: "autumn-blooms",
+    title: "Autumn Blooms",
+    badge: "Premium",
+    aspectRatio: "vertical",
+    category: "Bridal Shower",
+    accentColor: "from-amber-500/20 to-orange-600/30",
+  },
+  {
+    id: "tpl-abstract-nature-party",
+    title: "Abstract Nature Party",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Wedding",
+    accentColor: "from-emerald-400/20 to-teal-500/30",
+  },
+  {
+    id: "tpl-bright-blooms-garden",
+    title: "Bright Blooms Garden",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Wedding",
+    accentColor: "from-pink-400/20 to-rose-500/30",
+  },
+  {
+    id: "tpl-vibrant-blooms-wedding",
+    title: "Vibrant Blooms Wedding",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Wedding",
+    accentColor: "from-violet-400/20 to-purple-500/30",
+  },
+  {
+    id: "tpl-lily-of-the-valley",
+    title: "Lily of the Valley",
+    badge: "Free",
+    aspectRatio: "vertical",
+    category: "Wedding",
+    accentColor: "from-emerald-400/20 to-green-500/30",
   },
   {
     id: "citrus-splash",
     title: "Farewell Party",
     name: "Citrus Splash",
     badge: "Premium",
+    aspectRatio: "vertical",
     category: "Corporate",
     tags: ["Corporate", "Farewell", "Party"],
     accentColor: "from-orange-400/20 to-amber-500/30",
@@ -186,106 +375,63 @@ export const CURATED_TEMPLATES: CuratedTemplate[] = [
     title: "Annual Charity Gala",
     name: "Garden Blooms",
     badge: "Premium",
+    aspectRatio: "vertical",
     category: "Corporate",
     tags: ["Corporate", "Charity", "Gala", "Annual"],
     accentColor: "from-rose-400/20 to-pink-600/30",
   },
-  {
-    id: "tpl-chic-dinner-cake",
-    title: "Chic Dinner & Cake Celebration",
-    badge: "Premium",
-    category: "Adult Birthday",
-    accentColor: "from-purple-500/20 to-indigo-600/30",
-  },
-  {
-    id: "tpl-modern-gold-black-balloon",
-    title: "Modern Gold & Black Balloon Bash",
-    badge: "Premium",
-    category: "Adult Birthday",
-    accentColor: "from-amber-500/20 to-yellow-500/30",
-  },
-  {
-    id: "tpl-gold-ribbons-confetti",
-    title: "Gold Ribbons & Confetti",
-    badge: "Free",
-    category: "Birthday",
-    accentColor: "from-yellow-400/20 to-amber-500/30",
-  },
-  {
-    id: "tpl-sparkle-balloons",
-    title: "Sparkle Balloons",
-    badge: "Free",
-    category: "Birthday",
-    accentColor: "from-cyan-400/20 to-blue-500/30",
-  },
-  {
-    id: "tpl-celestial-flora",
-    title: "Celestial Flora",
-    badge: "Free",
-    category: "Birthday",
-    accentColor: "from-indigo-400/20 to-purple-500/30",
-  },
-  {
-    id: "tpl-abstract-nature-party",
-    title: "Abstract Nature Party",
-    badge: "Free",
-    category: "Wedding",
-    accentColor: "from-emerald-400/20 to-teal-500/30",
-  },
-  {
-    id: "tpl-bright-blooms-garden",
-    title: "Bright Blooms Garden",
-    badge: "Free",
-    category: "Wedding",
-    accentColor: "from-pink-400/20 to-rose-500/30",
-  },
-  {
-    id: "tpl-vibrant-blooms-wedding",
-    title: "Vibrant Blooms Wedding",
-    badge: "Free",
-    category: "Wedding",
-    accentColor: "from-violet-400/20 to-purple-500/30",
-  },
-  {
-    id: "tpl-lily-of-the-valley",
-    title: "Lily of the Valley",
-    badge: "Free",
-    category: "Wedding",
-    accentColor: "from-emerald-400/20 to-green-500/30",
-  },
-  {
-    id: "blush-burgundy-blooms",
-    title: "Blush & Burgundy Blooms",
-    badge: "Premium",
-    category: "Bridal Shower",
-    accentColor: "from-rose-500/20 to-red-600/30",
-  },
-  {
-    id: "something-blue",
-    title: "Something Blue",
-    badge: "Premium",
-    category: "Bridal Shower",
-    accentColor: "from-blue-400/20 to-indigo-500/30",
-  },
-  {
-    id: "autumn-blooms",
-    title: "Autumn Blooms",
-    badge: "Premium",
-    category: "Bridal Shower",
-    accentColor: "from-amber-500/20 to-orange-600/30",
-  },
 ];
+
+export const isSquareTemplate = (template: CuratedTemplate): boolean => {
+  return (
+    template.aspectRatio === "square" ||
+    !!template.isSquare ||
+    template.image?.startsWith("/templates/") ||
+    template.thumbnailUrl?.startsWith("/templates/") ||
+    [
+      "retro-little-monsters",
+      "creepy-cake",
+      "holographic-hey-boo",
+      "gilded-horror",
+      "ribbons-bows",
+      "painted-petals",
+      "lemons-blossoms",
+      "mamma-mia",
+      "moonlit-grove",
+      "taste-of-italy",
+    ].includes(template.id)
+  );
+};
+
+// All Curated Stationery Templates interleaved strictly 1 Square, 1 Vertical, 1 Square, 1 Vertical...
+export const CURATED_TEMPLATES: CuratedTemplate[] = (() => {
+  const result: CuratedTemplate[] = [];
+  const max = Math.max(SQUARE_TEMPLATES.length, VERTICAL_TEMPLATES.length);
+  for (let i = 0; i < max; i++) {
+    if (i < SQUARE_TEMPLATES.length) result.push(SQUARE_TEMPLATES[i]);
+    if (i < VERTICAL_TEMPLATES.length) result.push(VERTICAL_TEMPLATES[i]);
+  }
+  return result;
+})();
 
 const DEFAULT_CATEGORIES = [
   "All",
   "Halloween",
   "Holiday",
+  "Thanksgiving",
   "Corporate",
   "Birthday",
   "Adult Birthday",
   "Bridal Shower",
   "Wedding"
 ];
+
+/** Collapse any backend-provided casing/variant ("thanksgiving", "Thanksgiving / Autumn")
+ *  onto the single canonical tab so duplicate pills never render. */
+const normalizeCategory = (category?: string) => {
+  if (!category) return category;
+  return category.toLowerCase().includes("thanksgiving") ? "Thanksgiving" : category;
+};
 
 const getTemplateImageSrc = (template: CuratedTemplate) => {
   if (template.thumbnailUrl) return template.thumbnailUrl;
@@ -316,13 +462,14 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           title: t.title || (t as any).name || "Invitation",
           name: (t as any).name || t.title || "Invitation",
           badge: t.badge || (t.isPremium ? "Premium" : "Free"),
-          category: t.category || "General",
+          category: normalizeCategory(t.category || "General") || "General",
           tags: (t as any).tags || [],
           thumbnailUrl: t.thumbnailUrl || (t as any).fullThumbnailUrl || (t as any).imageUrl,
           imageUrl: t.imageUrl || (t as any).fullImageUrl,
           image: (t as any).image,
           accentColor: (t as any).accentColor,
           description: (t as any).description,
+          canvasData: (t as any).canvasData,
         }));
 
         // Guarantee ALL baseline CURATED_TEMPLATES remain 100% preserved
@@ -348,12 +495,8 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
     const cats = new Set<string>(["All"]);
     DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
     curatedList.forEach((t) => {
-      const isHomeGalleryOnly = (t as any).source === "home-gallery-only" || [
-        "elegant-lace", "ribbons-bows", "painted-petals", "gingham-blooms", "its-tea-time", "lemons-blossoms", "mamma-mia", "moonlit-grove", "taste-of-italy"
-      ].includes(t.id);
-      if (isHomeGalleryOnly) return;
-      if (t.category && !["Kids Halloween", "Gothic & Dinner", "Trick or Treat", "Trendy / Disco", "Costume Party", "Vintage / Classic", "Party & Night"].includes(t.category)) {
-        cats.add(t.category);
+      if (t.category && !["Vintage / Classic"].includes(t.category)) {
+        cats.add(normalizeCategory(t.category) || t.category);
       }
     });
     return Array.from(cats);
@@ -362,14 +505,8 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   const filteredTemplates = React.useMemo(() => {
     const target = selectedCategory.trim().toLowerCase();
 
-    // 1. Exclude home-gallery-only templates from "Invitations your guests will love"
-    // 2. Exclude Citrus Splash and Garden Blooms from homepage default ("All") and non-Corporate tabs
+    // Exclude Citrus Splash and Garden Blooms from homepage default ("All") and non-Corporate tabs
     const visibleList = curatedList.filter((t) => {
-      const isHomeGalleryOnly = (t as any).source === "home-gallery-only" || [
-        "elegant-lace", "ribbons-bows", "painted-petals", "gingham-blooms", "its-tea-time", "lemons-blossoms", "mamma-mia", "moonlit-grove", "taste-of-italy"
-      ].includes(t.id);
-      if (isHomeGalleryOnly) return false;
-
       const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
       if (isCorporateExclusive && target !== "corporate") {
         return false;
@@ -377,49 +514,59 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       return true;
     });
 
-    if (target === "all") return visibleList;
+    let result: CuratedTemplate[];
 
-    const filtered = visibleList.filter((t) => {
-      const cat = (t.category || "").toLowerCase();
-      const rawTags = (t as any).tags || [];
-      const tags = Array.isArray(rawTags) ? rawTags.map((tg: any) => String(tg).toLowerCase()) : [];
-      const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
+    if (target === "all") {
+      result = visibleList;
+    } else {
+      result = visibleList.filter((t) => {
+        const cat = (t.category || "").toLowerCase();
+        const rawTags = (t as any).tags || [];
+        const tags = Array.isArray(rawTags) ? rawTags.map((tg: any) => String(tg).toLowerCase()) : [];
+        const isCorporateExclusive = t.id === "citrus-splash" || t.id === "garden-blooms";
 
-      if (target === "halloween" || target === "fall") {
-        return (
-          cat.includes("halloween") ||
-          cat.includes("fall") ||
-          cat.includes("trick") ||
-          cat.includes("gothic") ||
-          cat.includes("costume") ||
-          cat.includes("disco") ||
-          cat.includes("vintage") ||
-          t.id.includes("halloween") ||
-          t.id.includes("pumpkin") ||
-          t.id.includes("doily") ||
-          t.id.includes("cauldron") ||
-          t.id.includes("boo") ||
-          t.id.includes("boogie") ||
-          t.id.includes("snoopy")
-        );
-      }
+        if (target === "halloween" || target === "fall") {
+          return (
+            cat.includes("halloween") ||
+            cat.includes("fall") ||
+            cat.includes("vintage") ||
+            t.id.includes("halloween") ||
+            t.id.includes("pumpkin") ||
+            t.id.includes("snoopy")
+          );
+        }
 
-      if (target === "corporate") {
-        return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || isCorporateExclusive || t.id.includes("splatter") || t.id.includes("sketch");
-      }
-      if (target === "bridal shower") {
-        return cat.includes("bridal") || cat.includes("shower");
-      }
-      if (target === "birthday" || target === "adult birthday") {
-        return cat.includes("birthday") || cat.includes("bday");
-      }
-      if (target === "holiday") {
-        return cat.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
-      }
-      return cat.includes(target) || target.includes(cat) || tags.includes(target);
-    });
+        if (target === "corporate") {
+          return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || isCorporateExclusive || t.id.includes("splatter") || t.id.includes("sketch");
+        }
+        if (target === "bridal shower") {
+          return cat.includes("bridal") || cat.includes("shower");
+        }
+        if (target === "birthday" || target === "adult birthday") {
+          return cat.includes("birthday") || cat.includes("bday");
+        }
+        if (target === "holiday") {
+          return cat.includes("holiday") || t.id.includes("tannenbaum") || t.id.includes("foliage");
+        }
+        return cat.includes(target) || target.includes(cat) || tags.includes(target);
+      });
+    }
 
-    return filtered;
+    // Interleave strictly: 1 square, 1 vertical, 1 square, 1 vertical so the layout never feels uneven
+    const squares = result.filter(isSquareTemplate);
+    const verticals = result.filter((t) => !isSquareTemplate(t));
+
+    if (squares.length > 0 && verticals.length > 0) {
+      const interleaved: CuratedTemplate[] = [];
+      const maxLen = Math.max(squares.length, verticals.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < squares.length) interleaved.push(squares[i]);
+        if (i < verticals.length) interleaved.push(verticals[i]);
+      }
+      return interleaved;
+    }
+
+    return result;
   }, [selectedCategory, curatedList]);
 
   const toggleFavorite = (id: string) => {
@@ -434,24 +581,56 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
     });
   };
 
-  const handleCardClick = (templateId: string) => {
+  const handleCardClick = async (templateId: string) => {
     if (onSelectTemplate) {
       onSelectTemplate(templateId);
       return;
     }
+    const templateMeta =
+      filteredTemplates.find((t) => t.id === templateId) ||
+      CURATED_TEMPLATES.find((t) => t.id === templateId);
     try {
       const guestDraft = {
         type: "template",
         templateId,
-        templateName:
-          (filteredTemplates.find((t) => t.id === templateId) ||
-            CURATED_TEMPLATES.find((t) => t.id === templateId))?.title || "Event",
+        templateName: templateMeta?.title || "Event",
       };
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
       sessionStorage.setItem("pending_template_id", templateId);
       localStorage.setItem("pending_template_id", templateId);
     } catch (e) {}
-    // Route directly to Canvas Editor as requested
+
+    // Signed-in hosts: create the draft event first so the canvas opens against a real event
+    if (user) {
+      try {
+        const res = await eventService.createEvent({
+          title: templateMeta?.title || "My Celebration",
+          venue: "TBD Venue",
+          eventDate: getDefaultEventDate(),
+          eventTime: "18:00",
+          eventType: templateMeta?.category || "Other",
+          status: "draft",
+          // Persist the exact selected template on the event so the canvas editor
+          // never has to guess (or fall back to a previous/default template).
+          templateId,
+          selectedTemplateId: templateId,
+          canvasState: templateMeta?.canvasData
+            ? { templateId, activeTemplateId: templateId, ...templateMeta.canvasData }
+            : undefined,
+        });
+        const eventId = res?.success ? res.event?.id : undefined;
+        if (eventId) {
+          router.push(
+            `/studio?templateId=${encodeURIComponent(templateId)}&eventId=${encodeURIComponent(eventId)}`
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn("[Templates] Could not create event from template:", err);
+      }
+    }
+
+    // Guests (or event-creation fallback): route directly to Canvas Editor
     router.push(`/editor?template=${encodeURIComponent(templateId)}`);
   };
 
@@ -469,7 +648,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
   return (
     <section
       id="templates"
-      className="relative py-20 md:py-28 bg-transparent text-neutral-900 dark:text-neutral-100 border-t border-slate-200/40 dark:border-neutral-800"
+      className="relative py-20 md:py-28 bg-transparent text-neutral-900 dark:text-neutral-100"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Editorial Header */}
@@ -483,12 +662,14 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           <span className="text-[12px] tracking-[0.2em] uppercase text-orange-600 dark:text-orange-400 font-semibold font-sans">
             Curated Stationery Collection
           </span>
-          <h2
-            className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-neutral-900 dark:text-neutral-100 tracking-tight mt-3"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
-            Invitations your guests will love
-          </h2>
+          <AnimatedHeading delay={0.1}>
+            <h2
+              className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-normal text-black dark:text-black tracking-tight mt-3"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              Invitations your guests will love
+            </h2>
+          </AnimatedHeading>
           <p className="mt-3.5 text-base sm:text-lg text-neutral-600 dark:text-neutral-400 font-sans leading-relaxed">
             Every invitation is crafted with pure vector styling and typography — crisp, responsive, and fully customizable.
           </p>
@@ -529,7 +710,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
               const isFav = favorites.has(template.id);
               const isPremium = template.badge?.toLowerCase() === "premium" || !!template.isPremium;
               const imgSrc = getTemplateImageSrc(template);
-              const isHalloweenCard = template.image?.startsWith("/templates/");
+              const isSquareCard = isSquareTemplate(template);
 
               return (
                 <motion.div
@@ -552,7 +733,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                   <div
                     onClick={() => handleCardClick(template.id)}
                     className={`relative w-full ${
-                      isHalloweenCard ? "aspect-[4/3]" : "aspect-[3/4]"
+                      isSquareCard ? "aspect-[4/3]" : "aspect-[3/4]"
                     } rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group/card border border-neutral-200/90 dark:border-neutral-800 bg-[#FAF8F5] dark:bg-neutral-900`}
                   >
                     {/* Render Image / Mockup with smooth hover scale */}

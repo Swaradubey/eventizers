@@ -56,6 +56,37 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const handleTextSelect = onSelectText || onTextClick;
   const [imgError, setImgError] = React.useState(false);
 
+  // ── Admin Layer Editor: layered template detection ────────────────────────
+  // Templates published with the Admin Layer Editor store a RAW background
+  // image plus separate (absolute positioned) text layers. Their raster
+  // thumbnail must therefore NOT be treated as a finalized, text-baked
+  // snapshot — otherwise only the background image renders on preview cards
+  // and the configured text layers never appear.
+  let templateContentObj: any = {};
+  const rawTemplateContent = resolvedTemplate?.content;
+  if (typeof rawTemplateContent === "string" && rawTemplateContent) {
+    try {
+      templateContentObj = JSON.parse(rawTemplateContent);
+    } catch (_) {
+      templateContentObj = {};
+    }
+  } else if (rawTemplateContent && typeof rawTemplateContent === "object") {
+    templateContentObj = rawTemplateContent;
+  }
+
+  const templateLayerSets = [
+    resolvedTemplate?.textLayers,
+    resolvedTemplate?.defaultTextLayers,
+    resolvedTemplate?.defaultTextBlocks,
+    resolvedTemplate?.layers,
+    resolvedTemplate?.canvasData?.layers,
+    templateContentObj?.defaultTextLayers,
+    templateContentObj?.canvasData?.layers,
+  ];
+  const hasTemplateLayers = templateLayerSets.some((s) => Array.isArray(s) && s.length > 0);
+  const isLayeredTemplate =
+    hasTemplateLayers && Boolean(resolvedTemplate?.isLayered || templateContentObj?.isLayered);
+
   // 1. Resolve Backdrop color or gradient or texture image
   const rawBackdrop =
     resolvedTemplate.backdrop?.gradient ||
@@ -196,9 +227,11 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   // If dynamic text layers or interactive mode are present, NEVER use snapshot as card background!
   // Otherwise the snapshot (with baked-in text) renders under dynamic text layers, causing double-text!
+  // Layered templates (Admin Layer Editor) also keep their live text layers visible on top of the raw background.
   const hasDynamicLayers = Boolean(
     (overrideTextLayers && overrideTextLayers.length > 0) ||
-    activeInteractive
+    activeInteractive ||
+    isLayeredTemplate
   );
 
   const isSnapshotUsable = Boolean(
@@ -220,12 +253,23 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       ? resolvedTemplate.textLayers
       : resolvedTemplate.defaultTextLayers && resolvedTemplate.defaultTextLayers.length > 0
       ? resolvedTemplate.defaultTextLayers
+      : Array.isArray(resolvedTemplate.canvasData?.layers) && resolvedTemplate.canvasData.layers.length > 0
+      ? resolvedTemplate.canvasData.layers
+      : Array.isArray(resolvedTemplate.layers) && resolvedTemplate.layers.length > 0
+      ? resolvedTemplate.layers
+      : Array.isArray(templateContentObj?.defaultTextLayers) && templateContentObj.defaultTextLayers.length > 0
+      ? templateContentObj.defaultTextLayers
+      : Array.isArray(templateContentObj?.canvasData?.layers) && templateContentObj.canvasData.layers.length > 0
+      ? templateContentObj.canvasData.layers
       : [];
   const baseLayers = deduplicateTextLayers(rawBaseLayers);
 
   // Inject customized event values into the text layers
   const rawLayers = baseLayers.map((layer: any) => {
-    let text = layer.text || "";
+    let text =
+      layer.text ||
+      (typeof layer.content === "string" ? layer.content : "") ||
+      "";
     const key = (layer.key || layer.id || "").toLowerCase();
 
     if (event) {

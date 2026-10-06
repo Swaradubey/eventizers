@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Gift, Wine } from "lucide-react";
+import AnimatedHeading from "./AnimatedHeading";
 
 const leftFeatures = [
   "Event Page",
@@ -80,9 +81,11 @@ export default function AIFeatures() {
               </div>
 
               {/* Main Heading */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-normal font-serif text-[#0F172A] tracking-tight leading-[1.2] mb-4" style={{ fontFamily: "Georgia, serif" }}>
-                Everything generated in seconds
-              </h2>
+              <AnimatedHeading>
+                <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-normal font-serif text-[#0F172A] tracking-tight leading-[1.2] mb-4" style={{ fontFamily: "Georgia, serif" }}>
+                  Everything generated in seconds
+                </h2>
+              </AnimatedHeading>
 
               {/* Description Paragraph */}
               <p className="text-slate-500 text-base sm:text-lg leading-relaxed mb-8 max-w-xl">

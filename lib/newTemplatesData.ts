@@ -279,6 +279,7 @@ export interface NewTemplateData {
   id: string;
   isPureCss?: boolean;
   isPremium?: boolean;
+  isLayered?: boolean;
   type: string;
   category: string;
   tags?: string[];
@@ -3174,6 +3175,7 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       bt.canvasData?.layers ||
       contentObj.defaultTextLayers ||
       contentObj.layers ||
+      contentObj.canvasData?.layers ||
       [];
 
     const cleanCard = {
@@ -3192,6 +3194,7 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       category: bt.category || "General",
       badge: bt.badge || (bt.isPremium ? "Premium" : "Free"),
       isPremium: Boolean(bt.isPremium),
+      isLayered: Boolean(bt.isLayered || contentObj.isLayered),
       image: bgUrl || normalizeTemplateImageUrl(bt.thumbnailUrl || bt.imageUrl || bt.image) || "/assets/templates/chic-dinner-cake-mockup.svg",
       backgroundImage: bgUrl,
       fullBackgroundImage: bgUrl,
