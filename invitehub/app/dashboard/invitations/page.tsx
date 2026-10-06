@@ -115,6 +115,18 @@ function InvitationPageContent() {
     }
   }, [queryEventId]);
 
+  // When opening a specific template, clear any stale pending upload drafts
+  useEffect(() => {
+    if (queryTemplateId && typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("pending_upload_invite");
+        localStorage.removeItem("pending_upload_invite");
+        sessionStorage.removeItem("pending_stationery_design");
+        localStorage.removeItem("pending_stationery_design");
+      } catch (_) {}
+    }
+  }, [queryTemplateId]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -134,14 +146,15 @@ function InvitationPageContent() {
     null;
 
   const hasPendingUpload =
-    Boolean(queryUploadedImageUrl) ||
-    (typeof window !== "undefined" &&
-      Boolean(
-        sessionStorage.getItem("pending_upload_invite") ||
-        localStorage.getItem("pending_upload_invite") ||
-        sessionStorage.getItem("pending_stationery_design") ||
-        localStorage.getItem("pending_stationery_design")
-      ));
+    !queryTemplateId &&
+    (Boolean(queryUploadedImageUrl) ||
+      (typeof window !== "undefined" &&
+        Boolean(
+          sessionStorage.getItem("pending_upload_invite") ||
+          localStorage.getItem("pending_upload_invite") ||
+          sessionStorage.getItem("pending_stationery_design") ||
+          localStorage.getItem("pending_stationery_design")
+        )));
 
   const resolvedTemplateId = hasPendingUpload
     ? null

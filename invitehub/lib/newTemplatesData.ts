@@ -4,6 +4,9 @@
 // and dynamic live text layers without baked-in typography.
 // =============================================================================
 
+import { homeTemplatesData } from "./homeTemplatesData";
+
+
 // CSS-only card visual configuration — no images, no SVGs
 export interface CssBorderConfig {
   type: 'double-gold' | 'triple-line' | 'dotted' | 'geometric' | 'hairline' | 'arch' | 'none';
@@ -138,6 +141,9 @@ export interface EviteTemplateSchema {
     text: string;
     fontFamily: string;
     fontSize: number;
+    fontWeight?: string | number;
+    textTransform?: string;
+    casing?: string;
     lineHeight?: number;
     fontStyle?: string;
     letterSpacing?: string;
@@ -1997,14 +2003,476 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         left: 50
       }
     ]
+  },
+  // ── 9 HALLOWEEN & FALL TEMPLATES (Canvas-Ready 4-Layer Architecture) ────────
+  {
+    id: "halloween-feast",
+    title: "Halloween Feast",
+    name: "Halloween Feast",
+    category: "Halloween",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#1a1622",
+    linerColor: "#ea580c",
+    envelopeLiner: "linear-gradient(135deg, #ea580c 0%, #f97316 50%, #9a3412 100%)",
+    mockupUrl: "/templates/halloween-feast.png",
+    thumbnailUrl: "/templates/halloween-feast.png",
+    backdrop: {
+      type: "color",
+      value: "#0c0a09",
+      color: "#0c0a09",
+      gradient: "radial-gradient(ellipse at 50% 40%, #1f1d24 0%, #0d0c10 100%)"
+    },
+    envelope: {
+      outerColor: "#1a1622",
+      flapColor: "#261f30",
+      linerPatternUrl: "",
+      linerColor: "#ea580c",
+      innerLiner: "linear-gradient(135deg, #ea580c 0%, #f97316 50%, #9a3412 100%)",
+      linerCss: "linear-gradient(135deg, #ea580c 0%, #f97316 50%, #9a3412 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.5)"
+    },
+    card: {
+      artworkUrl: "/templates/halloween-feast.png",
+      decorativeBorderSvgUrl: "/templates/halloween-feast.png",
+      borderIllustration: "/templates/halloween-feast.png",
+      backgroundColor: "#0d0d0f",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#0d0d0f",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#0d0d0f",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "glowing-pumpkins",
+    title: "Glowing Pumpkins",
+    name: "Glowing Pumpkins",
+    category: "Halloween",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#191512",
+    linerColor: "#f97316",
+    envelopeLiner: "linear-gradient(135deg, #f97316 0%, #ea580c 50%, #7c2d12 100%)",
+    mockupUrl: "/templates/glowing-pumpkins.png",
+    thumbnailUrl: "/templates/glowing-pumpkins.png",
+    backdrop: {
+      type: "color",
+      value: "#0f0d0b",
+      color: "#0f0d0b",
+      gradient: "radial-gradient(ellipse at 50% 40%, #241c14 0%, #0f0d0b 100%)"
+    },
+    envelope: {
+      outerColor: "#191512",
+      flapColor: "#241c16",
+      linerPatternUrl: "",
+      linerColor: "#f97316",
+      innerLiner: "linear-gradient(135deg, #f97316 0%, #ea580c 50%, #7c2d12 100%)",
+      linerCss: "linear-gradient(135deg, #f97316 0%, #ea580c 50%, #7c2d12 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.5)"
+    },
+    card: {
+      artworkUrl: "/templates/glowing-pumpkins.png",
+      decorativeBorderSvgUrl: "/templates/glowing-pumpkins.png",
+      borderIllustration: "/templates/glowing-pumpkins.png",
+      backgroundColor: "#0d0b09",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#0d0b09",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#0d0b09",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "sweet-not-scary",
+    title: "Sweet, Not Scary",
+    name: "Sweet, Not Scary",
+    category: "Kids Halloween",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#fce7f3",
+    linerColor: "#f472b6",
+    envelopeLiner: "linear-gradient(135deg, #fbcfe8 0%, #f472b6 50%, #fda4af 100%)",
+    mockupUrl: "/templates/sweet-not-scary.png",
+    thumbnailUrl: "/templates/sweet-not-scary.png",
+    backdrop: {
+      type: "color",
+      value: "#fdf2f8",
+      color: "#fdf2f8",
+      gradient: "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)"
+    },
+    envelope: {
+      outerColor: "#fce7f3",
+      flapColor: "#fbcfe8",
+      linerPatternUrl: "",
+      linerColor: "#f472b6",
+      innerLiner: "linear-gradient(135deg, #fbcfe8 0%, #f472b6 50%, #fda4af 100%)",
+      linerCss: "linear-gradient(135deg, #fbcfe8 0%, #f472b6 50%, #fda4af 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(244,114,182,0.25)"
+    },
+    card: {
+      artworkUrl: "/templates/sweet-not-scary.png",
+      decorativeBorderSvgUrl: "/templates/sweet-not-scary.png",
+      borderIllustration: "/templates/sweet-not-scary.png",
+      backgroundColor: "#f5c3c2",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#f5c3c2",
+        borderRadius: "14px",
+        paperShadow: "0 14px 30px -6px rgba(244, 114, 182, 0.3)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#f5c3c2",
+      borderRadius: "14px",
+      paperShadow: "0 14px 30px -6px rgba(244, 114, 182, 0.3)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "dramatic-doily",
+    title: "Dramatic Doily",
+    name: "Dramatic Doily",
+    category: "Gothic & Dinner",
+    badge: "Premium",
+    isPremium: true,
+    envelopeColor: "#3b0d11",
+    linerColor: "#881337",
+    envelopeLiner: "linear-gradient(135deg, #881337 0%, #4c0519 50%, #be123c 100%)",
+    mockupUrl: "/templates/dramatic-doily.png",
+    thumbnailUrl: "/templates/dramatic-doily.png",
+    backdrop: {
+      type: "color",
+      value: "#120608",
+      color: "#120608",
+      gradient: "radial-gradient(ellipse at 50% 40%, #2b0b11 0%, #120608 100%)"
+    },
+    envelope: {
+      outerColor: "#3b0d11",
+      flapColor: "#4c0519",
+      linerPatternUrl: "",
+      linerColor: "#881337",
+      innerLiner: "linear-gradient(135deg, #881337 0%, #4c0519 50%, #be123c 100%)",
+      linerCss: "linear-gradient(135deg, #881337 0%, #4c0519 50%, #be123c 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.6)"
+    },
+    card: {
+      artworkUrl: "/templates/dramatic-doily.png",
+      decorativeBorderSvgUrl: "/templates/dramatic-doily.png",
+      borderIllustration: "/templates/dramatic-doily.png",
+      backgroundColor: "#6b0d14",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#6b0d14",
+        borderRadius: "12px",
+        paperShadow: "0 18px 40px -6px rgba(0, 0, 0, 0.7)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#6b0d14",
+      borderRadius: "12px",
+      paperShadow: "0 18px 40px -6px rgba(0, 0, 0, 0.7)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "candy-cauldron",
+    title: "Candy Cauldron",
+    name: "Candy Cauldron",
+    category: "Trick or Treat",
+    badge: "Premium",
+    isPremium: true,
+    envelopeColor: "#0f172a",
+    linerColor: "#10b981",
+    envelopeLiner: "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",
+    mockupUrl: "/templates/candy-cauldron.png",
+    thumbnailUrl: "/templates/candy-cauldron.png",
+    backdrop: {
+      type: "color",
+      value: "#0b1120",
+      color: "#0b1120",
+      gradient: "radial-gradient(ellipse at 50% 40%, #16243b 0%, #0b1120 100%)"
+    },
+    envelope: {
+      outerColor: "#0f172a",
+      flapColor: "#1e293b",
+      linerPatternUrl: "",
+      linerColor: "#10b981",
+      innerLiner: "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",
+      linerCss: "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.6)"
+    },
+    card: {
+      artworkUrl: "/templates/candy-cauldron.png",
+      decorativeBorderSvgUrl: "/templates/candy-cauldron.png",
+      borderIllustration: "/templates/candy-cauldron.png",
+      backgroundColor: "#111827",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#111827",
+        borderRadius: "12px",
+        paperShadow: "0 18px 40px -6px rgba(0, 0, 0, 0.7)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#111827",
+      borderRadius: "12px",
+      paperShadow: "0 18px 40px -6px rgba(0, 0, 0, 0.7)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "holographic-hey-boo",
+    title: "Holographic Hey Boo",
+    name: "Holographic Hey Boo",
+    category: "Trendy / Disco",
+    badge: "Premium",
+    isPremium: true,
+    envelopeColor: "#3b1442",
+    linerColor: "#c084fc",
+    envelopeLiner: "linear-gradient(135deg, #e879f9 0%, #a855f7 50%, #818cf8 100%)",
+    mockupUrl: "/templates/holographic-hey-boo.png",
+    thumbnailUrl: "/templates/holographic-hey-boo.png",
+    backdrop: {
+      type: "color",
+      value: "#1a0b1f",
+      color: "#1a0b1f",
+      gradient: "radial-gradient(ellipse at 50% 40%, #2f1238 0%, #130717 100%)"
+    },
+    envelope: {
+      outerColor: "#3b1442",
+      flapColor: "#4c1d56",
+      linerPatternUrl: "",
+      linerColor: "#c084fc",
+      innerLiner: "linear-gradient(135deg, #e879f9 0%, #a855f7 50%, #818cf8 100%)",
+      linerCss: "linear-gradient(135deg, #e879f9 0%, #a855f7 50%, #818cf8 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(168,85,247,0.3)"
+    },
+    card: {
+      artworkUrl: "/templates/holographic-hey-boo.png",
+      decorativeBorderSvgUrl: "/templates/holographic-hey-boo.png",
+      borderIllustration: "/templates/holographic-hey-boo.png",
+      backgroundColor: "#ffffff",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#ffffff",
+        borderRadius: "14px",
+        paperShadow: "0 16px 36px -6px rgba(168, 85, 247, 0.4)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#ffffff",
+      borderRadius: "14px",
+      paperShadow: "0 16px 36px -6px rgba(168, 85, 247, 0.4)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "halloween-string-lights",
+    title: "Halloween String Lights",
+    name: "Halloween String Lights",
+    category: "Party & Night",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#18181b",
+    linerColor: "#f59e0b",
+    envelopeLiner: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
+    mockupUrl: "/templates/halloween-string-lights.png",
+    thumbnailUrl: "/templates/halloween-string-lights.png",
+    backdrop: {
+      type: "color",
+      value: "#09090b",
+      color: "#09090b",
+      gradient: "radial-gradient(ellipse at 50% 40%, #1c1c22 0%, #09090b 100%)"
+    },
+    envelope: {
+      outerColor: "#18181b",
+      flapColor: "#27272a",
+      linerPatternUrl: "",
+      linerColor: "#f59e0b",
+      innerLiner: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
+      linerCss: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.5)"
+    },
+    card: {
+      artworkUrl: "/templates/halloween-string-lights.png",
+      decorativeBorderSvgUrl: "/templates/halloween-string-lights.png",
+      borderIllustration: "/templates/halloween-string-lights.png",
+      backgroundColor: "#121214",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#121214",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#121214",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0, 0, 0, 0.65)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "lets-boogie",
+    title: "Let's Boogie",
+    name: "Let's Boogie",
+    category: "Costume Party",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#2e1065",
+    linerColor: "#a855f7",
+    envelopeLiner: "linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #4c1d95 100%)",
+    mockupUrl: "/templates/lets-boogie.png",
+    thumbnailUrl: "/templates/lets-boogie.png",
+    backdrop: {
+      type: "color",
+      value: "#17072b",
+      color: "#17072b",
+      gradient: "radial-gradient(ellipse at 50% 40%, #2f104d 0%, #17072b 100%)"
+    },
+    envelope: {
+      outerColor: "#2e1065",
+      flapColor: "#3b0764",
+      linerPatternUrl: "",
+      linerColor: "#a855f7",
+      innerLiner: "linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #4c1d95 100%)",
+      linerCss: "linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #4c1d95 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.5)"
+    },
+    card: {
+      artworkUrl: "/templates/lets-boogie.png",
+      decorativeBorderSvgUrl: "/templates/lets-boogie.png",
+      borderIllustration: "/templates/lets-boogie.png",
+      backgroundColor: "#63599b",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#63599b",
+        borderRadius: "14px",
+        paperShadow: "0 16px 36px -6px rgba(124, 58, 237, 0.4)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#63599b",
+      borderRadius: "14px",
+      paperShadow: "0 16px 36px -6px rgba(124, 58, 237, 0.4)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
+  },
+  {
+    id: "peanuts-spooky-snoopy",
+    title: "Vintage Spooky Snoopy",
+    name: "Vintage Spooky Snoopy",
+    category: "Vintage / Classic",
+    badge: "Free",
+    isPremium: false,
+    envelopeColor: "#2d3b2a",
+    linerColor: "#84cc16",
+    envelopeLiner: "linear-gradient(135deg, #84cc16 0%, #65a30d 50%, #3f6212 100%)",
+    mockupUrl: "/templates/spooky-snoopy.png",
+    thumbnailUrl: "/templates/spooky-snoopy.png",
+    backdrop: {
+      type: "color",
+      value: "#161d15",
+      color: "#161d15",
+      gradient: "radial-gradient(ellipse at 50% 40%, #293827 0%, #161d15 100%)"
+    },
+    envelope: {
+      outerColor: "#2d3b2a",
+      flapColor: "#364632",
+      linerPatternUrl: "",
+      linerColor: "#84cc16",
+      innerLiner: "linear-gradient(135deg, #84cc16 0%, #65a30d 50%, #3f6212 100%)",
+      linerCss: "linear-gradient(135deg, #84cc16 0%, #65a30d 50%, #3f6212 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.5)"
+    },
+    card: {
+      artworkUrl: "/templates/spooky-snoopy.png",
+      decorativeBorderSvgUrl: "/templates/spooky-snoopy.png",
+      borderIllustration: "/templates/spooky-snoopy.png",
+      backgroundColor: "#e8dec5",
+      aspectRatio: "5x7",
+      border: "none",
+      cssConfig: {
+        backgroundColor: "#e8dec5",
+        borderRadius: "12px",
+        paperShadow: "0 16px 34px -6px rgba(0, 0, 0, 0.45)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#e8dec5",
+      borderRadius: "12px",
+      paperShadow: "0 16px 34px -6px rgba(0, 0, 0, 0.45)",
+      aspectRatio: "5/7"
+    },
+    defaultTextLayers: []
   }
 ];
+
+// Register Home Page Exclusive Premium Templates
+homeTemplatesData.forEach((ht) => {
+  if (!EVITE_TEMPLATES.some((e) => e.id === ht.id)) {
+    EVITE_TEMPLATES.push(ht);
+  }
+});
 
 // Map for constant-time lookup by template ID
 export const EVITE_TEMPLATES_CONFIG: Record<string, EviteTemplateSchema> = EVITE_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = t;
   return acc;
 }, {} as Record<string, EviteTemplateSchema>);
+
+if (EVITE_TEMPLATES_CONFIG["peanuts-spooky-snoopy"]) {
+  EVITE_TEMPLATES_CONFIG["spooky-snoopy"] = EVITE_TEMPLATES_CONFIG["peanuts-spooky-snoopy"];
+}
 
 // -----------------------------------------------------------------------------
 // Backward-Compatible NEW_TEMPLATES Definition
@@ -2175,6 +2643,10 @@ export const NEW_TEMPLATES_CONFIG: Record<string, NewTemplateData> = NEW_TEMPLAT
   return acc;
 }, {} as Record<string, NewTemplateData>);
 
+if (NEW_TEMPLATES_CONFIG["peanuts-spooky-snoopy"]) {
+  NEW_TEMPLATES_CONFIG["spooky-snoopy"] = NEW_TEMPLATES_CONFIG["peanuts-spooky-snoopy"];
+}
+
 export const NEW_TEMPLATE_DEFAULTS = NEW_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = t;
   return acc;
@@ -2192,23 +2664,25 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
   if (!trimmed) return "";
   if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
 
-  // 1. If URL contains /assets/ or /templates/, this is a frontend static asset.
-  // Strip any foreign host prefix (http://localhost:5000, https://eventizersbackend.vercel.app, etc.)
-  // so the client always loads it directly from the current frontend origin without CORS or 404 issues.
-  const assetMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
-  if (assetMatch) {
-    return assetMatch[1];
+  // 1. Direct external image links (Unsplash, Cloudinary, Imgur, Supabase, etc.)
+  // If URL begins with http(s):// and is NOT from our backend/localhost host, preserve it directly!
+  const isDirectExternal = /^https?:\/\/(?!localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)/i.test(trimmed);
+  if (isDirectExternal) {
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && trimmed.startsWith("http://")) {
+      return trimmed.replace(/^http:\/\//i, "https://");
+    }
+    return trimmed;
   }
 
-  // 2. If running on HTTPS in production, upgrade insecure http:// URLs to https:// (except localhost)
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    trimmed.startsWith("http://") &&
-    !trimmed.includes("localhost") &&
-    !trimmed.includes("127.0.0.1")
-  ) {
-    return trimmed.replace(/^http:\/\//i, "https://");
+  // 2. If URL contains /assets/ or /templates/ on our backend host or localhost, strip foreign host prefix
+  const foreignAssetMatch = trimmed.match(/^(?:https?:\/\/(?:localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)(?::\d+)?)\/((?:assets|templates)\/.*)$/i);
+  if (foreignAssetMatch) {
+    return `/${foreignAssetMatch[1]}`;
+  }
+
+  // Relative frontend static assets
+  if (trimmed.startsWith("/assets/") || trimmed.startsWith("/templates/")) {
+    return trimmed;
   }
 
   // 3. If running in production and URL points to localhost /uploads/
@@ -2242,13 +2716,17 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
     }
 
     const rawBg =
+      bt.fullBackgroundImage ||
       bt.backgroundImage ||
       bt.canvasData?.backgroundImage ||
+      contentObj.fullBackgroundImage ||
       contentObj.backgroundImage ||
       contentObj.canvasData?.backgroundImage ||
       bt.backgroundUrl ||
       contentObj.backgroundUrl ||
+      bt.card?.fullArtworkUrl ||
       bt.card?.artworkUrl ||
+      contentObj.card?.fullArtworkUrl ||
       contentObj.card?.artworkUrl ||
       bt.imageUrl ||
       bt.thumbnailUrl ||
@@ -2288,6 +2766,7 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       isPremium: Boolean(bt.isPremium),
       image: bgUrl || normalizeTemplateImageUrl(bt.thumbnailUrl || bt.imageUrl || bt.image) || "/assets/templates/chic-dinner-cake-mockup.svg",
       backgroundImage: bgUrl,
+      fullBackgroundImage: bgUrl,
       canvasData: {
         backgroundImage: bgUrl,
         layers: layers,
@@ -2303,7 +2782,8 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       layers: layers,
     };
     NEW_TEMPLATES_CONFIG[bt.id] = transformed;
-    const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id);
+    NEW_TEMPLATES_CONFIG[bt.id.toLowerCase()] = transformed;
+    const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id || t.id.toLowerCase() === bt.id.toLowerCase());
     if (existingIdx >= 0) {
       NEW_TEMPLATES[existingIdx] = transformed;
     } else {
@@ -2444,10 +2924,25 @@ export const NEW_FALLBACK_TEMPLATES = NEW_TEMPLATES.map((t) => ({
   isPremium: false,
 }));
 
-export const NEW_TEMPLATE_IMAGES = NEW_TEMPLATES.reduce((acc, t) => {
-  acc[t.id] = t.image;
-  return acc;
-}, {} as Record<string, string>);
+const HALLOWEEN_IMAGE_MAP: Record<string, string> = {
+  "halloween-feast": "/templates/halloween-feast.png",
+  "glowing-pumpkins": "/templates/glowing-pumpkins.png",
+  "sweet-not-scary": "/templates/sweet-not-scary.png",
+  "dramatic-doily": "/templates/dramatic-doily.png",
+  "candy-cauldron": "/templates/candy-cauldron.png",
+  "holographic-hey-boo": "/templates/holographic-hey-boo.png",
+  "halloween-string-lights": "/templates/halloween-string-lights.png",
+  "lets-boogie": "/templates/lets-boogie.png",
+  "peanuts-spooky-snoopy": "/templates/spooky-snoopy.png",
+};
+
+export const NEW_TEMPLATE_IMAGES = {
+  ...HALLOWEEN_IMAGE_MAP,
+  ...NEW_TEMPLATES.reduce((acc, t) => {
+    acc[t.id] = t.image;
+    return acc;
+  }, {} as Record<string, string>)
+};
 
 export const NEW_TEMPLATE_STYLES = NEW_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = {

@@ -19,23 +19,25 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
   if (!trimmed) return "";
   if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
 
-  // 1. If URL contains /assets/ or /templates/, this is a frontend static asset.
-  // Strip any foreign host prefix (http://localhost:5000, https://eventizersbackend.vercel.app, etc.)
-  // so the client always loads it directly from the current frontend origin without CORS or 404 issues.
-  const assetMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
-  if (assetMatch) {
-    return assetMatch[1];
+  // 1. Direct external image links (Unsplash, Cloudinary, Imgur, Supabase, etc.)
+  // If URL begins with http(s):// and is NOT from our backend/localhost host, preserve it directly!
+  const isDirectExternal = /^https?:\/\/(?!localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)/i.test(trimmed);
+  if (isDirectExternal) {
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && trimmed.startsWith("http://")) {
+      return trimmed.replace(/^http:\/\//i, "https://");
+    }
+    return trimmed;
   }
 
-  // 2. If running on HTTPS in production, upgrade insecure http:// URLs to https:// (except localhost)
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    trimmed.startsWith("http://") &&
-    !trimmed.includes("localhost") &&
-    !trimmed.includes("127.0.0.1")
-  ) {
-    return trimmed.replace(/^http:\/\//i, "https://");
+  // 2. If URL contains /assets/ or /templates/ on our backend host or localhost, strip foreign host prefix
+  const foreignAssetMatch = trimmed.match(/^(?:https?:\/\/(?:localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)(?::\d+)?)\/((?:assets|templates)\/.*)$/i);
+  if (foreignAssetMatch) {
+    return `/${foreignAssetMatch[1]}`;
+  }
+
+  // Relative frontend static assets
+  if (trimmed.startsWith("/assets/") || trimmed.startsWith("/templates/")) {
+    return trimmed;
   }
 
   // 3. If running in production and URL points to localhost /uploads/

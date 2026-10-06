@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 840" width="600" height="840">
+  <defs>
+    <linearGradient id="creamCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FBF9F4" />
+    </linearGradient>
+    <radialGradient id="cornflowerBlue" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5C8FD6" />
+      <stop offset="60%" stop-color="#2D63B5" />
+      <stop offset="100%" stop-color="#19458A" />
+    </radialGradient>
+  </defs>
+  <rect width="100%" height="100%" rx="14" fill="url(#creamCard)" />
+  <!-- Wildflower botanical watercolor framing on borders -->
+  <g opacity="0.92">
+    <!-- Top left floral cluster -->
+    <g transform="translate(35, 35)">
+      <path d="M20 120 Q50 60 110 30" stroke="#7BA87D" stroke-width="2.5" fill="none" />
+      <circle cx="110" cy="30" r="14" fill="url(#cornflowerBlue)" />
+      <circle cx="85" cy="55" r="11" fill="#4B80CE" opacity="0.85" />
+      <circle cx="45" cy="95" r="13" fill="url(#cornflowerBlue)" />
+      <circle cx="130" cy="50" r="6" fill="#A8C7F0" />
+      <circle cx="65" cy="120" r="7" fill="#A8C7F0" />
+      <ellipse cx="60" cy="50" rx="14" ry="6" fill="#88B88A" transform="rotate(-30 60 50)" />
+      <ellipse cx="90" cy="85" rx="14" ry="6" fill="#75A677" transform="rotate(45 90 85)" />
+    </g>
+    <!-- Top right floral cluster -->
+    <g transform="translate(440, 35)">
+      <path d="M100 120 Q70 60 10 30" stroke="#7BA87D" stroke-width="2.5" fill="none" />
+      <circle cx="10" cy="30" r="14" fill="url(#cornflowerBlue)" />
+      <circle cx="35" cy="55" r="11" fill="#4B80CE" opacity="0.85" />
+      <circle cx="75" cy="95" r="13" fill="url(#cornflowerBlue)" />
+      <circle cx="-10" cy="50" r="6" fill="#A8C7F0" />
+      <ellipse cx="60" cy="50" rx="14" ry="6" fill="#88B88A" transform="rotate(30 60 50)" />
+    </g>
+    <!-- Bottom left floral cluster -->
+    <g transform="translate(35, 660)">
+      <path d="M20 20 Q50 80 110 110" stroke="#7BA87D" stroke-width="2.5" fill="none" />
+      <circle cx="110" cy="110" r="15" fill="url(#cornflowerBlue)" />
+      <circle cx="60" cy="85" r="12" fill="#4B80CE" />
+      <circle cx="30" cy="40" r="13" fill="url(#cornflowerBlue)" />
+      <ellipse cx="70" cy="100" rx="15" ry="6" fill="#75A677" transform="rotate(-40 70 100)" />
+    </g>
+    <!-- Bottom right floral cluster -->
+    <g transform="translate(440, 660)">
+      <path d="M100 20 Q70 80 10 110" stroke="#7BA87D" stroke-width="2.5" fill="none" />
+      <circle cx="10" cy="110" r="15" fill="url(#cornflowerBlue)" />
+      <circle cx="60" cy="85" r="12" fill="#4B80CE" />
+      <circle cx="90" cy="40" r="13" fill="url(#cornflowerBlue)" />
+      <ellipse cx="50" cy="100" rx="15" ry="6" fill="#75A677" transform="rotate(40 50 100)" />
+    </g>
+  </g>
+  <!-- Delicate inner border -->
+  <rect x="55" y="55" width="490" height="730" rx="8" fill="none" stroke="#DCE5F2" stroke-width="1.2" />
+</svg>

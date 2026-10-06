@@ -334,6 +334,14 @@ export default function EventModal({
         coverImage: formData.coverImage.trim() || undefined,
       };
 
+      // When the event is created as a hand-off into the canvas designer, persist the
+      // selected template on the event so the editor hydrates that exact template
+      // instead of falling back to a default/previous one.
+      if (openDesignerAfterSave && !eventToEdit && selectedTemplateId) {
+        (payload as any).templateId = selectedTemplateId;
+        (payload as any).selectedTemplateId = selectedTemplateId;
+      }
+
       let createdEventId: string | null = null;
       if (isAdmin) {
         if (eventToEdit && eventToEdit.id) {

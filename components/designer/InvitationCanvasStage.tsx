@@ -17,6 +17,12 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   // Autumn Tan Gingham / Plaid (Evite Fall Blooms exact style)
   "autumn-gingham":
     "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
+  // Kraft paper envelope liner — tan + forest green plaid (Everyone's Family)
+  "plaid-tan-green":
+    "repeating-linear-gradient(90deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(0deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(90deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), repeating-linear-gradient(0deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), linear-gradient(135deg, #E9D6B8 0%, #DCC39C 55%, #E4CFAC 100%)",
+  // Forest green envelope liner — warm terracotta gingham (Give Thanks)
+  "warm-gingham":
+    "repeating-linear-gradient(90deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), repeating-linear-gradient(0deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), linear-gradient(135deg, #F8EAD1 0%, #F1DCB9 100%)",
   "vertical-pink-stripes":
     "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
   "pink-stripes":
@@ -538,10 +544,15 @@ export default function InvitationCanvasStage({
     : null;
 
   // View mode / Envelope visibility: In standalone "Card Only" mode, by default for custom uploaded images,
-  // or for free templates (unless explicitly set to envelope view mode)
+  // for free templates (unless explicitly set to envelope view mode), or when the template
+  // explicitly disables its envelope stage (`envelope.enabled: false` → flat card, e.g. Thanksgiving Branches)
+  const isEnvelopeDisabled =
+    (fallbackTpl as any)?.envelope?.enabled === false ||
+    (config.envelope as any)?.enabled === false;
   const isCardOnlyMode = Boolean(
     config.hideEnvelope ||
     config.viewMode === "card" ||
+    isEnvelopeDisabled ||
     (isFreeTpl && config.hideEnvelope !== false && config.viewMode !== "envelope") ||
     (isUserUpload && config.viewMode !== "envelope" && config.hideEnvelope !== false)
   );
@@ -576,18 +587,25 @@ export default function InvitationCanvasStage({
 
   const candidateSources = [
     uploadedImageSrc,
+    (config as any)?.fullBackgroundImage,
     (config as any)?.backgroundImage,
+    (config as any)?.card?.fullArtworkUrl,
+    config.card?.artworkUrl,
     (config as any)?.canvasData?.backgroundImage,
     (config as any)?.backgroundImageUrl,
-    config.card?.artworkUrl,
     (config.card as any)?.backgroundImage,
     (config.card as any)?.borderIllustration,
+    (config as any)?.template?.fullBackgroundImage,
     (config as any)?.template?.backgroundImage,
+    (config as any)?.template?.card?.fullArtworkUrl,
+    (config as any)?.template?.card?.artworkUrl,
     (config as any)?.template?.canvasData?.backgroundImage,
     rawCardBgValue,
     rawBgValue,
+    (fallbackTpl as any)?.fullBackgroundImage,
     (fallbackTpl as any)?.backgroundImage,
     (fallbackTpl as any)?.canvasData?.backgroundImage,
+    (fallbackTpl as any)?.card?.fullArtworkUrl,
     (fallbackTpl as any)?.card?.borderIllustration,
     (fallbackTpl as any)?.card?.artworkUrl,
     fallbackTpl?.decorationImage,
@@ -609,14 +627,17 @@ export default function InvitationCanvasStage({
       ? normalizeTemplateImageUrl(getCleanTemplateSvg(cardImageRaw) || cardImageRaw)
       : null;
 
-  // Collect decorative illustrations (balloons, cake, party hats, candles, gifts) only for non-upload templates
-  const rawDecorations: any[] = isUserUpload ? [] : [
+  // Collect decorative illustrations (balloons, cake, party hats, candles, gifts, vector illustrations) only for non-upload templates
+  const shouldShowIllustrations = !(config as any)?.hideIllustration;
+  const rawDecorations: any[] = (isUserUpload || !shouldShowIllustrations) ? [] : [
     ...((config.card as any)?.decorations || []),
     ...((config as any)?.decorations || []),
     ...((config as any)?.template?.decorations || []),
     ...((fallbackTpl as any)?.card?.decorations || []),
     ...((config.card as any)?.decorativeImages || []),
     ...((config as any)?.background?.decorativeImages || []),
+    ...((config.card as any)?.illustrationSvg ? [(config.card as any).illustrationSvg] : []),
+    ...((fallbackTpl as any)?.cardStyle?.illustrationSvg ? [(fallbackTpl as any).cardStyle.illustrationSvg] : []),
   ];
 
   const decorationItems = Array.from(
@@ -642,6 +663,7 @@ export default function InvitationCanvasStage({
     probe.src = cleanCardImage;
     probe.onload = () => {
       if (!isProbeActive) return;
+      setHasImgError(false);
       const w = probe.naturalWidth || probe.width || 600;
       const h = probe.naturalHeight || probe.height || 840;
       setBgNaturalDimensions({
@@ -694,6 +716,9 @@ export default function InvitationCanvasStage({
           cleanCardImage,
           (info) => {
             if (!isMounted) return;
+            if (info && !info.error) {
+              setHasImgError(false);
+            }
             if (info && info.width && info.height) {
               setBgNaturalDimensions({
                 width: info.width,
@@ -929,9 +954,9 @@ export default function InvitationCanvasStage({
       : "peek");
 
   const isEnvelopeLeft = Boolean(
-    (config.envelope as any)?.position === "left" ||
-    (fallbackTpl as any)?.envelope?.position === "left" ||
-    (config as any)?.envelopePosition === "left" ||
+    String((config.envelope as any)?.position || "").startsWith("left") ||
+    String((fallbackTpl as any)?.envelope?.position || "").startsWith("left") ||
+    String((config as any)?.envelopePosition || "").startsWith("left") ||
     activeTplId === "o-tannenbaum" ||
     activeTplId === "metallic-paint-splatter" ||
     activeTplId === "golden-foliage-holiday" ||
@@ -1135,7 +1160,7 @@ export default function InvitationCanvasStage({
               {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
               {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
-              {imgSrc && !hasImgError && (
+              {imgSrc && (
                 <img
                   src={imgSrc}
                   alt="Invitation Card Artwork"
@@ -1143,6 +1168,7 @@ export default function InvitationCanvasStage({
                   crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
                   onError={handleImageError}
                   onLoad={(e) => {
+                    setHasImgError(false);
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
                       setBgNaturalDimensions({
@@ -1154,7 +1180,7 @@ export default function InvitationCanvasStage({
                   }}
                   className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-300 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
-                  }`}
+                  } ${hasImgError ? "opacity-0" : "opacity-100"}`}
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />

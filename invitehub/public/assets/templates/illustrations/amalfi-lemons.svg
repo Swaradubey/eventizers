@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="lemGrad" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#FFF566" />
+      <stop offset="65%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </radialGradient>
+  </defs>
+  <g transform="translate(40, 40)">
+    <ellipse cx="120" cy="110" rx="42" ry="30" fill="url(#lemGrad)" transform="rotate(-35 120 110)" />
+    <ellipse cx="40" cy="65" rx="36" ry="26" fill="url(#lemGrad)" transform="rotate(25 40 65)" />
+    <circle cx="75" cy="85" r="8" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <circle cx="75" cy="85" r="3" fill="#FCD34D" />
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, ChevronDown } from "lucide-react";
@@ -10,10 +10,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import MegaMenu, { featureItems } from "./MegaMenu";
 import Logo from "./Logo";
 
-const navLinks = [
+export interface NavLinkItem {
+  label: string;
+  href: string;
+}
+
+const navLinks: NavLinkItem[] = [
   { label: "Features", href: "#features" },
   { label: "Templates", href: "#templates" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Blog", href: "/blog" },
   { label: "Dashboard", href: "/dashboard" },
 ];
 
@@ -32,6 +38,16 @@ export default function Navbar() {
   const { isCollapsed, isOpen, setIsOpen, setIsCollapsed } = useSidebar();
   const isDashboard = pathname?.startsWith("/dashboard") || (pathname?.startsWith("/admin") && pathname !== "/admin/login");
   const isHomePage = pathname === "/";
+
+  // Only show Dashboard in navigation when the user is logged in
+  const visibleNavLinks = useMemo(() => {
+    return navLinks.filter((link) => {
+      if (link.label === "Dashboard") {
+        return !!user;
+      }
+      return true;
+    });
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -193,7 +209,7 @@ export default function Navbar() {
         {/* Center Section (Nav Links) — hidden on dashboard/admin routes */}
         {!isDashboard && (
         <div className="hidden md:flex items-center gap-7 lg:gap-8 h-full font-serif" style={{ fontFamily: "Georgia, serif" }}>
-          {navLinks.map((link) => {
+          {visibleNavLinks.map((link) => {
             if (link.label === "Features") {
               return (
                 <div
@@ -320,7 +336,7 @@ export default function Navbar() {
       {/* Mobile menu — only shown on public/landing routes */}
       {open && !isDashboard && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-5 flex flex-col gap-4 font-serif shadow-lg" style={{ fontFamily: "Georgia, serif" }}>
-          {navLinks.map((link) => {
+          {visibleNavLinks.map((link) => {
             if (link.label === "Features") {
               return (
                 <div key={link.label} className="flex flex-col">

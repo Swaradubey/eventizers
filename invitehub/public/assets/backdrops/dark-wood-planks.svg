@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="plank1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3A271B" />
+      <stop offset="90%" stop-color="#2A1B12" />
+      <stop offset="100%" stop-color="#1A1009" />
+    </linearGradient>
+    <linearGradient id="plank2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#442E20" />
+      <stop offset="90%" stop-color="#322015" />
+      <stop offset="100%" stop-color="#1E120A" />
+    </linearGradient>
+  </defs>
+  <!-- 5 horizontal polished planks -->
+  <rect y="0" width="1200" height="156" fill="url(#plank1)" />
+  <rect y="160" width="1200" height="156" fill="url(#plank2)" />
+  <rect y="320" width="1200" height="156" fill="url(#plank1)" />
+  <rect y="480" width="1200" height="156" fill="url(#plank2)" />
+  <rect y="640" width="1200" height="160" fill="url(#plank1)" />
+  <!-- Plank seams -->
+  <line x1="0" y1="158" x2="1200" y2="158" stroke="#120A05" stroke-width="4" />
+  <line x1="0" y1="318" x2="1200" y2="318" stroke="#120A05" stroke-width="4" />
+  <line x1="0" y1="478" x2="1200" y2="478" stroke="#120A05" stroke-width="4" />
+  <line x1="0" y1="638" x2="1200" y2="638" stroke="#120A05" stroke-width="4" />
+  <!-- Subtle wood sheen & grain highlights -->
+  <g stroke="#553A29" stroke-width="1" opacity="0.35">
+    <line x1="40" y1="60" x2="1160" y2="62" />
+    <line x1="80" y1="230" x2="1120" y2="231" />
+    <line x1="30" y1="390" x2="1180" y2="389" />
+    <line x1="70" y1="550" x2="1140" y2="551" />
+    <line x1="50" y1="710" x2="1150" y2="712" />
+  </g>
+</svg>

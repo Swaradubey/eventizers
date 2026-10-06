@@ -5,7 +5,7 @@ export interface TemplateItem {
   type: string;
   category: string;
   title: string;
-  badge?: "Trending" | "FREE" | "PREMIUM" | string;
+  badge?: "Trending" | "FREE" | "PREMIUM" | "Free" | "Premium" | string;
   subtitle?: string;
   date: string;
   time: string;
@@ -24,11 +24,10 @@ export interface TemplateItem {
   buttonText?: string;
   gallery?: string[];
   sections?: { title: string; content: string }[];
+  isPremium?: boolean;
 }
 
-export const templateCards: TemplateItem[] = [
-  ...NEW_TEMPLATES_CARD_ITEMS
-];
+export const templateCards: TemplateItem[] = [...NEW_TEMPLATES_CARD_ITEMS];
 
 export const matchesCategory = (
   itemCategoryOrItem: string | any,
@@ -53,20 +52,47 @@ export const matchesCategory = (
   const rawTags = item?.tags || [];
   const tags = Array.isArray(rawTags) ? rawTags.map((tg: string) => String(tg).toLowerCase()) : [];
 
+  if (target === "halloween" || target === "fall") {
+    return (
+      cat.includes("halloween") ||
+      cat.includes("fall") ||
+      cat.includes("vintage") ||
+      itemId.includes("halloween") ||
+      itemId.includes("pumpkin") ||
+      itemId.includes("snoopy")
+    );
+  }
+
   if (target === "corporate") {
     return cat === "corporate" || cat.includes("corporate") || tags.includes("corporate") || cat.includes("conference") || cat.includes("business") || cat.includes("summit") || cat.includes("enterprise");
   }
   if (target === "baby shower") {
-    return cat.includes("baby shower") || cat.includes("baby") || cat.includes("bridal shower") || cat.includes("bridal");
+    return (
+      cat.includes("baby shower") ||
+      cat.includes("baby") ||
+      cat.includes("bridal shower") ||
+      cat.includes("bridal") ||
+      cat.includes("shower") ||
+      tags.includes("baby shower") ||
+      tags.includes("bridal shower") ||
+      tags.includes("shower")
+    );
   }
   if (target === "networking") {
-    return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup") || cat.includes("founders") || cat.includes("connect");
+    return cat.includes("networking") || cat.includes("mixer") || cat.includes("meetup") || cat.includes("founders") || cat.includes("connect") || tags.includes("networking");
   }
   if (target === "birthday" || target === "adult birthday") {
-    return cat.includes("birthday") || cat.includes("bday") || cat.includes("milestone") || cat.includes("celebration");
+    return cat.includes("birthday") || cat.includes("bday") || cat.includes("milestone") || cat.includes("celebration") || tags.includes("birthday") || tags.includes("bday");
   }
   if (target === "wedding") {
-    return cat.includes("wedding") || cat.includes("bridal") || cat.includes("anniversary");
+    return (
+      cat.includes("wedding") ||
+      cat.includes("bridal") ||
+      cat.includes("anniversary") ||
+      cat.includes("rehearsal") ||
+      tags.includes("wedding") ||
+      tags.includes("bridal")
+    );
   }
 
   return cat.includes(target) || target.includes(cat) || tags.includes(target);

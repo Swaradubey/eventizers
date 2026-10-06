@@ -495,6 +495,7 @@ export default function EvitePureCssStage({
   const hideEnvelope = Boolean(
     template?.hideEnvelope ||
     template?.cardOnly ||
+    (template as any)?.envelope?.enabled === false ||
     (mode as string) === "card-only" ||
     (template?.id && isTemplateFree(template.id) && template?.hideEnvelope !== false)
   );

@@ -134,6 +134,7 @@ const mapToTemplate = (t: any): Template => {
     fullImageUrl: t.fullImageUrl ? normalizeTemplateImageUrl(t.fullImageUrl) : undefined,
     coverImage: normalizeTemplateImageUrl(t.coverImage || cleanBgUrl || t.imageUrl || t.image),
     backgroundImage: cleanBgUrl,
+    fullBackgroundImage: t.fullBackgroundImage ? normalizeTemplateImageUrl(t.fullBackgroundImage) : (cleanBgUrl || undefined),
     backgroundUrl: cleanBgUrl,
     canvasData: {
       backgroundImage: cleanBgUrl,
@@ -201,23 +202,27 @@ export const getTemplates = async (forceRefresh = false): Promise<Template[]> =>
 export const getTemplateById = async (templateId: string): Promise<NewTemplateData | null> => {
   if (!templateId) return null;
   const cleanId = templateId.trim();
+  const lowerId = cleanId.toLowerCase();
 
-  // Check local cache first
+  // Check local cache first (exact and lowercase)
   if (NEW_TEMPLATES_CONFIG[cleanId]) {
     return NEW_TEMPLATES_CONFIG[cleanId];
   }
+  if (NEW_TEMPLATES_CONFIG[lowerId]) {
+    return NEW_TEMPLATES_CONFIG[lowerId];
+  }
 
   try {
-    const response = await API.get<Template>(`/templates/${cleanId}`);
+    const response = await API.get<Template>(`/templates/${encodeURIComponent(cleanId)}`);
     if (response.data && response.data.id) {
       registerDynamicTemplates([response.data]);
-      return NEW_TEMPLATES_CONFIG[response.data.id] || null;
+      return NEW_TEMPLATES_CONFIG[response.data.id] || NEW_TEMPLATES_CONFIG[response.data.id.toLowerCase()] || NEW_TEMPLATES_CONFIG[cleanId] || NEW_TEMPLATES_CONFIG[lowerId] || null;
     }
   } catch (err) {
     console.warn(`[TemplateService] Could not fetch template '${templateId}' from backend:`, err);
   }
 
-  return NEW_TEMPLATES_CONFIG[cleanId] || null;
+  return NEW_TEMPLATES_CONFIG[cleanId] || NEW_TEMPLATES_CONFIG[lowerId] || null;
 };
 
 /**

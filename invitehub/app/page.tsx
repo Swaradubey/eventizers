@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import HomeTemplatesGallery from "@/components/HomeTemplatesGallery";
 import Templates from "@/components/Templates";
 import HowItWorks from "@/components/HowItWorks";
 import AIFeatures from "@/components/AIFeatures";
@@ -34,6 +35,7 @@ export default function Home() {
       <div className="relative z-10">
         <Navbar />
         <Hero />
+        <HomeTemplatesGallery />
         <Templates />
         <HowItWorks />
         <AIFeatures />

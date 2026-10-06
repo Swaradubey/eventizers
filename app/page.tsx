@@ -6,11 +6,13 @@ import AIFeatures from "@/components/AIFeatures";
 import AttendanceGuarantee from "@/components/AttendanceGuarantee";
 import UseCasesAndTestimonials from "@/components/UseCasesAndTestimonials";
 import Pricing from "@/components/Pricing";
+import BlogSection from "@/components/BlogSection";
 import Footer from "@/components/Footer";
+import SectionWrapper from "@/components/SectionWrapper";
 
 export default function Home() {
   return (
-    <main className="home-page font-body antialiased min-h-screen relative invitation-bg invitation-pattern text-foreground overflow-x-clip">
+    <main className="home-page font-body antialiased min-h-screen relative invitation-bg invitation-pattern text-foreground overflow-x-hidden">
       {/* Fixed Ambient Floating and Pulsing Orbs (v0-e-invitation-app) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-10 left-20">
@@ -31,17 +33,43 @@ export default function Home() {
       </div>
 
       {/* Main Home Page Content Layers */}
-      <div className="relative z-10">
+      <div className="relative z-10 overflow-x-hidden">
         <Navbar />
         <Hero />
-        <Templates />
-        <HowItWorks />
-        <AIFeatures />
-        <AttendanceGuarantee />
-        <UseCasesAndTestimonials />
-        <Pricing />
+
+        {/* Section In-View Entrance Animations */}
+        <SectionWrapper id="templates-showcase">
+          <Templates />
+        </SectionWrapper>
+
+        <SectionWrapper id="how-it-works-showcase">
+          <HowItWorks />
+        </SectionWrapper>
+
+        <SectionWrapper id="features-showcase">
+          <AIFeatures />
+        </SectionWrapper>
+
+        <SectionWrapper id="guarantee-showcase">
+          <AttendanceGuarantee />
+        </SectionWrapper>
+
+        <SectionWrapper id="testimonials-showcase">
+          <UseCasesAndTestimonials />
+        </SectionWrapper>
+
+        <SectionWrapper id="pricing-showcase">
+          <Pricing />
+        </SectionWrapper>
+
+        {/* Latest Blogs & Event Guides Section */}
+        <SectionWrapper id="blogs-showcase">
+          <BlogSection />
+        </SectionWrapper>
+
         <Footer />
       </div>
     </main>
   );
 }
+

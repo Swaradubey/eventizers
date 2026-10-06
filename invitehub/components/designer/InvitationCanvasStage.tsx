@@ -576,18 +576,25 @@ export default function InvitationCanvasStage({
 
   const candidateSources = [
     uploadedImageSrc,
+    (config as any)?.fullBackgroundImage,
     (config as any)?.backgroundImage,
+    (config as any)?.card?.fullArtworkUrl,
+    config.card?.artworkUrl,
     (config as any)?.canvasData?.backgroundImage,
     (config as any)?.backgroundImageUrl,
-    config.card?.artworkUrl,
     (config.card as any)?.backgroundImage,
     (config.card as any)?.borderIllustration,
+    (config as any)?.template?.fullBackgroundImage,
     (config as any)?.template?.backgroundImage,
+    (config as any)?.template?.card?.fullArtworkUrl,
+    (config as any)?.template?.card?.artworkUrl,
     (config as any)?.template?.canvasData?.backgroundImage,
     rawCardBgValue,
     rawBgValue,
+    (fallbackTpl as any)?.fullBackgroundImage,
     (fallbackTpl as any)?.backgroundImage,
     (fallbackTpl as any)?.canvasData?.backgroundImage,
+    (fallbackTpl as any)?.card?.fullArtworkUrl,
     (fallbackTpl as any)?.card?.borderIllustration,
     (fallbackTpl as any)?.card?.artworkUrl,
     fallbackTpl?.decorationImage,
@@ -609,14 +616,17 @@ export default function InvitationCanvasStage({
       ? normalizeTemplateImageUrl(getCleanTemplateSvg(cardImageRaw) || cardImageRaw)
       : null;
 
-  // Collect decorative illustrations (balloons, cake, party hats, candles, gifts) only for non-upload templates
-  const rawDecorations: any[] = isUserUpload ? [] : [
+  // Collect decorative illustrations (balloons, cake, party hats, candles, gifts, vector illustrations) only for non-upload templates
+  const shouldShowIllustrations = !(config as any)?.hideIllustration;
+  const rawDecorations: any[] = (isUserUpload || !shouldShowIllustrations) ? [] : [
     ...((config.card as any)?.decorations || []),
     ...((config as any)?.decorations || []),
     ...((config as any)?.template?.decorations || []),
     ...((fallbackTpl as any)?.card?.decorations || []),
     ...((config.card as any)?.decorativeImages || []),
     ...((config as any)?.background?.decorativeImages || []),
+    ...((config.card as any)?.illustrationSvg ? [(config.card as any).illustrationSvg] : []),
+    ...((fallbackTpl as any)?.cardStyle?.illustrationSvg ? [(fallbackTpl as any).cardStyle.illustrationSvg] : []),
   ];
 
   const decorationItems = Array.from(
@@ -642,6 +652,7 @@ export default function InvitationCanvasStage({
     probe.src = cleanCardImage;
     probe.onload = () => {
       if (!isProbeActive) return;
+      setHasImgError(false);
       const w = probe.naturalWidth || probe.width || 600;
       const h = probe.naturalHeight || probe.height || 840;
       setBgNaturalDimensions({
@@ -694,6 +705,9 @@ export default function InvitationCanvasStage({
           cleanCardImage,
           (info) => {
             if (!isMounted) return;
+            if (info && !info.error) {
+              setHasImgError(false);
+            }
             if (info && info.width && info.height) {
               setBgNaturalDimensions({
                 width: info.width,
@@ -1135,7 +1149,7 @@ export default function InvitationCanvasStage({
               {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
               {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
-              {imgSrc && !hasImgError && (
+              {imgSrc && (
                 <img
                   src={imgSrc}
                   alt="Invitation Card Artwork"
@@ -1143,6 +1157,7 @@ export default function InvitationCanvasStage({
                   crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
                   onError={handleImageError}
                   onLoad={(e) => {
+                    setHasImgError(false);
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
                       setBgNaturalDimensions({
@@ -1154,7 +1169,7 @@ export default function InvitationCanvasStage({
                   }}
                   className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-300 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
-                  }`}
+                  } ${hasImgError ? "opacity-0" : "opacity-100"}`}
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />

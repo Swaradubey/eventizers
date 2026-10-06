@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="burlapBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EBE3D5" />
+      <stop offset="50%" stop-color="#DFD6C4" />
+      <stop offset="100%" stop-color="#D5C9B3" />
+    </linearGradient>
+    <pattern id="burlapGrid" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="none" stroke="#C8BC9F" stroke-width="0.75" opacity="0.4" />
+      <line x1="0" y1="6" x2="12" y2="6" stroke="#BDAF95" stroke-width="0.6" opacity="0.3" />
+      <line x1="6" y1="0" x2="6" y2="12" stroke="#BDAF95" stroke-width="0.6" opacity="0.3" />
+    </pattern>
+    <!-- Soft diagonal tree leaf sunlight shadow overlay -->
+    <linearGradient id="sunlight" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="40%" stop-color="#000000" stop-opacity="0.08" />
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.14" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#burlapBase)" />
+  <rect width="100%" height="100%" fill="url(#burlapGrid)" />
+  <!-- Dappled leaf shadows falling across the linen surface -->
+  <g fill="#2A241A" opacity="0.12" filter="blur(16px)">
+    <ellipse cx="280" cy="180" rx="160" ry="80" transform="rotate(-35 280 180)" />
+    <ellipse cx="420" cy="120" rx="140" ry="60" transform="rotate(-25 420 120)" />
+    <ellipse cx="180" cy="340" rx="200" ry="90" transform="rotate(-40 180 340)" />
+    <ellipse cx="320" cy="460" rx="180" ry="70" transform="rotate(-30 320 460)" />
+  </g>
+  <rect width="100%" height="100%" fill="url(#sunlight)" />
+</svg>

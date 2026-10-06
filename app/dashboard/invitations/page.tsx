@@ -99,14 +99,17 @@ function InvitationPageContent() {
         .then((res) => {
           if (res.success && res.events) {
             setEvents(res.events);
-            if (!queryEventId && res.events.length > 0) {
+            // Only auto-bind the user's most recent event when NO template was requested
+            // in the URL. When a templateId query is present (the "Customize" flow) the
+            // designer must start from that template, not from a previous event's canvas.
+            if (!queryEventId && !queryTemplateId && res.events.length > 0) {
               setSelectedEventId(res.events[0].id || null);
             }
           }
         })
         .catch((err) => console.error("Error loading events for canvas:", err));
     }
-  }, [user, queryEventId]);
+  }, [user, queryEventId, queryTemplateId]);
 
   // Synchronize when queryEventId changes
   useEffect(() => {
@@ -114,6 +117,18 @@ function InvitationPageContent() {
       setSelectedEventId(queryEventId);
     }
   }, [queryEventId]);
+
+  // When opening a specific template, clear any stale pending upload drafts
+  useEffect(() => {
+    if (queryTemplateId && typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("pending_upload_invite");
+        localStorage.removeItem("pending_upload_invite");
+        sessionStorage.removeItem("pending_stationery_design");
+        localStorage.removeItem("pending_stationery_design");
+      } catch (_) {}
+    }
+  }, [queryTemplateId]);
 
   if (authLoading) {
     return (
@@ -126,7 +141,13 @@ function InvitationPageContent() {
     );
   }
 
-  const activeEvent = event || events.find((e) => e.id === selectedEventId) || events[0] || null;
+  // Never fall back to an arbitrary previous event when a template was explicitly
+  // requested — that event's canvasState/invitation would overwrite the selection.
+  const activeEvent =
+    event ||
+    events.find((e) => e.id === selectedEventId) ||
+    (queryTemplateId ? null : events[0] || null) ||
+    null;
   const queryUploadedImageUrl =
     searchParams?.get("uploadedImageUrl") ||
     searchParams?.get("customBackgroundUrl") ||
@@ -134,14 +155,15 @@ function InvitationPageContent() {
     null;
 
   const hasPendingUpload =
-    Boolean(queryUploadedImageUrl) ||
-    (typeof window !== "undefined" &&
-      Boolean(
-        sessionStorage.getItem("pending_upload_invite") ||
-        localStorage.getItem("pending_upload_invite") ||
-        sessionStorage.getItem("pending_stationery_design") ||
-        localStorage.getItem("pending_stationery_design")
-      ));
+    !queryTemplateId &&
+    (Boolean(queryUploadedImageUrl) ||
+      (typeof window !== "undefined" &&
+        Boolean(
+          sessionStorage.getItem("pending_upload_invite") ||
+          localStorage.getItem("pending_upload_invite") ||
+          sessionStorage.getItem("pending_stationery_design") ||
+          localStorage.getItem("pending_stationery_design")
+        )));
 
   const resolvedTemplateId = hasPendingUpload
     ? null
@@ -186,6 +208,10 @@ function InvitationPageContent() {
               eventDate: new Date(Date.now() + 14 * 86400000).toISOString(),
               eventTime: "18:00:00",
               status: "draft",
+              // Carry the selected template onto the newly created event so the
+              // invitation/canvasState is stored against the right template.
+              templateId: payload.templateId || resolvedTemplateId || undefined,
+              selectedTemplateId: payload.templateId || resolvedTemplateId || undefined,
             });
             if (newEvtRes.success && newEvtRes.event) {
               targetEventId = newEvtRes.event.id;

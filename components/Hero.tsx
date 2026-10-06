@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+
 import { 
   Sparkles, 
   Wand2, 
   Send, 
   LayoutTemplate, 
   Upload, 
-  Cake, 
-  Heart, 
   SlidersHorizontal,
   FileUp,
   Check,
@@ -32,7 +32,7 @@ import API, { getApiErrorMessage } from "../services/api";
 import { getImageUrl } from "../utils/imageUrl";
 import { compressAndNormalizeImage } from "../utils/imageCompressor";
 import { templateCards, matchesCategory } from "../lib/templateData";
-import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "../lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl } from "../lib/newTemplatesData";
 import EviteCardPreview from "./designer/EviteCardPreview";
 
 const getDefaultEventDate = () => {
@@ -89,18 +89,39 @@ const getTemplateImage = (templateId?: string | null) => {
 };
 
 const getCardImageUrl = (tpl: any) => {
-  let url = null;
-  if (tpl.mockupUrl) url = tpl.mockupUrl;
-  else if (tpl.imageUrl) url = tpl.imageUrl;
-  else if (tpl.content) {
+  let rawUrl: any =
+    tpl.thumbnailUrl ||
+    tpl.fullThumbnailUrl ||
+    tpl.card?.artworkUrl ||
+    tpl.card?.fullArtworkUrl ||
+    tpl.backgroundImage ||
+    tpl.fullBackgroundImage ||
+    tpl.canvasData?.backgroundImage ||
+    tpl.imageUrl ||
+    tpl.fullImageUrl ||
+    tpl.mockupUrl ||
+    tpl.image;
+
+  if (!rawUrl && tpl.content) {
     try {
-      const parsed = JSON.parse(tpl.content);
-      if (parsed.mockupUrl) url = parsed.mockupUrl;
-      else if (parsed.image) url = parsed.image;
+      const parsed = typeof tpl.content === "string" ? JSON.parse(tpl.content) : tpl.content;
+      rawUrl =
+        parsed.thumbnailUrl ||
+        parsed.fullThumbnailUrl ||
+        parsed.card?.artworkUrl ||
+        parsed.card?.fullArtworkUrl ||
+        parsed.backgroundImage ||
+        parsed.fullBackgroundImage ||
+        parsed.canvasData?.backgroundImage ||
+        parsed.imageUrl ||
+        parsed.mockupUrl ||
+        parsed.image;
     } catch (e) {}
   }
-  if (!url) url = getTemplateImage(tpl.id);
-  return getImageUrl(url);
+
+  if (!rawUrl) rawUrl = getTemplateImage(tpl.id);
+  const urlStr = typeof rawUrl === "object" && rawUrl !== null ? (rawUrl.url || rawUrl.src || "") : (typeof rawUrl === "string" ? rawUrl : "");
+  return normalizeTemplateImageUrl(urlStr) || getImageUrl(urlStr);
 };
 
 const tabs = [
@@ -109,7 +130,33 @@ const tabs = [
   { id: 2, label: "Upload Existing", icon: Upload },
 ];
 
-export default function Hero() {
+export interface HeroAnimationProps {
+  className?: string;
+}
+
+export default function Hero({ className = "" }: HeroAnimationProps = {}) {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  // Left Floating Template Card Scroll Parallax Transforms:
+  const leftY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  const leftRotate = useTransform(scrollYProgress, [0, 1], [-7, 0]);
+  const leftFade = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.9, 0]);
+  const leftScale = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.95, 0.9]);
+
+  // Right Floating Template Card Scroll Parallax Transforms:
+  const rightY = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const rightRotate = useTransform(scrollYProgress, [0, 1], [7, 0]);
+  const rightFade = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.9, 0]);
+  const rightScale = useTransform(scrollYProgress, [0, 0.8, 1], [1, 0.95, 0.9]);
+
+  // Center AI Event Builder Card Depth & Subtle Scale:
+  const centerScale = useTransform(scrollYProgress, [0, 1], [1, 0.98]);
+  const centerPerspectiveY = useTransform(scrollYProgress, [0, 1], [0, -12]);
+
   const { user } = useAuth();
   const router = useRouter();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -129,6 +176,7 @@ export default function Hero() {
   const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-abstract-nature-party");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const templateGridRef = useRef<HTMLDivElement>(null);
 
   // Tab 2: Upload Existing states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +215,13 @@ export default function Hero() {
     }
   };
 
+  // Reveal the complete unified template list inside this tab instead of navigating away
+  const handleViewAllTemplates = () => {
+    setSelectedCategory("All");
+    setVisibleCount(Number.MAX_SAFE_INTEGER);
+    templateGridRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -181,35 +236,48 @@ export default function Hero() {
     },
   ];
 
-  // Fetch templates when Template tab is activated
+  // Fetch dynamic templates from backend API, merging with fallback templates
   useEffect(() => {
-    if (activeTab === 1 && templates.length === 0) {
-      const fetchTemplates = async () => {
-        setLoadingTemplates(true);
-        setErrorMsg(null);
-        try {
-          const data = await templateService.getTemplates();
-          const mergedMap = new Map<string, Template>();
-          fallbackTemplates.forEach(t => mergedMap.set(t.id, t));
-          if (data && data.length > 0) {
-            data.forEach(t => mergedMap.set(t.id, t));
+    let isMounted = true;
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      setErrorMsg(null);
+      try {
+        const data = await templateService.getTemplates(true);
+        if (!isMounted) return;
+        const mergedMap = new Map<string, Template>();
+        // Add dynamic/backend templates first so newly added admin templates appear at the top
+        if (data && data.length > 0) {
+          data.forEach((t) => mergedMap.set(String(t.id).toLowerCase(), t));
+        }
+        // Merge fallback templates deduplicating by ID (case-insensitive)
+        fallbackTemplates.forEach((t) => {
+          if (!mergedMap.has(String(t.id).toLowerCase())) {
+            mergedMap.set(String(t.id).toLowerCase(), t);
           }
-          const combined = Array.from(mergedMap.values());
-          setTemplates(combined);
-          if (combined.length > 0) {
-            setSelectedTemplateId(combined[0].id);
-          }
-        } catch (err: any) {
-          console.error("Failed to load templates:", err);
+        });
+        const combined = Array.from(mergedMap.values());
+        setTemplates(combined);
+        if (combined.length > 0 && !selectedTemplateId) {
+          setSelectedTemplateId(combined[0].id);
+        }
+      } catch (err: any) {
+        console.error("Failed to load templates:", err);
+        if (isMounted) {
           setTemplates(fallbackTemplates);
-          setSelectedTemplateId(fallbackTemplates[0].id);
-        } finally {
+        }
+      } finally {
+        if (isMounted) {
           setLoadingTemplates(false);
         }
-      };
-      fetchTemplates();
-    }
-  }, [activeTab, templates.length]);
+      }
+    };
+    fetchTemplates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Restore pending template selection and draft data on login
   useEffect(() => {
@@ -468,6 +536,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleCreateFromTemplate = async (tplToUse?: Template) => {
+    if (creatingEvent) return;
     const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
     const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
     const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
@@ -481,7 +550,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         };
         localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
       } catch (e) {}
-      router.push("/canvas?guest=true");
+      router.push(`/studio?templateId=${encodeURIComponent(targetTplId)}`);
       return;
     }
 
@@ -517,8 +586,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         }
         setTimeout(() => {
           const targetUrl = eventId
-            ? `/dashboard/invitations?eventId=${eventId}&templateId=${encodeURIComponent(targetTplId)}&studio=true`
-            : `/dashboard/invitations?templateId=${encodeURIComponent(targetTplId)}&studio=true`;
+            ? `/studio?templateId=${encodeURIComponent(targetTplId)}&eventId=${eventId}`
+            : `/studio?templateId=${encodeURIComponent(targetTplId)}`;
           router.push(targetUrl);
         }, 600);
       }
@@ -1019,18 +1088,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   return (
-    <section className="relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent">
+    <section
+      ref={heroRef}
+      className={`relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent will-change-transform ${className}`}
+    >
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col justify-center items-center overflow-x-clip">
-        {/* Top Pill Badge */}
-        <div className="rounded-full bg-white/90 backdrop-blur-sm border border-slate-200/80 px-4 py-1.5 shadow-sm inline-flex items-center gap-2 mb-4">
-          <Sparkles className="w-3.5 h-3.5 text-[#7C3AED]" />
-          <span className="text-xs sm:text-sm font-medium text-slate-600">
-            AI-Powered Event Operating System
-          </span>
-        </div>
-
         {/* Main Heading */}
         <h1
           className="font-normal font-serif tracking-tight text-3xl sm:text-4xl lg:text-5xl text-center leading-tight bg-gradient-to-r from-[#4C75F2] via-[#1D77F3] to-[#00A3FF] bg-clip-text text-transparent pb-1 md:whitespace-nowrap"
@@ -1046,114 +1110,230 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         </p>
 
         {/* Central Hero Card Container with Side Floating Cards */}
-        <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10">
-          {/* Left Side Floating Card (Birthday) */}
-          <div
-            className="hidden lg:flex flex-col justify-between absolute top-6 right-full mr-3 lg:mr-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left transition-transform duration-300 ease-out"
+        <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10 [perspective:1200px]">
+          {/* Left Side Floating Card (Haunted House Party) with Parallax Scroll */}
+          <motion.div
+            className="hidden lg:flex flex-col justify-between absolute top-6 right-full mr-3 lg:mr-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left shadow-2xl will-change-transform"
             style={{
-              background: "linear-gradient(160deg, #FF1E56 0%, #E81C65 35%, #FF7A00 80%, #FF9057 100%)",
-              transform: "rotate(-6deg)",
-              boxShadow: "0 25px 50px -12px rgba(255, 30, 86, 0.45)",
+              y: leftY,
+              rotate: leftRotate,
+              opacity: leftFade,
+              scale: leftScale,
+              background: "linear-gradient(160deg, #0C0906 0%, #1A140D 42%, #241A11 74%, #0A0705 100%)",
+              boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.65), 0 0 28px rgba(255, 138, 0, 0.4)",
             }}
             aria-hidden="true"
           >
-            {/* Concentric arc SVG overlay */}
+            {/* Sepia gothic overlay: glowing full moon, clouds, bats & Victorian haunted mansion */}
             <svg
               aria-hidden="true"
               className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 220 270"
+              viewBox="0 0 180 250"
               fill="none"
+              preserveAspectRatio="xMidYMid slice"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <ellipse cx="110" cy="135" rx="85" ry="105" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="65" ry="82" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="45" ry="58" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="25" ry="34" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
-              <path d="M0 135 Q55 60 110 135 Q165 210 220 135" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2" />
-              <path d="M0 100 Q55 30 110 100 Q165 170 220 100" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-              <path d="M0 170 Q55 95 110 170 Q165 245 220 170" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+              <defs>
+                <linearGradient id="hhSky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#17110A" />
+                  <stop offset="48%" stopColor="#241B11" />
+                  <stop offset="100%" stopColor="#0A0705" />
+                </linearGradient>
+                <radialGradient id="hhMoonGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#F6EBD2" stopOpacity="0.8" />
+                  <stop offset="55%" stopColor="#E4D2A8" stopOpacity="0.26" />
+                  <stop offset="100%" stopColor="#E4D2A8" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="hhMoon" cx="38%" cy="34%" r="72%">
+                  <stop offset="0%" stopColor="#FCF6E6" />
+                  <stop offset="60%" stopColor="#EADFC2" />
+                  <stop offset="100%" stopColor="#C9B892" />
+                </radialGradient>
+                <radialGradient id="hhVignette" cx="50%" cy="45%" r="72%">
+                  <stop offset="55%" stopColor="#000000" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#000000" stopOpacity="0.7" />
+                </radialGradient>
+                <radialGradient id="hhWindowGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#E9C87F" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#E9C87F" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              {/* Sepia night sky */}
+              <rect width="180" height="250" fill="url(#hhSky)" />
+
+              {/* Cloud bands drifting across the sky */}
+              <g fill="#0E0B07">
+                <ellipse cx="54" cy="30" rx="48" ry="9" opacity="0.75" />
+                <ellipse cx="124" cy="20" rx="52" ry="8" opacity="0.7" />
+                <ellipse cx="28" cy="80" rx="40" ry="7" opacity="0.6" />
+                <ellipse cx="146" cy="70" rx="46" ry="7" opacity="0.55" />
+              </g>
+
+              {/* Glowing full moon */}
+              <circle cx="46" cy="56" r="44" fill="url(#hhMoonGlow)" />
+              <circle cx="46" cy="56" r="25" fill="url(#hhMoon)" />
+              <circle cx="38" cy="49" r="4.6" fill="#D6C9A5" opacity="0.55" />
+              <circle cx="56" cy="63" r="3.4" fill="#D6C9A5" opacity="0.5" />
+              <circle cx="51" cy="45" r="2.3" fill="#D6C9A5" opacity="0.45" />
+              <ellipse cx="62" cy="68" rx="34" ry="5" fill="#100C08" opacity="0.7" />
+
+              {/* Bats flying overhead */}
+              <g fill="#080503">
+                <path
+                  transform="translate(98, 38)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+                <path
+                  transform="translate(132, 56) scale(0.68)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+                <path
+                  transform="translate(72, 104) scale(0.5)"
+                  d="M0 -3 C-1.6 -5.6 -4.6 -5.2 -6.2 -2.8 C-8.4 -5.2 -12.2 -4.6 -13.6 -1.8 C-11.2 -1.2 -10 0.6 -8 0.2 C-6.4 2.4 -3.6 3.6 -1.8 2.4 L0 4 L1.8 2.4 C3.6 3.6 6.4 2.4 8 0.2 C10 0.6 11.2 -1.2 13.6 -1.8 C12.2 -4.6 8.4 -5.2 6.2 -2.8 C4.6 -5.2 1.6 -5.6 0 -3 Z"
+                />
+              </g>
+
+              {/* Victorian haunted mansion silhouette */}
+              <g fill="#070402">
+                <polygon points="30,132 51,98 72,132" />
+                <rect x="40" y="132" width="22" height="86" />
+                <polygon points="110,138 129,106 148,138" />
+                <rect x="118" y="138" width="22" height="80" />
+                <polygon points="56,154 90,124 124,154" />
+                <rect x="60" y="154" width="60" height="64" />
+                <rect x="86" y="196" width="12" height="22" />
+              </g>
+              {/* Lit windows + porch glow */}
+              <g fill="#E9C87F">
+                <rect x="47" y="146" width="7" height="9" opacity="0.85" />
+                <rect x="126" y="152" width="7" height="9" opacity="0.8" />
+                <rect x="69" y="166" width="7" height="9" opacity="0.75" />
+                <rect x="98" y="166" width="7" height="9" opacity="0.7" />
+                <rect x="69" y="184" width="7" height="9" opacity="0.6" />
+                <rect x="98" y="184" width="7" height="9" opacity="0.65" />
+                <rect x="88" y="200" width="8" height="18" opacity="0.75" />
+              </g>
+              <circle cx="90" cy="208" r="26" fill="url(#hhWindowGlow)" opacity="0.5" />
+
+              {/* Fog rolling at the base */}
+              <g fill="#C9B48A">
+                <ellipse cx="40" cy="224" rx="46" ry="7" opacity="0.14" />
+                <ellipse cx="132" cy="230" rx="52" ry="8" opacity="0.12" />
+                <ellipse cx="86" cy="240" rx="70" ry="9" opacity="0.1" />
+              </g>
+
+              {/* Ground */}
+              <rect x="0" y="218" width="180" height="32" fill="#060402" />
+
+              {/* Sepia vignette */}
+              <rect width="180" height="250" fill="url(#hhVignette)" />
             </svg>
 
             {/* Badge row */}
             <div className="relative flex justify-between items-center w-full z-10">
-              <span className="inline-flex items-center text-[8px] font-bold px-1.5 py-0.5 tracking-wider uppercase text-white bg-white/20 rounded-full backdrop-blur-sm border border-white/30">
-                BIRTHDAY
+              <span className="inline-flex items-center text-[8px] font-extrabold px-2 py-0.5 tracking-[0.14em] uppercase text-[#1E1B4B] bg-orange-400 rounded-full border border-orange-200/80 shadow-[0_0_14px_rgba(255,138,0,0.7)]">
+                PREMIUM
               </span>
-              <div className="w-5 h-5 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
-                <Cake className="w-3 h-3 text-white" />
+              <div className="w-5 h-5 rounded-full bg-orange-400/90 border border-orange-200/70 flex items-center justify-center backdrop-blur-sm shadow-[0_0_14px_rgba(255,138,0,0.7)]">
+                <Sparkles className="w-3 h-3 text-[#1E1B4B]" />
               </div>
             </div>
 
             {/* Center content */}
             <div className="relative my-auto z-10">
-              <div className="text-[8.5px] text-white/80 leading-none">You&apos;re invited to</div>
-              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
-                Maya&apos;s 5th<br />Birthday
+              <div className="text-[7.5px] text-[#E8DCC0]/90 leading-none uppercase tracking-[0.2em] font-semibold">
+                You&apos;re invited to a
               </div>
-              <div className="text-[8px] text-white/85 leading-tight mt-0.5">Sat, June 14 · 2:00 PM</div>
+              <div
+                className="text-[15px] sm:text-[17px] font-black uppercase text-white leading-[0.95] tracking-tight mt-1.5 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]"
+                style={{
+                  fontFamily: "'Arial Black', 'Impact', 'Haettenschweiler', sans-serif",
+                  transform: "skewX(-5deg)",
+                }}
+              >
+                Haunted House<br />Party
+              </div>
+              <div
+                className="text-[7px] text-white/85 leading-relaxed mt-2 font-semibold uppercase"
+                style={{ fontFamily: "'Courier New', Courier, monospace" }}
+              >
+                October 18th at 7 PM
+                <br />
+                The Jackson Residence
+              </div>
             </div>
 
-            {/* Host row */}
-            <div className="relative text-[7.5px] text-white/75 mt-auto pt-1.5 border-t border-white/20 z-10">
-              Hosted by The Patels
+            {/* Footer row */}
+            <div className="relative text-[7.5px] text-[#D9C7A4]/90 mt-auto pt-1.5 border-t border-white/20 z-10 uppercase tracking-wide">
+              Haunted House Party • RSVP Now
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right Side Floating Card (Wedding) */}
-          <div
-            className="hidden lg:flex flex-col justify-between absolute top-10 left-full ml-3 lg:ml-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left transition-transform duration-300 ease-out"
+          {/* Right Side Floating Card (Spooky Witch & Cauldron) with Parallax Scroll */}
+          <motion.div
+            className="hidden lg:flex flex-col justify-between absolute top-10 left-full ml-3 lg:ml-6 w-[160px] lg:w-[180px] h-[230px] lg:h-[250px] p-3.5 rounded-2xl overflow-hidden z-20 select-none pointer-events-none text-left shadow-2xl will-change-transform"
             style={{
-              background: "linear-gradient(145deg, #4A1FB8 0%, #5825E3 30%, #1565C0 65%, #00D2FF 90%, #00F0FF 100%)",
-              transform: "rotate(6deg)",
-              boxShadow: "0 25px 50px -12px rgba(74, 31, 184, 0.4), 0 15px 30px -10px rgba(0, 210, 255, 0.3)",
+              y: rightY,
+              rotate: rightRotate,
+              opacity: rightFade,
+              scale: rightScale,
+              background: "#050302 url('/templates/halloween-feast-bg.png') center / cover no-repeat",
+              boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.6), 0 0 26px rgba(192, 132, 252, 0.45)",
             }}
             aria-hidden="true"
           >
-            {/* Orbital ellipse SVG overlay */}
-            <svg
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 220 270"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(0,240,255,0.18)" strokeWidth="1.5" />
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(0,210,255,0.12)" strokeWidth="1" transform="rotate(40 110 135)" />
-              <ellipse cx="110" cy="135" rx="100" ry="60" stroke="rgba(150,100,255,0.13)" strokeWidth="1" transform="rotate(80 110 135)" />
-              <ellipse cx="110" cy="135" rx="70" ry="42" stroke="rgba(0,240,255,0.14)" strokeWidth="1" transform="rotate(20 110 135)" />
-              <ellipse cx="110" cy="135" rx="70" ry="42" stroke="rgba(150,100,255,0.10)" strokeWidth="1" transform="rotate(60 110 135)" />
-              <circle cx="110" cy="135" r="4" fill="rgba(0,240,255,0.35)" />
-              <circle cx="110" cy="75" r="2.5" fill="rgba(0,240,255,0.25)" />
-              <circle cx="185" cy="135" r="2" fill="rgba(150,100,255,0.3)" />
-            </svg>
+            {/* Artwork provided by /templates/halloween-feast-bg.png (spiderwebs, chandelier, cauldron & props) */}
 
             {/* Badge row */}
             <div className="relative flex justify-between items-center w-full z-10">
-              <span className="inline-flex items-center text-[8px] font-bold px-1.5 py-0.5 tracking-wider uppercase text-white bg-white/20 rounded-full backdrop-blur-sm border border-white/30">
-                WEDDING
+              <span className="inline-flex items-center text-[8px] font-extrabold px-2 py-0.5 tracking-[0.14em] uppercase text-[#2E1065] bg-lime-300 rounded-full border border-lime-200/80 shadow-[0_0_14px_rgba(190,243,192,0.7)]">
+                TRENDING
               </span>
-              <div className="w-5 h-5 rounded-full bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
-                <Heart className="w-3 h-3 text-white" />
+              <div className="w-5 h-5 rounded-full bg-fuchsia-400/90 border border-fuchsia-200/70 flex items-center justify-center backdrop-blur-sm shadow-[0_0_14px_rgba(232,121,249,0.7)]">
+                <Wand2 className="w-3 h-3 text-[#1A0533]" />
               </div>
             </div>
 
             {/* Center content */}
             <div className="relative my-auto z-10">
-              <div className="text-[8.5px] text-white/80 leading-none">You&apos;re invited to</div>
-              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
-                Liam &amp;<br />Sofia
+              <div
+                className="text-[14px] sm:text-[16px] text-[#F7E9CC] leading-[1.05] tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]"
+                style={{
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontStyle: "italic",
+                  fontWeight: 700,
+                }}
+              >
+                Let&apos;s eat, drink,<br />&amp; be scary!
               </div>
-              <div className="text-[8px] text-white/85 leading-tight mt-0.5">Sept 21 · 5:00 PM<br />Vineyard Estate</div>
+              <div className="text-[6.5px] text-white/85 leading-none uppercase tracking-[0.14em] font-semibold mt-2">
+                You&apos;re invited to a spooky
+                <br />
+                Halloween party!
+              </div>
+              <div
+                className="text-[6.5px] text-[#F5C97E] leading-snug mt-2 font-semibold uppercase"
+                style={{ fontFamily: "'Courier New', Courier, monospace" }}
+              >
+                Saturday, October 20th at 7 PM
+              </div>
             </div>
 
-            {/* Host row */}
-            <div className="relative text-[7.5px] text-white/75 mt-auto pt-1.5 border-t border-white/20 z-10">
-              Together with their families
+            {/* Footer row */}
+            <div className="relative text-[7.5px] text-white/75 mt-auto pt-1.5 border-t border-white/20 z-10 uppercase tracking-wide">
+              Spooky Halloween Party • RSVP Now
             </div>
-          </div>
+          </motion.div>
 
           {/* Central Interactive Hero Card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left">
+          <motion.div
+            style={{
+              scale: centerScale,
+              y: centerPerspectiveY,
+            }}
+            className="bg-white rounded-3xl border border-gray-100 shadow-xl p-7 md:p-10 min-h-[400px] relative z-10 text-left will-change-transform"
+          >
             {/* Tabs (Top of Card) */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {tabs.map((tab) => {
@@ -1395,27 +1575,19 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                       </span>
                     </div>
 
-                    <a
-                      href="#templates"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const el = document.getElementById("templates");
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth" });
-                        } else {
-                          router.push("/dashboard/invitations");
-                        }
-                      }}
+                    <button
+                      type="button"
+                      onClick={handleViewAllTemplates}
                       className="text-[11px] font-semibold text-[#6C5CE7] hover:text-[#5E35B1] hover:underline whitespace-nowrap flex items-center gap-1 transition-colors cursor-pointer group"
                     >
                       <span>View All Templates</span>
                       <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-                    </a>
+                    </button>
                   </div>
                   
                   {/* Category Pills */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
+                    {["All", "Halloween", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
                       const isSelected = selectedCategory === cat;
                       return (
                         <button
@@ -1445,6 +1617,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     </div>
                   ) : (
                     <div 
+                      ref={templateGridRef}
                       onScroll={handleTemplateScroll}
                       className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 max-h-[380px] sm:max-h-[440px] overflow-y-auto pr-1.5 pb-2 custom-scrollbar scrollbar-thin scrollbar-thumb-gray-300"
                     >
@@ -1484,7 +1657,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         return (
                           <div
                             key={tpl.id}
-                            onClick={() => handleSelectTemplate(tpl)}
+                            onClick={() => {
+                              handleSelectTemplate(tpl);
+                              handleCreateFromTemplate(tpl);
+                            }}
                             className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white shadow-sm hover:shadow-xl ${
                               isSelected
                                 ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 -translate-y-0.5"
@@ -1538,6 +1714,9 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelectTemplate(tpl);
+                                    // Create the event from THIS template first so the canvas
+                                    // opens against a real event that carries the exact
+                                    // template id/canvasData (instead of a previous event).
                                     handleCreateFromTemplate(tpl);
                                   }}
                                   className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
@@ -1836,7 +2015,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 

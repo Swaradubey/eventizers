@@ -40,10 +40,19 @@ function CanvasBridgeContent() {
       try {
         localStorage.setItem("pending_template_id", queryTemplateId);
         sessionStorage.setItem("pending_template_id", queryTemplateId);
+        localStorage.removeItem("pending_upload_invite");
+        sessionStorage.removeItem("pending_upload_invite");
+        localStorage.removeItem("pending_stationery_design");
+        sessionStorage.removeItem("pending_stationery_design");
       } catch (e) {}
     }
 
-    if (guestDraft) {
+    const queryTier = searchParams.get("tier");
+    if (queryTier) {
+      params.set("tier", queryTier);
+    }
+
+    if (guestDraft && !queryTemplateId) {
       // Map the consolidated draft fields to the session/local storage keys
       // that InvitationStudio reads on mount
       try {

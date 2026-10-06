@@ -34,6 +34,7 @@ const solutionsLinks = [
 const companyLinks = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Events", href: "/dashboard/events" },
+  { label: "Blog & Guides", href: "/blog" },
   { label: "Guests", href: "/dashboard/guests" },
   { label: "Security", href: "/features/security-center" },
   { label: "Settings", href: "/dashboard/settings" },
@@ -230,7 +231,9 @@ export default function Footer() {
               Company
             </p>
             <ul className="space-y-2.5 text-sm">
-              {companyLinks.map((item) => (
+              {companyLinks
+                .filter((item) => (item.label === "Dashboard" || item.href === "/dashboard" ? !!user : true))
+                .map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}

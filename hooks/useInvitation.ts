@@ -291,12 +291,22 @@ export const useInvitation = (eventId: string | null) => {
         throw new Error(eventRes.message || "Failed to load event details.");
       }
 
+      // The templateId in the URL is the user's explicit selection (e.g. "Customize"
+      // on a template card). Persisted canvas data belonging to a DIFFERENT template
+      // must never be merged on top of it.
+      const urlTemplateId =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("templateId")
+          : null;
+      const isStaleTemplate = (tplId?: string | null) =>
+        Boolean(urlTemplateId && tplId && tplId !== urlTemplateId);
+
       // 2. Fetch existing invitation
       try {
         const inviteRes = await invitationService.getInvitationByEvent(eventId);
         if (inviteRes.success && inviteRes.invitation) {
           const fetchedInvitation = inviteRes.invitation;
-          const tplKey = eventRes.event.selectedTemplateId;
+          const tplKey = urlTemplateId || eventRes.event.selectedTemplateId;
           const tplConfig = tplKey ? TEMPLATES_CONFIG[tplKey] : null;
           // Comprehensive fallback: clean template decoration image > event image fields
           const evtImg = eventRes.event.imageUrl || eventRes.event.coverImage || eventRes.event.uploadedFileUrl || eventRes.event.designData?.coverImage || eventRes.event.thumbnail || "";
@@ -341,6 +351,14 @@ export const useInvitation = (eventId: string | null) => {
             try { persistentCanvasState = JSON.parse(persistentCanvasState); } catch (_) {}
           }
           if (persistentCanvasState) {
+            const stateTplId =
+              persistentCanvasState.templateId || persistentCanvasState.activeTemplateId || null;
+            // Ignore the event's canvas JSON when it was authored for another template.
+            if (isStaleTemplate(stateTplId)) {
+              persistentCanvasState = null;
+            }
+          }
+          if (persistentCanvasState) {
             if (persistentCanvasState.templateId) fetchedInvitation.templateId = persistentCanvasState.templateId;
             if (persistentCanvasState.textLayers || persistentCanvasState.layers || persistentCanvasState.textElements) {
               fetchedInvitation.textElements = persistentCanvasState.textLayers || persistentCanvasState.layers || persistentCanvasState.textElements;
@@ -373,39 +391,46 @@ export const useInvitation = (eventId: string | null) => {
               const rawCache = localStorage.getItem(`invitation_4layer_${eventId}`);
               if (rawCache) {
                 const parsed = JSON.parse(rawCache);
-                if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
-                if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
-                if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
-                if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
-                if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
-                if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
-                if (parsed.background) fetchedInvitation.background = parsed.background;
-                if (parsed.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImageUrl;
-                if (parsed.backgroundImage) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImage;
-                if ((parsed.backgroundImageUrl || parsed.backgroundImage) && (!fetchedInvitation.imageUrl || isSnapshotOrRasterUrl(fetchedInvitation.imageUrl))) {
-                  fetchedInvitation.imageUrl = parsed.backgroundImageUrl || parsed.backgroundImage;
+                // The unscoped legacy key may hold a DIFFERENT template's design —
+                // never let it overwrite the template requested via the URL.
+                if (!isStaleTemplate(parsed.templateId || parsed.activeTemplateId)) {
+                  if (parsed.templateId) fetchedInvitation.templateId = parsed.templateId;
+                  if (parsed.templateName) (fetchedInvitation as any).templateName = parsed.templateName;
+                  if (parsed.textElements) fetchedInvitation.textElements = parsed.textElements;
+                  if (parsed.envelope) fetchedInvitation.envelope = parsed.envelope;
+                  if (parsed.stageBackdrop) fetchedInvitation.stageBackdrop = parsed.stageBackdrop;
+                  if (parsed.cardBg) fetchedInvitation.cardBg = parsed.cardBg;
+                  if (parsed.background) fetchedInvitation.background = parsed.background;
+                  if (parsed.backgroundImageUrl) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImageUrl;
+                  if (parsed.backgroundImage) (fetchedInvitation as any).backgroundImageUrl = parsed.backgroundImage;
+                  if ((parsed.backgroundImageUrl || parsed.backgroundImage) && (!fetchedInvitation.imageUrl || isSnapshotOrRasterUrl(fetchedInvitation.imageUrl))) {
+                    fetchedInvitation.imageUrl = parsed.backgroundImageUrl || parsed.backgroundImage;
+                  }
+                  if (parsed.effects) fetchedInvitation.effects = parsed.effects;
+                  if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
+                  if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
+                  if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
+                  if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
+                  if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
+                  if (parsed.backgroundLayer) (fetchedInvitation as any).backgroundLayer = parsed.backgroundLayer;
+                  if (parsed.frameLayers) (fetchedInvitation as any).frameLayers = parsed.frameLayers;
+                  if (parsed.innerCardLayer) (fetchedInvitation as any).innerCardLayer = parsed.innerCardLayer;
                 }
-                if (parsed.effects) fetchedInvitation.effects = parsed.effects;
-                if (parsed.isLandscape !== undefined) fetchedInvitation.isLandscape = parsed.isLandscape;
-                if (parsed.containerDimensions) (fetchedInvitation as any).containerDimensions = parsed.containerDimensions;
-                if (parsed.aspectRatio) (fetchedInvitation as any).aspectRatio = parsed.aspectRatio;
-                if (parsed.canvasPreset) (fetchedInvitation as any).canvasPreset = parsed.canvasPreset;
-                if (parsed.designData) fetchedInvitation.designData = { ...(fetchedInvitation.designData || {}), ...parsed.designData };
-                if (parsed.backgroundLayer) (fetchedInvitation as any).backgroundLayer = parsed.backgroundLayer;
-                if (parsed.frameLayers) (fetchedInvitation as any).frameLayers = parsed.frameLayers;
-                if (parsed.innerCardLayer) (fetchedInvitation as any).innerCardLayer = parsed.innerCardLayer;
               }
             } catch (e) {}
           }
 
-          if (!fetchedInvitation.templateId && eventRes.event.selectedTemplateId) {
+          if (urlTemplateId) {
+            // The URL selection is authoritative for this editing session.
+            fetchedInvitation.templateId = urlTemplateId;
+          } else if (!fetchedInvitation.templateId && eventRes.event.selectedTemplateId) {
             fetchedInvitation.templateId = eventRes.event.selectedTemplateId;
           }
 
           setInvitation(fetchedInvitation);
         } else {
           const urlTplId = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("templateId") || sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")) : null;
-          const tplKey = eventRes.event.selectedTemplateId || urlTplId;
+          const tplKey = urlTemplateId || eventRes.event.selectedTemplateId || urlTplId;
           const tplConfig = tplKey ? (TEMPLATES_CONFIG[tplKey] || (NEW_TEMPLATES_CONFIG as any)[tplKey]) : null;
 
           // Comprehensive fallback: clean template image > event image fields

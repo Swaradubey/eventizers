@@ -488,10 +488,10 @@ export default function InvitationStudio({
     invite: Invitation | null,
     isExplicitSwitch?: boolean
   ): StudioDesignState => {
-    // If the user uploaded an existing invitation, detect it immediately
-    const pendingUploadUrl = !isExplicitSwitch
+    // If the user uploaded an existing invitation, detect it immediately (prioritizing tplId if explicitly supplied)
+    const pendingUploadUrl = !isExplicitSwitch && !tplId
       ? getPendingOrUploadedImageUrl(invite, evt, uploadedImageUrl)
-      : null;
+      : (uploadedImageUrl ? uploadedImageUrl : null);
     const effectiveTplId = pendingUploadUrl ? null : tplId;
     const tplConfig = effectiveTplId ? getTemplateConfig(effectiveTplId) : null;
 
@@ -775,6 +775,8 @@ export default function InvitationStudio({
           };
         })
       );
+    } else if (tplConfig && (Array.isArray((tplConfig as any).defaultTextLayers) || (tplConfig as any).hasBakedTypography || (tplConfig as any).noDefaultTextLayers)) {
+      resolvedTextLayers = [];
     } else {
       resolvedTextLayers = deduplicateTextLayers([
         {
@@ -912,7 +914,8 @@ export default function InvitationStudio({
         border: (tplConfig as any)?.innerCardLayer?.border,
         paperShadow: (tplConfig as any)?.innerCardLayer?.paperShadow,
       } : undefined),
-      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || [],
+      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || ((tplConfig as any)?.cardStyle?.illustrationSvg ? [(tplConfig as any).cardStyle.illustrationSvg] : []),
+      illustrationSvg: (tplConfig as any)?.cardStyle?.illustrationSvg || (tplConfig as any)?.card?.illustrationSvg || (invite as any)?.card?.illustrationSvg || null,
       decorativeImages: (invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : []),
       illustrationLayers: (invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
       stickerElements: (invite as any)?.card?.stickerElements || (tplConfig as any)?.card?.stickerElements || [],
@@ -954,7 +957,7 @@ export default function InvitationStudio({
       isPureCss: pendingUploadUrl ? false : ((tplConfig as any)?.isPureCss || false),
       card: resolvedCard,
       decorations: resolvedDecorations,
-      cardImageFit: "contain",
+      cardImageFit: pendingUploadUrl ? "contain" : ((tplConfig as any)?.cardImageFit || "cover"),
       isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
       photoSlot: pendingUploadUrl ? null : (tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null),
       textLayers: resolvedTextLayers,
@@ -1504,8 +1507,10 @@ export default function InvitationStudio({
       templateService.getTemplateById(targetTplId).then((fetched) => {
         if (fetched) {
           const rawBg =
+            (fetched as any).fullBackgroundImage ||
             (fetched as any).backgroundImage ||
             (fetched as any).canvasData?.backgroundImage ||
+            (fetched.card as any)?.fullArtworkUrl ||
             fetched.card?.artworkUrl ||
             fetched.image;
           const bgStr = typeof rawBg === "string" ? rawBg : (rawBg?.url || rawBg?.src || "");
@@ -1520,6 +1525,7 @@ export default function InvitationStudio({
               card: {
                 ...(prev.card || {}),
                 artworkUrl: bg,
+                fullArtworkUrl: bg,
               },
               canvasData: {
                 ...(prev.canvasData || {}),
@@ -4673,6 +4679,62 @@ export default function InvitationStudio({
                     title="Fill entire card"
                   >
                     Fill (Cover)
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Envelope Preview Toggle */}
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setDesignState((prev) => {
+                    const isCurrentlyHidden = Boolean(prev.hideEnvelope || prev.viewMode === "card");
+                    return {
+                      ...prev,
+                      hideEnvelope: !isCurrentlyHidden,
+                      viewMode: isCurrentlyHidden ? "envelope" : "card",
+                    };
+                  });
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border ${
+                  !designState.hideEnvelope && designState.viewMode !== "card"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+                title="Toggle Envelope & Liner Preview behind card"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Envelope Preview</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${!designState.hideEnvelope && designState.viewMode !== "card" ? "bg-emerald-300" : "bg-slate-300"}`} />
+              </button>
+            </div>
+
+            {/* Illustration / Artwork Layer Toggle */}
+            {Boolean((designState.card as any)?.illustrationSvg || (designState.card as any)?.borderIllustration || (designState as any)?.decorations?.length > 0) && (
+              <>
+                <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDesignState((prev: any) => ({
+                        ...prev,
+                        hideIllustration: !prev.hideIllustration,
+                      }));
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border ${
+                      !(designState as any)?.hideIllustration
+                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    }`}
+                    title="Toggle Illustration / Artwork Layer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Artwork Layer</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${!(designState as any)?.hideIllustration ? "bg-emerald-300" : "bg-slate-300"}`} />
                   </button>
                 </div>
               </>

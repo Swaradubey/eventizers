@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 840" width="600" height="840">
+  <defs>
+    <radialGradient id="amalfiLemon" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#FFF566" />
+      <stop offset="65%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </radialGradient>
+    <linearGradient id="medSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D7EAF7" />
+      <stop offset="100%" stop-color="#EDF5FA" />
+    </linearGradient>
+  </defs>
+  <!-- Card background in Mediterranean pale blue -->
+  <rect width="100%" height="100%" rx="16" fill="url(#medSky)" />
+  <!-- Center arched white card badge -->
+  <path d="M100 750 L100 280 Q100 130 300 130 Q500 130 500 280 L500 750 Z" fill="#FFFFFF" stroke="#C8DFEE" stroke-width="1.5" />
+  <!-- Lemon tree branches & lemons framing the arch -->
+  <!-- Top left lemon cluster -->
+  <g transform="translate(30, 40)">
+    <path d="M40 180 Q80 80 180 50" stroke="#3D5A27" stroke-width="4" fill="none" />
+    <!-- Lemons -->
+    <ellipse cx="60" cy="110" rx="36" ry="26" fill="url(#amalfiLemon)" transform="rotate(35 60 110)" />
+    <ellipse cx="140" cy="65" rx="32" ry="24" fill="url(#amalfiLemon)" transform="rotate(-25 140 65)" />
+    <!-- White blossoms -->
+    <circle cx="105" cy="85" r="7" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <circle cx="105" cy="85" r="2.5" fill="#FCD34D" />
+    <!-- Green leaves -->
+    <ellipse cx="70" cy="60" rx="25" ry="11" fill="#4C7333" transform="rotate(-40 70 60)" />
+    <ellipse cx="120" cy="120" rx="28" ry="12" fill="#5E8C3F" transform="rotate(25 120 120)" />
+  </g>
+  <!-- Top right lemon cluster -->
+  <g transform="translate(420, 40)">
+    <path d="M140 180 Q100 80 0 50" stroke="#3D5A27" stroke-width="4" fill="none" />
+    <ellipse cx="120" cy="110" rx="36" ry="26" fill="url(#amalfiLemon)" transform="rotate(-35 120 110)" />
+    <ellipse cx="40" cy="65" rx="32" ry="24" fill="url(#amalfiLemon)" transform="rotate(25 40 65)" />
+    <circle cx="75" cy="85" r="7" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <circle cx="75" cy="85" r="2.5" fill="#FCD34D" />
+    <ellipse cx="110" cy="60" rx="25" ry="11" fill="#4C7333" transform="rotate(40 110 60)" />
+  </g>
+  <!-- Bottom left lemon cluster -->
+  <g transform="translate(20, 640)">
+    <ellipse cx="60" cy="90" rx="38" ry="28" fill="url(#amalfiLemon)" transform="rotate(20 60 90)" />
+    <ellipse cx="80" cy="40" rx="28" ry="12" fill="#4C7333" transform="rotate(-30 80 40)" />
+  </g>
+  <!-- Bottom right lemon cluster -->
+  <g transform="translate(450, 640)">
+    <ellipse cx="70" cy="90" rx="38" ry="28" fill="url(#amalfiLemon)" transform="rotate(-20 70 90)" />
+    <ellipse cx="50" cy="40" rx="28" ry="12" fill="#4C7333" transform="rotate(30 50 40)" />
+  </g>
+</svg>

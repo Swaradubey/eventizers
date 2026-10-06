@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 533" width="800" height="533">
+  <defs>
+    <filter id="cardShad" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  <!-- 1. Background Surface: Warm cork/wood -->
+  <rect width="100%" height="100%" rx="16" fill="#2D1A10" />
+  <rect width="100%" height="100%" rx="16" fill="#3D2619" opacity="0.6" />
+
+  <!-- 2. Envelope Underlay (Warm metallic gold/ochre on left) -->
+  <g transform="translate(180, 75)">
+    <rect x="0" y="70" width="300" height="340" rx="4" fill="#B8860B" stroke="#9A6F09" stroke-width="1.5" />
+    <polygon points="0,70 150,-20 300,70" fill="#C59B27" />
+    <polygon points="12,70 150,-6 288,70" fill="#D4AF37" opacity="0.75" />
+  </g>
+
+  <!-- 3. Centered Invitation Card: Scalloped pink gingham border + ivory badge -->
+  <g filter="url(#cardShad)" transform="translate(290, 50)">
+    <!-- Scalloped pink gingham border -->
+    <rect width="280" height="430" rx="18" fill="#F8E5E8" stroke="#D895A2" stroke-width="2" />
+    <!-- Gingham tiles simulation -->
+    <g fill="#E2A6B2" opacity="0.5">
+      <rect x="0" y="0" width="280" height="430" stroke="#C97587" stroke-width="1.5" fill="none" />
+    </g>
+    <!-- Inner Ivory badge -->
+    <rect x="30" y="35" width="220" height="360" rx="10" fill="#FFFDF9" stroke="#C5A059" stroke-width="1.5" />
+    <rect x="36" y="41" width="208" height="348" rx="7" fill="none" stroke="#C5A059" stroke-width="0.6" opacity="0.6" />
+
+    <!-- Typography -->
+    <text x="140" y="115" text-anchor="middle" font-family="'Playfair Display', serif" font-size="9" font-style="italic" fill="#8B3A4A">join us to celebrate</text>
+    <text x="140" y="170" text-anchor="middle" font-family="'Playfair Display', serif" font-size="28" font-weight="700" fill="#7A2838">Jess</text>
+    <text x="140" y="202" text-anchor="middle" font-family="'Playfair Display', serif" font-size="28" font-weight="700" fill="#7A2838">Walters</text>
+    <text x="140" y="260" text-anchor="middle" font-family="'Playfair Display', serif" font-size="10.5" fill="#6B303C">Saturday, November 11th</text>
+    <text x="140" y="278" text-anchor="middle" font-family="'Playfair Display', serif" font-size="10.5" fill="#6B303C">at 8 PM</text>
+    <text x="140" y="325" text-anchor="middle" font-family="'Montserrat', sans-serif" font-size="8.5" letter-spacing="1" fill="#7A424E">The Gingham Manor</text>
+    <text x="140" y="342" text-anchor="middle" font-family="'Montserrat', sans-serif" font-size="7.5" fill="#99606C">123 Rose Avenue</text>
+  </g>
+</svg>

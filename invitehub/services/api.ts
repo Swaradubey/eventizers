@@ -37,6 +37,16 @@ API.interceptors.request.use(
       }
     }
 
+    // Normalize url: avoid double '/api/api' if config.url starts with '/api/' and baseURL already ends with '/api'
+    if (config.url && config.baseURL?.endsWith("/api") && config.url.startsWith("/api/")) {
+      config.url = config.url.slice(4);
+    }
+
+    // Prevent accidental direct template ID calls (e.g. /tpl-... or tpl-...) from missing /templates prefix
+    if (config.url && /^\/?tpl-/.test(config.url)) {
+      config.url = `/templates/${config.url.replace(/^\//, "")}`;
+    }
+
     // AI / Replicate endpoints can take up to 90 s — extend per-request
     const url = config.url || "";
     if (url.includes("/ai/")) {

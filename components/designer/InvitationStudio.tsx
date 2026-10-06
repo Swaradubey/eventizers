@@ -16,7 +16,6 @@ import {
   Upload,
   Plus,
   Trash2,
-  Eye,
   Save,
   Send,
   CheckCircle2,
@@ -66,6 +65,7 @@ import { invitationStore } from "../../hooks/useInvitationStore";
 import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage, isSnapshotOrRasterUrl } from "./layoutUtils";
 import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
+import ReviewPreviewDropdown from "../review/ReviewPreviewDropdown";
 
 export { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, isSnapshotOrRasterUrl };
 
@@ -488,10 +488,10 @@ export default function InvitationStudio({
     invite: Invitation | null,
     isExplicitSwitch?: boolean
   ): StudioDesignState => {
-    // If the user uploaded an existing invitation, detect it immediately
-    const pendingUploadUrl = !isExplicitSwitch
+    // If the user uploaded an existing invitation, detect it immediately (prioritizing tplId if explicitly supplied)
+    const pendingUploadUrl = !isExplicitSwitch && !tplId
       ? getPendingOrUploadedImageUrl(invite, evt, uploadedImageUrl)
-      : null;
+      : (uploadedImageUrl ? uploadedImageUrl : null);
     const effectiveTplId = pendingUploadUrl ? null : tplId;
     const tplConfig = effectiveTplId ? getTemplateConfig(effectiveTplId) : null;
 
@@ -775,6 +775,8 @@ export default function InvitationStudio({
           };
         })
       );
+    } else if (tplConfig && (Array.isArray((tplConfig as any).defaultTextLayers) || (tplConfig as any).hasBakedTypography || (tplConfig as any).noDefaultTextLayers)) {
+      resolvedTextLayers = [];
     } else {
       resolvedTextLayers = deduplicateTextLayers([
         {
@@ -912,7 +914,8 @@ export default function InvitationStudio({
         border: (tplConfig as any)?.innerCardLayer?.border,
         paperShadow: (tplConfig as any)?.innerCardLayer?.paperShadow,
       } : undefined),
-      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || [],
+      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || ((tplConfig as any)?.cardStyle?.illustrationSvg ? [(tplConfig as any).cardStyle.illustrationSvg] : []),
+      illustrationSvg: (tplConfig as any)?.cardStyle?.illustrationSvg || (tplConfig as any)?.card?.illustrationSvg || (invite as any)?.card?.illustrationSvg || null,
       decorativeImages: (invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : []),
       illustrationLayers: (invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
       stickerElements: (invite as any)?.card?.stickerElements || (tplConfig as any)?.card?.stickerElements || [],
@@ -946,7 +949,8 @@ export default function InvitationStudio({
       isTemplatePremium(invite)
     );
     const isFreeTemplate = Boolean(tplConfig || effectiveTplId) && !isPremiumTemplate;
-    const shouldHideEnvelope = Boolean(pendingUploadUrl || isFreeTemplate);
+    const isEnvelopeDisabled = (tplConfig as any)?.envelope?.enabled === false;
+    const shouldHideEnvelope = Boolean(pendingUploadUrl || isFreeTemplate || isEnvelopeDisabled);
 
     return {
       activeTemplateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
@@ -954,7 +958,7 @@ export default function InvitationStudio({
       isPureCss: pendingUploadUrl ? false : ((tplConfig as any)?.isPureCss || false),
       card: resolvedCard,
       decorations: resolvedDecorations,
-      cardImageFit: "contain",
+      cardImageFit: pendingUploadUrl ? "contain" : ((tplConfig as any)?.cardImageFit || "cover"),
       isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
       photoSlot: pendingUploadUrl ? null : (tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null),
       textLayers: resolvedTextLayers,
@@ -985,6 +989,8 @@ export default function InvitationStudio({
         innerLiner: (tplConfig?.envelope as any)?.innerLiner || (savedEnvelope as any)?.innerLiner,
         linerColor: (tplConfig as any)?.envelope?.linerColor || (tplConfig as any)?.linerColor || (savedEnvelope as any)?.linerColor,
         shadowColor: (tplConfig?.envelope as any)?.shadowColor || (savedEnvelope as any)?.shadowColor,
+        position: (tplConfig?.envelope as any)?.position || (savedEnvelope as any)?.position,
+        enabled: (tplConfig?.envelope as any)?.enabled,
       } as any,
       envelopeColor: (tplConfig as any)?.envelopeColor || (tplConfig as any)?.envelope?.outerColor || savedEnvelope.color,
       linerColor: (tplConfig as any)?.linerColor || (tplConfig as any)?.envelope?.linerColor || (savedEnvelope as any)?.linerColor || "gold-foil",
@@ -1464,6 +1470,11 @@ export default function InvitationStudio({
       : null)
   );
 
+  // Always reflects the latest designState so async effects (template pre-loader,
+  // hydration) never act on a stale closure captured on an earlier render.
+  const designStateRef = useRef(designState);
+  designStateRef.current = designState;
+
   // Auto-open template gallery on fresh session (no template, no draft, no event).
   // This ensures a clean slate when the user re-enters the canvas after sending.
   useEffect(() => {
@@ -1504,8 +1515,10 @@ export default function InvitationStudio({
       templateService.getTemplateById(targetTplId).then((fetched) => {
         if (fetched) {
           const rawBg =
+            (fetched as any).fullBackgroundImage ||
             (fetched as any).backgroundImage ||
             (fetched as any).canvasData?.backgroundImage ||
+            (fetched.card as any)?.fullArtworkUrl ||
             fetched.card?.artworkUrl ||
             fetched.image;
           const bgStr = typeof rawBg === "string" ? rawBg : (rawBg?.url || rawBg?.src || "");
@@ -1520,6 +1533,7 @@ export default function InvitationStudio({
               card: {
                 ...(prev.card || {}),
                 artworkUrl: bg,
+                fullArtworkUrl: bg,
               },
               canvasData: {
                 ...(prev.canvasData || {}),
@@ -2142,23 +2156,6 @@ export default function InvitationStudio({
   const [currentEvent, setCurrentEvent] = useState<Event | null>(initialEvent);
   const [eventsList, setEventsList] = useState<Event[]>(propEvents || []);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [isPreviewDropdownOpen, setIsPreviewDropdownOpen] = useState(false);
-  const previewDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close preview dropdown when clicking outside
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (previewDropdownRef.current && !previewDropdownRef.current.contains(e.target as Node)) {
-        setIsPreviewDropdownOpen(false);
-      }
-    };
-    if (isPreviewDropdownOpen) {
-      document.addEventListener("mousedown", handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [isPreviewDropdownOpen]);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [snapshotDataUrl, setSnapshotDataUrl] = useState<string | null>(null);
   const [isGeneratingSnapshot, setIsGeneratingSnapshot] = useState(false);
@@ -2582,9 +2579,20 @@ export default function InvitationStudio({
       propSelectedEventId ||
       initialInvitation?.eventId;
 
+    // The templateId carried by the URL is the user's explicit selection (the
+    // "Customize" button on a template card). It always wins over persisted data
+    // that may belong to a previously opened event/template.
+    const urlRequestedTplId =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("templateId")
+        : null;
+    const isStaleForRequest = (srcTplId?: string | null) =>
+      Boolean(urlRequestedTplId && srcTplId && srcTplId !== urlRequestedTplId);
+
     // Pre-resolve the template ID so we can look up the template-scoped localStorage
     // cache. This prevents reading the cached state of a different template.
     const preResolvedTplId =
+      urlRequestedTplId ||
       templateIdQuery ||
       initialInvitation?.templateId ||
       (currentEvent as any)?.selectedTemplateId ||
@@ -2604,7 +2612,17 @@ export default function InvitationStudio({
           : null;
         const raw = (scopedKey && localStorage.getItem(scopedKey))
           || localStorage.getItem(`invitation_4layer_${targetEvtId}`);
-        if (raw) cachedDraft = JSON.parse(raw);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const draftTplId = parsed?.templateId || parsed?.activeTemplateId || null;
+          // Never ingest a draft authored for a different template than the one requested.
+          if (
+            !isStaleForRequest(draftTplId) &&
+            (!preResolvedTplId || !draftTplId || draftTplId === preResolvedTplId || parsed?.activeTemplateId === preResolvedTplId)
+          ) {
+            cachedDraft = parsed;
+          }
+        }
       } catch (e) { }
     }
 
@@ -2612,12 +2630,27 @@ export default function InvitationStudio({
     const rawEvtCanvasState = (currentEvent as any)?.canvasState || (initialEvent as any)?.canvasState || (initialInvitation as any)?.canvasState;
     if (rawEvtCanvasState) {
       try {
-        persistentCanvasState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+        const parsedState = typeof rawEvtCanvasState === "string" ? JSON.parse(rawEvtCanvasState) : rawEvtCanvasState;
+        const stateTplId = parsedState?.templateId || parsedState?.activeTemplateId || null;
+        // Same guard as getInitialDesign(): drop canvas JSON belonging to another template
+        // so it cannot overwrite the selected template on this render pass.
+        if (
+          !isStaleForRequest(stateTplId) &&
+          (!preResolvedTplId || !stateTplId || stateTplId === preResolvedTplId || parsedState?.activeTemplateId === preResolvedTplId)
+        ) {
+          persistentCanvasState = parsedState;
+        }
       } catch (_) {}
     }
 
+    // If the loaded invitation belongs to a different template than the one requested
+    // in the URL, its design payload (text layers, card, envelope, ...) must be ignored.
+    const inviteSource: any = isStaleForRequest(initialInvitation?.templateId)
+      ? {}
+      : initialInvitation || {};
+
     const mergedInvite = {
-      ...(initialInvitation || {}),
+      ...(inviteSource || {}),
       ...(persistentCanvasState || {}),
       ...(cachedDraft || {}),
       textElements:
@@ -2625,13 +2658,14 @@ export default function InvitationStudio({
         persistentCanvasState?.textLayers ||
         persistentCanvasState?.layers ||
         persistentCanvasState?.textElements ||
-        initialInvitation?.textElements ||
+        inviteSource?.textElements ||
         undefined,
       templateId:
+        urlRequestedTplId ||
         cachedDraft?.templateId ||
         persistentCanvasState?.templateId ||
         persistentCanvasState?.activeTemplateId ||
-        initialInvitation?.templateId ||
+        inviteSource?.templateId ||
         (currentEvent as any)?.selectedTemplateId ||
         (currentEvent as any)?.templateId ||
         initialEvent?.selectedTemplateId ||
@@ -2640,43 +2674,46 @@ export default function InvitationStudio({
       envelope:
         cachedDraft?.envelope ||
         persistentCanvasState?.envelope ||
-        initialInvitation?.envelope ||
+        inviteSource?.envelope ||
         undefined,
       stageBackdrop:
         cachedDraft?.stageBackdrop ||
         persistentCanvasState?.stageBackdrop ||
-        initialInvitation?.stageBackdrop ||
+        inviteSource?.stageBackdrop ||
         undefined,
       cardBg:
         cachedDraft?.cardBg ||
         persistentCanvasState?.cardBg ||
-        initialInvitation?.cardBg ||
+        inviteSource?.cardBg ||
         undefined,
       card:
         cachedDraft?.card ||
         persistentCanvasState?.card ||
-        (initialInvitation as any)?.card ||
+        inviteSource?.card ||
         undefined,
       effects:
         cachedDraft?.effects ||
         persistentCanvasState?.effects ||
-        initialInvitation?.effects ||
+        inviteSource?.effects ||
         undefined,
       backside:
         cachedDraft?.backside ||
         persistentCanvasState?.backside ||
-        (initialInvitation as any)?.backside ||
+        inviteSource?.backside ||
         undefined,
       decorations:
         cachedDraft?.decorations ||
         persistentCanvasState?.decorations ||
-        (initialInvitation as any)?.decorations ||
+        inviteSource?.decorations ||
         undefined,
     };
 
+    // The explicitly requested template always wins; otherwise fall back to the
+    // merged/persisted template id (and finally to local pending storage).
     const targetTplId =
+      urlRequestedTplId ||
       mergedInvite?.templateId ||
-      initialInvitation?.templateId ||
+      inviteSource?.templateId ||
       templateIdQuery ||
       (currentEvent as any)?.selectedTemplateId ||
       (currentEvent as any)?.templateId ||
@@ -2687,7 +2724,7 @@ export default function InvitationStudio({
         : null);
 
     const hasSavedLayers = Boolean(
-      (initialInvitation?.textElements && initialInvitation.textElements.length > 0) ||
+      (inviteSource?.textElements && inviteSource.textElements.length > 0) ||
       (persistentCanvasState?.textLayers && persistentCanvasState.textLayers.length > 0) ||
       (persistentCanvasState?.layers && persistentCanvasState.layers.length > 0) ||
       (cachedDraft?.textElements && cachedDraft.textElements.length > 0)
@@ -2727,7 +2764,12 @@ export default function InvitationStudio({
         (freshState.textLayers || []).map((l) => l.id).filter(Boolean)
       );
 
-      if (!isMounted) return;
+      // Release the hydration lock before bailing out so a later, legitimate
+      // re-hydration (e.g. when the async event/invitation fetch resolves) is not blocked.
+      if (!isMounted) {
+        isHydratingRef.current = false;
+        return;
+      }
 
       setDesignState((prev) => {
         const nextCard = freshState.card || prev.card;
@@ -2939,7 +2981,12 @@ export default function InvitationStudio({
       .getTemplates()
       .then(() => {
         if (!isMounted) return;
+        const urlTplId =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("templateId")
+            : null;
         const targetId =
+          urlTplId ||
           templateIdQuery ||
           initialInvitation?.templateId ||
           initialEvent?.selectedTemplateId ||
@@ -2949,7 +2996,11 @@ export default function InvitationStudio({
 
         if (targetId) {
           const cfg = getTemplateConfig(targetId);
-          if (cfg && (designState.activeTemplateId !== targetId || !designState.card?.artworkUrl)) {
+          // Read the CURRENT state through the ref: a stale closure here would fire a
+          // destructive handleSelectTemplate (teardown + rehydrate) while the canvas
+          // already shows the selected template — the "loads then gets overwritten" race.
+          const latestState = designStateRef.current;
+          if (cfg && (latestState.activeTemplateId !== targetId || !latestState.card?.artworkUrl)) {
             handleSelectTemplate(targetId);
           }
         }
@@ -3026,6 +3077,115 @@ export default function InvitationStudio({
     );
   };
 
+  // Fallback artwork resolver: guarantees the isolated snapshot always has a real template
+  // background (border graphics / artwork) instead of silently degrading to a flat colour card.
+  const resolveSnapshotBackground = (data: IsolatedInvitationData): IsolatedInvitationData => {
+    if (data.backgroundImage) return data;
+    const tplId = data.templateId || designState.activeTemplateId || designState.templateId || templateIdQuery;
+    const tplConfig = tplId ? getTemplateConfig(tplId) : null;
+    const candidates: Array<string | null | undefined> = [
+      (designState.card as any)?.artworkUrl,
+      (designState.card as any)?.borderIllustration,
+      designState.backgroundImageUrl,
+      designState.cardBg?.type === "image" ? designState.cardBg.value : null,
+      (tplConfig as any)?.card?.artworkUrl,
+      (tplConfig as any)?.card?.borderIllustration,
+      (tplConfig as any)?.card?.illustrationSvg,
+      (tplConfig as any)?.canvasData?.backgroundImage,
+      (tplConfig as any)?.backgroundImage,
+      tplConfig?.decorationImage,
+    ];
+    for (const cand of candidates) {
+      if (!cand || typeof cand !== "string") continue;
+      const trimmed = cand.trim();
+      if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) continue;
+      if (isSnapshotOrRasterUrl(trimmed)) continue;
+      const clean = resolveCleanTemplateSvg(trimmed) || trimmed;
+      return { ...data, backgroundImage: clean };
+    }
+    return data;
+  };
+
+  // `document.fonts.ready` alone is NOT enough: Google Fonts are lazily fetched only once a
+  // rendered element actually requests the family. Without an explicit load() the isolated card
+  // can be serialized with the system fallback font, destroying the template typography.
+  const preloadSnapshotFonts = async (data: IsolatedInvitationData): Promise<void> => {
+    if (typeof document === "undefined" || !(document as any).fonts) return;
+    const families = new Set<string>();
+    (data.elements || []).forEach((el) => {
+      if (el.type !== "text") return;
+      const raw = (el.fontFamily || "").trim();
+      if (!raw) return;
+      raw.split(",").forEach((fam) => {
+        const clean = fam
+          .trim()
+          .replace(/^['"]|['"]$/g, "")
+          .replace(/\s*!important$/i, "")
+          .trim();
+        if (clean && !/^(sans-serif|serif|monospace|cursive|fantasy|system-ui|inherit|initial|initial)$/i.test(clean)) {
+          families.add(clean);
+        }
+      });
+    });
+    if (families.size === 0) return;
+
+    const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+      Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))]);
+
+    const specs: string[] = [];
+    families.forEach((fam) => {
+      specs.push(`400 32px "${fam}"`, `600 32px "${fam}"`, `700 32px "${fam}"`, `900 32px "${fam}"`);
+    });
+
+    await Promise.all(
+      specs.map((spec) =>
+        withTimeout(
+          (document as any).fonts.load(spec).catch(() => null),
+          5000
+        )
+      )
+    );
+    await withTimeout((document as any).fonts.ready, 5000);
+  };
+
+  // Pre-decode every external image used by the isolated card so html-to-image never serializes
+  // a half-decoded or CORS-blocked background artwork.
+  const preloadSnapshotImages = async (data: IsolatedInvitationData): Promise<void> => {
+    const urls = new Set<string>();
+    if (data.backgroundImage) urls.add(data.backgroundImage);
+    (data.decorations || []).forEach((d) => d && urls.add(d));
+    (data.elements || []).forEach((el) => {
+      if (el.type === "image" && el.src) urls.add(el.src);
+    });
+    if (urls.size === 0) return;
+
+    await Promise.all(
+      Array.from(urls).map(
+        (src) =>
+          new Promise<void>((resolve) => {
+            const done = () => resolve();
+            try {
+              const img = new Image();
+              if (/^https?:\/\//i.test(src)) img.crossOrigin = "anonymous";
+              img.onload = done;
+              img.onerror = done;
+              img.src = src;
+              if (img.complete && img.naturalWidth > 0) {
+                if (typeof img.decode === "function") {
+                  img.decode().then(done).catch(done);
+                } else {
+                  done();
+                }
+              }
+            } catch (_) {
+              done();
+            }
+            setTimeout(done, 6000);
+          })
+      )
+    );
+  };
+
   // 100% Decoupled Pure-Data Snapshot Pipeline (Guaranteed zero canvas DOM interference)
   const generateSnapshot = async (): Promise<{ dataUrl: string | null; uploadedUrl: string | null }> => {
     isSnapshotInProgressRef.current = true;
@@ -3043,7 +3203,13 @@ export default function InvitationStudio({
 
       // Phase 1: Extract clean, deduplicated data snapshot directly from designState
       // Strictly non-destructive: active canvas DOM is never touched and selectedTextId is never mutated!
-      const cleanData = extractCleanSnapshotData(designState, 600);
+      const cleanData = resolveSnapshotBackground(extractCleanSnapshotData(designState, 600));
+
+      // Phase 1b: Pre-load template artwork + every web font used by the text layers BEFORE the
+      // offscreen node is captured. Guarantees background borders/graphics and custom typography
+      // are present in the PNG instead of degrading to a flat card with fallback fonts.
+      await preloadSnapshotFonts(cleanData);
+      await preloadSnapshotImages(cleanData);
 
       // Phase 2: Mount isolated pure-data card in offscreen container
       setIsolatedSnapshotData(cleanData);
@@ -3079,12 +3245,12 @@ export default function InvitationStudio({
           backgroundColor: cleanData.backgroundColor || "#ffffff",
         });
       } catch (e1) {
-        console.warn("[Isolated Snapshot] 1.2x capture failed, retrying with skipFonts & 1.0x:", e1);
+        console.warn("[Isolated Snapshot] 1.2x capture failed, retrying with 1.0x (fonts still embedded):", e1);
         try {
           dataUrl = await toPng(targetNode, {
             quality: 0.88,
             pixelRatio: 1.0,
-            skipFonts: true,
+            skipFonts: false,
             cacheBust: true,
             backgroundColor: cleanData.backgroundColor || "#ffffff",
           });
@@ -3933,10 +4099,49 @@ export default function InvitationStudio({
           : null;
 
       // Prepare payload
+      const activeSendTplId = templateIdQuery || designState.activeTemplateId || designState.templateId || "custom";
       payload = {
         invitationId: activeInvitationId,
         eventId: targetEventId,
-        templateId: templateIdQuery || designState.activeTemplateId || "custom",
+        templateId: activeSendTplId,
+        selectedTemplateId: activeSendTplId,
+        // Full frontend template schema (artwork URLs, card/envelope colours, backdrop) so the
+        // backend composite renderer can reproduce the chosen template even though the
+        // backend registry does not know every frontend template id.
+        templateConfig: getTemplateConfig(activeSendTplId) || null,
+        // ── Full 4-layer design model: the backend card renderer needs these to rebuild the
+        // chosen template (artwork, borders, colours, text positions/typography) when the
+        // client-side snapshot is unavailable. Never send a payload without them.
+        card: designState.card,
+        cardBg: designState.cardBg,
+        background: designState.cardBg,
+        backgroundImageUrl: designState.backgroundImageUrl || null,
+        envelope: designState.envelope,
+        stageBackdrop: designState.stageBackdrop,
+        effects: designState.effects,
+        backside: designState.backside,
+        decorations: designState.decorations,
+        layers: dedupedSendLayers,
+        textElements: dedupedSendLayers,
+        canvasState: {
+          templateId: activeSendTplId,
+          activeTemplateId: activeSendTplId,
+          textLayers: dedupedSendLayers,
+          layers: dedupedSendLayers,
+          card: designState.card,
+          cardBg: designState.cardBg,
+          background: designState.cardBg,
+          backgroundImageUrl: designState.backgroundImageUrl || null,
+          envelope: designState.envelope,
+          stageBackdrop: designState.stageBackdrop,
+          effects: designState.effects,
+          backside: designState.backside,
+          decorations: designState.decorations,
+          isLandscape: designState.isLandscape,
+          previewUrl: finalPreview || activeSnapshotDataUrl,
+          thumbnailUrl: finalPreview || activeSnapshotDataUrl,
+          eventDetails: designState.eventDetails,
+        },
         title:
           designState.textLayers.find((l) => l.id === "layer-title")?.text?.trim() ||
           designState.eventDetails.title?.trim() ||
@@ -4151,6 +4356,8 @@ export default function InvitationStudio({
         layers: dedupedDispatchLayers,
         card: designState.card,
         cardBg: designState.cardBg,
+        background: designState.cardBg,
+        backgroundImageUrl: designState.backgroundImageUrl || null,
         envelope: designState.envelope,
         stageBackdrop: designState.stageBackdrop,
         effects: designState.effects,
@@ -4168,6 +4375,7 @@ export default function InvitationStudio({
         eventId: targetEventId,
         templateId: effectiveTplId,
         selectedTemplateId: effectiveTplId,
+        templateConfig: getTemplateConfig(effectiveTplId) || null,
         canvasState: packagedCanvasState,
         layers: dedupedDispatchLayers,
         textElements: dedupedDispatchLayers,
@@ -4180,6 +4388,7 @@ export default function InvitationStudio({
         card: designState.card,
         cardBg: designState.cardBg,
         background: designState.cardBg,
+        backgroundImageUrl: designState.backgroundImageUrl || null,
         envelope: designState.envelope,
         stageBackdrop: designState.stageBackdrop,
         effects: designState.effects,
@@ -4490,16 +4699,13 @@ export default function InvitationStudio({
             )}
           </button>
 
-          {/* Preview Button */}
-          <button
-            type="button"
-            onClick={() => setIsPreviewModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
-            title="Card preview"
-          >
-            <Eye className="w-3.5 h-3.5 text-[#3e5622]" />
-            <span className="hidden sm:inline">Preview</span>
-          </button>
+          {/* Preview dropdown: preview as guest / email a preview */}
+          <ReviewPreviewDropdown
+            eventId={currentEvent?.id || initialEvent?.id || null}
+            invitationId={currentInvitation?.id || initialInvitation?.id || null}
+            recipientEmail={user?.email || null}
+            onToast={(next) => setToast(next)}
+          />
 
           {/* Premium Badge */}
           <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#f8f1fc] text-[#6b21a8] border border-[#e9d5ff] font-bold text-xs shadow-2xs select-none shrink-0">
@@ -4673,6 +4879,62 @@ export default function InvitationStudio({
                     title="Fill entire card"
                   >
                     Fill (Cover)
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Envelope Preview Toggle */}
+            <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setDesignState((prev) => {
+                    const isCurrentlyHidden = Boolean(prev.hideEnvelope || prev.viewMode === "card");
+                    return {
+                      ...prev,
+                      hideEnvelope: !isCurrentlyHidden,
+                      viewMode: isCurrentlyHidden ? "envelope" : "card",
+                    };
+                  });
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border ${
+                  !designState.hideEnvelope && designState.viewMode !== "card"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+                title="Toggle Envelope & Liner Preview behind card"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Envelope Preview</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${!designState.hideEnvelope && designState.viewMode !== "card" ? "bg-emerald-300" : "bg-slate-300"}`} />
+              </button>
+            </div>
+
+            {/* Illustration / Artwork Layer Toggle */}
+            {Boolean((designState.card as any)?.illustrationSvg || (designState.card as any)?.borderIllustration || (designState as any)?.decorations?.length > 0) && (
+              <>
+                <div className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDesignState((prev: any) => ({
+                        ...prev,
+                        hideIllustration: !prev.hideIllustration,
+                      }));
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border ${
+                      !(designState as any)?.hideIllustration
+                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    }`}
+                    title="Toggle Illustration / Artwork Layer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Artwork Layer</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${!(designState as any)?.hideIllustration ? "bg-emerald-300" : "bg-slate-300"}`} />
                   </button>
                 </div>
               </>
@@ -4855,7 +5117,7 @@ export default function InvitationStudio({
 
                     {/* Category Filter Pills */}
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-                      {["All", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"].map((cat) => {
+                      {["All", "Thanksgiving", "Holiday", "Corporate", "Birthday", "Adult Birthday", "Bridal Shower", "Wedding"].map((cat) => {
                         const isCatSelected = sidebarTemplateCategory === cat;
                         return (
                           <button

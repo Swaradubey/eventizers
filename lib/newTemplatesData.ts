@@ -4,6 +4,9 @@
 // and dynamic live text layers without baked-in typography.
 // =============================================================================
 
+import { homeTemplatesData } from "./homeTemplatesData";
+
+
 // CSS-only card visual configuration — no images, no SVGs
 export interface CssBorderConfig {
   type: 'double-gold' | 'triple-line' | 'dotted' | 'geometric' | 'hairline' | 'arch' | 'none';
@@ -80,14 +83,65 @@ export interface EviteCardTemplate {
   } | null;
 }
 
+// -----------------------------------------------------------------------------
+// Editable Canvas Layer Schema (Thanksgiving / Autumn template family)
+// Mirrors the designer's independent, fully-editable canvas text nodes.
+// -----------------------------------------------------------------------------
+export interface EditableCanvasElement {
+  id: string;
+  type: 'text';
+  content: string;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight?: string | number;
+  fontStyle?: string;
+  letterSpacing?: string;
+  lineHeight?: number;
+  color: string;
+  textAlign: 'left' | 'center' | 'right';
+  /** Absolute X coordinate in px relative to `dimensions.width` */
+  x: number;
+  /** Absolute Y coordinate in px relative to `dimensions.height` */
+  y: number;
+  /** Stacking order of the editable node above the locked artwork layer */
+  zIndex?: number;
+}
+
+export interface TemplateCanvasBackground {
+  color: string;
+  texture?: string;
+  artworkUrl: string;
+  /** Locked background artwork — never selectable / never distorted by text edits */
+  artworkLock?: boolean;
+  filter?: string;
+}
+
+export interface TemplateEnvelopeConfig {
+  /** Master switch — when false the template renders as a flat card with no envelope stage */
+  enabled?: boolean;
+  style?: 'kraft-paper' | 'forest-green' | string;
+  linerPattern?: string;
+  position?: 'left-angled-behind' | 'right-angled-behind' | string;
+  envelopeColor?: string;
+  linerBorder?: string;
+  flapColor?: string;
+}
+
 export interface EviteTemplateSchema {
   id: string;
   title: string;
   name?: string;
   category: 'Baby Shower' | 'Wedding' | 'Birthday' | 'All' | 'bridal_shower' | string;
   tags?: string[];
+  tier?: 'free' | 'premium' | string;
   isPremium?: boolean;
   badge?: 'Trending' | 'FREE' | 'Free' | 'PREMIUM' | 'Premium' | string;
+  /** Design canvas size in px (design-time coordinate space for editableElements) */
+  dimensions?: { width: number; height: number };
+  /** Locked decorative artwork layer rendered behind every editable text node */
+  canvasBackground?: TemplateCanvasBackground;
+  /** Independent editable canvas nodes (headline / subtext / datetime / location) */
+  editableElements?: EditableCanvasElement[];
   envelopeColor?: string;
   linerColor?: string;
   envelopeLiner?: string;
@@ -106,7 +160,7 @@ export interface EviteTemplateSchema {
     color?: string;
     gradient?: string;  // pure CSS gradient overriding value
   };
-  envelope: {
+  envelope: TemplateEnvelopeConfig & {
     outerColor: string;
     flapColor?: string;
     linerPatternUrl: string; // empty string for pure-CSS templates
@@ -138,6 +192,9 @@ export interface EviteTemplateSchema {
     text: string;
     fontFamily: string;
     fontSize: number;
+    fontWeight?: string | number;
+    textTransform?: string;
+    casing?: string;
     lineHeight?: number;
     fontStyle?: string;
     letterSpacing?: string;
@@ -164,6 +221,12 @@ export interface EviteTemplateSchema {
     foilGradient?: string;
     casing?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
   }>;
+  // Optional canvas payload consumed by the studio (background artwork + optional extra layers)
+  canvasData?: {
+    backgroundImage?: string | { url?: string; src?: string };
+    layers?: any[];
+    [key: string]: any;
+  };
   textLayers?: Array<{
     id: string;
     key: 'header' | 'title' | 'subtitle' | 'dateTime' | 'venue' | 'rsvp' | string;
@@ -269,6 +332,172 @@ export interface NewTemplateData {
     [key: string]: any;
   };
 }
+
+// -----------------------------------------------------------------------------
+// THANKSGIVING / AUTUMN TEMPLATE SEEDS (Editable Canvas Layer Architecture)
+// Each seed is injected into EVITE_TEMPLATES below and normalized into the
+// 4-Layer Decoupled schema (backdrop / envelope / card / defaultTextLayers).
+// -----------------------------------------------------------------------------
+
+/** Pure-CSS envelope liner patterns used by the Thanksgiving / Autumn family */
+export const THANKSGIVING_LINER_PATTERNS: Record<string, string> = {
+  // Warm kraft envelope — tan + forest green plaid
+  "plaid-tan-green":
+    "repeating-linear-gradient(90deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(0deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(90deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), repeating-linear-gradient(0deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), linear-gradient(135deg, #E9D6B8 0%, #DCC39C 55%, #E4CFAC 100%)",
+  // Forest green envelope — warm terracotta gingham
+  "warm-gingham":
+    "repeating-linear-gradient(90deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), repeating-linear-gradient(0deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), linear-gradient(135deg, #F8EAD1 0%, #F1DCB9 100%)",
+  // Flat-card templates never render an envelope liner, but keep a fallback
+  "autumn-gingham":
+    "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
+};
+
+/** Maps an editable node id to the canonical designer text-layer key */
+const EDITABLE_KEY_MAP: Record<string, string> = {
+  "text-title": "title",
+  "text-heading": "heading",
+  "text-datetime": "datetime",
+  "text-location": "venue",
+  "text-subtext": "subtitle",
+  "text-details": "datetime",
+  "text-invite": "invite",
+  "text-time-place": "datetime",
+};
+
+/** Darkens a #RRGGBB hex color by a percentage (used for realistic envelope flap shading) */
+const darkenHex = (hex: string, amount: number): string => {
+  const clean = (hex || "").replace("#", "");
+  if (clean.length !== 6) return hex;
+  const num = parseInt(clean, 16);
+  const r = Math.max(0, Math.round(((num >> 16) & 255) * (1 - amount)));
+  const g = Math.max(0, Math.round(((num >> 8) & 255) * (1 - amount)));
+  const b = Math.max(0, Math.round((num & 255) * (1 - amount)));
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+};
+
+/** Rounds a px coordinate into the percentage coordinate space used by defaultTextLayers */
+const toPercent = (value: number, total: number): number =>
+  Math.round((value / total) * 10000) / 100;
+
+/** Raw seed shape — the injected template configuration objects (verbatim designer schema) */
+export interface ThanksgivingTemplateSeed {
+  id: string;
+  title: string;
+  category: string;
+  tier: 'free' | 'premium';
+  tags?: string[];
+  dimensions: { width: number; height: number };
+  envelope: TemplateEnvelopeConfig;
+  canvasBackground: TemplateCanvasBackground;
+  stageBackdrop?: {
+    type: 'color' | 'texture';
+    value: string;
+    color?: string;
+    gradient?: string;
+  };
+  editableElements: EditableCanvasElement[];
+}
+
+/**
+ * Normalizes a Thanksgiving seed into a full EviteTemplateSchema:
+ * - `editableElements` (absolute px) → `defaultTextLayers` (percent) so every
+ *   text block becomes an independent, interactive canvas node.
+ * - `canvasBackground` → locked `card.artworkUrl` + `backdrop` stage surface.
+ * - `envelope` spec keys → renderer keys (outerColor/flapColor/linerCss/...)
+ */
+export const buildEditableCanvasTemplate = (seed: ThanksgivingTemplateSeed): EviteTemplateSchema => {
+  const { width, height } = seed.dimensions;
+  const envelopeEnabled = seed.envelope.enabled !== false;
+  const linerCss =
+    THANKSGIVING_LINER_PATTERNS[seed.envelope.linerPattern || ""] ||
+    (seed.envelope.linerPattern && seed.envelope.linerPattern.includes("gradient")
+      ? seed.envelope.linerPattern
+      : "");
+  const outerColor = seed.envelope.envelopeColor || "#B89772";
+  const isPremium = seed.tier === "premium";
+
+  const defaultTextLayers = seed.editableElements.map((el) => ({
+    id: el.id,
+    key: EDITABLE_KEY_MAP[el.id] || el.id,
+    text: el.content,
+    fontFamily: el.fontFamily,
+    fontSize: el.fontSize,
+    color: el.color,
+    fontWeight: (el.fontWeight ?? "400") as string | number,
+    textAlign: el.textAlign,
+    fontStyle: el.fontStyle,
+    letterSpacing: el.letterSpacing,
+    lineHeight: el.lineHeight,
+    top: toPercent(el.y, height),
+    left: toPercent(el.x, width),
+    zIndex: el.zIndex ?? 12,
+  }));
+
+  const backdrop = seed.stageBackdrop || {
+    type: "color" as const,
+    value: seed.canvasBackground.color,
+    color: seed.canvasBackground.color,
+  };
+
+  return {
+    id: seed.id,
+    title: seed.title,
+    name: seed.title,
+    category: seed.category,
+    tags: seed.tags || ["Thanksgiving", "Autumn", "Fall", "All"],
+    tier: seed.tier,
+    isPremium,
+    badge: isPremium ? "Premium" : "Free",
+    dimensions: seed.dimensions,
+    canvasBackground: seed.canvasBackground,
+    editableElements: seed.editableElements,
+    mockupUrl: `/assets/templates/${seed.id}-mockup.svg`,
+    thumbnailUrl: `/assets/templates/${seed.id}-mockup.svg`,
+    envelopeColor: outerColor,
+    linerColor: seed.envelope.linerBorder || darkenHex(outerColor, 0.2),
+    envelopeLiner: linerCss,
+    backdrop: {
+      type: backdrop.type,
+      value: backdrop.value,
+      color: backdrop.color || backdrop.value,
+      gradient: backdrop.gradient,
+    },
+    envelope: {
+      ...seed.envelope,
+      outerColor,
+      flapColor: seed.envelope.flapColor || darkenHex(outerColor, 0.14),
+      linerCss,
+      innerLiner: linerCss,
+      linerColor: seed.envelope.linerBorder || darkenHex(outerColor, 0.2),
+      linerPatternUrl: seed.envelope.linerPattern || "",
+      shadowColor: "rgba(0,0,0,0.32)",
+      isOpen: envelopeEnabled,
+      isOpenUpward: true,
+      flapStyle: "triangle",
+      enabled: envelopeEnabled,
+      position: seed.envelope.position || "left-angled-behind",
+    },
+    card: {
+      artworkUrl: seed.canvasBackground.artworkUrl,
+      decorativeBorderSvgUrl: seed.canvasBackground.artworkUrl,
+      backgroundColor: seed.canvasBackground.color,
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.06)",
+      cssConfig: {
+        backgroundColor: seed.canvasBackground.color,
+        borderRadius: "14px",
+        paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      },
+    },
+    innerCardLayer: {
+      backgroundColor: seed.canvasBackground.color,
+      borderRadius: "14px",
+      paperShadow: "0 14px 30px -6px rgba(0, 0, 0, 0.28)",
+      aspectRatio: "5/7",
+    },
+    defaultTextLayers,
+  } as EviteTemplateSchema;
+};
 
 // -----------------------------------------------------------------------------
 // STANDARDIZED EVITE TEMPLATES REGISTRY (4-Layer Decoupled Architecture)
@@ -1997,8 +2226,678 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         left: 50
       }
     ]
+  },
+  // ---------------- NEW HALLOWEEN PREMIUM TEMPLATES (Canvas-Ready 4-Layer Architecture) ----------------
+  {
+    id: "retro-little-monsters",
+    title: "Retro Little Monsters",
+    name: "Retro Little Monsters",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    tags: ["Halloween", "All"],
+    envelopeColor: "#A9DCC6",
+    linerColor: "#1C1A19",
+    envelopeLiner: "repeating-conic-gradient(#1C1A19 0% 25%, #FDFCF7 0% 50%) 0 0 / 26px 26px",
+    mockupUrl: "/templates/retro-little-monsters.svg",
+    thumbnailUrl: "/templates/retro-little-monsters.svg",
+    backdrop: {
+      type: "color",
+      value: "#C7B8E6",
+      color: "#C7B8E6",
+      gradient: "linear-gradient(135deg, #C7B8E6 0%, #A99CD9 100%)"
+    },
+    envelope: {
+      outerColor: "#A9DCC6",
+      flapColor: "#9AD2BA",
+      linerPatternUrl: "",
+      linerColor: "#1C1A19",
+      innerLiner: "repeating-conic-gradient(#1C1A19 0% 25%, #FDFCF7 0% 50%) 0 0 / 26px 26px",
+      linerCss: "repeating-conic-gradient(#1C1A19 0% 25%, #FDFCF7 0% 50%) 0 0 / 26px 26px",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(43,30,68,0.45)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/retro-little-monsters-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/retro-little-monsters-bg.svg",
+      borderIllustration: "/assets/templates/retro-little-monsters-bg.svg",
+      backgroundColor: "#F7F2E3",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.06)",
+      cssConfig: {
+        backgroundColor: "#F7F2E3",
+        borderRadius: "12px",
+        paperShadow: "0 16px 34px -6px rgba(0,0,0,0.45)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#F7F2E3",
+      borderRadius: "12px",
+      paperShadow: "0 16px 34px -6px rgba(0,0,0,0.45)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/retro-little-monsters-bg.svg"
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-intro",
+        key: "intro",
+        text: "It was a mash... It was a",
+        fontFamily: "'Dancing Script', cursive",
+        fontSize: 26,
+        fontWeight: "600",
+        color: "#2B2B2B",
+        textAlign: "center",
+        top: 41,
+        left: 50
+      },
+      {
+        id: "layer-title",
+        key: "title",
+        text: "MONSTER MASH",
+        fontFamily: "'Londrina Solid', sans-serif",
+        fontSize: 46,
+        fontWeight: "900",
+        letterSpacing: 1,
+        color: "#1F1D1A",
+        textAlign: "center",
+        top: 51,
+        left: 50
+      },
+      {
+        id: "layer-description",
+        key: "description",
+        text: "Join us for a monstrously good time",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "500",
+        color: "#4A4640",
+        textAlign: "center",
+        top: 65,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "Saturday, October 31st at 5 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11.5,
+        fontWeight: "600",
+        color: "#2B2B2B",
+        textAlign: "center",
+        top: 73,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "617 Costume Court",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11.5,
+        fontWeight: "500",
+        color: "#6B665C",
+        textAlign: "center",
+        top: 79.5,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "creepy-cake",
+    title: "Creepy Cake",
+    name: "Creepy Cake",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    tags: ["Halloween", "Birthday", "All"],
+    envelopeColor: "#C2966A",
+    linerColor: "#D8B486",
+    envelopeLiner: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+    mockupUrl: "/templates/creepy-cake.svg",
+    thumbnailUrl: "/templates/creepy-cake.svg",
+    backdrop: {
+      type: "color",
+      value: "#1A1619",
+      color: "#1A1619",
+      gradient: "linear-gradient(180deg, #221C22 0%, #141116 100%)"
+    },
+    envelope: {
+      outerColor: "#C2966A",
+      flapColor: "#B0855A",
+      linerPatternUrl: "",
+      linerColor: "#D8B486",
+      innerLiner: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+      linerCss: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(90,45,5,0.5)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/creepy-cake-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/creepy-cake-bg.svg",
+      borderIllustration: "/assets/templates/creepy-cake-bg.svg",
+      backgroundColor: "#1A1619",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.2)",
+      cssConfig: {
+        backgroundColor: "#1A1619",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#1A1619",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/creepy-cake-bg.svg"
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-title",
+        key: "title",
+        text: "VANESSA'S\nHALLOWEEN\nBASH!",
+        fontFamily: "'Permanent Marker', cursive",
+        fontSize: 46,
+        fontWeight: "400",
+        lineHeight: 1,
+        color: "#FF7A1A",
+        textAlign: "center",
+        top: 24,
+        left: 50
+      },
+      {
+        id: "layer-description",
+        key: "description",
+        text: "Let's get a little spooky!",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "500",
+        color: "#F5F1E8",
+        textAlign: "center",
+        top: 58,
+        left: 68
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "October 23rd at 6 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#FFFFFF",
+        textAlign: "center",
+        top: 70,
+        left: 68
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "The Harvey House",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "500",
+        color: "#E4DCCF",
+        textAlign: "center",
+        top: 77,
+        left: 68
+      }
+    ]
+  },
+  {
+    id: "holographic-hey-boo",
+    title: "Holographic Hey Boo",
+    name: "Holographic Hey Boo",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    tags: ["Halloween", "All"],
+    envelopeColor: "#F6F4F1",
+    linerColor: "#CDB8F0",
+    envelopeLiner: "linear-gradient(135deg, #F9C6D9 0%, #CDB8F0 35%, #BFE0F5 70%, #BFEAD9 100%)",
+    mockupUrl: "/templates/holographic-hey-boo.svg",
+    thumbnailUrl: "/templates/holographic-hey-boo.svg",
+    backdrop: {
+      type: "color",
+      value: "#FEFDFA",
+      color: "#FEFDFA",
+      gradient: "radial-gradient(circle at 18% 14%, rgba(249,198,217,0.75) 0%, rgba(249,198,217,0) 45%), radial-gradient(circle at 84% 12%, rgba(191,224,245,0.75) 0%, rgba(191,224,245,0) 45%), linear-gradient(160deg, #FEFDFA 0%, #F3F0FB 100%)"
+    },
+    envelope: {
+      outerColor: "#F6F4F1",
+      flapColor: "#EDEBE7",
+      linerPatternUrl: "",
+      linerColor: "#CDB8F0",
+      innerLiner: "linear-gradient(135deg, #F9C6D9 0%, #CDB8F0 35%, #BFE0F5 70%, #BFEAD9 100%)",
+      linerCss: "linear-gradient(135deg, #F9C6D9 0%, #CDB8F0 35%, #BFE0F5 70%, #BFEAD9 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.35)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/holographic-hey-boo-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/holographic-hey-boo-bg.svg",
+      borderIllustration: "/assets/templates/holographic-hey-boo-bg.svg",
+      backgroundColor: "#FEFDFA",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.06)",
+      cssConfig: {
+        backgroundColor: "#FEFDFA",
+        borderRadius: "12px",
+        paperShadow: "0 16px 34px -6px rgba(0,0,0,0.4)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FEFDFA",
+      borderRadius: "12px",
+      paperShadow: "0 16px 34px -6px rgba(0,0,0,0.4)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/holographic-hey-boo-bg.svg"
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-title",
+        key: "title",
+        text: "Hey Boo!",
+        fontFamily: "'Pacifico', cursive",
+        fontSize: 58,
+        fontWeight: "700",
+        color: "#1A1A1A",
+        textAlign: "center",
+        top: 30,
+        left: 50
+      },
+      {
+        id: "layer-subtitle",
+        key: "subtitle",
+        text: "COME ON OVER FOR OUR HALLOWEEN PARTY!",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 14,
+        fontWeight: "700",
+        letterSpacing: 1,
+        color: "#1A1A1A",
+        textAlign: "center",
+        top: 62,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "SATURDAY, OCTOBER 31 AT 6 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "600",
+        letterSpacing: 1,
+        color: "#3A3A3A",
+        textAlign: "center",
+        top: 72,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "3333 PALMERA DRIVE",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "600",
+        letterSpacing: 1,
+        color: "#5A5A5A",
+        textAlign: "center",
+        top: 79,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "gilded-horror",
+    title: "Gilded Horror",
+    name: "Gilded Horror",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    tags: ["Halloween", "All"],
+    envelopeColor: "#C9A227",
+    linerColor: "#E8CE86",
+    envelopeLiner: "linear-gradient(135deg, #E8CE86 0%, #C9A227 50%, #8A6A22 100%)",
+    mockupUrl: "/templates/gilded-horror.svg",
+    thumbnailUrl: "/templates/gilded-horror.svg",
+    backdrop: {
+      type: "color",
+      value: "#6E7076",
+      color: "#6E7076",
+      gradient: "linear-gradient(180deg, #75777D 0%, #5F6167 100%)"
+    },
+    envelope: {
+      outerColor: "#C9A227",
+      flapColor: "#B08C1F",
+      linerPatternUrl: "",
+      linerColor: "#E8CE86",
+      innerLiner: "linear-gradient(135deg, #E8CE86 0%, #C9A227 50%, #8A6A22 100%)",
+      linerCss: "linear-gradient(135deg, #E8CE86 0%, #C9A227 50%, #8A6A22 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(30,32,36,0.55)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/gilded-horror-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/gilded-horror-bg.svg",
+      borderIllustration: "/assets/templates/gilded-horror-bg.svg",
+      backgroundColor: "#23211D",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.2)",
+      cssConfig: {
+        backgroundColor: "#23211D",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#23211D",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/gilded-horror-bg.svg"
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-intro",
+        key: "intro",
+        text: "You are cordially invited to",
+        fontFamily: "'Playfair Display', serif",
+        fontSize: 15,
+        fontStyle: "italic",
+        fontWeight: "500",
+        color: "#E8CE86",
+        textAlign: "center",
+        top: 33,
+        left: 50
+      },
+      {
+        id: "layer-title",
+        key: "title",
+        text: "A Ghastly Gathering",
+        fontFamily: "'Dancing Script', cursive",
+        fontSize: 40,
+        fontWeight: "600",
+        color: "#F6E7B2",
+        textAlign: "center",
+        top: 43,
+        left: 50
+      },
+      {
+        id: "layer-heading",
+        key: "heading",
+        text: "HAUNTED HALLOWEEN",
+        fontFamily: "'Cinzel', serif",
+        fontSize: 24,
+        fontWeight: "700",
+        letterSpacing: 1.5,
+        color: "#C9A227",
+        textAlign: "center",
+        top: 54,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "October 31st at 7 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#E8CE86",
+        textAlign: "center",
+        top: 64,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "1234 Zombie Way",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 13,
+        fontWeight: "500",
+        color: "#BDB49A",
+        textAlign: "center",
+        top: 71,
+        left: 50
+      }
+    ]
   }
 ];
+
+// -----------------------------------------------------------------------------
+// THANKSGIVING / AUTUMN EDITABLE TEMPLATE CONFIGURATIONS
+// Injected into the registry below (full canvas editability + envelope stage)
+// -----------------------------------------------------------------------------
+const THANKSGIVING_TEMPLATE_SEEDS: ThanksgivingTemplateSeed[] = [
+  {
+    "id": "template-everyones-family",
+    "title": "Everyone's Family",
+    "category": "Thanksgiving / Friendsgiving",
+    "tier": "premium",
+    "tags": ["Thanksgiving", "Friendsgiving", "Autumn", "Fall", "Feast", "All"],
+    "dimensions": { "width": 600, "height": 840 },
+    "envelope": {
+      "enabled": true,
+      "style": "kraft-paper",
+      "linerPattern": "plaid-tan-green",
+      "position": "left-angled-behind",
+      "envelopeColor": "#B89772",
+      "linerBorder": "#8C6D4F"
+    },
+    "stageBackdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/olive-green-texture.svg",
+      "color": "#7E8A6B",
+      "gradient": "url('/assets/backdrops/olive-green-texture.svg') center / cover no-repeat, linear-gradient(150deg, #8B9677 0%, #6F7B5F 100%)"
+    },
+    "canvasBackground": {
+      "color": "#FAF5EC",
+      "texture": "paper-grain",
+      "artworkUrl": "/templates/assets/woodland-feast-table.svg",
+      "artworkLock": true
+    },
+    "editableElements": [
+      {
+        "id": "text-title",
+        "type": "text",
+        "content": "LET'S FEAST!",
+        "fontFamily": "Cinzel, 'Playfair Display', serif",
+        "fontSize": 26,
+        "fontWeight": "700",
+        "letterSpacing": "3px",
+        "color": "#5A2E17",
+        "textAlign": "center",
+        "x": 300,
+        "y": 305,
+        "zIndex": 12
+      },
+      {
+        "id": "text-datetime",
+        "type": "text",
+        "content": "Thursday\n11/24 at 1 PM",
+        "fontFamily": "Merriweather, serif",
+        "fontSize": 15,
+        "lineHeight": 1.4,
+        "color": "#6B4423",
+        "textAlign": "center",
+        "x": 300,
+        "y": 355,
+        "zIndex": 12
+      },
+      {
+        "id": "text-location",
+        "type": "text",
+        "content": "Our place\n56 Willow St.",
+        "fontFamily": "Merriweather, serif",
+        "fontSize": 14,
+        "lineHeight": 1.4,
+        "color": "#6B4423",
+        "textAlign": "center",
+        "x": 300,
+        "y": 420,
+        "zIndex": 12
+      }
+    ]
+  },
+  {
+    "id": "template-give-thanks",
+    "title": "Give Thanks",
+    "category": "Thanksgiving",
+    "tier": "premium",
+    "tags": ["Thanksgiving", "Autumn", "Fall", "Turkey", "All"],
+    "dimensions": { "width": 600, "height": 840 },
+    "envelope": {
+      "enabled": true,
+      "style": "forest-green",
+      "linerPattern": "warm-gingham",
+      "position": "left-angled-behind",
+      "envelopeColor": "#1D3B2E",
+      "linerBorder": "#14281F"
+    },
+    "stageBackdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/off-white-linen.svg",
+      "color": "#F6F1E8",
+      "gradient": "url('/assets/backdrops/off-white-linen.svg') center / cover no-repeat, linear-gradient(160deg, #FAF6EE 0%, #EFE8DC 100%)"
+    },
+    "canvasBackground": {
+      "color": "#FFF9E6",
+      "artworkUrl": "/templates/assets/folk-art-turkey-leaves.svg",
+      "artworkLock": true
+    },
+    "editableElements": [
+      {
+        "id": "text-heading",
+        "type": "text",
+        "content": "Give\nThanks.",
+        "fontFamily": "'Caveat', 'Reenie Beanie', cursive",
+        "fontSize": 48,
+        "lineHeight": 1.1,
+        "color": "#1C1C1C",
+        "textAlign": "left",
+        "x": 220,
+        "y": 140,
+        "zIndex": 12
+      },
+      {
+        "id": "text-subtext",
+        "type": "text",
+        "content": "Please join us for an all-day\nThanksgiving celebration!",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": 13,
+        "lineHeight": 1.4,
+        "color": "#333333",
+        "textAlign": "left",
+        "x": 210,
+        "y": 340,
+        "zIndex": 12
+      },
+      {
+        "id": "text-details",
+        "type": "text",
+        "content": "Thursday, November 24 at 12 PM\nOur place\n351 Riverway Blvd.",
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": 12,
+        "lineHeight": 1.5,
+        "color": "#444444",
+        "textAlign": "left",
+        "x": 210,
+        "y": 395,
+        "zIndex": 12
+      }
+    ]
+  },
+  {
+    "id": "template-thanksgiving-branches",
+    "title": "Thanksgiving Branches",
+    "category": "Thanksgiving Dinner",
+    "tier": "free",
+    "tags": ["Thanksgiving", "Dinner", "Autumn", "Botanical", "Fall", "All"],
+    "dimensions": { "width": 600, "height": 840 },
+    "envelope": {
+      "enabled": false
+    },
+    "stageBackdrop": {
+      "type": "texture",
+      "value": "/assets/backdrops/subtle-white-marble.svg",
+      "color": "#F3F1EE",
+      "gradient": "url('/assets/backdrops/subtle-white-marble.svg') center / cover no-repeat, linear-gradient(160deg, #F7F5F2 0%, #EBE8E3 100%)"
+    },
+    "canvasBackground": {
+      "color": "#EED8CB",
+      "artworkUrl": "/templates/assets/botanical-pumpkin-etching.svg",
+      "artworkLock": true
+    },
+    "editableElements": [
+      {
+        "id": "text-title",
+        "type": "text",
+        "content": "THANKS\nGIVING",
+        "fontFamily": "'Playfair Display', serif",
+        "fontSize": 42,
+        "letterSpacing": "2px",
+        "lineHeight": 1.1,
+        "color": "#4A2216",
+        "textAlign": "center",
+        "x": 340,
+        "y": 310,
+        "zIndex": 12
+      },
+      {
+        "id": "text-invite",
+        "type": "text",
+        "content": "Join us for dinner and drinks!",
+        "fontFamily": "'Playfair Display', italic, serif",
+        "fontSize": 15,
+        "color": "#633122",
+        "textAlign": "center",
+        "x": 340,
+        "y": 430,
+        "zIndex": 12
+      },
+      {
+        "id": "text-time-place",
+        "type": "text",
+        "content": "Thursday, November 23 at Noon\nOur home\n1321 Harvest Lane",
+        "fontFamily": "'Playfair Display', serif",
+        "fontSize": 13,
+        "lineHeight": 1.5,
+        "color": "#54281B",
+        "textAlign": "center",
+        "x": 340,
+        "y": 480,
+        "zIndex": 12
+      }
+    ]
+  }
+];
+
+// Inject the Thanksgiving / Autumn templates into the registry
+THANKSGIVING_TEMPLATE_SEEDS.forEach((seed) => {
+  const built = buildEditableCanvasTemplate(seed);
+  const existingIndex = EVITE_TEMPLATES.findIndex((e) => e.id === built.id);
+  if (existingIndex >= 0) {
+    EVITE_TEMPLATES[existingIndex] = built;
+  } else {
+    EVITE_TEMPLATES.push(built);
+  }
+});
+
+// Register Home Page Exclusive Premium Templates
+homeTemplatesData.forEach((ht) => {
+  if (!EVITE_TEMPLATES.some((e) => e.id === ht.id)) {
+    EVITE_TEMPLATES.push(ht);
+  }
+});
 
 // Map for constant-time lookup by template ID
 export const EVITE_TEMPLATES_CONFIG: Record<string, EviteTemplateSchema> = EVITE_TEMPLATES.reduce((acc, t) => {
@@ -2130,6 +3029,7 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     },
     defaultTextLayers: ev.defaultTextLayers,
     defaultTextBlocks: (ev as any).defaultTextBlocks,
+    canvasData: (ev as any).canvasData,
   };
 });
 
@@ -2192,23 +3092,25 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
   if (!trimmed) return "";
   if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
 
-  // 1. If URL contains /assets/ or /templates/, this is a frontend static asset.
-  // Strip any foreign host prefix (http://localhost:5000, https://eventizersbackend.vercel.app, etc.)
-  // so the client always loads it directly from the current frontend origin without CORS or 404 issues.
-  const assetMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
-  if (assetMatch) {
-    return assetMatch[1];
+  // 1. Direct external image links (Unsplash, Cloudinary, Imgur, Supabase, etc.)
+  // If URL begins with http(s):// and is NOT from our backend/localhost host, preserve it directly!
+  const isDirectExternal = /^https?:\/\/(?!localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)/i.test(trimmed);
+  if (isDirectExternal) {
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && trimmed.startsWith("http://")) {
+      return trimmed.replace(/^http:\/\//i, "https://");
+    }
+    return trimmed;
   }
 
-  // 2. If running on HTTPS in production, upgrade insecure http:// URLs to https:// (except localhost)
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    trimmed.startsWith("http://") &&
-    !trimmed.includes("localhost") &&
-    !trimmed.includes("127.0.0.1")
-  ) {
-    return trimmed.replace(/^http:\/\//i, "https://");
+  // 2. If URL contains /assets/ or /templates/ on our backend host or localhost, strip foreign host prefix
+  const foreignAssetMatch = trimmed.match(/^(?:https?:\/\/(?:localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)(?::\d+)?)\/((?:assets|templates)\/.*)$/i);
+  if (foreignAssetMatch) {
+    return `/${foreignAssetMatch[1]}`;
+  }
+
+  // Relative frontend static assets
+  if (trimmed.startsWith("/assets/") || trimmed.startsWith("/templates/")) {
+    return trimmed;
   }
 
   // 3. If running in production and URL points to localhost /uploads/
@@ -2242,13 +3144,17 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
     }
 
     const rawBg =
+      bt.fullBackgroundImage ||
       bt.backgroundImage ||
       bt.canvasData?.backgroundImage ||
+      contentObj.fullBackgroundImage ||
       contentObj.backgroundImage ||
       contentObj.canvasData?.backgroundImage ||
       bt.backgroundUrl ||
       contentObj.backgroundUrl ||
+      bt.card?.fullArtworkUrl ||
       bt.card?.artworkUrl ||
+      contentObj.card?.fullArtworkUrl ||
       contentObj.card?.artworkUrl ||
       bt.imageUrl ||
       bt.thumbnailUrl ||
@@ -2288,6 +3194,7 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       isPremium: Boolean(bt.isPremium),
       image: bgUrl || normalizeTemplateImageUrl(bt.thumbnailUrl || bt.imageUrl || bt.image) || "/assets/templates/chic-dinner-cake-mockup.svg",
       backgroundImage: bgUrl,
+      fullBackgroundImage: bgUrl,
       canvasData: {
         backgroundImage: bgUrl,
         layers: layers,
@@ -2303,7 +3210,8 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       layers: layers,
     };
     NEW_TEMPLATES_CONFIG[bt.id] = transformed;
-    const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id);
+    NEW_TEMPLATES_CONFIG[bt.id.toLowerCase()] = transformed;
+    const existingIdx = NEW_TEMPLATES.findIndex(t => t.id === bt.id || t.id.toLowerCase() === bt.id.toLowerCase());
     if (existingIdx >= 0) {
       NEW_TEMPLATES[existingIdx] = transformed;
     } else {
@@ -2444,10 +3352,12 @@ export const NEW_FALLBACK_TEMPLATES = NEW_TEMPLATES.map((t) => ({
   isPremium: false,
 }));
 
-export const NEW_TEMPLATE_IMAGES = NEW_TEMPLATES.reduce((acc, t) => {
-  acc[t.id] = t.image;
-  return acc;
-}, {} as Record<string, string>);
+export const NEW_TEMPLATE_IMAGES = {
+  ...NEW_TEMPLATES.reduce((acc, t) => {
+    acc[t.id] = t.image;
+    return acc;
+  }, {} as Record<string, string>)
+};
 
 export const NEW_TEMPLATE_STYLES = NEW_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = {

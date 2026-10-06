@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <!--Black crushed velvet backdrop-->
+    <pattern id="hb-velvet" width="44" height="44" patternUnits="userSpaceOnUse">
+      <rect width="44" height="44" fill="#0A0A0C"/>
+      <path d="M0,44 L44,0" stroke="#1B1B22" stroke-width="7" opacity="0.65"/>
+      <path d="M-12,12 L12,-12 M32,56 L56,32" stroke="#24242D" stroke-width="3.5" opacity="0.55"/>
+      <path d="M0,0 L44,44" stroke="#141419" stroke-width="2" opacity="0.7"/>
+    </pattern>
+    <filter id="hb-soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+
+    <!--Card artwork washes-->
+    <radialGradient id="hb-wash-pink" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F9C6D9" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#F9C6D9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="hb-wash-blue" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#BFE0F5" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#BFE0F5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="hb-wash-lav" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#CDB8F0" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#CDB8F0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="hb-wash-mint" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#BFEAD9" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#BFEAD9" stop-opacity="0"/>
+    </radialGradient>
+    <g id="hb-web" fill="none" stroke="#C7C4D8" stroke-width="1.4" stroke-linecap="round">
+      <path d="M0,0 L72,0 M0,0 L66,27 M0,0 L51,51 M0,0 L27,66 M0,0 L0,72"/>
+      <path d="M24,0 Q13,13 0,24"/>
+      <path d="M46,0 Q31,6 42.5,17.6 Q34,24 32.5,32.5 Q24,34 17.6,42.5 Q15,34 0,46"/>
+      <path d="M72,0 Q50,7 66,27 Q52,36 51,51 Q36,52 27,66 Q7,50 0,72"/>
+    </g>
+    <path id="hb-spark" d="M0,-10 Q1.2,-1.2 10,0 Q1.2,1.2 0,10 Q-1.2,1.2 -10,0 Q-1.2,-1.2 0,-10 Z"/>
+    <path id="hb-star" d="M0,-9 L2.6,-3 L9,-3 L4,1.4 L5.8,8 L0,4.2 L-5.8,8 L-4,1.4 L-9,-3 L-2.6,-3 Z"/>
+
+    <!--Pastel iridescent envelope liner-->
+    <linearGradient id="hb-liner" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F9C6D9"/>
+      <stop offset="30%" stop-color="#CDB8F0"/>
+      <stop offset="60%" stop-color="#BFE0F5"/>
+      <stop offset="100%" stop-color="#BFEAD9"/>
+    </linearGradient>
+
+    <filter id="hb-cardShadow" x="-25%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.55"/>
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    <filter id="hb-envShadow" x="-25%" y="-25%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <radialGradient id="hb-backdropVig" cx="50%" cy="48%" r="72%">
+      <stop offset="50%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.72"/>
+    </radialGradient>
+  </defs>
+
+  <!--============================ BACKDROP ============================-->
+  <rect width="800" height="600" fill="url(#hb-velvet)"/>
+  <g filter="url(#hb-soft)" opacity="0.5">
+    <path d="M-40,520 L360,-40 L470,-40 L60,560 Z" fill="#FFFFFF" opacity="0.1"/>
+    <path d="M300,640 L820,180 L880,260 L420,660 Z" fill="#FFFFFF" opacity="0.08"/>
+    <path d="M-60,240 L220,-60 L280,-20 L-10,300 Z" fill="#8FA0C0" opacity="0.09"/>
+  </g>
+  <rect width="800" height="600" fill="url(#hb-backdropVig)"/>
+
+  <!--============================ ENVELOPE ============================-->
+  <g filter="url(#hb-envShadow)">
+    <rect x="90" y="180" width="440" height="322" rx="8" fill="#F6F4F1"/>
+    <path d="M90,184 L310,44 L530,184 Z" fill="#EDEBE7"/>
+    <path d="M124,180 L310,74 L496,180 Z" fill="url(#hb-liner)"/>
+    <path d="M124,180 L310,74 L310,180 Z" fill="#FFFFFF" opacity="0.3"/>
+    <path d="M124,180 L310,74 L496,180" fill="none" stroke="#D9D5D0" stroke-width="2.4"/>
+    <path d="M90,184 h440" stroke="#D9D5D0" stroke-width="3" opacity="0.8"/>
+    <circle cx="310" cy="300" r="46" fill="none" stroke="#E7E3DE" stroke-width="2" opacity="0.7"/>
+  </g>
+
+  <!--====================== INVITATION CARD (5x7) ======================-->
+  <g filter="url(#hb-cardShadow)">
+    <rect x="280" y="70" width="330" height="462" rx="6" fill="#FEFDFA"/>
+    <g transform="translate(280,70) scale(0.66)">
+      <!--CARD ARTWORK (matches holographicheyboobg.svg)-->
+      <rect width="500" height="700" fill="#FEFDFA"/>
+      <ellipse cx="46" cy="120" rx="140" ry="150" fill="url(#hb-wash-pink)"/>
+      <ellipse cx="470" cy="96" rx="130" ry="140" fill="url(#hb-wash-blue)"/>
+      <ellipse cx="34" cy="600" rx="150" ry="150" fill="url(#hb-wash-lav)"/>
+      <ellipse cx="474" cy="612" rx="140" ry="150" fill="url(#hb-wash-mint)"/>
+      <ellipse cx="250" cy="352" rx="180" ry="150" fill="url(#hb-wash-pink)" opacity="0.35"/>
+
+      <g transform="translate(14,14)"><use href="#hb-web"/></g>
+      <g transform="translate(486,686) rotate(180)"><use href="#hb-web"/></g>
+      <g transform="translate(486,14) rotate(90)" opacity="0.75"><use href="#hb-web"/></g>
+
+      <g transform="translate(74,96)">
+        <path d="M16,-16 a22,22 0 1 0 6,32 a17,17 0 1 1 -6,-32 z" fill="#FDE7A9" stroke="#1A1A1A" stroke-width="2"/>
+        <use href="#hb-star" x="34" y="-14" fill="#CDB8F0"/>
+        <use href="#hb-star" x="30" y="22" fill="#F9C6D9"/>
+        <circle cx="-30" cy="-24" r="3" fill="#BFE0F5"/>
+      </g>
+
+      <g transform="translate(424,84)">
+        <path d="M-4,4 L14,-44 L30,6 Z" fill="#1A1A1A"/>
+        <path d="M-24,10 q26,-12 58,0 q-30,14 -58,0 z" fill="#1A1A1A"/>
+        <path d="M2,-14 l16,4 l-3,9 l-16,-4 z" fill="#CDB8F0"/>
+        <use href="#hb-spark" x="-38" y="-16" fill="#F9C6D9"/>
+        <circle cx="40" cy="26" r="4" fill="#BFEAD9"/>
+      </g>
+
+      <g transform="translate(70,224)">
+        <path d="M-24,32 L-24,-4 a24,24 0 0 1 48,0 L24,32 l-12,-10 -12,10 -12,-10 -12,10 z" fill="#FDFCFB" stroke="#1A1A1A" stroke-width="2.6" stroke-linejoin="round"/>
+        <ellipse cx="-8" cy="-4" rx="4.4" ry="6" fill="#1A1A1A"/>
+        <ellipse cx="8" cy="-4" rx="4.4" ry="6" fill="#1A1A1A"/>
+        <ellipse cx="0" cy="12" rx="6" ry="7" fill="#1A1A1A"/>
+        <circle cx="-16" cy="8" r="5" fill="#F9C6D9" opacity="0.9"/>
+        <circle cx="16" cy="8" r="5" fill="#F9C6D9" opacity="0.9"/>
+      </g>
+
+      <g transform="translate(432,214)">
+        <rect x="-3" y="-32" width="7" height="12" rx="3" fill="#7FBF9B"/>
+        <ellipse cx="0" cy="0" rx="30" ry="26" fill="#CDB8F0" stroke="#1A1A1A" stroke-width="2.4"/>
+        <path d="M-12,-25 q-9,25 0,50 M12,-25 q9,25 0,50 M0,-26 q-4,26 0,52" stroke="#A98FE0" stroke-width="2.2" fill="none"/>
+        <path d="M-10,-4 l6,-5 3,5 z M10,-4 l-6,-5 -3,5 z" fill="#1A1A1A"/>
+        <path d="M-8,8 q8,8 16,0" stroke="#1A1A1A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <g transform="translate(74,346)">
+        <path d="M-24,-12 L-21,-36 L-5,-23 Z M24,-12 L21,-36 L5,-23 Z" fill="#1A1A1A"/>
+        <circle cx="0" cy="4" r="26" fill="#1A1A1A"/>
+        <ellipse cx="-9" cy="-1" rx="5.4" ry="7" fill="#FDE7A9"/>
+        <ellipse cx="9" cy="-1" rx="5.4" ry="7" fill="#FDE7A9"/>
+        <circle cx="-9" cy="-1" r="2" fill="#1A1A1A"/>
+        <circle cx="9" cy="-1" r="2" fill="#1A1A1A"/>
+        <path d="M-4,13 h8 l-4,5 z" fill="#F9C6D9"/>
+        <path d="M-24,10 l-14,-5 M-24,17 l-14,6 M24,10 l14,-5 M24,17 l14,6" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+      </g>
+
+      <g transform="translate(440,332)">
+        <path d="M0,-46 v34" stroke="#1A1A1A" stroke-width="1.6"/>
+        <ellipse cx="0" cy="0" rx="12" ry="10" fill="#1A1A1A"/>
+        <circle cx="-9" cy="-8" r="6" fill="#1A1A1A"/>
+        <path d="M-11,-2 l-14,-8 M-11,3 l-15,3 M-9,8 l-12,10 M11,-2 l14,-8 M11,3 l15,3 M9,8 l12,10" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+        <circle cx="-4" cy="-2" r="2" fill="#F9C6D9"/>
+        <circle cx="4" cy="-2" r="2" fill="#F9C6D9"/>
+      </g>
+
+      <g transform="translate(72,474)">
+        <rect x="-2.5" y="-24" width="6" height="9" rx="2" fill="#7FBF9B"/>
+        <ellipse cx="0" cy="0" rx="22" ry="19" fill="#F9C6D9" stroke="#1A1A1A" stroke-width="2.2"/>
+        <path d="M-9,-18 q-7,18 0,36 M9,-18 q7,18 0,36" stroke="#EDAFC6" stroke-width="2" fill="none"/>
+        <path d="M-8,-3 l5,-4 2,4 z M8,-3 l-5,-4 -2,4 z" fill="#1A1A1A"/>
+        <path d="M-6,6 q6,6 12,0" stroke="#1A1A1A" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <g transform="translate(434,478)">
+        <path d="M-21,28 L-21,-4 a21,21 0 0 1 42,0 L21,28 l-10.5,-9 -10.5,9 -10.5,-9 -10.5,9 z" fill="#EAF6FF" stroke="#1A1A1A" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M-7,-3 q3,-5 6,0 M1,-3 q3,-5 6,0" stroke="#1A1A1A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M-5,10 q5,7 10,0" stroke="#1A1A1A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <g transform="translate(250,626)">
+        <path d="M-26,-4 q8,-12 15,-3 q5,-7 11,0 q6,-7 11,0 q7,-9 15,3 q-7,4 -9,12 q-7,-5 -12,-1 q-5,-5 -11,0 q-5,-4 -12,1 q-2,-8 -9,-12 z" fill="#1A1A1A"/>
+        <circle cx="-3" cy="0" r="1.8" fill="#FDE7A9"/>
+        <circle cx="4" cy="0" r="1.8" fill="#FDE7A9"/>
+      </g>
+
+      <use href="#hb-spark" x="132" y="140" fill="#CDB8F0"/>
+      <use href="#hb-spark" x="372" y="150" fill="#F9C6D9"/>
+      <use href="#hb-spark" x="126" y="566" fill="#BFEAD9"/>
+      <use href="#hb-spark" x="382" y="556" fill="#CDB8F0"/>
+      <use href="#hb-star" x="150" y="646" fill="#FDE7A9"/>
+      <use href="#hb-star" x="352" y="646" fill="#BFE0F5"/>
+      <circle cx="196" cy="96" r="3.4" fill="#F9C6D9"/>
+      <circle cx="312" cy="86" r="3.4" fill="#BFEAD9"/>
+      <circle cx="44" cy="416" r="3.4" fill="#CDB8F0"/>
+      <circle cx="456" cy="420" r="3.4" fill="#FDE7A9"/>
+      <circle cx="120" cy="300" r="2.6" fill="#BFE0F5"/>
+      <circle cx="384" cy="292" r="2.6" fill="#F9C6D9"/>
+
+      <!--BAKED TYPOGRAPHY (editable as layers in the editor)-->
+      <g text-anchor="middle">
+        <text x="250" y="210" font-family="'Pacifico', cursive" font-size="58" fill="#1A1A1A" dominant-baseline="central">Hey Boo!</text>
+        <text x="250" y="434" font-family="'Montserrat', sans-serif" font-size="14" font-weight="700" letter-spacing="1" fill="#1A1A1A" dominant-baseline="central">COME ON OVER FOR OUR HALLOWEEN PARTY!</text>
+        <text x="250" y="504" font-family="'Inter', sans-serif" font-size="12" font-weight="600" letter-spacing="1" fill="#3A3A3A" dominant-baseline="central">SATURDAY, OCTOBER 31 AT 6 PM</text>
+        <text x="250" y="553" font-family="'Inter', sans-serif" font-size="12" font-weight="600" letter-spacing="1" fill="#5A5A5A" dominant-baseline="central">3333 PALMERA DRIVE</text>
+      </g>
+    </g>
+  </g>
+</svg>

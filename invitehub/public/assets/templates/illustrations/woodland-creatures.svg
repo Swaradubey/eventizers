@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <g transform="translate(50, 50)">
+    <!-- Owl -->
+    <ellipse cx="40" cy="60" rx="22" ry="32" fill="#78563A" stroke="#452C18" stroke-width="1.5" />
+    <circle cx="32" cy="45" r="7" fill="#FDE68A" />
+    <circle cx="48" cy="45" r="7" fill="#FDE68A" />
+    <polygon points="40,50 37,56 43,56" fill="#F59E0B" />
+  </g>
+</svg>

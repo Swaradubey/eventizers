@@ -29,7 +29,7 @@ import API, { getApiErrorMessage } from "@/services/api";
 import { getImageUrl } from "@/utils/imageUrl";
 import { compressAndNormalizeImage } from "@/utils/imageCompressor";
 import { templateCards, matchesCategory } from "@/lib/templateData";
-import { NEW_TEMPLATE_IMAGES, getTemplateConfig } from "@/lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl } from "@/lib/newTemplatesData";
 import EviteCardPreview from "@/components/designer/EviteCardPreview";
 
 const fallbackTemplates: Template[] = templateCards.map((tc) => ({
@@ -86,18 +86,39 @@ const getTemplateImage = (templateId?: string | null) => {
 };
 
 const getCardImageUrl = (tpl: any) => {
-  let url = null;
-  if (tpl.mockupUrl) url = tpl.mockupUrl;
-  else if (tpl.imageUrl) url = tpl.imageUrl;
-  else if (tpl.content) {
+  let rawUrl: any =
+    tpl.thumbnailUrl ||
+    tpl.fullThumbnailUrl ||
+    tpl.card?.artworkUrl ||
+    tpl.card?.fullArtworkUrl ||
+    tpl.backgroundImage ||
+    tpl.fullBackgroundImage ||
+    tpl.canvasData?.backgroundImage ||
+    tpl.imageUrl ||
+    tpl.fullImageUrl ||
+    tpl.mockupUrl ||
+    tpl.image;
+
+  if (!rawUrl && tpl.content) {
     try {
-      const parsed = JSON.parse(tpl.content);
-      if (parsed.mockupUrl) url = parsed.mockupUrl;
-      else if (parsed.image) url = parsed.image;
+      const parsed = typeof tpl.content === "string" ? JSON.parse(tpl.content) : tpl.content;
+      rawUrl =
+        parsed.thumbnailUrl ||
+        parsed.fullThumbnailUrl ||
+        parsed.card?.artworkUrl ||
+        parsed.card?.fullArtworkUrl ||
+        parsed.backgroundImage ||
+        parsed.fullBackgroundImage ||
+        parsed.canvasData?.backgroundImage ||
+        parsed.imageUrl ||
+        parsed.mockupUrl ||
+        parsed.image;
     } catch (e) {}
   }
-  if (!url) url = getTemplateImage(tpl.id);
-  return getImageUrl(url);
+
+  if (!rawUrl) rawUrl = getTemplateImage(tpl.id);
+  const urlStr = typeof rawUrl === "object" && rawUrl !== null ? (rawUrl.url || rawUrl.src || "") : (typeof rawUrl === "string" ? rawUrl : "");
+  return normalizeTemplateImageUrl(urlStr) || getImageUrl(urlStr);
 };
 
 const tabs = [
@@ -224,35 +245,48 @@ function AIAssistantContent() {
     }
   };
 
-  // Fetch templates when Template tab is activated
+  // Fetch dynamic templates from backend API, merging with fallback templates
   useEffect(() => {
-    if (activeTab === 1 && templates.length === 0) {
-      const fetchTemplates = async () => {
-        setLoadingTemplates(true);
-        setErrorMsg(null);
-        try {
-          const data = await templateService.getTemplates();
-          const mergedMap = new Map<string, Template>();
-          fallbackTemplates.forEach(t => mergedMap.set(t.id, t));
-          if (data && data.length > 0) {
-            data.forEach(t => mergedMap.set(t.id, t));
+    let isMounted = true;
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      setErrorMsg(null);
+      try {
+        const data = await templateService.getTemplates(true);
+        if (!isMounted) return;
+        const mergedMap = new Map<string, Template>();
+        // Add dynamic/backend templates first so newly added admin templates appear at the top
+        if (data && data.length > 0) {
+          data.forEach((t) => mergedMap.set(String(t.id).toLowerCase(), t));
+        }
+        // Merge fallback templates deduplicating by ID (case-insensitive)
+        fallbackTemplates.forEach((t) => {
+          if (!mergedMap.has(String(t.id).toLowerCase())) {
+            mergedMap.set(String(t.id).toLowerCase(), t);
           }
-          const combined = Array.from(mergedMap.values());
-          setTemplates(combined);
-          if (combined.length > 0) {
-            setSelectedTemplateId(combined[0].id);
-          }
-        } catch (err: any) {
-          console.error("Failed to load templates:", err);
+        });
+        const combined = Array.from(mergedMap.values());
+        setTemplates(combined);
+        if (combined.length > 0 && !selectedTemplateId) {
+          setSelectedTemplateId(combined[0].id);
+        }
+      } catch (err: any) {
+        console.error("Failed to load templates:", err);
+        if (isMounted) {
           setTemplates(fallbackTemplates);
-          setSelectedTemplateId(fallbackTemplates[0].id);
-        } finally {
+        }
+      } finally {
+        if (isMounted) {
           setLoadingTemplates(false);
         }
-      };
-      fetchTemplates();
-    }
-  }, [activeTab, templates.length]);
+      }
+    };
+    fetchTemplates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleGenerate = async () => {
     if (!user) {
@@ -486,7 +520,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         setSuccessMsg("Opening invitation designer with selected template...");
         setTimeout(() => {
           router.push(
-            `/dashboard/invitations?eventId=${returnEventId}&templateId=${encodeURIComponent(targetTplId)}&studio=true`
+            `/studio?eventId=${returnEventId}&templateId=${encodeURIComponent(targetTplId)}`
           );
         }, 400);
         return;
@@ -500,10 +534,12 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             templateName: targetTpl?.name || "Event",
           };
           localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+          sessionStorage.setItem("pending_template_id", targetTplId);
+          localStorage.setItem("pending_template_id", targetTplId);
         } catch (e) {}
         setSuccessMsg("Opening invitation designer...");
         setTimeout(() => {
-          router.push("/canvas?guest=true");
+          router.push(`/studio?templateId=${encodeURIComponent(targetTplId)}&guest=true`);
         }, 600);
         return;
       }
@@ -535,8 +571,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         }
         setTimeout(() => {
           const targetUrl = eventId
-            ? `/dashboard/invitations?eventId=${eventId}&templateId=${encodeURIComponent(targetTplId)}&studio=true`
-            : `/dashboard/invitations?templateId=${encodeURIComponent(targetTplId)}&studio=true`;
+            ? `/studio?templateId=${encodeURIComponent(targetTplId)}&eventId=${eventId}`
+            : `/studio?templateId=${encodeURIComponent(targetTplId)}`;
           router.push(targetUrl);
         }, 600);
       }
@@ -1356,7 +1392,10 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           return (
                             <div
                               key={tpl.id}
-                              onClick={() => handleSelectTemplate(tpl)}
+                              onClick={() => {
+                                handleSelectTemplate(tpl);
+                                router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
+                              }}
                               className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white shadow-sm hover:shadow-xl ${
                                 isSelected
                                   ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 -translate-y-0.5"
@@ -1410,7 +1449,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleSelectTemplate(tpl);
-                                      handleCreateFromTemplate(tpl);
+                                      router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
                                     }}
                                     className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
                                   >

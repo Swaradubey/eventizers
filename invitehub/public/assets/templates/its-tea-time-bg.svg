@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 840" width="600" height="840">
+  <defs>
+    <linearGradient id="teaParchment" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FCF9F2" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" rx="16" fill="url(#teaParchment)" stroke="#E4D7C0" stroke-width="2" />
+  <!-- Botanical ornate arch vine surrounding the card -->
+  <g stroke="#92AB72" stroke-width="3" fill="none">
+    <path d="M70 760 L70 240 Q70 80 300 80 Q530 80 530 240 L530 760" />
+    <!-- Vine spiral flourishes -->
+    <path d="M70 240 Q40 210 50 180 Q65 160 80 190" stroke-width="2" />
+    <path d="M530 240 Q560 210 550 180 Q535 160 520 190" stroke-width="2" />
+    <path d="M70 450 Q45 420 55 390 Q70 380 75 410" stroke-width="2" />
+    <path d="M530 450 Q555 420 545 390 Q530 380 525 410" stroke-width="2" />
+  </g>
+  <!-- Leaves and floral buds along arch -->
+  <g fill="#A4BC86" stroke="#7A945C" stroke-width="1">
+    <circle cx="160" cy="115" r="7" fill="#E28B9B" />
+    <circle cx="440" cy="115" r="7" fill="#E28B9B" />
+    <circle cx="70" cy="300" r="6" fill="#F4A261" />
+    <circle cx="530" cy="300" r="6" fill="#F4A261" />
+    <ellipse cx="120" cy="150" rx="9" ry="5" transform="rotate(-35 120 150)" />
+    <ellipse cx="480" cy="150" rx="9" ry="5" transform="rotate(35 480 150)" />
+  </g>
+  <!-- Top Arched Ribbon Banner for IT'S TEA TIME -->
+  <g transform="translate(160, 95)">
+    <path d="M0 25 Q140 -5 280 25 L270 65 Q140 35 10 65 Z" fill="#F8DEB5" stroke="#D49A58" stroke-width="2" />
+    <path d="M0 25 L-20 45 L0 65 L-10 45 Z" fill="#E8C694" stroke="#D49A58" stroke-width="1.5" />
+    <path d="M280 25 L300 45 L280 65 L290 45 Z" fill="#E8C694" stroke="#D49A58" stroke-width="1.5" />
+  </g>
+  <!-- Vintage Teapot and Cupcake Illustration at bottom center -->
+  <g transform="translate(180, 520)">
+    <!-- Vintage teapot -->
+    <g transform="translate(30, 20)">
+      <ellipse cx="60" cy="70" rx="36" ry="28" fill="#F6C7B2" stroke="#B86E53" stroke-width="2.5" />
+      <path d="M60 42 Q60 30 70 30 Q80 30 75 42" stroke="#B86E53" stroke-width="2.5" fill="none" />
+      <!-- Handle -->
+      <path d="M24 60 C5 60, 5 90, 30 90" stroke="#B86E53" stroke-width="3.5" fill="none" />
+      <!-- Spout -->
+      <path d="M96 68 Q115 60 120 48 Q115 75 92 84" stroke="#B86E53" stroke-width="2.5" fill="#F6C7B2" />
+      <ellipse cx="60" cy="42" rx="20" ry="6" fill="#B86E53" />
+    </g>
+    <!-- Teacup pouring -->
+    <g transform="translate(145, 65)">
+      <path d="M10 20 Q10 42 28 42 Q46 42 46 20 Z" fill="#FBF3E4" stroke="#B86E53" stroke-width="2" />
+      <ellipse cx="28" cy="45" rx="24" ry="4" fill="#E5D3B8" stroke="#B86E53" stroke-width="1" />
+      <!-- Handle -->
+      <path d="M46 25 Q54 28 46 36" stroke="#B86E53" stroke-width="2" fill="none" />
+    </g>
+    <!-- Cupcake / Cake stand -->
+    <g transform="translate(180, 35)">
+      <path d="M25 45 L45 45 L40 65 L30 65 Z" fill="#F5CCA0" stroke="#9A6138" stroke-width="1.5" />
+      <!-- Icing -->
+      <path d="M20 45 Q35 20 50 45 Q35 30 20 45" fill="#E76F51" stroke="#9A6138" stroke-width="1.5" />
+      <circle cx="35" cy="24" r="4" fill="#C1121F" />
+    </g>
+  </g>
+</svg>

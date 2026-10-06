@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 533" width="800" height="533">
+  <defs>
+    <filter id="cardShad" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.2" />
+    </filter>
+  </defs>
+  <!-- 1. Background Surface: Whimsical dreamy blue sky with fluffy clouds -->
+  <rect width="100%" height="100%" rx="16" fill="#BEE3F8" />
+  <g fill="#FFFFFF" opacity="0.8">
+    <ellipse cx="100" cy="140" rx="90" ry="40" />
+    <ellipse cx="160" cy="120" rx="70" ry="35" />
+    <ellipse cx="700" cy="140" rx="90" ry="40" />
+    <ellipse cx="650" cy="120" rx="70" ry="35" />
+    <ellipse cx="120" cy="420" rx="100" ry="45" />
+    <ellipse cx="680" cy="420" rx="100" ry="45" />
+  </g>
+
+  <!-- 2. Envelope Underlay (Sunny tangerine orange on left) -->
+  <g transform="translate(180, 75)">
+    <rect x="0" y="70" width="300" height="340" rx="4" fill="#FF8C00" stroke="#E67E00" stroke-width="1.5" />
+    <polygon points="0,70 150,-20 300,70" fill="#FFA534" />
+    <polygon points="12,70 150,-6 288,70" fill="#FFF8EE" />
+    <!-- Polka dot liner -->
+    <circle cx="80" cy="30" r="3" fill="#D97706" />
+    <circle cx="120" cy="20" r="3" fill="#D97706" />
+    <circle cx="150" cy="40" r="3" fill="#D97706" />
+    <circle cx="180" cy="20" r="3" fill="#D97706" />
+    <circle cx="220" cy="30" r="3" fill="#D97706" />
+  </g>
+
+  <!-- 3. Centered Invitation Card: Storybook arch, banner, teapot, cupcakes -->
+  <g filter="url(#cardShad)" transform="translate(290, 50)">
+    <rect width="280" height="430" rx="12" fill="#FCF9F2" stroke="#E4D7C0" stroke-width="1.5" />
+    <!-- Botanical arch -->
+    <path d="M30 400 L30 120 Q30 30 140 30 Q250 30 250 120 L250 400" stroke="#92AB72" stroke-width="2" fill="none" />
+    <!-- Top banner -->
+    <path d="M70 45 Q140 30 210 45 L205 68 Q140 52 75 68 Z" fill="#F8DEB5" stroke="#D49A58" stroke-width="1.5" />
+    <text x="140" y="60" text-anchor="middle" font-family="'Cinzel', serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#A0522D">IT'S TEA TIME</text>
+
+    <!-- Typography -->
+    <text x="140" y="95" text-anchor="middle" font-family="'Questrial', sans-serif" font-size="7.5" fill="#6B4E3D">you are cordially invited to</text>
+    <text x="140" y="125" text-anchor="middle" font-family="'Cinzel', serif" font-size="11" font-weight="700" letter-spacing="1" fill="#8B4513">AVA'S BIRTHDAY TEA PARTY</text>
+    <text x="140" y="160" text-anchor="middle" font-family="'Questrial', sans-serif" font-size="9" fill="#5D4037">Saturday, September 16 at 3 PM</text>
+    <text x="140" y="180" text-anchor="middle" font-family="'Questrial', sans-serif" font-size="8.5" fill="#795548">The Tearoom</text>
+    <text x="140" y="196" text-anchor="middle" font-family="'Questrial', sans-serif" font-size="8" fill="#795548">45 North Chestnut St</text>
+
+    <!-- Teapot & Cupcake illustration at bottom -->
+    <g transform="translate(90, 260)">
+      <ellipse cx="40" cy="50" rx="24" ry="18" fill="#F6C7B2" stroke="#B86E53" stroke-width="1.5" />
+      <path d="M16 45 C5 45, 5 65, 20 65" stroke="#B86E53" stroke-width="2" fill="none" />
+      <path d="M64 50 Q78 45 80 38" stroke="#B86E53" stroke-width="2" fill="none" />
+      <!-- Teacup -->
+      <path d="M80 50 Q80 65 92 65 Q104 65 104 50 Z" fill="#FBF3E4" stroke="#B86E53" stroke-width="1.5" />
+    </g>
+  </g>
+</svg>
