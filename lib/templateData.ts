@@ -25,6 +25,13 @@ export interface TemplateItem {
   gallery?: string[];
   sections?: { title: string; content: string }[];
   isPremium?: boolean;
+  /** Browse-grid ordering weight — higher values float to the top of every gallery */
+  priority?: number;
+  sortOrder?: number;
+  isEditable?: boolean;
+  isFeatured?: boolean;
+  artworkUrl?: string;
+  envelopeLinerUrl?: string;
 }
 
 export const templateCards: TemplateItem[] = [...NEW_TEMPLATES_CARD_ITEMS];

@@ -50,6 +50,10 @@ const nextConfig = {
       "http://localhost:5000";
     return [
       {
+        source: "/proxy-image",
+        destination: "/api/proxy-image",
+      },
+      {
         source: "/uploads/:path*",
         destination: `${backendUrl}/uploads/:path*`,
       },

@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760" width="100%" height="100%">
+  <defs>
+    <!-- Lush Garden Landscape Background -->
+    <linearGradient id="mk-garden-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8F5E9"/>
+      <stop offset="40%" stop-color="#C8E6C9"/>
+      <stop offset="100%" stop-color="#81C784"/>
+    </linearGradient>
+
+    <!-- Sunbeam Gradient -->
+    <radialGradient id="mk-sunbeam" cx="75%" cy="15%" r="70%">
+      <stop offset="0%" stop-color="#FFF9C4" stop-opacity="0.85"/>
+      <stop offset="40%" stop-color="#FFF59D" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFF9C4" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Envelope Liner Pattern matching royal-garden-liner.svg -->
+    <pattern id="mk-rg-liner" width="28" height="28" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" fill="#FFFFFF"/>
+      <rect width="7" height="28" fill="#E8F5E9"/>
+      <rect width="7" height="28" x="14" fill="#E8F5E9"/>
+      <circle cx="10" cy="10" r="3" fill="#FF80AB" opacity="0.8"/>
+      <circle cx="24" cy="22" r="2.8" fill="#FF80AB" opacity="0.8"/>
+      <path d="M7 12 C5 15 10 18 10 14 Z" fill="#66BB6A"/>
+      <path d="M21 24 C19 27 24 30 24 26 Z" fill="#66BB6A"/>
+    </pattern>
+
+    <!-- Drop Shadows -->
+    <filter id="mk-card-drop" x="-30%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="-4" dy="16" stdDeviation="16" flood-color="#2D4026" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2D4026" flood-opacity="0.25"/>
+    </filter>
+
+    <filter id="mk-env-drop" x="-30%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="-8" dy="14" stdDeviation="14" flood-color="#22331E" flood-opacity="0.38"/>
+    </filter>
+
+    <clipPath id="mk-card-clip">
+      <rect width="320" height="448" rx="8"/>
+    </clipPath>
+  </defs>
+
+  <!-- STAGE SURFACE: Lush Royal Garden with Trees & Dappled Sunlight -->
+  <rect width="600" height="760" fill="url(#mk-garden-sky)"/>
+
+  <!-- Garden Tree Foliage Left and Right -->
+  <g fill="#2E7D32" opacity="0.85">
+    <!-- Left Tree Trunk & Canopy -->
+    <path d="M-40 0 C20 40 40 120 20 280 C60 220 80 140 30 0 Z" fill="#3E2723"/>
+    <circle cx="20" cy="80" r="110" fill="#2E7D32"/>
+    <circle cx="90" cy="180" r="95" fill="#388E3C"/>
+    <circle cx="-10" cy="320" r="120" fill="#1B5E20"/>
+    <circle cx="40" cy="460" r="100" fill="#2E7D32"/>
+    <!-- Right Canopy -->
+    <circle cx="580" cy="90" r="120" fill="#2E7D32"/>
+    <circle cx="520" cy="220" r="95" fill="#388E3C"/>
+    <circle cx="610" cy="380" r="130" fill="#1B5E20"/>
+  </g>
+
+  <!-- Soft Green Meadow Bottom -->
+  <path d="M0 500 Q300 460 600 500 L600 760 L0 760 Z" fill="#4CAF50"/>
+  <path d="M0 580 Q300 550 600 580 L600 760 L0 760 Z" fill="#388E3C"/>
+
+  <!-- Sunbeams Streaming Down -->
+  <rect width="600" height="760" fill="url(#mk-sunbeam)"/>
+
+  <!-- Butterflies in the garden -->
+  <g fill="#FF80AB" opacity="0.9">
+    <g transform="translate(100, 360) rotate(25) scale(0.7)">
+      <path d="M0 0 C-10 -15 -18 2 0 5 C18 2 10 -15 0 0 Z"/>
+      <path d="M0 5 C-12 10 -14 22 0 14 C14 22 12 10 0 5 Z"/>
+    </g>
+    <g transform="translate(520, 560) rotate(-35) scale(0.65)">
+      <path d="M0 0 C-10 -15 -18 2 0 5 C18 2 10 -15 0 0 Z"/>
+      <path d="M0 5 C-12 10 -14 22 0 14 C14 22 12 10 0 5 Z"/>
+    </g>
+  </g>
+
+  <!-- ENVELOPE (Left angled behind card, showing open flap + striped floral liner) -->
+  <g transform="translate(112, 175) rotate(-6)" filter="url(#mk-env-drop)">
+    <!-- Envelope Open Flap -->
+    <path d="M0 180 L0 -110 L280 20 L280 180 Z" fill="#D81B60"/>
+    <!-- Revealed Rose Garden Striped Liner -->
+    <path d="M16 175 L16 -82 L264 28 L264 175 Z" fill="url(#mk-rg-liner)"/>
+    <!-- Envelope Body / Pocket -->
+    <path d="M0 160 L280 160 L280 390 L0 390 Z" fill="#E91E63"/>
+    <path d="M0 390 L0 160 L140 270 Z" fill="#C2185B" opacity="0.35"/>
+    <path d="M280 390 L280 160 L140 270 Z" fill="#AD1457" opacity="0.25"/>
+    <line x1="0" y1="160" x2="280" y2="160" stroke="#C2185B" stroke-width="1.5"/>
+  </g>
+
+  <!-- INVITATION CARD (Elevated in front with drop shadow) -->
+  <g transform="translate(164, 115)" filter="url(#mk-card-drop)">
+    <g clip-path="url(#mk-card-clip)">
+      <!-- Cream Card Base -->
+      <rect width="320" height="448" fill="#FFFDF8"/>
+      <rect x="8" y="8" width="304" height="432" rx="4" fill="none" stroke="#F5DFD5" stroke-width="1" opacity="0.8"/>
+
+      <!-- Floral Clusters Around Edges -->
+      <g transform="translate(25, 25) scale(0.55)">
+        <circle cx="-10" cy="-6" r="10" fill="#FFAEC9"/>
+        <circle cx="10" cy="-6" r="10" fill="#FFAEC9"/>
+        <circle cx="-7" cy="10" r="10" fill="#FF94B8"/>
+        <circle cx="7" cy="10" r="10" fill="#FF94B8"/>
+        <circle cx="0" cy="2" r="5" fill="#FFF2B2"/>
+      </g>
+      <g transform="translate(295, 30) scale(0.55)">
+        <circle cx="-10" cy="-6" r="10" fill="#FFAEC9"/>
+        <circle cx="10" cy="-6" r="10" fill="#FFAEC9"/>
+        <circle cx="-7" cy="10" r="10" fill="#FF94B8"/>
+        <circle cx="7" cy="10" r="10" fill="#FF94B8"/>
+        <circle cx="0" cy="2" r="5" fill="#FFF2B2"/>
+      </g>
+      <!-- Butterflies -->
+      <g transform="translate(70, 48) rotate(-15) scale(0.4)" fill="#FFA3C2">
+        <path d="M0 0 C-10 -15 -18 2 0 5 C18 2 10 -15 0 0 Z"/>
+        <path d="M0 5 C-12 10 -14 22 0 14 C14 22 12 10 0 5 Z"/>
+      </g>
+      <g transform="translate(265, 80) rotate(15) scale(0.35)" fill="#FFA3C2">
+        <path d="M0 0 C-10 -15 -18 2 0 5 C18 2 10 -15 0 0 Z"/>
+        <path d="M0 5 C-12 10 -14 22 0 14 C14 22 12 10 0 5 Z"/>
+      </g>
+
+      <!-- Sparkles -->
+      <circle cx="55" cy="75" r="1.5" fill="#F5B800"/>
+      <circle cx="270" cy="55" r="1.5" fill="#F5B800"/>
+
+      <!-- PRINCESSES (Scaled and positioned along sides & bottom) -->
+      <!-- Belle (Mid-Left) -->
+      <g transform="translate(20, 155) scale(0.55)">
+        <path d="M30 180 C10 220 0 280 -10 340 L160 340 C150 280 140 220 120 180 Z" fill="#FDD835"/>
+        <path d="M25 185 Q75 210 125 185 Q115 170 75 175 Q35 170 25 185 Z" fill="#FFEE58"/>
+        <path d="M50 85 C50 130 100 130 100 85 C100 65 50 65 50 85 Z" fill="#FDDCB5"/>
+        <circle cx="75" cy="40" r="22" fill="#5D3A1A"/>
+        <path d="M45 75 C45 35 105 35 105 75 Z" fill="#6D4322"/>
+        <path d="M54 58 Q75 50 96 58" stroke="#FDD835" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="63" cy="92" rx="4" ry="5.5" fill="#3E2723"/>
+        <ellipse cx="87" cy="92" rx="4" ry="5.5" fill="#3E2723"/>
+        <path d="M70 108 Q75 114 80 108" stroke="#D81B60" stroke-width="2" fill="none"/>
+      </g>
+
+      <!-- Jasmine (Mid-Right) -->
+      <g transform="translate(225, 155) scale(0.55)">
+        <path d="M25 180 C5 220 -5 280 -15 340 L155 340 C145 280 135 220 115 180 Z" fill="#26A69A"/>
+        <path d="M50 155 Q70 164 90 155" stroke="#FBC02D" stroke-width="7" fill="none"/>
+        <path d="M48 85 C48 130 92 130 92 85 C92 65 48 65 48 85 Z" fill="#E0A97E"/>
+        <path d="M40 70 C40 30 100 30 100 70 Z" fill="#1A1A1A"/>
+        <path d="M46 56 Q70 48 94 56" stroke="#26A69A" stroke-width="6" fill="none"/>
+        <ellipse cx="70" cy="51" rx="5" ry="6" fill="#00ACC1" stroke="#FBC02D" stroke-width="1.8"/>
+        <ellipse cx="58" cy="90" rx="4.5" ry="5.5" fill="#212121"/>
+        <ellipse cx="82" cy="90" rx="4.5" ry="5.5" fill="#212121"/>
+        <path d="M65 108 Q70 114 75 108" stroke="#C2185B" stroke-width="2" fill="none"/>
+      </g>
+
+      <!-- Ariel (Bottom-Left) -->
+      <g transform="translate(5, 275) scale(0.52)">
+        <path d="M30 160 C10 200 0 260 -10 320 L160 320 C150 260 140 200 120 160 Z" fill="#66BB6A"/>
+        <ellipse cx="55" cy="165" rx="20" ry="16" fill="#AB47BC"/>
+        <ellipse cx="95" cy="165" rx="20" ry="16" fill="#AB47BC"/>
+        <path d="M52 75 C52 120 98 120 98 75 C98 55 52 55 52 75 Z" fill="#FDDCB5"/>
+        <path d="M40 55 C30 15 110 10 115 55 Z" fill="#D32F2F"/>
+        <path d="M25 60 C10 110 15 180 5 240 C3 250 18 245 22 220 Z" fill="#E53935"/>
+        <ellipse cx="64" cy="84" rx="4.5" ry="5.5" fill="#1E88E5"/>
+        <ellipse cx="86" cy="84" rx="4.5" ry="5.5" fill="#1E88E5"/>
+        <path d="M70 100 Q75 106 80 100" stroke="#E91E63" stroke-width="2" fill="none"/>
+      </g>
+
+      <!-- Cinderella (Bottom-Center) -->
+      <g transform="translate(100, 260) scale(0.55)">
+        <path d="M15 150 C-15 190 -30 250 -40 320 L180 320 C170 250 155 190 125 150 Z" fill="#B3E5FC"/>
+        <path d="M48 60 C48 105 92 105 92 60 C92 40 48 40 48 60 Z" fill="#FDDCB5"/>
+        <circle cx="70" cy="30" r="24" fill="#FDD835"/>
+        <path d="M46 45 Q70 36 94 45" stroke="#0288D1" stroke-width="5" fill="none"/>
+        <ellipse cx="60" cy="72" rx="4" ry="5.5" fill="#0288D1"/>
+        <ellipse cx="80" cy="72" rx="4" ry="5.5" fill="#0288D1"/>
+        <path d="M66 88 Q70 93 74 88" stroke="#E91E63" stroke-width="2" fill="none"/>
+      </g>
+
+      <!-- Tiana (Bottom Mid-Right) -->
+      <g transform="translate(155, 265) scale(0.52)">
+        <path d="M20 160 C0 200 -10 260 -20 320 L160 320 C150 260 140 200 120 160 Z" fill="#A5D6A7"/>
+        <path d="M48 70 C48 115 92 115 92 70 C92 50 48 50 48 70 Z" fill="#BA7A50"/>
+        <circle cx="70" cy="38" r="22" fill="#212121"/>
+        <polygon points="62,40 70,30 78,40 84,34 70,44 56,34" fill="#81C784"/>
+        <ellipse cx="60" cy="80" rx="4" ry="5.5" fill="#3E2723"/>
+        <ellipse cx="80" cy="80" rx="4" ry="5.5" fill="#3E2723"/>
+      </g>
+
+      <!-- Rapunzel (Bottom-Right) -->
+      <g transform="translate(205, 270) scale(0.52)">
+        <path d="M25 150 C5 190 -5 250 -15 320 L165 320 C155 250 145 190 125 150 Z" fill="#BA68C8"/>
+        <path d="M52 65 C52 110 98 110 98 65 C98 45 52 45 52 65 Z" fill="#FDDCB5"/>
+        <path d="M35 55 C20 105 25 175 15 240 C10 270 25 310 40 320 Z" fill="#FDD835"/>
+        <ellipse cx="64" cy="76" rx="4.5" ry="5.5" fill="#43A047"/>
+        <ellipse cx="86" cy="76" rx="4.5" ry="5.5" fill="#43A047"/>
+      </g>
+
+      <!-- RENDERED TYPOGRAPHY (Matching Reference Image 2) -->
+      <!-- Intro -->
+      <text x="160" y="52" 
+            font-family="'Playfair Display', Georgia, serif" 
+            font-style="italic" 
+            font-size="8" 
+            font-weight="500" 
+            fill="#B57682" 
+            text-anchor="middle">You're invited to the most magical</text>
+      <text x="160" y="64" 
+            font-family="'Playfair Display', Georgia, serif" 
+            font-style="italic" 
+            font-size="8" 
+            font-weight="500" 
+            fill="#B57682" 
+            text-anchor="middle">party to celebrate</text>
+
+      <!-- Script Title: "Bella's Birthday" -->
+      <text x="160" y="98" 
+            font-family="'Great Vibes', 'Brush Script MT', cursive" 
+            font-size="28" 
+            font-weight="400" 
+            fill="#E05B7D" 
+            text-anchor="middle">Bella's</text>
+      <text x="160" y="128" 
+            font-family="'Great Vibes', 'Brush Script MT', cursive" 
+            font-size="26" 
+            font-weight="400" 
+            fill="#E05B7D" 
+            text-anchor="middle">Birthday</text>
+
+      <!-- Date & Time -->
+      <text x="160" y="152" 
+            font-family="'Inter', sans-serif" 
+            font-size="7.5" 
+            font-weight="500" 
+            letter-spacing="0.2" 
+            fill="#9C6870" 
+            text-anchor="middle">Saturday, June 14th</text>
+      <text x="160" y="163" 
+            font-family="'Inter', sans-serif" 
+            font-size="7.5" 
+            font-weight="500" 
+            letter-spacing="0.2" 
+            fill="#9C6870" 
+            text-anchor="middle">at 11 am</text>
+
+      <!-- Venue -->
+      <text x="160" y="178" 
+            font-family="'Inter', sans-serif" 
+            font-size="7" 
+            font-weight="400" 
+            fill="#9C6870" 
+            text-anchor="middle">Bella's Castle</text>
+      <text x="160" y="188" 
+            font-family="'Inter', sans-serif" 
+            font-size="7" 
+            font-weight="400" 
+            fill="#9C6870" 
+            text-anchor="middle">412 Fairy Tale Lane</text>
+    </g>
+  </g>
+</svg>

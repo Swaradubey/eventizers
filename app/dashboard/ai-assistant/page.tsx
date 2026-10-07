@@ -18,7 +18,8 @@ import {
   Loader2, 
   X,
   Menu,
-  Bot
+  Bot,
+  Heart
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
@@ -29,26 +30,34 @@ import API, { getApiErrorMessage } from "@/services/api";
 import { getImageUrl } from "@/utils/imageUrl";
 import { compressAndNormalizeImage } from "@/utils/imageCompressor";
 import { templateCards, matchesCategory } from "@/lib/templateData";
-import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl } from "@/lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl, sortTemplatesByPriority } from "@/lib/newTemplatesData";
 import EviteCardPreview from "@/components/designer/EviteCardPreview";
 
-const fallbackTemplates: Template[] = templateCards.map((tc) => ({
-  id: tc.id,
-  name: tc.title,
-  category: tc.category || tc.type,
-  tags: (tc as any).tags || [],
-  badge: tc.badge || "FREE",
-  content: JSON.stringify({
-    gradient: tc.gradient,
-    accentColor: tc.accentColor,
-    emoji: tc.emoji,
-    host: tc.host,
-    venue: tc.venue,
-    description: tc.description,
-    image: tc.image
-  }),
-  isPremium: tc.badge === "PREMIUM"
-}));
+const fallbackTemplates: Template[] = sortTemplatesByPriority(
+  templateCards.map((tc) => ({
+    id: tc.id,
+    name: tc.title,
+    category: tc.category || tc.type,
+    tags: (tc as any).tags || [],
+    badge: tc.badge || "FREE",
+    content: JSON.stringify({
+      gradient: tc.gradient,
+      accentColor: tc.accentColor,
+      emoji: tc.emoji,
+      host: tc.host,
+      venue: tc.venue,
+      description: tc.description,
+      image: tc.image
+    }),
+    isPremium: (tc.badge || "").toUpperCase() === "PREMIUM",
+    priority: (tc as any).priority,
+    sortOrder: (tc as any).sortOrder,
+    isEditable: (tc as any).isEditable,
+    isFeatured: (tc as any).isFeatured,
+  }))
+);
+
+const defaultTemplateId = templateCards[0]?.id || "tpl-abstract-nature-party";
 
 const getDefaultEventDate = () => {
   const d = new Date();
@@ -154,10 +163,21 @@ function AIAssistantContent() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-abstract-nature-party");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTemplateId);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const templateGridRef = useRef<HTMLDivElement>(null);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Tab 2: Upload Existing states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,8 +248,10 @@ function AIAssistantContent() {
 
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
-    return list.filter(
-      (t) => matchesCategory(t, selectedCategory)
+    return sortTemplatesByPriority(
+      list.filter(
+        (t) => matchesCategory(t, selectedCategory)
+      )
     );
   }, [templates, selectedCategory]);
 
@@ -507,15 +529,17 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   };
 
   const handleCreateFromTemplate = async (tplToUse?: Template) => {
+    const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
+    const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
+    const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
+
+    setSelectedTemplateId(targetTplId);
+    setCreatingTemplateId(targetTplId);
     setCreatingEvent(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
     try {
-      const allTemplates = templates.length > 0 ? templates : fallbackTemplates;
-      const targetTpl = tplToUse || allTemplates.find((t) => t.id === selectedTemplateId) || allTemplates[0];
-      const targetTplId = targetTpl?.id || selectedTemplateId || "tpl-abstract-nature-party";
-
       // If returning to canvas with an existing event, skip event creation
       // and redirect back directly with the chosen templateId
       if (returnTo === "canvas" && returnEventId) {
@@ -563,13 +587,14 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         eventDate: finalDate,
         eventTime: finalTime,
         eventType: targetTpl?.category || "Other",
+        status: "draft",
         // @ts-ignore
         templateId: targetTplId,
         selectedTemplateId: targetTplId,
       });
 
-      if (res && res.success) {
-        const eventId = res.event?.id;
+      if (res && (res.success || res.event?.id)) {
+        const eventId = res.event?.id || (res as any)?.id;
         setSuccessMsg("🎉 Event created successfully from template! Opening Invitation Designer...");
         if (typeof window !== "undefined") {
           try {
@@ -583,12 +608,15 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             : `/studio?templateId=${encodeURIComponent(targetTplId)}`;
           router.push(targetUrl);
         }, 600);
+      } else {
+        setErrorMsg((res as any)?.message || "Failed to create event from template.");
       }
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.response?.data?.error || err.message || "Failed to create event from template.");
     } finally {
       setCreatingEvent(false);
+      setCreatingTemplateId(null);
     }
   };
 
@@ -1331,7 +1359,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                     
                     {/* Category Pills */}
                     <div className="flex flex-wrap gap-1.5 mb-3">
-                      {["All", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
+                      {["All", "Halloween", "Wedding", "Baby Shower", "Corporate", "Birthday", "Networking"].map((cat) => {
                         const isSelected = selectedCategory === cat;
                         return (
                           <button
@@ -1370,7 +1398,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                           const imgUrl = getCardImageUrl(tpl);
                           const tplConfig = getTemplateConfig(tpl.id);
                           const badgeText = tplConfig?.badge || tpl.badge || ((tpl as any).isPremium ? "PREMIUM" : "FREE");
-                          const isPremium = badgeText === "PREMIUM";
+                          const isPremium = String(badgeText).toUpperCase() === "PREMIUM";
+                          const isFav = favorites.has(tpl.id);
 
                           // Build comprehensive template design configuration to match Home page
                           const resolvedTemplate = tplConfig
@@ -1420,24 +1449,27 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                       ],
                               };
 
+                          const isCreatingThis = creatingEvent && (creatingTemplateId === tpl.id || selectedTemplateId === tpl.id);
+
                           return (
                             <div
                               key={tpl.id}
                               onClick={() => {
+                                if (creatingEvent) return;
                                 handleSelectTemplate(tpl);
-                                router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
+                                handleCreateFromTemplate(tpl);
                               }}
                               className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border bg-white shadow-sm hover:shadow-xl ${
                                 isSelected
                                   ? "border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30 -translate-y-0.5"
                                   : "border-gray-200/90 hover:border-[#6C5CE7]/40 hover:-translate-y-0.5"
-                              }`}
+                              } ${creatingEvent ? "pointer-events-none" : ""}`}
                             >
                               {/* Card Image Container: Portrait invitation ratio aspect-[3/4] */}
                               <div className="aspect-[3/4] w-full bg-gray-100 relative overflow-hidden">
                                 {/* Pill Badge in Top-Left (Evite style) */}
                                 <div className="absolute top-2 left-2 z-20">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
                                     badgeText.toUpperCase() === "TRENDING"
                                       ? "bg-rose-500/90 text-white border-rose-400/90"
                                       : badgeText.toUpperCase() === "POPULAR"
@@ -1446,15 +1478,30 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                       ? "bg-[#FCFBF7]/95 text-[#967026] border-[#C5A059]"
                                       : "bg-white/90 text-gray-800 border-white/70"
                                   }`}>
-                                    {badgeText}
+                                    {isPremium && <span aria-hidden>👑</span>}
+                                    {isPremium ? "Premium" : badgeText}
                                   </span>
                                 </div>
 
                                 {/* Selected Checkmark Badge */}
-                                {isSelected && (
+                                {isSelected ? (
                                   <div className="absolute top-2 right-2 z-20 w-5 h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
                                     <Check className="w-3 h-3" strokeWidth={3} />
                                   </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavorite(tpl.id);
+                                    }}
+                                    className="absolute top-2 right-2 z-30 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-xs border border-white/70 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                                    aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                                  >
+                                    <Heart
+                                      className={`w-3.5 h-3.5 transition-colors ${isFav ? "fill-rose-500 text-rose-500" : "text-gray-500 hover:text-rose-500"}`}
+                                    />
+                                  </button>
                                 )}
 
                                 {/* Invitation Card Visual Preview (Full vector styling, envelope, and artwork) */}
@@ -1474,18 +1521,31 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                 </div>
 
                                 {/* Hover overlay with Evite-style Customize pill button */}
-                                <div className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-2">
+                                <div className={`absolute inset-0 z-20 bg-black/30 backdrop-blur-[0.5px] transition-opacity duration-300 flex items-center justify-center p-2 ${
+                                  isCreatingThis ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                }`}>
                                   <button
                                     type="button"
+                                    disabled={creatingEvent}
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      if (creatingEvent) return;
                                       handleSelectTemplate(tpl);
-                                      router.push(`/studio?templateId=${encodeURIComponent(tpl.id)}`);
+                                      handleCreateFromTemplate(tpl);
                                     }}
-                                    className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
+                                    className="px-3.5 py-1.5 rounded-full bg-white text-[11px] font-bold text-gray-900 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer disabled:opacity-80"
                                   >
-                                    <span>Customize</span>
-                                    <ArrowRight className="w-3 h-3 text-[#6C5CE7]" />
+                                    {isCreatingThis ? (
+                                      <>
+                                        <div className="w-3 h-3 border-2 border-[#6C5CE7]/30 border-t-[#6C5CE7] rounded-full animate-spin" />
+                                        <span>Creating...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>Customize</span>
+                                        <ArrowRight className="w-3 h-3 text-[#6C5CE7]" />
+                                      </>
+                                    )}
                                   </button>
                                 </div>
                               </div>

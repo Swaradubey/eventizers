@@ -1175,41 +1175,7 @@ export default function InvitationCanvasStage({
                 />
               )}
 
-              {/* 3A-Error: Broken or Unreachable Background Image State */}
-              {imgSrc && hasImgError && (
-                <div
-                  data-testid="canvas-image-error-state"
-                  className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-slate-50/95 border-2 border-dashed border-rose-300/80 text-center select-none"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-2.5 shadow-xs">
-                    <AlertCircle className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-1">
-                    Background Image Unreachable
-                  </h4>
-                  <p className="text-xs text-slate-500 max-w-xs mb-3 leading-relaxed">
-                    Failed to load template background image. The link may have CORS restrictions or be unavailable.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasImgError(false);
-                      if (cardImageRaw) {
-                        const normalized = normalizeTemplateImageUrl(cardImageRaw);
-                        if (normalized.startsWith("/assets/") || normalized.startsWith("/templates/")) {
-                          setImgSrc(normalized);
-                        } else {
-                          setImgSrc(getProxyImageUrl(cardImageRaw));
-                        }
-                      }
-                    }}
-                    className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <RotateCw className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Retry via Proxy</span>
-                  </button>
-                </div>
-              )}
+
 
               {/* 3A-2: Additional decorative illustrations & stickers (balloons, cake, hats, candles, gifts) */}
               {decorationItems.map((decoSrc, idx) => {

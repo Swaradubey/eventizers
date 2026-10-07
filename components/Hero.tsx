@@ -21,6 +21,7 @@ import {
   Image as ImageIcon,
   Loader2,
   ArrowUpRight,
+  Heart,
   X
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -32,7 +33,7 @@ import API, { getApiErrorMessage } from "../services/api";
 import { getImageUrl } from "../utils/imageUrl";
 import { compressAndNormalizeImage } from "../utils/imageCompressor";
 import { templateCards, matchesCategory } from "../lib/templateData";
-import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl } from "../lib/newTemplatesData";
+import { NEW_TEMPLATE_IMAGES, getTemplateConfig, normalizeTemplateImageUrl, sortTemplatesByPriority } from "../lib/newTemplatesData";
 import EviteCardPreview from "./designer/EviteCardPreview";
 import AnimatedHeading from "./AnimatedHeading";
 
@@ -61,23 +62,31 @@ const getDefaultVenueForTemplate = (tpl?: Template | null) => {
   return "Main Event Hall";
 };
 
-const fallbackTemplates: Template[] = templateCards.map((tc) => ({
-  id: tc.id,
-  name: tc.title,
-  category: tc.category || tc.type,
-  tags: (tc as any).tags || [],
-  badge: tc.badge || "FREE",
-  content: JSON.stringify({
-    gradient: tc.gradient,
-    accentColor: tc.accentColor,
-    emoji: tc.emoji,
-    host: tc.host,
-    venue: tc.venue,
-    description: tc.description,
-    image: tc.image
-  }),
-  isPremium: tc.badge === "PREMIUM"
-}));
+const fallbackTemplates: Template[] = sortTemplatesByPriority(
+  templateCards.map((tc) => ({
+    id: tc.id,
+    name: tc.title,
+    category: tc.category || tc.type,
+    tags: (tc as any).tags || [],
+    badge: tc.badge || "FREE",
+    content: JSON.stringify({
+      gradient: tc.gradient,
+      accentColor: tc.accentColor,
+      emoji: tc.emoji,
+      host: tc.host,
+      venue: tc.venue,
+      description: tc.description,
+      image: tc.image
+    }),
+    isPremium: (tc.badge || "").toUpperCase() === "PREMIUM",
+    priority: (tc as any).priority,
+    sortOrder: (tc as any).sortOrder,
+    isEditable: (tc as any).isEditable,
+    isFeatured: (tc as any).isFeatured,
+  }))
+);
+
+const defaultTemplateId = templateCards[0]?.id || "tpl-abstract-nature-party";
 
 const getTemplateImage = (templateId?: string | null) => {
   if (!templateId) return null;
@@ -135,7 +144,7 @@ const tabs = [
 const leftCardVariants = {
   animate: {
     y: [-6, 6, -6],
-    rotate: [-4, -2, -4],
+    rotate: [-3, -1, -3],
     transition: {
       duration: 5,
       repeat: Infinity,
@@ -147,7 +156,7 @@ const leftCardVariants = {
 const rightCardVariants = {
   animate: {
     y: [6, -6, 6],
-    rotate: [4, 6, 4],
+    rotate: [1, 3, 1],
     transition: {
       duration: 5.5,
       repeat: Infinity,
@@ -276,10 +285,20 @@ export default function Hero({ className = "" }: HeroAnimationProps = {}) {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [templates, setTemplates] = useState<Template[]>(fallbackTemplates);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(fallbackTemplates[0]?.id || "tpl-abstract-nature-party");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTemplateId);
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const templateGridRef = useRef<HTMLDivElement>(null);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Tab 2: Upload Existing states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -300,8 +319,10 @@ export default function Hero({ className = "" }: HeroAnimationProps = {}) {
 
   const filteredTemplates = useMemo(() => {
     const list = templates.length > 0 ? templates : fallbackTemplates;
-    return list.filter(
-      (t) => matchesCategory(t, selectedCategory)
+    return sortTemplatesByPriority(
+      list.filter(
+        (t) => matchesCategory(t, selectedCategory)
+      )
     );
   }, [templates, selectedCategory]);
 
@@ -1193,11 +1214,11 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
   return (
     <section
       ref={heroRef}
-      className={`relative overflow-hidden overflow-x-clip min-h-[85vh] py-10 md:py-16 px-4 flex flex-col justify-center items-center bg-transparent will-change-transform ${className}`}
+      className={`relative overflow-hidden min-h-[85vh] py-10 md:py-16 px-2 sm:px-4 flex flex-col justify-center items-center bg-transparent will-change-transform ${className}`}
     >
 
       {/* Main Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col justify-center items-center overflow-x-clip">
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-2 sm:px-4 md:px-6 flex flex-col justify-center items-center">
         {/* Main Heading */}
         <AnimatedHeading>
           <h1
@@ -1215,7 +1236,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
         </p>
 
         {/* Central Hero Card Container with Side Floating Cards */}
-        <div className="relative w-full mx-auto max-w-2xl lg:max-w-3xl z-10 [perspective:1200px]">
+        <div className="relative w-full mx-auto max-w-xl lg:max-w-2xl xl:max-w-3xl z-10 [perspective:1200px]">
           {/* Left Side Floating Card (Haunted House Party) with Parallax Scroll & Floating Motion */}
           <motion.div
             style={{
@@ -1223,13 +1244,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
               opacity: leftFade,
               scale: leftScale,
             }}
-            className="hidden lg:block absolute top-6 right-full mr-3 lg:mr-5 xl:mr-7 z-20 will-change-transform select-none"
+            className="hidden lg:block absolute top-6 right-full mr-2 lg:mr-3 xl:mr-5 2xl:mr-7 z-20 will-change-transform select-none"
           >
             <motion.div
               variants={leftCardVariants}
               animate="animate"
               whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.25 } }}
-              className="w-48 sm:w-56 md:w-60 aspect-[3/4.2] flex flex-col justify-between p-4 sm:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
+              className="w-40 lg:w-44 xl:w-52 2xl:w-60 aspect-[3/4.2] flex flex-col justify-between p-3.5 sm:p-4 lg:p-4.5 xl:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
               style={{
                 background: "linear-gradient(160deg, #0C0906 0%, #1A140D 42%, #241A11 74%, #0A0705 100%)",
                 boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.65), 0 0 28px rgba(255, 138, 0, 0.4)",
@@ -1394,13 +1415,13 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
             opacity: rightFade,
             scale: rightScale,
           }}
-          className="hidden lg:block absolute top-10 left-full ml-3 lg:ml-5 xl:ml-7 z-20 will-change-transform select-none"
+          className="hidden lg:block absolute top-10 left-full ml-2 lg:ml-3 xl:ml-5 2xl:ml-7 z-20 will-change-transform select-none"
         >
           <motion.div
             variants={rightCardVariants}
             animate="animate"
             whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.25 } }}
-            className="w-48 sm:w-56 md:w-60 aspect-[3/4.2] flex flex-col justify-between p-4 sm:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
+            className="w-40 lg:w-44 xl:w-52 2xl:w-60 aspect-[3/4.2] flex flex-col justify-between p-3.5 sm:p-4 lg:p-4.5 xl:p-5 rounded-2xl shadow-xl border border-white/20 overflow-hidden text-left relative cursor-pointer transition-shadow duration-300 hover:shadow-2xl group"
             style={{
               background: "#050302 url('/templates/halloween-feast-bg.png') center / cover no-repeat",
               boxShadow: "0 25px 50px -12px rgba(76, 29, 149, 0.6), 0 0 26px rgba(192, 132, 252, 0.45)",
@@ -1766,7 +1787,8 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                         const imgUrl = getCardImageUrl(tpl);
                         const tplConfig = getTemplateConfig(tpl.id);
                         const badgeText = tplConfig?.badge || tpl.badge || ((tpl as any).isPremium ? "PREMIUM" : "FREE");
-                        const isPremium = badgeText === "PREMIUM";
+                        const isPremium = String(badgeText).toUpperCase() === "PREMIUM";
+                        const isFav = favorites.has(tpl.id);
 
                         // Build comprehensive template design configuration to match Home page
                         const resolvedTemplate = tplConfig
@@ -1833,7 +1855,7 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                             <div className="aspect-[3/4] w-full bg-gray-100 relative overflow-hidden">
                               {/* Pill Badge in Top-Left (Evite style) */}
                               <div className="absolute top-2 left-2 z-20">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-xs border ${
                                   badgeText.toUpperCase() === "TRENDING"
                                     ? "bg-rose-500/90 text-white border-rose-400/90"
                                     : badgeText.toUpperCase() === "POPULAR"
@@ -1842,15 +1864,30 @@ ${aiEventData.checklist?.map((item: string) => `• ${item}`).join('\n') || 'Non
                                     ? "bg-[#FCFBF7]/95 text-[#967026] border-[#C5A059]"
                                     : "bg-white/90 text-gray-800 border-white/70"
                                 }`}>
-                                  {badgeText}
+                                  {isPremium && <span aria-hidden>👑</span>}
+                                  {isPremium ? "Premium" : badgeText}
                                 </span>
                               </div>
 
                               {/* Selected Checkmark Badge */}
-                              {isSelected && (
+                              {isSelected ? (
                                 <div className="absolute top-2 right-2 z-20 w-5 h-5 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shadow-md">
                                   <Check className="w-3 h-3" strokeWidth={3} />
                                 </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite(tpl.id);
+                                  }}
+                                  className="absolute top-2 right-2 z-30 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-xs border border-white/70 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                                  aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                                >
+                                  <Heart
+                                    className={`w-3.5 h-3.5 transition-colors ${isFav ? "fill-rose-500 text-rose-500" : "text-gray-500 hover:text-rose-500"}`}
+                                  />
+                                </button>
                               )}
 
                               {/* Invitation Card Visual Preview (Full vector styling, envelope, and artwork) */}

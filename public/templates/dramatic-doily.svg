@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <pattern id="dd-stripes" width="60" height="60" patternUnits="userSpaceOnUse">
+      <rect width="60" height="60" fill="#7C0F15"/>
+      <rect x="30" width="30" height="60" fill="#6A0C11"/>
+      <path d="M0,0 v60 M30,0 v60" stroke="#5A090E" stroke-width="1.4" opacity="0.6"/>
+      <path d="M7,0 v60 M37,0 v60" stroke="#95161C" stroke-width="1" opacity="0.4"/>
+    </pattern>
+    <radialGradient id="dd-mVig" cx="50%" cy="48%" r="72%">
+      <stop offset="52%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#38040A" stop-opacity="0.7"/>
+    </radialGradient>
+    <linearGradient id="dd-mRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8C1116"/>
+      <stop offset="100%" stop-color="#4A070B"/>
+    </linearGradient>
+    <radialGradient id="dd-mPaper" cx="50%" cy="44%" r="62%">
+      <stop offset="0%" stop-color="#FFFDF7"/>
+      <stop offset="100%" stop-color="#EDE3D2"/>
+    </radialGradient>
+    <pattern id="dd-liner" width="22" height="22" patternUnits="userSpaceOnUse">
+      <rect width="22" height="22" fill="#F3E7D6"/>
+      <path d="M0,11 h22 M11,0 v22" stroke="#D8B486" stroke-width="2"/>
+      <circle cx="11" cy="11" r="3" fill="#C2966A"/>
+    </pattern>
+    <filter id="dd-cardShadow" x="-25%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+    <filter id="dd-envShadow" x="-25%" y="-25%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#2E0407" flood-opacity="0.6"/>
+    </filter>
+    <g id="dd-mCandle">
+      <rect x="-6" y="0" width="12" height="70" rx="4" fill="#F4EADA"/>
+      <rect x="-6" y="0" width="4" height="70" rx="2" fill="#DCCFB8"/>
+      <path d="M0,-4 C5,-13 3,-21 0,-26 C-3,-21 -5,-13 0,-4 Z" fill="#FFC24A"/>
+    </g>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#dd-stripes)"/>
+  <rect width="800" height="600" fill="url(#dd-mVig)"/>
+
+  <!-- candles on the table -->
+  <g transform="translate(676,352)">
+    <rect x="-30" y="60" width="60" height="14" rx="5" fill="#8E7444"/>
+    <rect x="-12" y="42" width="24" height="24" rx="4" fill="#B99B62"/>
+    <use href="#dd-mCandle"/>
+    <use href="#dd-mCandle" transform="translate(36,26) scale(0.78)"/>
+    <use href="#dd-mCandle" transform="translate(-40,36) scale(0.68)"/>
+  </g>
+
+  <!-- ENVELOPE -->
+  <g filter="url(#dd-envShadow)">
+    <rect x="70" y="180" width="430" height="320" rx="8" fill="#5E0A10"/>
+    <path d="M70,184 L285,46 L500,184 Z" fill="#4A070B"/>
+    <path d="M104,180 L285,78 L466,180 Z" fill="url(#dd-liner)"/>
+    <path d="M104,180 L285,78 L285,180 Z" fill="#FFFFFF" opacity="0.12"/>
+    <path d="M104,180 L285,78 L466,180" fill="none" stroke="#D8B486" stroke-width="2.4"/>
+    <path d="M70,184 h430" stroke="#3A050A" stroke-width="3" opacity="0.7"/>
+    <path d="M150,240 h270 M180,276 h210" stroke="#7C0F15" stroke-width="1.6" opacity="0.5"/>
+  </g>
+
+  <!-- INVITATION CARD (5x7) -->
+  <g filter="url(#dd-cardShadow)">
+    <rect x="280" y="70" width="330" height="462" rx="6" fill="#6C0C11"/>
+    <g transform="translate(280,70) scale(0.66)">
+      <rect width="500" height="700" fill="url(#dd-mRed)"/>
+
+      <!-- candle glows -->
+      <g>
+        <circle cx="52" cy="250" r="90" fill="#FFB347" opacity="0.22"/>
+        <circle cx="452" cy="228" r="96" fill="#FFB347" opacity="0.2"/>
+        <g transform="translate(52,262)"><use href="#dd-mCandle"/><use href="#dd-mCandle" transform="translate(28,26) scale(0.8)"/></g>
+        <g transform="translate(452,240)"><use href="#dd-mCandle"/><use href="#dd-mCandle" transform="translate(-28,30) scale(0.8)"/></g>
+      </g>
+      <!-- roses -->
+      <g fill="#3C050A">
+        <circle cx="52" cy="632" r="34"/><circle cx="112" cy="676" r="24"/>
+        <circle cx="444" cy="624" r="36"/><circle cx="390" cy="678" r="24"/>
+      </g>
+
+      <!-- doily -->
+      <g transform="translate(250,338)">
+        <circle r="176" fill="none" stroke="#FFFDF7" stroke-width="34" stroke-linecap="round" stroke-dasharray="0.1 27.9"/>
+        <circle r="157" fill="none" stroke="#FFFDF7" stroke-width="2.5"/>
+        <circle r="150" fill="none" stroke="#FFFDF7" stroke-width="7" stroke-dasharray="0.1 11" stroke-linecap="round"/>
+        <circle r="134" fill="none" stroke="#FFFDF7" stroke-width="16" stroke-dasharray="1.4 9.4" opacity="0.85"/>
+        <circle r="126" fill="url(#dd-mPaper)"/>
+        <circle r="118" fill="none" stroke="#C9B99A" stroke-width="1.2" stroke-dasharray="3 6"/>
+        <circle r="103" fill="none" stroke="#C4B092" stroke-width="5" stroke-dasharray="0.1 9" stroke-linecap="round" opacity="0.7"/>
+      </g>
+
+      <!-- BAKED TYPOGRAPHY (editable as layers in the editor) -->
+      <g text-anchor="middle">
+        <text x="250" y="286" font-family="'Playfair Display', Georgia, serif" font-size="52" font-weight="700" fill="#6E0C11" dominant-baseline="central">Dying</text>
+        <text x="250" y="336" font-family="'Playfair Display', Georgia, serif" font-size="52" font-weight="700" fill="#6E0C11" dominant-baseline="central">to party</text>
+        <text x="250" y="386" font-family="'Playfair Display', Georgia, serif" font-size="44" font-style="italic" font-weight="600" fill="#8C1116" dominant-baseline="central">with you</text>
+        <text x="250" y="416" font-family="'Inter', sans-serif" font-size="11.5" font-weight="500" fill="#7A1218" dominant-baseline="central">Join us for cocktails, canapés &amp; a</text>
+        <text x="250" y="432" font-family="'Inter', sans-serif" font-size="11.5" font-weight="500" fill="#7A1218" dominant-baseline="central">graveyard smash — if you dare</text>
+        <text x="250" y="452" font-family="'Inter', sans-serif" font-size="11.5" font-weight="700" fill="#5E0A10" dominant-baseline="central">Saturday, October 31st at 8 PM</text>
+        <text x="250" y="468" font-family="'Inter', sans-serif" font-size="11.5" font-weight="500" fill="#7A1218" dominant-baseline="central">21 Witchling Way</text>
+      </g>
+    </g>
+  </g>
+</svg>

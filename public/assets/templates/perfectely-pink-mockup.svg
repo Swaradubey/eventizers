@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient (Dreamy Pink Feathers Atmosphere) -->
+    <radialGradient id="mk-pink-bg" cx="45%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFF0F7"/>
+      <stop offset="50%" stop-color="#FFD6E8"/>
+      <stop offset="100%" stop-color="#FFB3D4"/>
+    </radialGradient>
+
+    <!-- Card Base Gradients -->
+    <linearGradient id="mk-card-base" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9C0D50"/>
+      <stop offset="40%" stop-color="#840A43"/>
+      <stop offset="100%" stop-color="#670533"/>
+    </linearGradient>
+
+    <!-- Glitter Pattern -->
+    <linearGradient id="mk-glitter-base" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF4097"/>
+      <stop offset="25%" stop-color="#FF82BC"/>
+      <stop offset="50%" stop-color="#FF1F80"/>
+      <stop offset="75%" stop-color="#FFA8D3"/>
+      <stop offset="100%" stop-color="#E0106B"/>
+    </linearGradient>
+
+    <pattern id="mk-glitter" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="url(#mk-glitter-base)"/>
+      <circle cx="2" cy="3" r="1.1" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="9" cy="2" r="0.8" fill="#FFF0F7" opacity="0.85"/>
+      <circle cx="7" cy="8" r="1.3" fill="#FFFFFF" opacity="0.95"/>
+      <circle cx="12" cy="11" r="0.9" fill="#FFE0F0" opacity="0.8"/>
+      <circle cx="2" cy="11" r="0.8" fill="#FFFFFF" opacity="0.75"/>
+    </pattern>
+
+    <!-- Envelope Liner Pattern (Sparkle polka dots matching perfectely-pink-liner.svg) -->
+    <pattern id="mk-env-liner" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="#FF3D8B"/>
+      <circle cx="4" cy="5" r="2.2" fill="#FF9CC8" opacity="0.6"/>
+      <circle cx="18" cy="4" r="2.8" fill="#FF9CC8" opacity="0.6"/>
+      <circle cx="11" cy="16" r="2.5" fill="#FF9CC8" opacity="0.6"/>
+      <circle cx="22" cy="19" r="2.2" fill="#FF9CC8" opacity="0.6"/>
+      <circle cx="9" cy="8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="20" cy="14" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="5" cy="20" r="0.8" fill="#FFFFFF" opacity="0.9"/>
+    </pattern>
+
+    <!-- Drop Shadows -->
+    <filter id="mk-card-drop" x="-30%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="-4" dy="16" stdDeviation="16" flood-color="#730538" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#730538" flood-opacity="0.25"/>
+    </filter>
+
+    <filter id="mk-env-drop" x="-30%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="-8" dy="14" stdDeviation="14" flood-color="#60002E" flood-opacity="0.38"/>
+    </filter>
+
+    <filter id="mk-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#3D001C" flood-opacity="0.5"/>
+    </filter>
+
+    <clipPath id="mk-card-clip">
+      <rect width="320" height="448" rx="8"/>
+    </clipPath>
+  </defs>
+
+  <!-- Stage Surface: Dreamy Soft Pink Feather Bokeh -->
+  <rect width="600" height="760" fill="url(#mk-pink-bg)"/>
+
+  <!-- Subtle feather wisps in backdrop -->
+  <g stroke="#FFFFFF" fill="none" opacity="0.4" stroke-linecap="round">
+    <path d="M-40 180 C80 120 200 240 280 160" stroke-width="48" opacity="0.25"/>
+    <path d="M360 40 C440 120 540 80 640 180" stroke-width="60" opacity="0.2"/>
+    <path d="M-20 620 C120 520 220 640 340 580" stroke-width="50" opacity="0.2"/>
+    <path d="M380 680 C480 600 560 700 660 640" stroke-width="65" opacity="0.25"/>
+  </g>
+
+  <!-- ENVELOPE (Left angled behind card, showing open flap + sparkly liner) -->
+  <g transform="translate(112, 175) rotate(-6)" filter="url(#mk-env-drop)">
+    <!-- Envelope Open Flap (pointing upward-left) -->
+    <path d="M0 180 L0 -110 L280 20 L280 180 Z" fill="#D81B60"/>
+    <!-- Revealed Sparkle Liner -->
+    <path d="M16 175 L16 -82 L264 28 L264 175 Z" fill="url(#mk-env-liner)"/>
+    <!-- Envelope Body / Pocket -->
+    <path d="M0 160 L280 160 L280 390 L0 390 Z" fill="#E91E63"/>
+    <!-- Flap Folds Depth -->
+    <path d="M0 390 L0 160 L140 270 Z" fill="#C2185B" opacity="0.35"/>
+    <path d="M280 390 L280 160 L140 270 Z" fill="#AD1457" opacity="0.25"/>
+    <path d="M0 390 L140 270 L280 390 Z" fill="#880E4F" opacity="0.2"/>
+    <line x1="0" y1="160" x2="280" y2="160" stroke="#C2185B" stroke-width="1.5"/>
+  </g>
+
+  <!-- INVITATION CARD (Elevated in front with drop shadow) -->
+  <g transform="translate(164, 115)" filter="url(#mk-card-drop)">
+    <g clip-path="url(#mk-card-clip)">
+      <!-- 1. Glitter Frame -->
+      <rect width="320" height="448" fill="url(#mk-glitter)"/>
+      <rect width="320" height="448" fill="none" stroke="#FFA3D0" stroke-width="1.5" opacity="0.7"/>
+
+      <!-- 2. Inner Ivory Bevel Frame -->
+      <rect x="18" y="18" width="284" height="412" rx="4" fill="#FFF2F8"/>
+      <rect x="22" y="22" width="276" height="404" rx="3" fill="none" stroke="#E5AFC8" stroke-width="1"/>
+
+      <!-- 3. Inner Magenta Card Base -->
+      <rect x="24" y="24" width="272" height="400" rx="3" fill="url(#mk-card-base)"/>
+      <rect x="24" y="24" width="272" height="400" rx="3" fill="none" stroke="#480222" stroke-width="8" opacity="0.3"/>
+
+      <!-- 4. Sparkles Around Border -->
+      <g fill="#FFFFFF" opacity="0.8">
+        <path d="M56 50 Q56 58 48 58 Q56 58 56 66 Q56 58 64 58 Q56 58 56 50 Z"/>
+        <path d="M260 55 Q260 62 253 62 Q260 62 260 69 Q260 62 267 62 Q260 62 260 55 Z" transform="scale(0.85) translate(45, 10)"/>
+        <path d="M48 240 Q48 247 41 247 Q48 247 48 254 Q48 247 55 247 Q48 247 48 240 Z" transform="scale(0.7) translate(20, 105)"/>
+        <path d="M275 220 Q275 227 268 227 Q275 227 275 234 Q275 227 282 227 Q275 227 275 220 Z" transform="scale(0.75) translate(90, 75)"/>
+        <polygon points="90,44 92,47 90,50 88,47"/>
+        <polygon points="230,48 232,51 230,54 228,51"/>
+      </g>
+
+      <!-- Fashion Illustrations -->
+      <!-- Top Center: Pink Sunglasses -->
+      <g transform="translate(132, 48) scale(0.6)" filter="url(#mk-glow)">
+        <path d="M0 20 C-18 5 -42 12 -42 32 C-42 50 -10 62 0 72 C10 62 42 50 42 32 C42 12 18 5 0 20 Z" 
+              transform="translate(-30, 0) rotate(-10)" fill="#FF2688" stroke="#FFA3CE" stroke-width="3"/>
+        <path d="M0 25 C-12 14 -32 20 -32 35 C-32 46 -8 54 0 62 C8 54 32 46 32 35 C32 20 12 14 0 25 Z" 
+              transform="translate(-30, 0) rotate(-10)" fill="#D4146C"/>
+        <path d="M-42 32 Q-38 46 -30 50" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8"/>
+        <path d="M-15 32 Q0 26 15 32" stroke="#FFA3CE" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M0 20 C-18 5 -42 12 -42 32 C-42 50 -10 62 0 72 C10 62 42 50 42 32 C42 12 18 5 0 20 Z" 
+              transform="translate(30, 0) rotate(10)" fill="#FF2688" stroke="#FFA3CE" stroke-width="3"/>
+        <path d="M0 25 C-12 14 -32 20 -32 35 C-32 46 -8 54 0 62 C8 54 32 46 32 35 C32 20 12 14 0 25 Z" 
+              transform="translate(30, 0) rotate(10)" fill="#D4146C"/>
+        <path d="M18 32 Q22 46 30 50" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8"/>
+      </g>
+
+      <!-- Top Right: Pink Quilted Heart Purse -->
+      <g transform="translate(232, 54) scale(0.58)" filter="url(#mk-glow)">
+        <path d="M-8 0 C-15 -35 45 -35 38 0" fill="none" stroke="#FFD700" stroke-width="2.5" stroke-dasharray="4 2"/>
+        <path d="M15 15 C-5 -5 -35 5 -35 28 C-35 52 0 70 15 85 C30 70 65 52 65 28 C65 5 35 -5 15 15 Z" 
+              fill="#FF3399" stroke="#FFA8D8" stroke-width="3"/>
+        <path d="M-20 20 L40 60 M-30 35 L30 75 M-10 10 L50 50 M-20 60 L40 20 M-30 45 L30 5" 
+              stroke="#FF80BF" stroke-width="1.2" opacity="0.75"/>
+        <circle cx="15" cy="18" r="4.5" fill="#FFF2B2" stroke="#E5A800" stroke-width="1.5"/>
+      </g>
+
+      <!-- Mid-Left: Glam Lipstick -->
+      <g transform="translate(48, 170) rotate(15) scale(0.55)" filter="url(#mk-glow)">
+        <rect x="0" y="45" width="22" height="42" rx="3" fill="#FF2688" stroke="#FFA3CE" stroke-width="1.5"/>
+        <rect x="0" y="45" width="22" height="10" fill="#FFD700"/>
+        <rect x="3" y="24" width="16" height="22" rx="1" fill="#E6E8EA"/>
+        <path d="M4 24 L4 10 Q11 0 18 6 L18 24 Z" fill="#E60067"/>
+        <path d="M6 22 L6 12 Q10 4 15 8" stroke="#FF85B8" stroke-width="2.5" fill="none"/>
+      </g>
+
+      <!-- Bottom-Left: Hot Pink High Heels -->
+      <g transform="translate(50, 260) scale(0.55)" filter="url(#mk-glow)">
+        <path d="M15 45 C35 45 42 25 50 15 C54 10 58 12 55 20 C50 32 46 52 75 58 C85 60 92 68 85 70 C60 75 35 72 20 65 L18 88 L13 88 L12 52 Z" 
+              fill="#FF2E88" stroke="#FF99C8" stroke-width="2"/>
+        <path d="M22 49 C38 49 44 32 50 20" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85"/>
+      </g>
+
+      <!-- Bottom-Right: Heart Mirror Compact -->
+      <g transform="translate(232, 240) rotate(-10) scale(0.55)" filter="url(#mk-glow)">
+        <path d="M18 16 C0 -4 -30 6 -30 28 C-30 52 5 70 18 84 C31 70 66 52 66 28 C66 6 36 -4 18 16 Z" 
+              fill="#FF2E88" stroke="#FFA3CE" stroke-width="3"/>
+        <path d="M18 22 C4 6 -20 14 -20 30 C-20 48 8 62 18 74 C28 62 56 48 56 30 C56 14 32 6 18 22 Z" 
+              fill="#C2E8FF" stroke="#FFFFFF" stroke-width="2"/>
+        <path d="M-6 26 L12 65" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+      </g>
+
+      <!-- 5. Rendered Typography (Pixel-perfect match to Reference Image 1) -->
+      <!-- Kicker -->
+      <text x="160" y="152" 
+            font-family="'Montserrat', sans-serif" 
+            font-size="8.5" 
+            font-weight="700" 
+            letter-spacing="1.4" 
+            fill="#FFFFFF" 
+            text-anchor="middle">LET'S GET DOLLED UP TO</text>
+
+      <!-- Purpose / Subtitle -->
+      <text x="160" y="174" 
+            font-family="'Montserrat', sans-serif" 
+            font-size="11.5" 
+            font-weight="800" 
+            letter-spacing="0.5" 
+            fill="#FFFFFF" 
+            text-anchor="middle">CELEBRATE</text>
+      <text x="160" y="190" 
+            font-family="'Montserrat', sans-serif" 
+            font-size="11.5" 
+            font-weight="800" 
+            letter-spacing="0.5" 
+            fill="#FFFFFF" 
+            text-anchor="middle">AVA'S BIG DAY</text>
+      <text x="160" y="206" 
+            font-family="'Montserrat', sans-serif" 
+            font-size="11.5" 
+            font-weight="800" 
+            letter-spacing="0.5" 
+            fill="#FFFFFF" 
+            text-anchor="middle">IN STYLE!</text>
+
+      <!-- Title: "Let's go party!" (Bubbly 3D curved font with white fill & pink drop shadow) -->
+      <g transform="translate(160, 315)">
+        <!-- 3D Shadow -->
+        <text x="0" y="3" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="34" 
+              font-weight="700" 
+              fill="#B00050" 
+              text-anchor="middle">Let's go</text>
+        <text x="0" y="38" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="40" 
+              font-weight="700" 
+              fill="#B00050" 
+              text-anchor="middle">party!</text>
+        <!-- Pink Stroke Outline -->
+        <text x="0" y="0" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="34" 
+              font-weight="700" 
+              fill="none" 
+              stroke="#D81B60" 
+              stroke-width="5" 
+              stroke-linejoin="round" 
+              text-anchor="middle">Let's go</text>
+        <text x="0" y="35" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="40" 
+              font-weight="700" 
+              fill="none" 
+              stroke="#D81B60" 
+              stroke-width="6" 
+              stroke-linejoin="round" 
+              text-anchor="middle">party!</text>
+        <!-- Pure White Front Body -->
+        <text x="0" y="0" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="34" 
+              font-weight="700" 
+              fill="#FFFFFF" 
+              text-anchor="middle">Let's go</text>
+        <text x="0" y="35" 
+              font-family="'Chewy', 'Arial Black', cursive" 
+              font-size="40" 
+              font-weight="700" 
+              fill="#FFFFFF" 
+              text-anchor="middle">party!</text>
+      </g>
+    </g>
+  </g>
+</svg>

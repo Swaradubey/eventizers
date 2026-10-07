@@ -21,9 +21,17 @@ const CORS_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
 };
 
-const CACHE_HEADERS = {
-  // Immutable: proxied content is keyed by the encoded URL, so it never changes
+const SUCCESS_CACHE_HEADERS = {
+  // Proxied immutable content: cached at client and CDN edge
   "Cache-Control": "public, max-age=31536000, immutable",
+  "CDN-Cache-Control": "public, max-age=31536000, immutable",
+};
+
+const ERROR_CACHE_HEADERS = {
+  // Errors must NEVER be cached as immutable!
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
 };
 
 const USER_AGENT =
@@ -33,15 +41,38 @@ const ACCEPT_HEADER = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_REDIRECTS = 5;
 
-const errorResponse = (message: string, status: number) =>
-  new NextResponse(message, { status, headers: { ...CORS_HEADERS, ...CACHE_HEADERS } });
+/** Returns a structured JSON error response with non-caching headers and permissive CORS */
+const jsonErrorResponse = (message: string, status: number, extra: Record<string, any> = {}) =>
+  NextResponse.json(
+    {
+      error: message,
+      status,
+      ...extra,
+    },
+    {
+      status,
+      headers: {
+        ...CORS_HEADERS,
+        ...ERROR_CACHE_HEADERS,
+      },
+    }
+  );
 
 /**
  * Resolves relative / localhost URLs against the current origin or the
  * configured backend so the proxy works both locally and on Vercel.
  */
 const resolveTargetUrl = (targetUrl: string, reqOrigin: string): string => {
+  const backendBase =
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
+    process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/api\/?$/, "") ||
+    process.env.BACKEND_PUBLIC_URL?.replace(/\/api\/?$/, "") ||
+    process.env.BACKEND_URL?.replace(/\/api\/?$/, "");
+
   if (targetUrl.startsWith("/")) {
+    if (targetUrl.startsWith("/uploads/") && backendBase && !backendBase.includes("localhost")) {
+      return `${backendBase}${targetUrl}`;
+    }
     return `${reqOrigin}${targetUrl}`;
   }
 
@@ -51,11 +82,6 @@ const resolveTargetUrl = (targetUrl: string, reqOrigin: string): string => {
       const pathOnly = targetUrl.replace(/^https?:\/\/[^/]+/, "");
       return `${reqOrigin}${pathOnly}`;
     }
-    const backendBase =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-      process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/api\/?$/, "") ||
-      process.env.BACKEND_PUBLIC_URL?.replace(/\/api\/?$/, "") ||
-      process.env.BACKEND_URL?.replace(/\/api\/?$/, "");
     if (backendBase && !backendBase.includes("localhost")) {
       const pathOnly = targetUrl.replace(/^https?:\/\/[^/]+/, "");
       return `${backendBase}${pathOnly}`;
@@ -171,14 +197,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawUrl = searchParams.get("url");
 
+  // 1. Validate incoming URL parameter
   if (!rawUrl || typeof rawUrl !== "string" || !rawUrl.trim()) {
-    return errorResponse("Missing url parameter", 400);
+    return jsonErrorResponse("Missing required 'url' query parameter", 400);
   }
 
   const resolvedUrl = resolveTargetUrl(rawUrl.trim(), req.nextUrl.origin);
 
   if (!isHttpUrl(resolvedUrl)) {
-    return errorResponse("Invalid URL provided: only HTTP and HTTPS are allowed", 400);
+    return jsonErrorResponse("Invalid URL provided: only HTTP and HTTPS protocols are allowed", 400, {
+      providedUrl: rawUrl,
+    });
   }
 
   const deadline = Date.now() + FETCH_TIMEOUT_MS;
@@ -190,7 +219,7 @@ export async function GET(req: NextRequest) {
       upstreamRes = await fetchImage(resolvedUrl, deadline);
     } catch (err: any) {
       if (err?.isTimeout || err?.name === "TimeoutError" || err?.name === "AbortError") {
-        return errorResponse("Upstream image request timed out", 504);
+        return jsonErrorResponse("Upstream image request timed out", 504, { url: resolvedUrl });
       }
       // Mixed-content / dead plain-http upstream: retry once over HTTPS
       if (resolvedUrl.startsWith("http://") && !resolvedUrl.includes("localhost") && !resolvedUrl.includes("127.0.0.1")) {
@@ -200,47 +229,51 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 2. Upstream status check — return clean JSON error on non-200
     if (!upstreamRes || !upstreamRes.ok) {
       const status = upstreamRes && upstreamRes.status >= 400 && upstreamRes.status < 600 ? upstreamRes.status : 502;
-      return errorResponse(`Upstream returned ${upstreamRes ? upstreamRes.status : "no response"}`, status);
+      return jsonErrorResponse(
+        `Upstream returned status ${upstreamRes ? upstreamRes.status : "no response"}`,
+        status,
+        { url: resolvedUrl, upstreamStatus: upstreamRes?.status || 502 }
+      );
     }
 
     const declaredType = upstreamRes.headers.get("content-type");
     const buffer = new Uint8Array(await upstreamRes.arrayBuffer());
 
     if (buffer.byteLength === 0) {
-      return errorResponse("Upstream returned an empty image", 502);
+      return jsonErrorResponse("Upstream returned an empty image body", 502, { url: resolvedUrl });
     }
 
     const contentType = sniffImageContentType(buffer, declaredType);
     if (!contentType) {
-      // Likely an HTML page, a paywall, or a hotlink block — never cache it as an image
-      return errorResponse(
-        `Upstream did not return a supported image (content-type: ${declaredType || "unknown"})`,
-        415
+      return jsonErrorResponse(
+        `Upstream did not return a valid supported image format (content-type: ${declaredType || "unknown"})`,
+        415,
+        { url: resolvedUrl }
       );
     }
 
+    // 3. Success: pipe image buffer with CORS and long-term cache headers
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         ...CORS_HEADERS,
-        ...CACHE_HEADERS,
+        ...SUCCESS_CACHE_HEADERS,
         "Content-Type": contentType,
         "Content-Length": String(buffer.byteLength),
-        // CDN-level URL-based caching (Vercel/Cloudflare)
-        "CDN-Cache-Control": "public, max-age=31536000, immutable",
       },
     });
   } catch (err: any) {
     if (err?.isTimeout || err?.name === "TimeoutError" || err?.name === "AbortError") {
-      return errorResponse("Upstream image request timed out", 504);
+      return jsonErrorResponse("Upstream image request timed out", 504, { url: resolvedUrl });
     }
     if (err?.isClientError) {
-      return errorResponse(err.message || "Invalid image URL", 400);
+      return jsonErrorResponse(err.message || "Invalid image URL", 400, { url: resolvedUrl });
     }
     console.warn("[proxy-image] Failed to fetch remote image:", resolvedUrl, err?.message);
-    return errorResponse(err?.message || "Failed to fetch image", 502);
+    return jsonErrorResponse(err?.message || "Failed to fetch image", 502, { url: resolvedUrl });
   }
 }
 

@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sp-mBackdrop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3A3A3E"/>
+      <stop offset="55%" stop-color="#26262A"/>
+      <stop offset="100%" stop-color="#161618"/>
+    </linearGradient>
+    <radialGradient id="sp-mVig" cx="50%" cy="46%" r="72%">
+      <stop offset="48%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.75"/>
+    </radialGradient>
+    <linearGradient id="sp-mGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8C6B1F"/>
+      <stop offset="24%" stop-color="#E8CE86"/>
+      <stop offset="48%" stop-color="#F7EBC2"/>
+      <stop offset="70%" stop-color="#C9A227"/>
+      <stop offset="100%" stop-color="#9A7722"/>
+    </linearGradient>
+    <linearGradient id="sp-mGoldSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F4E4AE"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#9C7A24"/>
+    </linearGradient>
+    <linearGradient id="sp-mLiner" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A1A1E"/>
+      <stop offset="50%" stop-color="#0B0B0D"/>
+      <stop offset="100%" stop-color="#1A1A1E"/>
+    </linearGradient>
+    <filter id="sp-cardShadow" x="-25%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.7"/>
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="sp-envShadow" x="-25%" y="-25%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.8"/>
+    </filter>
+    <g id="sp-mBat">
+      <path d="M0,0 C-7,-11 -19,-16 -33,-13 C-28,-7 -27,-2 -28,4 C-21,0 -12,2 -5,7 C-2,4 2,4 5,7 C12,2 21,0 28,4 C27,-2 28,-7 33,-13 C19,-16 7,-11 0,0 Z"/>
+    </g>
+    <g id="sp-mCandle">
+      <rect x="-7" y="-74" width="14" height="74" rx="5" fill="url(#sp-mGoldSoft)"/>
+      <path d="M0,-84 C6,-95 4,-106 0,-113 C-4,-106 -6,-95 0,-84 Z" fill="#FFE7A8"/>
+      <path d="M-16,0 h32 l6,9 h-44 z" fill="url(#sp-mGold)"/>
+    </g>
+    <g id="sp-mSkull">
+      <ellipse cx="0" cy="4" rx="40" ry="44" fill="url(#sp-mGoldSoft)"/>
+      <path d="M-30,32 C-26,50 -14,58 0,58 C14,58 26,50 30,32 Z" fill="url(#sp-mGoldSoft)"/>
+      <ellipse cx="-15" cy="0" rx="11" ry="13" fill="#08080A"/>
+      <ellipse cx="15" cy="0" rx="11" ry="13" fill="#08080A"/>
+      <path d="M0,16 L-7,30 L7,30 Z" fill="#08080A"/>
+      <g fill="#08080A">
+        <rect x="-19" y="34" width="3.4" height="18" rx="1.6"/>
+        <rect x="-9" y="34" width="3.4" height="20" rx="1.6"/>
+        <rect x="1" y="34" width="3.4" height="20" rx="1.6"/>
+        <rect x="11" y="34" width="3.4" height="18" rx="1.6"/>
+        <path d="M-24,38 h48 v3 h-48 z"/>
+      </g>
+    </g>
+  </defs>
+
+  <!-- BACKDROP: dim concrete table -->
+  <rect width="800" height="600" fill="url(#sp-mBackdrop)"/>
+  <g fill="#FFFFFF" opacity="0.05">
+    <circle cx="90" cy="80" r="1.6"/><circle cx="220" cy="46" r="1.2"/><circle cx="420" cy="110" r="1.4"/>
+    <circle cx="640" cy="60" r="1.3"/><circle cx="720" cy="200" r="1.5"/><circle cx="140" cy="330" r="1.2"/>
+    <circle cx="600" cy="420" r="1.4"/><circle cx="330" cy="540" r="1.3"/><circle cx="700" cy="520" r="1.2"/>
+  </g>
+  <rect y="430" width="800" height="170" fill="#000000" opacity="0.35"/>
+  <rect width="800" height="600" fill="url(#sp-mVig)"/>
+
+  <!-- candles on the backdrop -->
+  <g transform="translate(706,392)">
+    <rect x="-34" y="58" width="68" height="14" rx="5" fill="#8C6B1F"/>
+    <use href="#sp-mCandle"/>
+    <use href="#sp-mCandle" transform="translate(-46,30) scale(0.7)"/>
+    <use href="#sp-mCandle" transform="translate(46,42) scale(0.6)"/>
+  </g>
+
+  <!-- ENVELOPE -->
+  <g filter="url(#sp-envShadow)">
+    <rect x="70" y="180" width="430" height="320" rx="8" fill="#0B0B0D"/>
+    <path d="M70,184 L285,46 L500,184 Z" fill="#050506"/>
+    <path d="M104,180 L285,78 L466,180 Z" fill="url(#sp-mLiner)"/>
+    <path d="M104,180 L285,78 L466,180" fill="none" stroke="url(#sp-mGold)" stroke-width="3"/>
+    <path d="M120,176 L285,90 L450,176" fill="none" stroke="#C9A227" stroke-width="1.2" opacity="0.7"/>
+    <path d="M70,184 h430" stroke="#000000" stroke-width="3" opacity="0.8"/>
+    <g fill="url(#sp-mGold)" opacity="0.9">
+      <path d="M285,120 l6,6 l-6,6 l-6,-6 z"/>
+    </g>
+  </g>
+
+  <!-- INVITATION CARD (5x7) -->
+  <g filter="url(#sp-cardShadow)">
+    <rect x="280" y="70" width="330" height="462" rx="6" fill="#0A0A0C"/>
+    <g transform="translate(280,70) scale(0.66)">
+      <rect width="500" height="700" fill="#0A0A0C"/>
+      <rect x="20" y="20" width="460" height="660" rx="6" fill="none" stroke="url(#sp-mGold)" stroke-width="5"/>
+      <rect x="32" y="32" width="436" height="636" rx="4" fill="none" stroke="url(#sp-mGold)" stroke-width="1.6"/>
+      <rect x="39" y="39" width="422" height="622" rx="3" fill="none" stroke="url(#sp-mGold)" stroke-width="1" stroke-dasharray="2 7"/>
+
+      <!-- gold skull crest -->
+      <g transform="translate(250,116) scale(0.86)"><use href="#sp-mSkull"/></g>
+      <path d="M-52,44 C-40,60 -20,70 0,72 C20,70 40,60 52,44" transform="translate(250,116) scale(0.86)" fill="none" stroke="url(#sp-mGold)" stroke-width="3"/>
+
+      <!-- rules -->
+      <g stroke="url(#sp-mGold)" stroke-width="1.6">
+        <path d="M96,206 H404"/>
+        <path d="M140,216 H360" stroke-dasharray="1 6" stroke-linecap="round"/>
+      </g>
+
+      <!-- candles -->
+      <g transform="translate(80,548) scale(0.72)"><use href="#sp-mCandle"/></g>
+      <g transform="translate(420,548) scale(0.72)"><use href="#sp-mCandle"/></g>
+
+      <!-- bats -->
+      <g fill="url(#sp-mGoldSoft)" transform="translate(250,652)"><use href="#sp-mBat"/></g>
+      <g fill="url(#sp-mGold)" transform="translate(152,658) scale(0.6)"><use href="#sp-mBat"/></g>
+      <g fill="url(#sp-mGold)" transform="translate(348,658) scale(0.6)"><use href="#sp-mBat"/></g>
+
+      <!-- BAKED TYPOGRAPHY (editable as layers in the editor) -->
+      <g text-anchor="middle">
+        <text x="250" y="252" font-family="'Playfair Display', Georgia, serif" font-size="17" font-style="italic" font-weight="500" fill="#F4E4AE" dominant-baseline="central">Calling all my</text>
+        <text x="250" y="276" font-family="'Playfair Display', Georgia, serif" font-size="17" font-style="italic" font-weight="500" fill="#F4E4AE" dominant-baseline="central">best witches for a</text>
+        <text x="250" y="336" font-family="'Cinzel', 'Playfair Display', serif" font-size="44" font-weight="700" letter-spacing="2" fill="url(#sp-mGold)">HALLOWEEN</text>
+        <text x="250" y="394" font-family="'Cinzel', 'Playfair Display', serif" font-size="44" font-weight="700" letter-spacing="2" fill="url(#sp-mGold)">COCKTAIL</text>
+        <text x="250" y="452" font-family="'Cinzel', 'Playfair Display', serif" font-size="44" font-weight="700" letter-spacing="2" fill="url(#sp-mGold)">PARTY</text>
+        <text x="250" y="496" font-family="'Inter', sans-serif" font-size="12.5" font-weight="600" letter-spacing="1.4" fill="#E8CE86" dominant-baseline="central">SATURDAY, OCTOBER 31ST AT 7 PM</text>
+        <text x="250" y="518" font-family="'Inter', sans-serif" font-size="12.5" font-weight="500" letter-spacing="1.2" fill="#BDB49A" dominant-baseline="central">THE GILDED LANTERN, 99 CANDLEWOOD AVE</text>
+      </g>
+    </g>
+  </g>
+</svg>

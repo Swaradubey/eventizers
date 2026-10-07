@@ -136,6 +136,40 @@ export interface EviteTemplateSchema {
   tier?: 'free' | 'premium' | string;
   isPremium?: boolean;
   badge?: 'Trending' | 'FREE' | 'Free' | 'PREMIUM' | 'Premium' | string;
+  /** Browse-grid ordering weight — higher values float to the TOP of every template gallery */
+  priority?: number;
+  /** Stable tie-breaker used when several templates share the same `priority` */
+  sortOrder?: number;
+  /** Featured/pinned merchandising flag (treated as `priority: 100`) */
+  isFeatured?: boolean;
+  /** Whether every default text box is editable on the canvas */
+  isEditable?: boolean;
+  /** High-res card artwork loaded onto the locked canvas background layer */
+  artworkUrl?: string;
+  /** Envelope liner artwork (rendered as a CSS background image) */
+  envelopeLinerUrl?: string;
+  /** Designer canvas payload: background artwork + default text objects (px coordinates) */
+  canvasConfig?: {
+    width?: number;
+    height?: number;
+    artworkUrl?: string;
+    crossOrigin?: string;
+    proxyUrl?: string;
+    locked?: boolean;
+    textObjects?: Array<{
+      id: string;
+      role?: string;
+      text: string;
+      x: number;
+      y: number;
+      fontFamily: string;
+      fontSize: number;
+      fill: string;
+      fontWeight?: string | number;
+      align?: 'left' | 'center' | 'right';
+    }>;
+    [key: string]: any;
+  };
   /** Design canvas size in px (design-time coordinate space for editableElements) */
   dimensions?: { width: number; height: number };
   /** Locked decorative artwork layer rendered behind every editable text node */
@@ -219,6 +253,8 @@ export interface EviteTemplateSchema {
     lineHeight?: number;
     maxHeight?: string;
     foilGradient?: string;
+    isFoil?: 'gold' | 'rose-gold' | 'silver' | 'neon' | null;
+    textShadow?: string;
     casing?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
   }>;
   // Optional canvas payload consumed by the studio (background artwork + optional extra layers)
@@ -280,6 +316,14 @@ export interface NewTemplateData {
   isPureCss?: boolean;
   isPremium?: boolean;
   isLayered?: boolean;
+  isEditable?: boolean;
+  isFeatured?: boolean;
+  /** Browse-grid ordering weight (higher = shown first) */
+  priority?: number;
+  sortOrder?: number;
+  artworkUrl?: string;
+  envelopeLinerUrl?: string;
+  canvasConfig?: EviteTemplateSchema['canvasConfig'];
   type: string;
   category: string;
   tags?: string[];
@@ -2352,10 +2396,16 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     category: "Halloween",
     badge: "Premium",
     isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 1,
     tags: ["Halloween", "Birthday", "All"],
     envelopeColor: "#C2966A",
     linerColor: "#D8B486",
-    envelopeLiner: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+    envelopeLiner: "url('/assets/templates/creepy-cake-liner.svg') center / cover no-repeat, linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+    envelopeLinerUrl: "/assets/templates/creepy-cake-liner.svg",
+    artworkUrl: "/assets/templates/creepy-cake-bg.svg",
     mockupUrl: "/templates/creepy-cake.svg",
     thumbnailUrl: "/templates/creepy-cake.svg",
     backdrop: {
@@ -2367,10 +2417,10 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     envelope: {
       outerColor: "#C2966A",
       flapColor: "#B0855A",
-      linerPatternUrl: "",
+      linerPatternUrl: "/assets/templates/creepy-cake-liner.svg",
       linerColor: "#D8B486",
-      innerLiner: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
-      linerCss: "linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+      innerLiner: "url('/assets/templates/creepy-cake-liner.svg') center / cover no-repeat, linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
+      linerCss: "url('/assets/templates/creepy-cake-liner.svg') center / cover no-repeat, linear-gradient(135deg, #D8B486 0%, #C2966A 60%, #A87B52 100%)",
       isOpen: true,
       isOpenUpward: true,
       shadowColor: "rgba(90,45,5,0.5)"
@@ -2397,6 +2447,20 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
     canvasData: {
       backgroundImage: "/assets/templates/creepy-cake-bg.svg"
     },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/creepy-cake-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-title", role: "title", text: "VANESSA'S\nHALLOWEEN\nBASH!", x: 300, y: 202, fontFamily: "'Permanent Marker', cursive", fontSize: 55, fill: "#FF7A1A", fontWeight: 400, align: "center" },
+        { id: "layer-description", role: "subtitle", text: "Let's get a little spooky for Vanessa's birthday!", x: 408, y: 487, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#F5F1E8", fontWeight: 500, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "October 23rd at 6 PM", x: 408, y: 588, fontFamily: "'Inter', sans-serif", fontSize: 14, fill: "#FFFFFF", fontWeight: 600, align: "center" },
+        { id: "layer-venue", role: "venue", text: "The Harvey House", x: 408, y: 647, fontFamily: "'Inter', sans-serif", fontSize: 14, fill: "#E4DCCF", fontWeight: 500, align: "center" }
+      ]
+    },
     defaultTextLayers: [
       {
         id: "layer-title",
@@ -2414,7 +2478,7 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
       {
         id: "layer-description",
         key: "description",
-        text: "Let's get a little spooky!",
+        text: "Let's get a little spooky for Vanessa's birthday!",
         fontFamily: "'Inter', sans-serif",
         fontSize: 12.5,
         fontWeight: "500",
@@ -2668,6 +2732,788 @@ export const EVITE_TEMPLATES: EviteTemplateSchema[] = [
         color: "#BDB49A",
         textAlign: "center",
         top: 71,
+        left: 50
+      }
+    ]
+  },
+  // ---------------- PREMIUM HALLOWEEN 2026 — PINNED TO THE TOP OF THE BROWSE GRID ----------------
+  {
+    id: "dramatic-doily",
+    title: "Dramatic Doily",
+    name: "Dramatic Doily",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 2,
+    tags: ["Halloween", "Gothic", "All"],
+    envelopeColor: "#5E0A10",
+    linerColor: "#D8B486",
+    envelopeLiner: "url('/assets/templates/dramatic-doily-liner.svg') center / cover no-repeat, linear-gradient(135deg, #F3E7D6 0%, #D8B486 100%)",
+    envelopeLinerUrl: "/assets/templates/dramatic-doily-liner.svg",
+    artworkUrl: "/assets/templates/dramatic-doily-bg.svg",
+    mockupUrl: "/templates/dramatic-doily.svg",
+    thumbnailUrl: "/templates/dramatic-doily.svg",
+    backdrop: {
+      type: "color",
+      value: "#6C0C11",
+      color: "#6C0C11",
+      gradient: "linear-gradient(150deg, #8C1116 0%, #4A070B 100%)"
+    },
+    envelope: {
+      outerColor: "#5E0A10",
+      flapColor: "#4A070B",
+      linerPatternUrl: "/assets/templates/dramatic-doily-liner.svg",
+      linerColor: "#D8B486",
+      innerLiner: "url('/assets/templates/dramatic-doily-liner.svg') center / cover no-repeat, linear-gradient(135deg, #F3E7D6 0%, #D8B486 100%)",
+      linerCss: "url('/assets/templates/dramatic-doily-liner.svg') center / cover no-repeat, linear-gradient(135deg, #F3E7D6 0%, #D8B486 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(45,4,8,0.55)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/dramatic-doily-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/dramatic-doily-bg.svg",
+      borderIllustration: "/assets/templates/dramatic-doily-bg.svg",
+      backgroundColor: "#6C0C11",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.25)",
+      cssConfig: {
+        backgroundColor: "#6C0C11",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.6)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#6C0C11",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.6)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/dramatic-doily-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/dramatic-doily-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-title", role: "title", text: "Dying\nto party\nwith you", x: 300, y: 403, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 55, fill: "#6E0C11", fontWeight: 700, align: "center" },
+        { id: "layer-subtitle", role: "subtitle", text: "Join us for cocktails, canapés & a graveyard smash — if you dare", x: 300, y: 508, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#7A1218", fontWeight: 500, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "Saturday, October 31st at 8 PM", x: 300, y: 542, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#5E0A10", fontWeight: 700, align: "center" },
+        { id: "layer-venue", role: "venue", text: "21 Witchling Way", x: 300, y: 563, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#7A1218", fontWeight: 500, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-title",
+        key: "title",
+        text: "Dying\nto party\nwith you",
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontSize: 44,
+        fontWeight: "700",
+        lineHeight: 1.06,
+        color: "#6E0C11",
+        textAlign: "center",
+        top: 48,
+        left: 50
+      },
+      {
+        id: "layer-subtitle",
+        key: "subtitle",
+        text: "Join us for cocktails, canapés & a graveyard smash — if you dare",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "500",
+        color: "#7A1218",
+        textAlign: "center",
+        top: 60.5,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "Saturday, October 31st at 8 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "700",
+        color: "#5E0A10",
+        textAlign: "center",
+        top: 64.5,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "21 Witchling Way",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "500",
+        color: "#7A1218",
+        textAlign: "center",
+        top: 67,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "strange-times",
+    title: "Strange Times",
+    name: "Strange Times",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 3,
+    tags: ["Halloween", "Retro", "All"],
+    envelopeColor: "#150F2E",
+    linerColor: "#3E2A6E",
+    envelopeLiner: "url('/assets/templates/strange-times-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1030 0%, #0B0716 100%)",
+    envelopeLinerUrl: "/assets/templates/strange-times-liner.svg",
+    artworkUrl: "/assets/templates/strange-times-bg.svg",
+    mockupUrl: "/templates/strange-times.svg",
+    thumbnailUrl: "/templates/strange-times.svg",
+    backdrop: {
+      type: "color",
+      value: "#0A0716",
+      color: "#0A0716",
+      gradient: "linear-gradient(160deg, #141033 0%, #07091A 100%)"
+    },
+    envelope: {
+      outerColor: "#150F2E",
+      flapColor: "#0D0920",
+      linerPatternUrl: "/assets/templates/strange-times-liner.svg",
+      linerColor: "#3E2A6E",
+      innerLiner: "url('/assets/templates/strange-times-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1030 0%, #0B0716 100%)",
+      linerCss: "url('/assets/templates/strange-times-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1030 0%, #0B0716 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(5,3,16,0.6)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/strange-times-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/strange-times-bg.svg",
+      borderIllustration: "/assets/templates/strange-times-bg.svg",
+      backgroundColor: "#0A0716",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.4)",
+      cssConfig: {
+        backgroundColor: "#0A0716",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.7)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#0A0716",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.7)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/strange-times-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/strange-times-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-title", role: "title", text: "LET'S\nPARTY", x: 300, y: 664, fontFamily: "'Londrina Solid', sans-serif", fontSize: 72, fill: "#FF2E3F", fontWeight: 900, align: "center" },
+        { id: "layer-subtitle", role: "subtitle", text: "A STRANGE EVENING AWAITS... IF YOU DARE", x: 300, y: 769, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#EDEBFF", fontWeight: 700, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "October 31st | 6 PM | 1228 Strange Street", x: 300, y: 798, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#FFFFFF", fontWeight: 600, align: "center" },
+        { id: "layer-venue", role: "venue", text: "Hawkins, Indiana", x: 300, y: 819, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#C6C0E6", fontWeight: 500, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-title",
+        key: "title",
+        text: "LET'S\nPARTY",
+        fontFamily: "'Londrina Solid', sans-serif",
+        fontSize: 62,
+        fontWeight: "900",
+        lineHeight: 1,
+        letterSpacing: 1,
+        color: "#FF2E3F",
+        textAlign: "center",
+        top: 79,
+        left: 50
+      },
+      {
+        id: "layer-subtitle",
+        key: "subtitle",
+        text: "A STRANGE EVENING AWAITS... IF YOU DARE",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "700",
+        letterSpacing: 1.2,
+        color: "#EDEBFF",
+        textAlign: "center",
+        top: 91.5,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "October 31st | 6 PM | 1228 Strange Street",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#FFFFFF",
+        textAlign: "center",
+        top: 95,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "Hawkins, Indiana",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "500",
+        color: "#C6C0E6",
+        textAlign: "center",
+        top: 97.5,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "sophisticated-spooky-party",
+    title: "Sophisticated Spooky Party",
+    name: "Sophisticated Spooky Party",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 4,
+    tags: ["Halloween", "Cocktail", "Elegant", "All"],
+    envelopeColor: "#0B0B0D",
+    linerColor: "#C9A227",
+    envelopeLiner: "url('/assets/templates/sophisticated-spooky-party-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1A1E 0%, #0B0B0D 100%)",
+    envelopeLinerUrl: "/assets/templates/sophisticated-spooky-party-liner.svg",
+    artworkUrl: "/assets/templates/sophisticated-spooky-party-bg.svg",
+    mockupUrl: "/templates/sophisticated-spooky-party.svg",
+    thumbnailUrl: "/templates/sophisticated-spooky-party.svg",
+    backdrop: {
+      type: "color",
+      value: "#0A0A0C",
+      color: "#0A0A0C",
+      gradient: "linear-gradient(150deg, #26262A 0%, #0A0A0C 100%)"
+    },
+    envelope: {
+      outerColor: "#0B0B0D",
+      flapColor: "#050506",
+      linerPatternUrl: "/assets/templates/sophisticated-spooky-party-liner.svg",
+      linerColor: "#C9A227",
+      innerLiner: "url('/assets/templates/sophisticated-spooky-party-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1A1E 0%, #0B0B0D 100%)",
+      linerCss: "url('/assets/templates/sophisticated-spooky-party-liner.svg') center / cover no-repeat, linear-gradient(135deg, #1A1A1E 0%, #0B0B0D 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(0,0,0,0.7)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/sophisticated-spooky-party-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/sophisticated-spooky-party-bg.svg",
+      borderIllustration: "/assets/templates/sophisticated-spooky-party-bg.svg",
+      backgroundColor: "#0A0A0C",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(201,162,39,0.45)",
+      cssConfig: {
+        backgroundColor: "#0A0A0C",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.75)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#0A0A0C",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.75)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/sophisticated-spooky-party-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/sophisticated-spooky-party-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-subtitle", role: "subtitle", text: "Calling all my best witches for a", x: 300, y: 317, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 21, fill: "#F4E4AE", fontWeight: 500, align: "center" },
+        { id: "layer-title", role: "title", text: "HALLOWEEN\nCOCKTAIL\nPARTY", x: 300, y: 470, fontFamily: "'Cinzel', serif", fontSize: 52, fill: "#E8CE86", fontWeight: 700, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "SATURDAY, OCTOBER 31ST AT 7 PM", x: 300, y: 596, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#E8CE86", fontWeight: 600, align: "center" },
+        { id: "layer-venue", role: "venue", text: "The Gilded Lantern, 99 Candlewood Ave", x: 300, y: 626, fontFamily: "'Inter', sans-serif", fontSize: 15, fill: "#BDB49A", fontWeight: 500, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-subtitle",
+        key: "subtitle",
+        text: "Calling all my best witches for a",
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontSize: 17,
+        fontWeight: "500",
+        fontStyle: "italic",
+        color: "#F4E4AE",
+        textAlign: "center",
+        top: 37.7,
+        left: 50
+      },
+      {
+        id: "layer-title",
+        key: "title",
+        text: "HALLOWEEN\nCOCKTAIL\nPARTY",
+        fontFamily: "'Cinzel', serif",
+        fontSize: 42,
+        fontWeight: "700",
+        lineHeight: 1.15,
+        letterSpacing: 2,
+        color: "#E8CE86",
+        textAlign: "center",
+        top: 56,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "SATURDAY, OCTOBER 31ST AT 7 PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12.5,
+        fontWeight: "600",
+        letterSpacing: 1.4,
+        color: "#E8CE86",
+        textAlign: "center",
+        top: 71,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "The Gilded Lantern, 99 Candlewood Ave",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "500",
+        letterSpacing: 0.8,
+        color: "#BDB49A",
+        textAlign: "center",
+        top: 74.5,
+        left: 50
+      }
+    ]
+  },
+  {
+    id: "sallys-song",
+    title: "Tim Burton's The Nightmare Before Christmas: Sally's Song",
+    name: "Tim Burton's The Nightmare Before Christmas: Sally's Song",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 5,
+    tags: ["Halloween", "Tim Burton", "Nightmare Before Christmas", "All"],
+    envelopeColor: "#3E1834",
+    linerColor: "#6C3358",
+    envelopeLiner: "url('/assets/templates/sallys-song-liner.svg') center / cover no-repeat, linear-gradient(135deg, #2A1026 0%, #160A14 100%)",
+    envelopeLinerUrl: "/assets/templates/sallys-song-liner.svg",
+    artworkUrl: "/assets/templates/sallys-song-bg.svg",
+    mockupUrl: "/templates/sallys-song.svg",
+    thumbnailUrl: "/templates/sallys-song.svg",
+    backdrop: {
+      type: "color",
+      value: "#2A1026",
+      color: "#2A1026",
+      gradient: "linear-gradient(150deg, #3A1630 0%, #1A0A18 100%)"
+    },
+    envelope: {
+      outerColor: "#3E1834",
+      flapColor: "#31132B",
+      linerPatternUrl: "/assets/templates/sallys-song-liner.svg",
+      linerColor: "#6C3358",
+      innerLiner: "url('/assets/templates/sallys-song-liner.svg') center / cover no-repeat, linear-gradient(135deg, #2A1026 0%, #160A14 100%)",
+      linerCss: "url('/assets/templates/sallys-song-liner.svg') center / cover no-repeat, linear-gradient(135deg, #2A1026 0%, #160A14 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(26,5,18,0.6)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/sallys-song-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/sallys-song-bg.svg",
+      borderIllustration: "/assets/templates/sallys-song-bg.svg",
+      backgroundColor: "#100C19",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(75,44,70,0.6)",
+      cssConfig: {
+        backgroundColor: "#100C19",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#100C19",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(0,0,0,0.65)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/sallys-song-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/sallys-song-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-title", role: "title", text: "A splendid\nnightmare awaits", x: 300, y: 202, fontFamily: "'Dancing Script', cursive", fontSize: 48, fill: "#F4E6F0", fontWeight: 600, align: "center" },
+        { id: "layer-subtitle", role: "subtitle", text: "JOIN US FOR A FRIGHTFULLY CHILLING TIME AT SIX", x: 300, y: 298, fontFamily: "'Inter', sans-serif", fontSize: 14, fill: "#D9CDE4", fontWeight: 600, align: "center" },
+        { id: "layer-heading", role: "heading", text: "Halloween\ncelebration", x: 300, y: 382, fontFamily: "'Dancing Script', cursive", fontSize: 41, fill: "#E7A9C4", fontWeight: 600, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "SATURDAY\nOCTOBER 31ST\nAT 7PM", x: 300, y: 470, fontFamily: "'Inter', sans-serif", fontSize: 14, fill: "#F4E6F0", fontWeight: 700, align: "center" },
+        { id: "layer-venue", role: "venue", text: "THE PLACE\n84 EVERLOCK DR.", x: 300, y: 538, fontFamily: "'Inter', sans-serif", fontSize: 14, fill: "#E7A9C4", fontWeight: 700, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-title",
+        key: "title",
+        text: "A splendid\nnightmare awaits",
+        fontFamily: "'Dancing Script', cursive",
+        fontSize: 38,
+        fontWeight: "600",
+        lineHeight: 1.15,
+        color: "#F4E6F0",
+        textAlign: "center",
+        top: 24,
+        left: 50
+      },
+      {
+        id: "layer-subtitle",
+        key: "subtitle",
+        text: "JOIN US FOR A FRIGHTFULLY\nCHILLING TIME AT SIX",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11.5,
+        fontWeight: "600",
+        letterSpacing: 1.4,
+        lineHeight: 1.5,
+        color: "#D9CDE4",
+        textAlign: "center",
+        top: 35.5,
+        left: 50
+      },
+      {
+        id: "layer-heading",
+        key: "heading",
+        text: "Halloween\ncelebration",
+        fontFamily: "'Dancing Script', cursive",
+        fontSize: 34,
+        fontWeight: "600",
+        lineHeight: 1.1,
+        color: "#E7A9C4",
+        textAlign: "center",
+        top: 45.5,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "SATURDAY\nOCTOBER 31ST\nAT 7PM",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 12,
+        fontWeight: "700",
+        letterSpacing: 1.3,
+        lineHeight: 1.45,
+        color: "#F4E6F0",
+        textAlign: "center",
+        top: 56,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "THE PLACE\n84 EVERLOCK DR.",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11.5,
+        fontWeight: "700",
+        letterSpacing: 1.2,
+        lineHeight: 1.45,
+        color: "#E7A9C4",
+        textAlign: "center",
+        top: 64,
+        left: 50
+      }
+    ]
+  },
+  // =========================================================================
+  // PREMIUM KIDS / BIRTHDAY TEMPLATES (Choose from Editable)
+  // =========================================================================
+  {
+    id: "perfectely-pink",
+    title: "Perfectely Pink",
+    name: "Perfectely Pink",
+    category: "Birthday",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 96,
+    sortOrder: 1,
+    tags: ["Birthday", "Kids", "All"],
+    envelopeColor: "#FF2E88",
+    linerColor: "#FF8ABF",
+    envelopeLiner: "url('/assets/templates/perfectely-pink-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FF8ABF 0%, #FF2E88 55%, #E5206F 100%)",
+    envelopeLinerUrl: "/assets/templates/perfectely-pink-liner.svg",
+    artworkUrl: "/assets/templates/perfectely-pink-bg.svg",
+    mockupUrl: "/assets/templates/perfectely-pink-mockup.svg",
+    thumbnailUrl: "/assets/templates/perfectely-pink-mockup.svg",
+    backdrop: {
+      type: "color",
+      value: "#FCE7F1",
+      color: "#FCE7F1",
+      gradient: "radial-gradient(circle at 18% 14%, rgba(255,182,213,0.9) 0%, rgba(255,182,213,0) 48%), radial-gradient(circle at 86% 82%, rgba(255,120,175,0.75) 0%, rgba(255,120,175,0) 52%), linear-gradient(160deg, #FDEEF5 0%, #F8C9DD 60%, #F5B3CF 100%)"
+    },
+    envelope: {
+      outerColor: "#FF2E88",
+      flapColor: "#E5206F",
+      linerPatternUrl: "/assets/templates/perfectely-pink-liner.svg",
+      linerColor: "#FF8ABF",
+      innerLiner: "url('/assets/templates/perfectely-pink-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FF8ABF 0%, #FF2E88 55%, #E5206F 100%)",
+      linerCss: "url('/assets/templates/perfectely-pink-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FF8ABF 0%, #FF2E88 55%, #E5206F 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(150,10,70,0.5)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/perfectely-pink-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/perfectely-pink-bg.svg",
+      borderIllustration: "/assets/templates/perfectely-pink-bg.svg",
+      backgroundColor: "#B01455",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.12)",
+      cssConfig: {
+        backgroundColor: "#B01455",
+        borderRadius: "12px",
+        paperShadow: "0 18px 38px -6px rgba(146,10,66,0.55)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#B01455",
+      borderRadius: "12px",
+      paperShadow: "0 18px 38px -6px rgba(146,10,66,0.55)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/perfectely-pink-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/perfectely-pink-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-kicker", role: "kicker", text: "LET'S GET DOLLED UP TO", x: 300, y: 344, fontFamily: "'Montserrat', sans-serif", fontSize: 13, fill: "#FFFFFF", fontWeight: 700, align: "center" },
+        { id: "layer-purpose", role: "subtitle", text: "CELEBRATE AVA'S BIG DAY\nIN STYLE!", x: 300, y: 407, fontFamily: "'Montserrat', sans-serif", fontSize: 16, fill: "#FFFFFF", fontWeight: 800, align: "center" },
+        { id: "layer-headline", role: "title", text: "Let's go party!", x: 300, y: 542, fontFamily: "'Chewy', 'Comic Sans MS', cursive", fontSize: 38, fill: "#FFFFFF", fontWeight: 700, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-kicker",
+        key: "kicker",
+        text: "LET'S GET DOLLED UP TO",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 11,
+        fontWeight: "700",
+        letterSpacing: 1.8,
+        color: "#FFFFFF",
+        textAlign: "center",
+        top: 41,
+        left: 50
+      },
+      {
+        id: "layer-purpose",
+        key: "subtitle",
+        text: "CELEBRATE AVA'S BIG DAY\nIN STYLE!",
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 13,
+        fontWeight: "800",
+        lineHeight: 1.25,
+        color: "#FFFFFF",
+        textAlign: "center",
+        top: 48.5,
+        left: 50
+      },
+      {
+        id: "layer-headline",
+        key: "title",
+        text: "Let's go party!",
+        fontFamily: "'Chewy', 'Comic Sans MS', cursive",
+        fontSize: 32,
+        fontWeight: "700",
+        lineHeight: 1.05,
+        color: "#FFFFFF",
+        textAlign: "center",
+        top: 64.5,
+        left: 50,
+        textShadow: "0 3px 0 #C2185B, 0 6px 14px rgba(110,0,55,0.45)"
+      }
+    ]
+  },
+  {
+    id: "royal-garden",
+    title: "Disney: Royal Garden",
+    name: "Disney: Royal Garden",
+    category: "Birthday",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 95,
+    sortOrder: 2,
+    tags: ["Birthday", "Kids", "All"],
+    envelopeColor: "#F0559B",
+    linerColor: "#FBC7DE",
+    envelopeLiner: "url('/assets/templates/royal-garden-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FBC7DE 0%, #F0559B 60%, #DB4489 100%)",
+    envelopeLinerUrl: "/assets/templates/royal-garden-liner.svg",
+    artworkUrl: "/assets/templates/royal-garden-bg.svg",
+    mockupUrl: "/assets/templates/royal-garden-mockup.svg",
+    thumbnailUrl: "/assets/templates/royal-garden-mockup.svg",
+    backdrop: {
+      type: "texture",
+      value: "/assets/backdrops/olive-green-texture.svg",
+      color: "#EAF3E4",
+      gradient: "radial-gradient(circle at 22% 18%, rgba(197,227,180,0.9) 0%, rgba(197,227,180,0) 45%), radial-gradient(circle at 82% 78%, rgba(127,173,110,0.65) 0%, rgba(127,173,110,0) 50%), linear-gradient(155deg, #F3F8EE 0%, #DCEBCF 55%, #C6DDB6 100%)"
+    },
+    envelope: {
+      outerColor: "#F0559B",
+      flapColor: "#E04488",
+      linerPatternUrl: "/assets/templates/royal-garden-liner.svg",
+      linerColor: "#FBC7DE",
+      innerLiner: "url('/assets/templates/royal-garden-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FBC7DE 0%, #F0559B 60%, #DB4489 100%)",
+      linerCss: "url('/assets/templates/royal-garden-liner.svg') center / cover no-repeat, linear-gradient(135deg, #FBC7DE 0%, #F0559B 60%, #DB4489 100%)",
+      isOpen: true,
+      isOpenUpward: true,
+      shadowColor: "rgba(140,30,85,0.45)"
+    },
+    card: {
+      artworkUrl: "/assets/templates/royal-garden-bg.svg",
+      decorativeBorderSvgUrl: "/assets/templates/royal-garden-bg.svg",
+      borderIllustration: "/assets/templates/royal-garden-bg.svg",
+      backgroundColor: "#FDF8F5",
+      aspectRatio: "5x7",
+      border: "1px solid rgba(0,0,0,0.06)",
+      cssConfig: {
+        backgroundColor: "#FDF8F5",
+        borderRadius: "12px",
+        paperShadow: "0 16px 34px -6px rgba(85,45,60,0.4)"
+      }
+    },
+    innerCardLayer: {
+      backgroundColor: "#FDF8F5",
+      borderRadius: "12px",
+      paperShadow: "0 16px 34px -6px rgba(85,45,60,0.4)",
+      aspectRatio: "5/7"
+    },
+    canvasData: {
+      backgroundImage: "/assets/templates/royal-garden-bg.svg"
+    },
+    canvasConfig: {
+      width: 600,
+      height: 840,
+      artworkUrl: "/assets/templates/royal-garden-bg.svg",
+      crossOrigin: "anonymous",
+      proxyUrl: "/api/proxy-image",
+      locked: true,
+      textObjects: [
+        { id: "layer-invite", role: "intro", text: "You're invited to the most magical party\nto celebrate", x: 300, y: 97, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 12, fill: "#D47A88", fontWeight: 500, align: "center" },
+        { id: "layer-name", role: "title", text: "Bella's", x: 300, y: 164, fontFamily: "'Great Vibes', 'Brush Script MT', cursive", fontSize: 36, fill: "#D47A88", fontWeight: 400, align: "center" },
+        { id: "layer-event", role: "heading", text: "Birthday", x: 300, y: 231, fontFamily: "'Great Vibes', 'Brush Script MT', cursive", fontSize: 32, fill: "#D47A88", fontWeight: 400, align: "center" },
+        { id: "layer-datetime", role: "dateTime", text: "Saturday, June 14th at 11 am", x: 300, y: 315, fontFamily: "'Inter', sans-serif", fontSize: 13, fill: "#9C6870", fontWeight: 500, align: "center" },
+        { id: "layer-venue", role: "venue", text: "Bella's Castle\n812 Fairy Tale Lane", x: 300, y: 370, fontFamily: "'Inter', sans-serif", fontSize: 12, fill: "#9C6870", fontWeight: 400, align: "center" }
+      ]
+    },
+    defaultTextLayers: [
+      {
+        id: "layer-invite",
+        key: "intro",
+        text: "You're invited to the most magical party\nto celebrate",
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontStyle: "italic",
+        fontSize: 10.5,
+        fontWeight: "500",
+        lineHeight: 1.35,
+        color: "#D47A88",
+        textAlign: "center",
+        top: 11.5,
+        left: 50
+      },
+      {
+        id: "layer-name",
+        key: "title",
+        text: "Bella's",
+        fontFamily: "'Great Vibes', 'Brush Script MT', cursive",
+        fontSize: 30,
+        fontWeight: "400",
+        lineHeight: 1.1,
+        color: "#D47A88",
+        textAlign: "center",
+        top: 19.5,
+        left: 50
+      },
+      {
+        id: "layer-event",
+        key: "heading",
+        text: "Birthday",
+        fontFamily: "'Great Vibes', 'Brush Script MT', cursive",
+        fontSize: 27,
+        fontWeight: "400",
+        lineHeight: 1.1,
+        color: "#D47A88",
+        textAlign: "center",
+        top: 27.5,
+        left: 50
+      },
+      {
+        id: "layer-datetime",
+        key: "datetime",
+        text: "Saturday, June 14th at 11 am",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11,
+        fontWeight: "500",
+        letterSpacing: 0.4,
+        color: "#9C6870",
+        textAlign: "center",
+        top: 37.5,
+        left: 50
+      },
+      {
+        id: "layer-venue",
+        key: "venue",
+        text: "Bella's Castle\n812 Fairy Tale Lane",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 10,
+        fontWeight: "400",
+        lineHeight: 1.5,
+        color: "#9C6870",
+        textAlign: "center",
+        top: 44,
         left: 50
       }
     ]
@@ -3031,6 +3877,13 @@ export const NEW_TEMPLATES: NewTemplateData[] = EVITE_TEMPLATES.map((ev) => {
     defaultTextLayers: ev.defaultTextLayers,
     defaultTextBlocks: (ev as any).defaultTextBlocks,
     canvasData: (ev as any).canvasData,
+    priority: (ev as any).priority,
+    sortOrder: (ev as any).sortOrder,
+    isEditable: (ev as any).isEditable,
+    isFeatured: (ev as any).isFeatured,
+    artworkUrl: (ev as any).artworkUrl || borderIllustration || ev.card.artworkUrl,
+    envelopeLinerUrl: (ev as any).envelopeLinerUrl,
+    canvasConfig: (ev as any).canvasConfig,
   };
 });
 
@@ -3069,7 +3922,38 @@ export const NEW_TEMPLATES_CARD_ITEMS = NEW_TEMPLATES.map((t) => ({
   envelope: t.envelope,
   card: t.card,
   defaultTextLayers: t.defaultTextLayers,
+  priority: t.priority,
+  sortOrder: t.sortOrder,
+  isEditable: t.isEditable,
+  isFeatured: t.isFeatured,
+  artworkUrl: t.artworkUrl,
+  envelopeLinerUrl: t.envelopeLinerUrl,
+  canvasConfig: t.canvasConfig,
 }));
+
+// -----------------------------------------------------------------------------
+// Browse-grid ordering: pinned premium templates float to the top.
+// `priority` (desc) wins; `sortOrder` (asc) breaks ties; array order is stable.
+// -----------------------------------------------------------------------------
+export const getTemplatePriority = (t: any): number => {
+  if (t?.priority != null) return Number(t.priority) || 0;
+  if (t?.isFeatured) return 100;
+  return 0;
+};
+
+export const sortTemplatesByPriority = <T extends { id?: string }>(items: T[]): T[] =>
+  items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const pa = getTemplatePriority(a.item);
+      const pb = getTemplatePriority(b.item);
+      if (pb !== pa) return pb - pa;
+      const oa = Number((a.item as any)?.sortOrder ?? 0);
+      const ob = Number((b.item as any)?.sortOrder ?? 0);
+      if (oa !== ob) return oa - ob;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.item);
 
 export const NEW_TEMPLATES_CONFIG: Record<string, NewTemplateData> = NEW_TEMPLATES.reduce((acc, t) => {
   acc[t.id] = t;
@@ -3211,6 +4095,13 @@ export const registerDynamicTemplates = (backendTemplates: any[]) => {
       defaultTextLayers: layers,
       textLayers: layers,
       layers: layers,
+      priority: bt.priority ?? contentObj.priority,
+      sortOrder: bt.sortOrder ?? contentObj.sortOrder,
+      isEditable: bt.isEditable ?? contentObj.isEditable,
+      isFeatured: bt.isFeatured ?? contentObj.isFeatured,
+      artworkUrl: bt.artworkUrl || contentObj.artworkUrl || bgUrl,
+      envelopeLinerUrl: bt.envelopeLinerUrl || contentObj.envelopeLinerUrl,
+      canvasConfig: bt.canvasConfig || contentObj.canvasConfig,
     };
     NEW_TEMPLATES_CONFIG[bt.id] = transformed;
     NEW_TEMPLATES_CONFIG[bt.id.toLowerCase()] = transformed;

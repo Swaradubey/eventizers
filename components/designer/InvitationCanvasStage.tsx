@@ -648,12 +648,14 @@ export default function InvitationCanvasStage({
     )
   );
 
+  const cachedArtworkRef = useRef<string | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
   const [imgLoading, setImgLoading] = useState(Boolean(cleanCardImage));
   const [hasImgError, setHasImgError] = useState(false);
   const [bgNaturalDimensions, setBgNaturalDimensions] = useState<{ width: number; height: number; aspectRatio: string } | null>(null);
 
   const applyResolvedImage = (resolved: { src: string; width: number; height: number }) => {
+    cachedArtworkRef.current = resolved.src;
     setImgSrc(resolved.src);
     setImgLoading(false);
     setHasImgError(false);
@@ -693,7 +695,12 @@ export default function InvitationCanvasStage({
       () => {
         if (!isResolutionActive) return;
         setImgLoading(false);
-        setHasImgError(true);
+        if (cachedArtworkRef.current) {
+          setImgSrc(cachedArtworkRef.current);
+          setHasImgError(false);
+        } else {
+          setHasImgError(true);
+        }
       }
     );
 
@@ -786,16 +793,26 @@ export default function InvitationCanvasStage({
   const handleImageError = () => {
     if (imgLoading) return; // resolution chain already owns the failover
     if (!imgSrc || !cleanCardImage) {
-      setHasImgError(true);
+      if (cachedArtworkRef.current) {
+        setImgSrc(cachedArtworkRef.current);
+        setHasImgError(false);
+      } else {
+        setHasImgError(true);
+      }
       return;
     }
-    console.warn("[InvitationCanvasStage] Background image failed to load:", imgSrc);
+    console.warn("[InvitationCanvasStage] Background image failed to load, falling back via proxy:", imgSrc);
     setImgLoading(true);
     loadImageWithFallback(cleanCardImage, { startAfterSrc: imgSrc }).then(
       (resolved) => applyResolvedImage(resolved),
       () => {
         setImgLoading(false);
-        setHasImgError(true);
+        if (cachedArtworkRef.current) {
+          setImgSrc(cachedArtworkRef.current);
+          setHasImgError(false);
+        } else {
+          setHasImgError(true);
+        }
       }
     );
   };
@@ -810,7 +827,12 @@ export default function InvitationCanvasStage({
       (resolved) => applyResolvedImage(resolved),
       () => {
         setImgLoading(false);
-        setHasImgError(true);
+        if (cachedArtworkRef.current) {
+          setImgSrc(cachedArtworkRef.current);
+          setHasImgError(false);
+        } else {
+          setHasImgError(true);
+        }
       }
     );
   };
@@ -1101,6 +1123,27 @@ export default function InvitationCanvasStage({
             </div>
           )}
 
+          {/* Subtle non-intrusive status notification OUTSIDE the card surface */}
+          {imgSrc && hasImgError && !imgLoading && !cachedArtworkRef.current && (
+            <div
+              data-testid="canvas-image-error-state"
+              className="absolute -top-11 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 shadow-sm text-left select-none pointer-events-auto backdrop-blur-xs whitespace-nowrap"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="text-[11px] font-medium text-amber-900">
+                Artwork preview unavailable
+              </span>
+              <button
+                type="button"
+                onClick={retryBackgroundImage}
+                className="ml-1 px-2 py-0.5 rounded-full bg-white border border-amber-300 text-[10px] font-semibold text-amber-800 hover:bg-amber-100 shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCw className="w-2.5 h-2.5" />
+                <span>Retry</span>
+              </button>
+            </div>
+          )}
+
           {/* 2. Invitation Card Layer (Foreground) */}
           <motion.div
             ref={effectiveCardRef}
@@ -1198,13 +1241,14 @@ export default function InvitationCanvasStage({
                   src={imgSrc}
                   alt="Invitation Card Artwork"
                   aria-hidden="true"
-                  crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
+                  crossOrigin="anonymous"
                   onError={handleImageError}
                   onLoad={(e) => {
                     setHasImgError(false);
                     setImgLoading(false);
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
+                      cachedArtworkRef.current = img.src;
                       setBgNaturalDimensions({
                         width: img.naturalWidth,
                         height: img.naturalHeight,
@@ -1214,39 +1258,10 @@ export default function InvitationCanvasStage({
                   }}
                   className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-300 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
-                  } ${hasImgError ? "opacity-0" : "opacity-100"}`}
+                  } ${hasImgError && !cachedArtworkRef.current ? "opacity-0" : "opacity-100"}`}
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />
-              )}
-
-              {/* 3A-Error: compact, non-intrusive fallback notice — sits above the card edge,
-                  never superimposed over the event text layers (z-30+) */}
-              {imgSrc && hasImgError && !imgLoading && (
-                <div
-                  data-testid="canvas-image-error-state"
-                  className="absolute top-2 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-xs flex items-center gap-2 rounded-xl border border-rose-200/90 bg-white/95 px-3 py-2 shadow-lg text-left select-none pointer-events-auto"
-                >
-                  <div className="w-7 h-7 shrink-0 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold text-slate-800 leading-tight">
-                      Background image unavailable
-                    </p>
-                    <p className="text-[10px] text-slate-500 leading-tight truncate">
-                      Direct and proxy loading both failed.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={retryBackgroundImage}
-                    className="shrink-0 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <RotateCw className="w-3 h-3 text-slate-500" />
-                    <span>Retry via Proxy</span>
-                  </button>
-                </div>
               )}
 
               {/* 3A-2: Additional decorative illustrations & stickers (balloons, cake, hats, candles, gifts) */}

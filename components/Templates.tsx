@@ -9,6 +9,7 @@ import AuthModal from "./AuthModal";
 import templateService from "@/services/templateService";
 import eventService from "@/services/eventService";
 import AnimatedHeading from "./AnimatedHeading";
+import { sortTemplatesByPriority, getTemplatePriority } from "@/lib/newTemplatesData";
 
 const getDefaultEventDate = () => {
   const d = new Date();
@@ -32,6 +33,11 @@ export interface CuratedTemplate {
   isPremium?: boolean;
   aspectRatio?: "square" | "vertical";
   isSquare?: boolean;
+  /** Browse-grid ordering weight — higher values float to the top of the gallery */
+  priority?: number;
+  sortOrder?: number;
+  isEditable?: boolean;
+  isFeatured?: boolean;
   // Serialized canvas payload (layers/background) when the template carries one.
   canvasData?: any;
 }
@@ -62,6 +68,10 @@ export const SQUARE_TEMPLATES: CuratedTemplate[] = [
     category: "Halloween",
     badge: "Premium",
     isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 1,
     aspectRatio: "square",
     isSquare: true,
     image: "/templates/creepy-cake.svg",
@@ -69,6 +79,78 @@ export const SQUARE_TEMPLATES: CuratedTemplate[] = [
     thumbnailUrl: "/templates/creepy-cake.svg",
     accentColor: "from-orange-500/20 to-red-600/30",
     description: "Spooky three-tier cake for a frighteningly fun bash"
+  },
+  {
+    id: "dramatic-doily",
+    title: "Dramatic Doily",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 2,
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/dramatic-doily.svg",
+    imageUrl: "/templates/dramatic-doily.svg",
+    thumbnailUrl: "/templates/dramatic-doily.svg",
+    accentColor: "from-red-600/20 to-rose-900/30",
+    description: "Crimson doily elegance with gothic script — dying to party"
+  },
+  {
+    id: "strange-times",
+    title: "Strange Times",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 3,
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/strange-times.svg",
+    imageUrl: "/templates/strange-times.svg",
+    thumbnailUrl: "/templates/strange-times.svg",
+    accentColor: "from-indigo-500/20 to-purple-700/30",
+    description: "Retro haunted house in stormy reds and neon — let's party"
+  },
+  {
+    id: "sophisticated-spooky-party",
+    title: "Sophisticated Spooky Party",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 4,
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/sophisticated-spooky-party.svg",
+    imageUrl: "/templates/sophisticated-spooky-party.svg",
+    thumbnailUrl: "/templates/sophisticated-spooky-party.svg",
+    accentColor: "from-amber-500/20 to-black/40",
+    description: "Gold-on-black cocktail fete for best witches"
+  },
+  {
+    id: "sallys-song",
+    title: "Tim Burton's The Nightmare Before Christmas: Sally's Song",
+    category: "Halloween",
+    badge: "Premium",
+    isPremium: true,
+    isEditable: true,
+    isFeatured: true,
+    priority: 100,
+    sortOrder: 5,
+    aspectRatio: "square",
+    isSquare: true,
+    image: "/templates/sallys-song.svg",
+    imageUrl: "/templates/sallys-song.svg",
+    thumbnailUrl: "/templates/sallys-song.svg",
+    accentColor: "from-fuchsia-500/20 to-purple-900/30",
+    description: "A splendid nightmare awaits — Sally's Song"
   },
   {
     id: "holographic-hey-boo",
@@ -430,7 +512,11 @@ const DEFAULT_CATEGORIES = [
  *  onto the single canonical tab so duplicate pills never render. */
 const normalizeCategory = (category?: string) => {
   if (!category) return category;
-  return category.toLowerCase().includes("thanksgiving") ? "Thanksgiving" : category;
+  if (category.toLowerCase().includes("thanksgiving")) return "Thanksgiving";
+  const canonical = DEFAULT_CATEGORIES.find(
+    (c) => c.toLowerCase() === String(category).trim().toLowerCase()
+  );
+  return canonical || category;
 };
 
 const getTemplateImageSrc = (template: CuratedTemplate) => {
@@ -464,6 +550,10 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
           badge: t.badge || (t.isPremium ? "Premium" : "Free"),
           category: normalizeCategory(t.category || "General") || "General",
           tags: (t as any).tags || [],
+          priority: (t as any).priority,
+          sortOrder: (t as any).sortOrder,
+          isEditable: (t as any).isEditable,
+          isFeatured: (t as any).isFeatured,
           thumbnailUrl: t.thumbnailUrl || (t as any).fullThumbnailUrl || (t as any).imageUrl,
           imageUrl: t.imageUrl || (t as any).fullImageUrl,
           image: (t as any).image,
@@ -552,21 +642,27 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       });
     }
 
-    // Interleave strictly: 1 square, 1 vertical, 1 square, 1 vertical so the layout never feels uneven
-    const squares = result.filter(isSquareTemplate);
-    const verticals = result.filter((t) => !isSquareTemplate(t));
+    // Pinned premium templates (priority > 0) always render first, in sortOrder order
+    const pinned = sortTemplatesByPriority(
+      result.filter((t) => getTemplatePriority(t) > 0)
+    );
+    const rest = result.filter((t) => getTemplatePriority(t) <= 0);
 
+    // Interleave strictly: 1 square, 1 vertical, 1 square, 1 vertical so the layout never feels uneven
+    const squares = rest.filter(isSquareTemplate);
+    const verticals = rest.filter((t) => !isSquareTemplate(t));
+
+    const interleaved: CuratedTemplate[] = [];
     if (squares.length > 0 && verticals.length > 0) {
-      const interleaved: CuratedTemplate[] = [];
       const maxLen = Math.max(squares.length, verticals.length);
       for (let i = 0; i < maxLen; i++) {
         if (i < squares.length) interleaved.push(squares[i]);
         if (i < verticals.length) interleaved.push(verticals[i]);
       }
-      return interleaved;
+      return [...pinned, ...interleaved];
     }
 
-    return result;
+    return [...pinned, ...rest];
   }, [selectedCategory, curatedList]);
 
   const toggleFavorite = (id: string) => {

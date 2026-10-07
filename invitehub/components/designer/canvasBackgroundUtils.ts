@@ -19,9 +19,35 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
   if (!trimmed) return "";
   if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
 
-  // 1. Direct external image links (Unsplash, Cloudinary, Imgur, Supabase, etc.)
-  // If URL begins with http(s):// and is NOT from our backend/localhost host, preserve it directly!
-  const isDirectExternal = /^https?:\/\/(?!localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)/i.test(trimmed);
+  const backendBase =
+    (typeof process !== "undefined" && (
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.BACKEND_PUBLIC_URL ||
+      process.env.BACKEND_URL
+    )?.replace(/\/api\/?$/, "")) ||
+    "";
+
+  // Handle local relative uploads (e.g., "/uploads/template_artwork_...png")
+  if (trimmed.startsWith("/uploads/") || trimmed.startsWith("uploads/")) {
+    const cleanUploadPath = trimmed.replace(/^\/?uploads\//, "/uploads/");
+    if (backendBase && !backendBase.includes("localhost")) {
+      return `${backendBase.replace(/\/+$/, "")}${cleanUploadPath}`;
+    }
+    return cleanUploadPath;
+  }
+
+  // Handle raw uploaded filename without path (e.g., "template_artwork_179...png")
+  if (/^(template_|upload_|event_cover_|invitation_|snapshot_).*\.(png|jpe?g|webp|gif|svg|avif)$/i.test(trimmed)) {
+    console.warn("[canvasBackgroundUtils] Detected raw uploaded filename:", trimmed);
+    if (backendBase && !backendBase.includes("localhost")) {
+      return `${backendBase.replace(/\/+$/, "")}/uploads/${trimmed}`;
+    }
+    return `/uploads/${trimmed}`;
+  }
+
+  // 1. Direct external image links (Cloudinary, S3, Supabase, Unsplash, Imgur, etc.)
+  const isDirectExternal = /^https?:\/\/(?!localhost|127\.0\.0\.1)/i.test(trimmed);
   if (isDirectExternal) {
     if (typeof window !== "undefined" && window.location.protocol === "https:" && trimmed.startsWith("http://")) {
       return trimmed.replace(/^http:\/\//i, "https://");
@@ -29,8 +55,8 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
     return trimmed;
   }
 
-  // 2. If URL contains /assets/ or /templates/ on our backend host or localhost, strip foreign host prefix
-  const foreignAssetMatch = trimmed.match(/^(?:https?:\/\/(?:localhost|127\.0\.0\.1|eventizersbackend\.vercel\.app)(?::\d+)?)\/((?:assets|templates)\/.*)$/i);
+  // 2. If URL contains /assets/ or /templates/ on localhost, strip foreign host prefix
+  const foreignAssetMatch = trimmed.match(/^(?:https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?)\/((?:assets|templates)\/.*)$/i);
   if (foreignAssetMatch) {
     return `/${foreignAssetMatch[1]}`;
   }
@@ -48,6 +74,9 @@ export const normalizeTemplateImageUrl = (url?: string | null): string => {
   ) {
     const uploadMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?(\/uploads\/.*)$/i);
     if (uploadMatch) {
+      if (backendBase && !backendBase.includes("localhost")) {
+        return `${backendBase.replace(/\/+$/, "")}${uploadMatch[1]}`;
+      }
       return uploadMatch[1];
     }
   }
