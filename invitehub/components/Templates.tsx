@@ -732,9 +732,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                   {/* Outer Card Item Preview Container */}
                   <div
                     onClick={() => handleCardClick(template.id)}
-                    className={`relative w-full ${
-                      isSquareCard ? "aspect-[4/3]" : "aspect-[3/4]"
-                    } rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group/card border border-neutral-200/90 dark:border-neutral-800 bg-[#FAF8F5] dark:bg-neutral-900`}
+                    className="relative w-full aspect-square rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group/card border border-neutral-200/30 dark:border-neutral-200/20 bg-[#FAF8F5] dark:bg-neutral-900"
                   >
                     {/* Render Image / Mockup with smooth hover scale */}
                     <img
@@ -808,7 +806,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                     <div className="flex items-center justify-between gap-2">
                       <h3
                         onClick={() => handleCardClick(template.id)}
-                        className="text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer transition-colors truncate"
+                        className="text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-900 hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer transition-colors truncate"
                       >
                         {template.title}
                       </h3>
