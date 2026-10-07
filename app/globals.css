@@ -2322,56 +2322,68 @@ html[data-theme="dark"] .bg-\[\#2D1B3D\]\/60 {
 /* Infinite Flowing Shimmer Gradient Text Effect */
 @keyframes headingShimmerFlow {
   0% {
-    background-position: 0% center;
+    background-position: 100% 0;
   }
   100% {
-    background-position: -200% center;
+    background-position: -100% 0;
   }
 }
 
 .heading-gradient-flow {
-  background: linear-gradient(
-    90deg,
-    #1D77F3 0%,
-    #4F46E5 20%,
-    #9333EA 40%,
-    #EC4899 50%,
-    #00D2FF 70%,
-    #1D77F3 100%
+  background-image: linear-gradient(
+    110deg,
+    #0f172a 0%,
+    #0f172a 20%,
+    #1d4ed8 32%,
+    #6366f1 40%,
+    #ec4899 46%,
+    #ffffff 50%,
+    #38bdf8 54%,
+    #1d4ed8 60%,
+    #0f172a 72%,
+    #0f172a 100%
   ) !important;
-  background-size: 200% auto !important;
+  background-size: 200% 100% !important;
+  background-position: 100% 0;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
-  animation: headingShimmerFlow 3s linear infinite !important;
   display: inline-block;
+  will-change: background-position;
+  animation: headingShimmerFlow 4s linear infinite !important;
 }
 
 html.dark .heading-gradient-flow,
 .heading-gradient-flow-dark {
-  background: linear-gradient(
-    90deg,
-    #FFFFFF 0%,
-    #93C5FD 20%,
-    #C4B5FD 40%,
-    #F472B6 60%,
-    #67E8F9 80%,
-    #FFFFFF 100%
+  background-image: linear-gradient(
+    110deg,
+    #e2e8f0 0%,
+    #e2e8f0 20%,
+    #60a5fa 32%,
+    #a78bfa 40%,
+    #f472b6 46%,
+    #ffffff 50%,
+    #38bdf8 54%,
+    #60a5fa 60%,
+    #e2e8f0 72%,
+    #e2e8f0 100%
   ) !important;
-  background-size: 200% auto !important;
+  background-size: 200% 100% !important;
+  background-position: 100% 0;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
-  animation: headingShimmerFlow 3s linear infinite !important;
   display: inline-block;
+  will-change: background-position;
+  animation: headingShimmerFlow 4s linear infinite !important;
 }
 
-.heading-gradient-flow *,
-.heading-gradient-flow-dark * {
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
+.heading-gradient-flow span,
+.heading-gradient-flow-dark span {
+  -webkit-text-fill-color: inherit;
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2380,6 +2392,7 @@ html.dark .heading-gradient-flow,
     animation: none !important;
   }
 }
+
 
 
 
