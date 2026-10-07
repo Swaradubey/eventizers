@@ -2,36 +2,11 @@ import type { Metadata } from "next";
 import InviteEnvelopeViewer from "@/components/invitation/InviteEnvelopeViewer";
 import { getImageUrl } from "@/utils/imageUrl";
 import { getTemplateImage } from "@/lib/templateImages";
+import { fetchInvitation } from "@/lib/publicInvitation";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
-
-function apiBase(): string {
-  const raw = (
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    process.env.BACKEND_PUBLIC_URL ||
-    process.env.BACKEND_URL ||
-    "http://localhost:5000"
-  ).replace(/\/+$/, "");
-  return `${raw.replace(/\/api$/i, "")}/api`;
-}
-
-async function fetchInvitation(id: string) {
-  if (!id) return null;
-  try {
-    const res = await fetch(
-      `${apiBase()}/invitations/public/${encodeURIComponent(id)}`,
-      { cache: "no-store", headers: { Accept: "application/json" } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.success && data.invitation ? data : null;
-  } catch {
-    return null;
-  }
-}
 
 function pickGuest(searchParams: SearchParams): string {
   const raw = searchParams?.to ?? searchParams?.guest ?? searchParams?.name;

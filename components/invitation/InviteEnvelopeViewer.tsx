@@ -255,6 +255,8 @@ export interface InviteEnvelopeViewerProps {
   initialData?: { invitation: any; event: any } | null;
   guestName?: string;
   guestMode?: boolean;
+  /** Caps the geometry viewport (used by the preview shell's Mobile frame). */
+  maxViewportWidth?: number;
 }
 
 export default function InviteEnvelopeViewer({
@@ -262,6 +264,7 @@ export default function InviteEnvelopeViewer({
   initialData = null,
   guestName = "",
   guestMode = false,
+  maxViewportWidth,
 }: InviteEnvelopeViewerProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -288,6 +291,7 @@ export default function InviteEnvelopeViewer({
   const [rsvpSubmitting, setRsvpSubmitting] = useState(false);
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpError, setRsvpError] = useState<string | null>(null);
+  const [guestCount, setGuestCount] = useState(1);
 
   const timersRef = useRef<number[]>([]);
   const clearTimers = useCallback(() => {
@@ -327,11 +331,17 @@ export default function InviteEnvelopeViewer({
 
   // ── Viewport width (responsive geometry) ─────────────────────────────────
   useEffect(() => {
-    const update = () => setViewportW(window.innerWidth);
+    const update = () => {
+      const cap =
+        maxViewportWidth && maxViewportWidth > 0
+          ? maxViewportWidth
+          : Number.POSITIVE_INFINITY;
+      setViewportW(Math.min(window.innerWidth, cap));
+    };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, []);
+  }, [maxViewportWidth]);
 
   // ── Timeline ─────────────────────────────────────────────────────────────
   const runTimeline = useCallback(() => {
@@ -516,6 +526,31 @@ export default function InviteEnvelopeViewer({
     fullVenue || eventData?.venue || ""
   )}`;
 
+  const mapEmbedUrl =
+    fullVenue || eventData?.venue
+      ? `https://www.google.com/maps?q=${encodeURIComponent(fullVenue || eventData?.venue)}&output=embed`
+      : null;
+
+  // ── Host notes (host signature + any private instructions) ───────────────
+  const hostName = (eventData?.hostName || "").trim();
+  const hostNotes = [
+    invitation?.message,
+    eventData?.emailDescription,
+    eventData?.entryInstructions,
+    eventData?.directions,
+  ]
+    .map((chunk) => (typeof chunk === "string" ? chunk.trim() : ""))
+    .filter(Boolean)
+    .join("\n\n");
+
+  // ── Guest count limits (from the event's RSVP settings) ──────────────────
+  const rsvpSettings = eventData?.rsvpSettings ?? null;
+  const allowPlusOne = rsvpSettings ? rsvpSettings.allowPlusOne !== false : true;
+  const maxAdditionalGuests = rsvpSettings
+    ? Number(rsvpSettings.maxAdditionalGuests ?? rsvpSettings.maxPlusOnes ?? 1)
+    : 1;
+  const maxGuestCount = Math.max(1, allowPlusOne ? 1 + Math.max(0, maxAdditionalGuests) : 1);
+
   const copyShareLink = () => {
     if (typeof window === "undefined") return;
     navigator.clipboard?.writeText(window.location.href);
@@ -536,6 +571,7 @@ export default function InviteEnvelopeViewer({
         name: rsvpName.trim(),
         email: rsvpEmail.trim(),
         rsvpStatus,
+        adultsCount: Math.max(1, Math.min(guestCount, maxGuestCount)),
       });
       if (res.success) setRsvpDone(true);
       else setRsvpError(res.message || "Failed to submit your RSVP.");
@@ -1037,10 +1073,83 @@ export default function InviteEnvelopeViewer({
                   </div>
                 </div>
               )}
+
+              {/* Venue map preview */}
+              {mapEmbedUrl && (
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                  <iframe
+                    title="Venue map"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="w-full h-40 border-0"
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Host notes */}
+            {hostNotes && (
+              <div
+                className="mt-4 rounded-2xl p-4 text-left"
+                style={{
+                  backgroundColor: `${theme.accent}12`,
+                  border: `1px solid ${theme.accent}33`,
+                }}
+              >
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: theme.accent }}
+                >
+                  Notes from your host
+                </p>
+                {hostName && <p className="mt-1 text-xs font-bold text-gray-800">{hostName}</p>}
+                <p className="mt-1.5 text-sm leading-relaxed text-gray-600 whitespace-pre-line">
+                  {hostNotes}
+                </p>
+              </div>
+            )}
 
             {/* RSVP / ACTION BUTTONS */}
             <div className="mt-7 space-y-3">
+              {/* Live interactive RSVP response buttons — always visible */}
+              <div>
+                <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Will you be joining us?
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { key: "confirmed", label: "Yes", icon: CheckCircle, active: "border-emerald-600 bg-emerald-50 text-emerald-900" },
+                      { key: "maybe", label: "Maybe", icon: Clock, active: "border-amber-600 bg-amber-50 text-amber-900" },
+                      { key: "declined", label: "No", icon: XCircle, active: "border-rose-600 bg-rose-50 text-rose-900" },
+                    ] as const
+                  ).map((opt) => {
+                    const Icon = opt.icon;
+                    const active = rsvpStatus === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setRsvpStatus(opt.key);
+                          setRsvpOpen(true);
+                        }}
+                        className={`py-3 px-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          active
+                            ? opt.active
+                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => setRsvpOpen((v) => !v)}
@@ -1090,31 +1199,44 @@ export default function InviteEnvelopeViewer({
                             <span>{rsvpError}</span>
                           </div>
                         )}
-                        <div className="grid grid-cols-3 gap-2">
-                          {(
-                            [
-                              { key: "confirmed", label: "Yes", icon: CheckCircle, active: "border-emerald-600 bg-emerald-50 text-emerald-900" },
-                              { key: "maybe", label: "Maybe", icon: Clock, active: "border-amber-600 bg-amber-50 text-amber-900" },
-                              { key: "declined", label: "No", icon: XCircle, active: "border-rose-600 bg-rose-50 text-rose-900" },
-                            ] as const
-                          ).map((opt) => {
-                            const Icon = opt.icon;
-                            const active = rsvpStatus === opt.key;
-                            return (
-                              <button
-                                key={opt.key}
-                                type="button"
-                                onClick={() => setRsvpStatus(opt.key)}
-                                className={`py-2.5 px-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                                  active ? opt.active : "border-gray-200 bg-white text-gray-600"
-                                }`}
-                              >
-                                <Icon className="w-3.5 h-3.5" />
-                                {opt.label}
-                              </button>
-                            );
-                          })}
+
+                        {/* Guest count selector */}
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-800">Guest count</p>
+                            <p className="text-[11px] text-gray-500">
+                              {rsvpStatus === "declined"
+                                ? "You can still let us know your party size"
+                                : "How many of you are attending?"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              aria-label="Decrease guest count"
+                              onClick={() => setGuestCount((c) => Math.max(1, c - 1))}
+                              disabled={guestCount <= 1}
+                              className="w-8 h-8 rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold leading-none flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                            >
+                              −
+                            </button>
+                            <span className="w-7 text-center text-sm font-bold text-gray-900">
+                              {Math.min(guestCount, maxGuestCount)}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Increase guest count"
+                              onClick={() =>
+                                setGuestCount((c) => Math.min(maxGuestCount, c + 1))
+                              }
+                              disabled={Math.min(guestCount, maxGuestCount) >= maxGuestCount}
+                              className="w-8 h-8 rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold leading-none flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
+
                         <input
                           type="text"
                           required

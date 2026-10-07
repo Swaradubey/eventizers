@@ -4704,6 +4704,46 @@ export default function InvitationStudio({
             eventId={currentEvent?.id || initialEvent?.id || null}
             invitationId={currentInvitation?.id || initialInvitation?.id || null}
             recipientEmail={user?.email || null}
+            eventDetails={{
+              title:
+                designState.eventDetails.title ||
+                currentInvitation?.eventTitle ||
+                currentEvent?.title ||
+                "",
+              date: designState.eventDetails.date || currentEvent?.eventDate || "",
+              time: designState.eventDetails.time || currentEvent?.eventTime || "",
+              location:
+                designState.eventDetails.venue ||
+                designState.eventDetails.address ||
+                currentEvent?.venue ||
+                "",
+              address:
+                designState.eventDetails.address ||
+                currentEvent?.address ||
+                "",
+              hostName: hostDetails.name || designState.eventDetails.host || "",
+              hostNote:
+                designState.eventDetails.description || currentInvitation?.hostNotes || "",
+              guestName: user?.name || "",
+            }}
+            fallbackCardImageUrl={
+              snapshotDataUrl?.startsWith("data:")
+                ? snapshotDataUrl
+                : currentInvitation?.imageUrl ||
+                  currentEvent?.previewUrl ||
+                  currentEvent?.templatePreviewUrl ||
+                  currentEvent?.coverImage ||
+                  null
+            }
+            getCardSnapshot={async () => {
+              try {
+                const live = await captureCardSnapshot();
+                if (live?.startsWith("data:")) return live;
+              } catch {
+                // fall back to the last generated snapshot below
+              }
+              return snapshotDataUrl?.startsWith("data:") ? snapshotDataUrl : null;
+            }}
             onToast={(next) => setToast(next)}
           />
 

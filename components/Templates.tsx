@@ -598,7 +598,7 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
       localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
       sessionStorage.setItem("pending_template_id", templateId);
       localStorage.setItem("pending_template_id", templateId);
-    } catch (e) {}
+    } catch (e) { }
 
     // Signed-in hosts: create the draft event first so the canvas opens against a real event
     if (user) {
@@ -685,13 +685,12 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  isActive
-                    ? isHalloween
-                      ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20"
-                      : "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm"
-                    : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-800"
-                }`}
+                className={`px-4 py-2 rounded-full text-xs font-medium font-sans transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${isActive
+                  ? isHalloween
+                    ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20"
+                    : "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm"
+                  : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-800"
+                  }`}
               >
                 {isHalloween && <span>🎃</span>}
                 <span>{cat}</span>
@@ -724,17 +723,15 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                 >
                   {/* Subtle dynamic ambient glow matching accentColor */}
                   <div
-                    className={`absolute -inset-0.5 rounded-3xl bg-gradient-to-tr ${
-                      template.accentColor || (isPremium ? "from-amber-500/25 to-violet-600/30" : "from-orange-500/20 to-yellow-600/20")
-                    } opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 -z-10`}
+                    className={`absolute -inset-0.5 rounded-3xl bg-gradient-to-tr ${template.accentColor || (isPremium ? "from-amber-500/25 to-violet-600/30" : "from-orange-500/20 to-yellow-600/20")
+                      } opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 -z-10`}
                   />
 
                   {/* Outer Card Item Preview Container */}
                   <div
                     onClick={() => handleCardClick(template.id)}
-                    className={`relative w-full ${
-                      isSquareCard ? "aspect-[4/3]" : "aspect-[3/4]"
-                    } rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group/card border border-neutral-200/90 dark:border-neutral-800 bg-[#FAF8F5] dark:bg-neutral-900`}
+                    className={`relative w-full ${isSquareCard ? "aspect-[4/3]" : "aspect-[3/4]"
+                      } rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group/card border border-neutral-200/90 dark:border-neutral-200/50 bg-[#FAF8F5] dark:bg-neutral-900`}
                   >
                     {/* Render Image / Mockup with smooth hover scale */}
                     <img
@@ -778,11 +775,10 @@ export default function Templates({ onSelectTemplate }: TemplatesProps = {}) {
                         aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Heart
-                          className={`w-4 h-4 transition-colors duration-200 ${
-                            isFav
-                              ? "fill-rose-500 text-rose-500 scale-105"
-                              : "stroke-[2] text-neutral-500 dark:text-neutral-400 hover:text-rose-500"
-                          }`}
+                          className={`w-4 h-4 transition-colors duration-200 ${isFav
+                            ? "fill-rose-500 text-rose-500 scale-105"
+                            : "stroke-[2] text-neutral-500 dark:text-neutral-400 hover:text-rose-500"
+                            }`}
                         />
                       </button>
                     </div>

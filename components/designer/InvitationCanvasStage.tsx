@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
-import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
+import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl, loadImageWithFallback } from "./canvasBackgroundUtils";
 import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
@@ -649,38 +649,58 @@ export default function InvitationCanvasStage({
   );
 
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
+  const [imgLoading, setImgLoading] = useState(Boolean(cleanCardImage));
   const [hasImgError, setHasImgError] = useState(false);
   const [bgNaturalDimensions, setBgNaturalDimensions] = useState<{ width: number; height: number; aspectRatio: string } | null>(null);
 
+  const applyResolvedImage = (resolved: { src: string; width: number; height: number }) => {
+    setImgSrc(resolved.src);
+    setImgLoading(false);
+    setHasImgError(false);
+    setBgNaturalDimensions({
+      width: resolved.width,
+      height: resolved.height,
+      aspectRatio: `${resolved.width} / ${resolved.height}`,
+    });
+  };
+
+  /**
+   * Resolve the background through the automatic failover chain:
+   *   Attempt 1: direct URL with crossOrigin="anonymous"
+   *   Attempt 2: relative /assets|/templates path (foreign-host absolute assets)
+   *   Attempt 3: server-side CORS proxy (/api/proxy-image?url=...)
+   * The "Unreachable" UI only appears once EVERY attempt has failed.
+   */
   useEffect(() => {
     if (!cleanCardImage) {
+      setImgSrc(null);
+      setImgLoading(false);
+      setHasImgError(false);
       setBgNaturalDimensions(null);
       return;
     }
-    let isProbeActive = true;
-    const probe = new Image();
-    probe.crossOrigin = "anonymous";
-    probe.src = cleanCardImage;
-    probe.onload = () => {
-      if (!isProbeActive) return;
-      setHasImgError(false);
-      const w = probe.naturalWidth || probe.width || 600;
-      const h = probe.naturalHeight || probe.height || 840;
-      setBgNaturalDimensions({
-        width: w,
-        height: h,
-        aspectRatio: `${w} / ${h}`,
-      });
-    };
-    probe.onerror = () => {
-      // If direct probe fails and image is external, probe via proxy
-      if (isProbeActive && (cleanCardImage.startsWith("http://") || cleanCardImage.startsWith("https://")) && !cleanCardImage.includes("/api/proxy-image")) {
-        probe.src = getProxyImageUrl(cleanCardImage);
+
+    let isResolutionActive = true;
+    setImgSrc(cleanCardImage);
+    setImgLoading(true);
+    setHasImgError(false);
+
+    loadImageWithFallback(cleanCardImage).then(
+      (resolved) => {
+        if (!isResolutionActive) return;
+        applyResolvedImage(resolved);
+      },
+      () => {
+        if (!isResolutionActive) return;
+        setImgLoading(false);
+        setHasImgError(true);
       }
-    };
+    );
+
     return () => {
-      isProbeActive = false;
+      isResolutionActive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cleanCardImage]);
 
   const resolvedStageAspect =
@@ -696,8 +716,6 @@ export default function InvitationCanvasStage({
 
   useEffect(() => {
     let isMounted = true;
-    setImgSrc(cleanCardImage);
-    setHasImgError(false);
 
     // Strict Canvas Object & Listener Purge:
     // Strictly clears previous canvas objects and event listeners before loading any new or saved template,
@@ -759,36 +777,42 @@ export default function InvitationCanvasStage({
     maxW,
   ]);
 
+  /**
+   * Fired when the rendered <img> itself fails. Normally the resolution effect
+   * has already validated the source, so this just advances the fallback chain
+   * (asset path → /api/proxy-image) silently — the error UI is only revealed
+   * when no candidate is left.
+   */
   const handleImageError = () => {
+    if (imgLoading) return; // resolution chain already owns the failover
+    if (!imgSrc || !cleanCardImage) {
+      setHasImgError(true);
+      return;
+    }
     console.warn("[InvitationCanvasStage] Background image failed to load:", imgSrc);
-    // 1. If absolute URL was pointing to frontend static assets (/assets/ or /templates/), retry with clean relative path
-    if (imgSrc) {
-      const assetMatch = imgSrc.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
-      if (assetMatch && imgSrc !== assetMatch[1]) {
-        console.info("[InvitationCanvasStage] Retrying with relative asset path:", assetMatch[1]);
-        setImgSrc(assetMatch[1]);
-        return;
+    setImgLoading(true);
+    loadImageWithFallback(cleanCardImage, { startAfterSrc: imgSrc }).then(
+      (resolved) => applyResolvedImage(resolved),
+      () => {
+        setImgLoading(false);
+        setHasImgError(true);
       }
-    }
-    // 2. If -bg.svg clean variant failed to load, fallback to normalized cardImageRaw
-    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw && !imgSrc.includes("/api/proxy-image")) {
-      const fallbackUrl = normalizeTemplateImageUrl(cardImageRaw);
-      if (fallbackUrl && fallbackUrl !== imgSrc) {
-        setImgSrc(fallbackUrl);
-        return;
+    );
+  };
+
+  /** Manual last-resort retry from the top of the chain (network may have recovered). */
+  const retryBackgroundImage = () => {
+    const source = cleanCardImage || cardImageRaw;
+    if (!source) return;
+    setHasImgError(false);
+    setImgLoading(true);
+    loadImageWithFallback(source).then(
+      (resolved) => applyResolvedImage(resolved),
+      () => {
+        setImgLoading(false);
+        setHasImgError(true);
       }
-    }
-    // 3. If external link failed (likely CORS restriction or Mixed Content), retry via CORS proxy endpoint
-    if (imgSrc && (imgSrc.startsWith("http://") || imgSrc.startsWith("https://")) && !imgSrc.includes("/api/proxy-image")) {
-      const proxied = getProxyImageUrl(imgSrc);
-      if (proxied && proxied !== imgSrc) {
-        console.info("[InvitationCanvasStage] Retrying image via proxy:", proxied);
-        setImgSrc(proxied);
-        return;
-      }
-    }
-    // All fallback attempts failed — mark error state to display user-friendly UI
-    setHasImgError(true);
+    );
   };
 
   const cardImageFit = config.cardImageFit || (isUserUpload ? "contain" : "cover");
@@ -1159,6 +1183,15 @@ export default function InvitationCanvasStage({
               {/* Border Overlay if defined by cssConfig or innerCardLayer */}
               {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
+              {/* 3A-Loading: clean skeleton behind the artwork while the failover chain resolves */}
+              {imgSrc && imgLoading && !hasImgError && (
+                <div
+                  data-testid="canvas-image-loading-state"
+                  aria-hidden="true"
+                  className="absolute inset-0 z-0 animate-pulse bg-gradient-to-br from-slate-100 via-white to-slate-200 pointer-events-none select-none"
+                />
+              )}
+
               {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
               {imgSrc && (
                 <img
@@ -1169,6 +1202,7 @@ export default function InvitationCanvasStage({
                   onError={handleImageError}
                   onLoad={(e) => {
                     setHasImgError(false);
+                    setImgLoading(false);
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
                       setBgNaturalDimensions({
@@ -1186,37 +1220,30 @@ export default function InvitationCanvasStage({
                 />
               )}
 
-              {/* 3A-Error: Broken or Unreachable Background Image State */}
-              {imgSrc && hasImgError && (
+              {/* 3A-Error: compact, non-intrusive fallback notice — sits above the card edge,
+                  never superimposed over the event text layers (z-30+) */}
+              {imgSrc && hasImgError && !imgLoading && (
                 <div
                   data-testid="canvas-image-error-state"
-                  className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-slate-50/95 border-2 border-dashed border-rose-300/80 text-center select-none"
+                  className="absolute top-2 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-xs flex items-center gap-2 rounded-xl border border-rose-200/90 bg-white/95 px-3 py-2 shadow-lg text-left select-none pointer-events-auto"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-2.5 shadow-xs">
-                    <AlertCircle className="w-6 h-6" />
+                  <div className="w-7 h-7 shrink-0 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4" />
                   </div>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-1">
-                    Background Image Unreachable
-                  </h4>
-                  <p className="text-xs text-slate-500 max-w-xs mb-3 leading-relaxed">
-                    Failed to load template background image. The link may have CORS restrictions or be unavailable.
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold text-slate-800 leading-tight">
+                      Background image unavailable
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-tight truncate">
+                      Direct and proxy loading both failed.
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setHasImgError(false);
-                      if (cardImageRaw) {
-                        const normalized = normalizeTemplateImageUrl(cardImageRaw);
-                        if (normalized.startsWith("/assets/") || normalized.startsWith("/templates/")) {
-                          setImgSrc(normalized);
-                        } else {
-                          setImgSrc(getProxyImageUrl(cardImageRaw));
-                        }
-                      }
-                    }}
-                    className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    onClick={retryBackgroundImage}
+                    className="shrink-0 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <RotateCw className="w-3.5 h-3.5 text-slate-500" />
+                    <RotateCw className="w-3 h-3 text-slate-500" />
                     <span>Retry via Proxy</span>
                   </button>
                 </div>
@@ -1232,6 +1259,16 @@ export default function InvitationCanvasStage({
                     alt="Template Decoration"
                     aria-hidden="true"
                     crossOrigin={decoSrc.startsWith("http") ? "anonymous" : undefined}
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      const proxied = getProxyImageUrl(decoSrc);
+                      if (proxied && !el.src.includes("/api/proxy-image") && !el.dataset.proxyTried) {
+                        el.dataset.proxyTried = "1";
+                        el.src = proxied;
+                      } else {
+                        el.style.display = "none";
+                      }
+                    }}
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                     style={{ zIndex: 2 }}
                     draggable={false}
@@ -1266,6 +1303,16 @@ export default function InvitationCanvasStage({
                       src={layerSrc}
                       alt={layer.name || "Template image layer"}
                       crossOrigin={layerSrc.startsWith("http") ? "anonymous" : undefined}
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        const proxied = getProxyImageUrl(layerSrc);
+                        if (proxied && !el.src.includes("/api/proxy-image") && !el.dataset.proxyTried) {
+                          el.dataset.proxyTried = "1";
+                          el.src = proxied;
+                        } else {
+                          el.style.display = "none";
+                        }
+                      }}
                       className="w-full h-full object-contain pointer-events-none select-none"
                       draggable={false}
                     />

@@ -225,7 +225,18 @@ export default function AdminTemplatesPage() {
       } else {
         if (!imageUrl.trim()) { showToast("Please provide a valid image URL","error"); setSubmitting(false); return; }
         if (isGreetingsIslandPage) { showToast("Please paste the direct image link or upload the image file directly","error"); setSubmitting(false); return; }
-        finalImageUrl = imageUrl.trim();
+        const rawUrl = imageUrl.trim();
+        // Case B (external link): re-host server-side first so the template stores a
+        // permanent, CORS-enabled storage URL instead of a fragile third-party one.
+        const resolved = await templateService.resolveImageUrl(rawUrl);
+        if (resolved.success && resolved.url && resolved.url !== rawUrl) {
+          finalImageUrl = resolved.url;
+          setImageUrl(resolved.url);
+        } else {
+          // Backend create will retry the download; the canvas auto-fails over
+          // to /api/proxy-image as the last resort, so loading never breaks.
+          finalImageUrl = rawUrl;
+        }
       }
       await templateService.createTemplate({
         title:title.trim(), name:title.trim(),
