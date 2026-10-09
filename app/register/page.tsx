@@ -24,7 +24,7 @@ export default function RegisterPage() {
     if (user) {
       const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
       const redirectUrl = params?.get("redirect");
-      if (redirectUrl && redirectUrl.startsWith("/")) {
+      if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
         router.push(redirectUrl);
       } else {
         router.push("/dashboard/events");
@@ -80,6 +80,8 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
+      localStorage.removeItem("proAuthenticated");
+      localStorage.removeItem("proOAuthPending");
       await register(name, email, formattedPhone, password);
       // Navigation is handled by the useEffect watching `user` state above.
       // This ensures the router.push fires only AFTER React commits the
@@ -287,6 +289,8 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => {
+                  localStorage.removeItem("proAuthenticated");
+                  localStorage.removeItem("proOAuthPending");
                   let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
                   apiUrl = apiUrl.trim();
                   if (apiUrl.endsWith("/")) {

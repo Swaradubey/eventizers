@@ -25,7 +25,7 @@ export default function LoginPage() {
       } else {
         const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
         const redirectUrl = params?.get("redirect");
-        if (redirectUrl && redirectUrl.startsWith("/")) {
+        if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
           router.push(redirectUrl);
         } else {
           router.push("/dashboard/events");
@@ -56,11 +56,15 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
+      localStorage.removeItem("proAuthenticated");
+      localStorage.removeItem("proOAuthPending");
       const loggedUser = await login(email, password);
       if (loggedUser) {
+        localStorage.removeItem("proAuthenticated");
+        localStorage.removeItem("proOAuthPending");
         const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
         const redirectUrl = params?.get("redirect");
-        if (redirectUrl && redirectUrl.startsWith("/")) {
+        if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
           router.push(redirectUrl);
         } else if (loggedUser.role === "ADMIN") {
           router.push("/admin/dashboard");
@@ -232,6 +236,8 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    localStorage.removeItem("proAuthenticated");
+                    localStorage.removeItem("proOAuthPending");
                     let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
                     apiUrl = apiUrl.trim();
                     if (apiUrl.endsWith("/")) {
@@ -294,6 +300,19 @@ export default function LoginPage() {
                   className="font-semibold text-[#2D1B3D] hover:text-[#C9A84C] ml-1 transition-colors"
                 >
                   Create Account
+                </Link>
+              </p>
+            </div>
+
+            {/* Eventizers Pro Link */}
+            <div className="mt-2 text-center">
+              <p className="text-xs text-[#2D1B3D]/50 font-body">
+                Organizer or Event Host?{" "}
+                <Link
+                  href="/pro/login"
+                  className="font-semibold text-[#C9A84C] hover:underline ml-1 transition-colors"
+                >
+                  Sign in to Pro Dashboard →
                 </Link>
               </p>
             </div>

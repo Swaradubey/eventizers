@@ -31,9 +31,16 @@ const API = axios.create({
 API.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token && token !== "undefined" && token !== "null" && token.trim() !== "") {
-        config.headers.Authorization = `Bearer ${token}`;
+      const isProRoute = window.location.pathname.startsWith("/pro");
+      // If authorization is not already explicitly attached
+      if (!config.headers.Authorization) {
+        const token = isProRoute
+          ? localStorage.getItem("pro_token")
+          : (localStorage.getItem("token") || sessionStorage.getItem("token"));
+
+        if (token && token !== "undefined" && token !== "null" && token.trim() !== "") {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
     }
 
@@ -76,18 +83,33 @@ API.interceptors.response.use(
         url.includes("/invitations/public");
 
       if (!isAuthEndpoint && typeof window !== "undefined") {
-        const hadToken = Boolean(
-          localStorage.getItem("token") || sessionStorage.getItem("token")
-        );
-        const isGuestMode =
-          window.location.search.includes("guest=1") ||
-          Boolean(localStorage.getItem("guestDraft"));
+        const isProRoute = window.location.pathname.startsWith("/pro");
+        if (isProRoute) {
+          const hadProToken = Boolean(localStorage.getItem("pro_token"));
+          if (hadProToken) {
+            localStorage.removeItem("pro_token");
+            localStorage.removeItem("pro_user");
+            localStorage.removeItem("proAuthenticated");
+            window.location.href = "/pro/login";
+          }
+        } else {
+          const hadToken = Boolean(
+            localStorage.getItem("token") || sessionStorage.getItem("token")
+          );
+          const isGuestMode =
+            window.location.search.includes("guest=1") ||
+            Boolean(localStorage.getItem("guestDraft"));
 
-        if (hadToken && !isGuestMode) {
-          localStorage.removeItem("token");
-          sessionStorage.removeItem("token");
-          const isAdminRoute = window.location.pathname.startsWith("/admin");
-          window.location.href = isAdminRoute ? "/admin/login" : "/login";
+          if (hadToken && !isGuestMode) {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            const isAdminRoute = window.location.pathname.startsWith("/admin");
+            if (isAdminRoute) {
+              window.location.href = "/admin/login";
+            } else {
+              window.location.href = "/login";
+            }
+          }
         }
       }
     }

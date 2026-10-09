@@ -71,7 +71,6 @@ export const PRO_PLANS: ProPlan[] = [
 
 export const PRO_NAV = [
   { label: "Individual", href: "/" },
-  { label: "Dashboard", href: "/pro/dashboard" },
   { label: "How It Works", href: "#flow" },
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#plans" },

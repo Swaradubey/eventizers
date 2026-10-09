@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Sparkles, Menu, X, LayoutDashboard, ChevronDown, LogOut } from "lucide-react";
 import { PRO_NAV } from "./proData";
-import { useAuth } from "@/context/AuthContext";
+import { useProAuth } from "@/context/ProAuthContext";
 
 interface ProHeaderProps {
   onStartTrial: () => void;
@@ -16,7 +16,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { user, logout } = useAuth();
+  const { proUser, proLogout } = useProAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,13 +46,13 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
     try {
       setUserMenuOpen(false);
       setMenuOpen(false);
-      await logout();
+      await proLogout();
     } catch (err) {
       console.error("Logout error:", err);
     }
   };
 
-  const displayName = user?.name || user?.email?.split("@")[0] || "User";
+  const displayName = proUser?.name || proUser?.email?.split("@")[0] || "Organizer";
   const firstName = displayName.split(" ")[0];
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -95,7 +95,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {mounted && user ? (
+          {mounted && proUser ? (
             <>
               <Link
                 href="/pro/dashboard"
@@ -130,7 +130,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
                   <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-[#0c1218]/95 p-1.5 text-white shadow-2xl backdrop-blur-2xl ring-1 ring-black/50 z-50">
                     <div className="px-3 py-2 border-b border-white/10">
                       <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-                      <p className="text-[11px] text-white/50 truncate">{user.email}</p>
+                      <p className="text-[11px] text-white/50 truncate">{proUser.email}</p>
                     </div>
                     <div className="py-1">
                       <Link
@@ -166,7 +166,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
             </>
           ) : (
             <Link
-              href="/login?redirect=/pro"
+              href="/pro/login"
               className="hidden text-sm font-medium text-white/75 hover:text-white transition sm:inline-block px-3 py-1.5"
             >
               Sign In
@@ -207,7 +207,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
             ))}
             <div className="my-2 h-px bg-white/10" />
 
-            {mounted && user ? (
+            {mounted && proUser ? (
               <>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -216,7 +216,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-white truncate">{displayName}</p>
-                      <p className="text-xs text-white/50 truncate">{user.email}</p>
+                      <p className="text-xs text-white/50 truncate">{proUser.email}</p>
                     </div>
                   </div>
                   <button
@@ -238,7 +238,7 @@ export default function ProHeader({ onStartTrial }: ProHeaderProps) {
               </>
             ) : (
               <Link
-                href="/login?redirect=/pro"
+                href="/pro/login"
                 onClick={() => setMenuOpen(false)}
                 className="text-base font-semibold text-white/80 transition hover:text-white"
               >

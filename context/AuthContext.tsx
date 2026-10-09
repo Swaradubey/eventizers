@@ -143,10 +143,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await authService.logout();
       localStorage.removeItem("token");
+      localStorage.removeItem("proAuthenticated");
       setUser(null);
       if (typeof window !== "undefined") {
         if (window.location.pathname.startsWith("/admin")) {
           window.location.href = "/admin/login";
+        } else if (window.location.pathname.startsWith("/pro")) {
+          window.location.href = "/pro/login";
         } else if (window.location.pathname.startsWith("/dashboard")) {
           window.location.href = "/login";
         }

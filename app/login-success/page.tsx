@@ -12,12 +12,27 @@ function LoginSuccessHandler() {
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
-      localStorage.setItem("token", token);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("showSparkle", "true");
       }
-      // Direct assignment forces a fresh page reload so that AuthContext parses the token
-      window.location.href = "/dashboard/events";
+
+      // Check if this was a Pro OAuth login
+      const isProOAuth = typeof window !== "undefined" && (
+        localStorage.getItem("proOAuthPending") === "true" ||
+        sessionStorage.getItem("proOAuthPending") === "true"
+      );
+
+      if (isProOAuth) {
+        localStorage.removeItem("proOAuthPending");
+        sessionStorage.removeItem("proOAuthPending");
+        localStorage.setItem("pro_token", token);
+        localStorage.setItem("proAuthenticated", "true");
+        window.location.href = "/pro/dashboard";
+      } else {
+        localStorage.setItem("token", token);
+        // Direct assignment forces a fresh page reload so that AuthContext parses the token
+        window.location.href = "/dashboard/events";
+      }
     } else {
       router.push("/login?error=Google authentication failed");
     }
