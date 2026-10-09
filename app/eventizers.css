@@ -29,8 +29,28 @@
   box-sizing: border-box;
 }
 
-.eventizers-root .font-display {
-  font-family: 'Red Rose', Georgia, serif;
+.eventizers-root .font-display,
+.eventizers-root h1,
+.eventizers-root h2,
+.eventizers-root h3,
+.eventizers-root h4,
+.eventizers-root h5,
+.eventizers-root h6,
+.pro-dashboard h1,
+.pro-dashboard h2,
+.pro-dashboard h3,
+.pro-dashboard h4,
+.pro-dashboard h5,
+.pro-dashboard h6,
+.pro-dashboard .font-display,
+.individual-dashboard h1,
+.individual-dashboard h2,
+.individual-dashboard h3,
+.individual-dashboard h4,
+.individual-dashboard h5,
+.individual-dashboard h6,
+.individual-dashboard .font-display {
+  font-family: 'Red Rose', Georgia, serif !important;
 }
 
 .eventizers-root .font-sans,

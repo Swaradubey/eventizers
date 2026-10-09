@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
-import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl, loadImageWithFallback } from "./canvasBackgroundUtils";
+import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
 import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
 import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
@@ -17,12 +17,6 @@ export const ENVELOPE_LINERS_DATA: Record<string, string> = {
   // Autumn Tan Gingham / Plaid (Evite Fall Blooms exact style)
   "autumn-gingham":
     "repeating-linear-gradient(0deg, #cb925d 0px, #cb925d 14px, #fbf7ee 14px, #fbf7ee 28px), repeating-linear-gradient(90deg, rgba(160, 98, 42, 0.38) 0px, rgba(160, 98, 42, 0.38) 14px, transparent 14px, transparent 28px)",
-  // Kraft paper envelope liner — tan + forest green plaid (Everyone's Family)
-  "plaid-tan-green":
-    "repeating-linear-gradient(90deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(0deg, rgba(29,59,46,0.55) 0px, rgba(29,59,46,0.55) 5px, transparent 5px, transparent 30px), repeating-linear-gradient(90deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), repeating-linear-gradient(0deg, rgba(140,109,79,0.4) 0px, rgba(140,109,79,0.4) 2px, transparent 2px, transparent 15px), linear-gradient(135deg, #E9D6B8 0%, #DCC39C 55%, #E4CFAC 100%)",
-  // Forest green envelope liner — warm terracotta gingham (Give Thanks)
-  "warm-gingham":
-    "repeating-linear-gradient(90deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), repeating-linear-gradient(0deg, rgba(198,92,48,0.42) 0px, rgba(198,92,48,0.42) 13px, transparent 13px, transparent 27px), linear-gradient(135deg, #F8EAD1 0%, #F1DCB9 100%)",
   "vertical-pink-stripes":
     "repeating-linear-gradient(90deg, #ea5b95 0px, #ea5b95 11px, #ffffff 11px, #ffffff 22px)",
   "pink-stripes":
@@ -544,15 +538,10 @@ export default function InvitationCanvasStage({
     : null;
 
   // View mode / Envelope visibility: In standalone "Card Only" mode, by default for custom uploaded images,
-  // for free templates (unless explicitly set to envelope view mode), or when the template
-  // explicitly disables its envelope stage (`envelope.enabled: false` → flat card, e.g. Thanksgiving Branches)
-  const isEnvelopeDisabled =
-    (fallbackTpl as any)?.envelope?.enabled === false ||
-    (config.envelope as any)?.enabled === false;
+  // or for free templates (unless explicitly set to envelope view mode)
   const isCardOnlyMode = Boolean(
     config.hideEnvelope ||
     config.viewMode === "card" ||
-    isEnvelopeDisabled ||
     (isFreeTpl && config.hideEnvelope !== false && config.viewMode !== "envelope") ||
     (isUserUpload && config.viewMode !== "envelope" && config.hideEnvelope !== false)
   );
@@ -648,66 +637,39 @@ export default function InvitationCanvasStage({
     )
   );
 
-  const cachedArtworkRef = useRef<string | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(cleanCardImage);
-  const [imgLoading, setImgLoading] = useState(Boolean(cleanCardImage));
   const [hasImgError, setHasImgError] = useState(false);
   const [bgNaturalDimensions, setBgNaturalDimensions] = useState<{ width: number; height: number; aspectRatio: string } | null>(null);
 
-  const applyResolvedImage = (resolved: { src: string; width: number; height: number }) => {
-    cachedArtworkRef.current = resolved.src;
-    setImgSrc(resolved.src);
-    setImgLoading(false);
-    setHasImgError(false);
-    setBgNaturalDimensions({
-      width: resolved.width,
-      height: resolved.height,
-      aspectRatio: `${resolved.width} / ${resolved.height}`,
-    });
-  };
-
-  /**
-   * Resolve the background through the automatic failover chain:
-   *   Attempt 1: direct URL with crossOrigin="anonymous"
-   *   Attempt 2: relative /assets|/templates path (foreign-host absolute assets)
-   *   Attempt 3: server-side CORS proxy (/api/proxy-image?url=...)
-   * The "Unreachable" UI only appears once EVERY attempt has failed.
-   */
   useEffect(() => {
     if (!cleanCardImage) {
-      setImgSrc(null);
-      setImgLoading(false);
-      setHasImgError(false);
       setBgNaturalDimensions(null);
       return;
     }
-
-    let isResolutionActive = true;
-    setImgSrc(cleanCardImage);
-    setImgLoading(true);
-    setHasImgError(false);
-
-    loadImageWithFallback(cleanCardImage).then(
-      (resolved) => {
-        if (!isResolutionActive) return;
-        applyResolvedImage(resolved);
-      },
-      () => {
-        if (!isResolutionActive) return;
-        setImgLoading(false);
-        if (cachedArtworkRef.current) {
-          setImgSrc(cachedArtworkRef.current);
-          setHasImgError(false);
-        } else {
-          setHasImgError(true);
-        }
-      }
-    );
-
-    return () => {
-      isResolutionActive = false;
+    let isProbeActive = true;
+    const probe = new Image();
+    probe.crossOrigin = "anonymous";
+    probe.src = cleanCardImage;
+    probe.onload = () => {
+      if (!isProbeActive) return;
+      setHasImgError(false);
+      const w = probe.naturalWidth || probe.width || 600;
+      const h = probe.naturalHeight || probe.height || 840;
+      setBgNaturalDimensions({
+        width: w,
+        height: h,
+        aspectRatio: `${w} / ${h}`,
+      });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    probe.onerror = () => {
+      // If direct probe fails and image is external, probe via proxy
+      if (isProbeActive && (cleanCardImage.startsWith("http://") || cleanCardImage.startsWith("https://")) && !cleanCardImage.includes("/api/proxy-image")) {
+        probe.src = getProxyImageUrl(cleanCardImage);
+      }
+    };
+    return () => {
+      isProbeActive = false;
+    };
   }, [cleanCardImage]);
 
   const resolvedStageAspect =
@@ -723,6 +685,8 @@ export default function InvitationCanvasStage({
 
   useEffect(() => {
     let isMounted = true;
+    setImgSrc(cleanCardImage);
+    setHasImgError(false);
 
     // Strict Canvas Object & Listener Purge:
     // Strictly clears previous canvas objects and event listeners before loading any new or saved template,
@@ -784,57 +748,36 @@ export default function InvitationCanvasStage({
     maxW,
   ]);
 
-  /**
-   * Fired when the rendered <img> itself fails. Normally the resolution effect
-   * has already validated the source, so this just advances the fallback chain
-   * (asset path → /api/proxy-image) silently — the error UI is only revealed
-   * when no candidate is left.
-   */
   const handleImageError = () => {
-    if (imgLoading) return; // resolution chain already owns the failover
-    if (!imgSrc || !cleanCardImage) {
-      if (cachedArtworkRef.current) {
-        setImgSrc(cachedArtworkRef.current);
-        setHasImgError(false);
-      } else {
-        setHasImgError(true);
+    console.warn("[InvitationCanvasStage] Background image failed to load:", imgSrc);
+    // 1. If absolute URL was pointing to frontend static assets (/assets/ or /templates/), retry with clean relative path
+    if (imgSrc) {
+      const assetMatch = imgSrc.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+      if (assetMatch && imgSrc !== assetMatch[1]) {
+        console.info("[InvitationCanvasStage] Retrying with relative asset path:", assetMatch[1]);
+        setImgSrc(assetMatch[1]);
+        return;
       }
-      return;
     }
-    console.warn("[InvitationCanvasStage] Background image failed to load, falling back via proxy:", imgSrc);
-    setImgLoading(true);
-    loadImageWithFallback(cleanCardImage, { startAfterSrc: imgSrc }).then(
-      (resolved) => applyResolvedImage(resolved),
-      () => {
-        setImgLoading(false);
-        if (cachedArtworkRef.current) {
-          setImgSrc(cachedArtworkRef.current);
-          setHasImgError(false);
-        } else {
-          setHasImgError(true);
-        }
+    // 2. If -bg.svg clean variant failed to load, fallback to normalized cardImageRaw
+    if (imgSrc && cardImageRaw && imgSrc !== cardImageRaw && !imgSrc.includes("/api/proxy-image")) {
+      const fallbackUrl = normalizeTemplateImageUrl(cardImageRaw);
+      if (fallbackUrl && fallbackUrl !== imgSrc) {
+        setImgSrc(fallbackUrl);
+        return;
       }
-    );
-  };
-
-  /** Manual last-resort retry from the top of the chain (network may have recovered). */
-  const retryBackgroundImage = () => {
-    const source = cleanCardImage || cardImageRaw;
-    if (!source) return;
-    setHasImgError(false);
-    setImgLoading(true);
-    loadImageWithFallback(source).then(
-      (resolved) => applyResolvedImage(resolved),
-      () => {
-        setImgLoading(false);
-        if (cachedArtworkRef.current) {
-          setImgSrc(cachedArtworkRef.current);
-          setHasImgError(false);
-        } else {
-          setHasImgError(true);
-        }
+    }
+    // 3. If external link failed (likely CORS restriction or Mixed Content), retry via CORS proxy endpoint
+    if (imgSrc && (imgSrc.startsWith("http://") || imgSrc.startsWith("https://")) && !imgSrc.includes("/api/proxy-image")) {
+      const proxied = getProxyImageUrl(imgSrc);
+      if (proxied && proxied !== imgSrc) {
+        console.info("[InvitationCanvasStage] Retrying image via proxy:", proxied);
+        setImgSrc(proxied);
+        return;
       }
-    );
+    }
+    // All fallback attempts failed — mark error state to display user-friendly UI
+    setHasImgError(true);
   };
 
   const cardImageFit = config.cardImageFit || (isUserUpload ? "contain" : "cover");
@@ -1000,9 +943,9 @@ export default function InvitationCanvasStage({
       : "peek");
 
   const isEnvelopeLeft = Boolean(
-    String((config.envelope as any)?.position || "").startsWith("left") ||
-    String((fallbackTpl as any)?.envelope?.position || "").startsWith("left") ||
-    String((config as any)?.envelopePosition || "").startsWith("left") ||
+    (config.envelope as any)?.position === "left" ||
+    (fallbackTpl as any)?.envelope?.position === "left" ||
+    (config as any)?.envelopePosition === "left" ||
     activeTplId === "o-tannenbaum" ||
     activeTplId === "metallic-paint-splatter" ||
     activeTplId === "golden-foliage-holiday" ||
@@ -1123,27 +1066,6 @@ export default function InvitationCanvasStage({
             </div>
           )}
 
-          {/* Subtle non-intrusive status notification OUTSIDE the card surface */}
-          {imgSrc && hasImgError && !imgLoading && !cachedArtworkRef.current && (
-            <div
-              data-testid="canvas-image-error-state"
-              className="absolute -top-11 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 shadow-sm text-left select-none pointer-events-auto backdrop-blur-xs whitespace-nowrap"
-            >
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="text-[11px] font-medium text-amber-900">
-                Artwork preview unavailable
-              </span>
-              <button
-                type="button"
-                onClick={retryBackgroundImage}
-                className="ml-1 px-2 py-0.5 rounded-full bg-white border border-amber-300 text-[10px] font-semibold text-amber-800 hover:bg-amber-100 shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <RotateCw className="w-2.5 h-2.5" />
-                <span>Retry</span>
-              </button>
-            </div>
-          )}
-
           {/* 2. Invitation Card Layer (Foreground) */}
           <motion.div
             ref={effectiveCardRef}
@@ -1226,29 +1148,18 @@ export default function InvitationCanvasStage({
               {/* Border Overlay if defined by cssConfig or innerCardLayer */}
               {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
-              {/* 3A-Loading: clean skeleton behind the artwork while the failover chain resolves */}
-              {imgSrc && imgLoading && !hasImgError && (
-                <div
-                  data-testid="canvas-image-loading-state"
-                  aria-hidden="true"
-                  className="absolute inset-0 z-0 animate-pulse bg-gradient-to-br from-slate-100 via-white to-slate-200 pointer-events-none select-none"
-                />
-              )}
-
               {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
               {imgSrc && (
                 <img
                   src={imgSrc}
                   alt="Invitation Card Artwork"
                   aria-hidden="true"
-                  crossOrigin="anonymous"
+                  crossOrigin={imgSrc.startsWith("http") ? "anonymous" : undefined}
                   onError={handleImageError}
                   onLoad={(e) => {
                     setHasImgError(false);
-                    setImgLoading(false);
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
-                      cachedArtworkRef.current = img.src;
                       setBgNaturalDimensions({
                         width: img.naturalWidth,
                         height: img.naturalHeight,
@@ -1258,11 +1169,13 @@ export default function InvitationCanvasStage({
                   }}
                   className={`absolute inset-0 w-full h-full pointer-events-none select-none transition-all duration-300 ${
                     cardImageFit === "contain" ? "object-contain" : "object-cover"
-                  } ${hasImgError && !cachedArtworkRef.current ? "opacity-0" : "opacity-100"}`}
+                  } ${hasImgError ? "opacity-0" : "opacity-100"}`}
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />
               )}
+
+
 
               {/* 3A-2: Additional decorative illustrations & stickers (balloons, cake, hats, candles, gifts) */}
               {decorationItems.map((decoSrc, idx) => {
@@ -1274,16 +1187,6 @@ export default function InvitationCanvasStage({
                     alt="Template Decoration"
                     aria-hidden="true"
                     crossOrigin={decoSrc.startsWith("http") ? "anonymous" : undefined}
-                    onError={(e) => {
-                      const el = e.currentTarget;
-                      const proxied = getProxyImageUrl(decoSrc);
-                      if (proxied && !el.src.includes("/api/proxy-image") && !el.dataset.proxyTried) {
-                        el.dataset.proxyTried = "1";
-                        el.src = proxied;
-                      } else {
-                        el.style.display = "none";
-                      }
-                    }}
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                     style={{ zIndex: 2 }}
                     draggable={false}
@@ -1318,16 +1221,6 @@ export default function InvitationCanvasStage({
                       src={layerSrc}
                       alt={layer.name || "Template image layer"}
                       crossOrigin={layerSrc.startsWith("http") ? "anonymous" : undefined}
-                      onError={(e) => {
-                        const el = e.currentTarget;
-                        const proxied = getProxyImageUrl(layerSrc);
-                        if (proxied && !el.src.includes("/api/proxy-image") && !el.dataset.proxyTried) {
-                          el.dataset.proxyTried = "1";
-                          el.src = proxied;
-                        } else {
-                          el.style.display = "none";
-                        }
-                      }}
                       className="w-full h-full object-contain pointer-events-none select-none"
                       draggable={false}
                     />

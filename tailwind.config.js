@@ -14,9 +14,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Georgia", "'Playfair Display'", "serif"],
+        display: ["'Red Rose'", "Georgia", "'Playfair Display'", "serif"],
         serif: ["Georgia", "Cambria", "'Times New Roman'", "Times", "serif"],
-        heading: ["Georgia", "serif"],
+        heading: ["'Red Rose'", "Georgia", "serif"],
         body: ["'Inter'", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         sans: ["'Inter'", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Questrial&family=Londrina+Solid:wght@300;400;900&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Dancing+Script:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Great+Vibes&family=Alex+Brush&family=Pinyon+Script&family=Cormorant+Garamond:wght@400;600;700&family=Parisienne&family=Bodoni+Moda:wght@400;700&family=Prata&family=Marcellus&family=Pacifico&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Reenie+Beanie&family=Chewy&family=Bungee&family=Press+Start+2P&family=Luckiest+Guy&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Questrial&family=Londrina+Solid:wght@300;400;900&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Dancing+Script:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Great+Vibes&family=Alex+Brush&family=Pinyon+Script&family=Cormorant+Garamond:wght@400;600;700&family=Parisienne&family=Bodoni+Moda:wght@400;700&family=Prata&family=Marcellus&family=Pacifico&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Reenie+Beanie&family=Chewy&family=Bungee&family=Press+Start+2P&family=Luckiest+Guy&family=Red+Rose:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -107,14 +107,14 @@ body {
 }
 
 .font-display {
-  font-family: Georgia, 'Playfair Display', serif;
+  font-family: 'Red Rose', Georgia, serif;
 }
 
 .font-serif {
   font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
 }
 
-/* Home Page Typography: Headings in Georgia, Body in Inter */
+/* Home Page Typography: Headings in Red Rose, Body in Inter */
 .home-page {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -126,10 +126,8 @@ body {
 .home-page h5,
 .home-page h6,
 .home-page .home-heading,
-.home-page .font-display,
-.home-page .font-serif {
-  font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
-  font-weight: 400 !important;
+.home-page .font-display {
+  font-family: 'Red Rose', Georgia, serif !important;
 }
 
 .home-page p,
@@ -151,41 +149,90 @@ body {
   font-weight: 400 !important;
 }
 
-/* Dashboard Page Headings: Force Georgia */
-.force-georgia,
+/* ============================================================== */
+/* Pro Dashboard & Individual Dashboard: All Headings in Red Rose */
+/* ============================================================== */
+.pro-dashboard h1,
+.pro-dashboard h2,
+.pro-dashboard h3,
+.pro-dashboard h4,
+.pro-dashboard h5,
+.pro-dashboard h6,
+.pro-dashboard .font-display,
+.pro-dashboard .dashboard-heading,
+.pro-dashboard .dashboard-page-title,
+.organizer-shell h1,
+.organizer-shell h2,
+.organizer-shell h3,
+.organizer-shell h4,
+.organizer-shell h5,
+.organizer-shell h6,
+.organizer-shell .font-display,
+.individual-dashboard h1,
+.individual-dashboard h2,
+.individual-dashboard h3,
+.individual-dashboard h4,
+.individual-dashboard h5,
+.individual-dashboard h6,
+.individual-dashboard .font-display,
+.individual-dashboard .dashboard-heading,
+.individual-dashboard .dashboard-page-title,
+.individual-shell h1,
+.individual-shell h2,
+.individual-shell h3,
+.individual-shell h4,
+.individual-shell h5,
+.individual-shell h6,
+.individual-shell .font-display,
 .dashboard-page h1,
-main h1 {
-  font-family: Georgia, 'Times New Roman', Times, serif !important;
-  font-weight: 400 !important;
-}
-
-/* High-specificity utility for dashboard page titles - prevents OAuth redirect styling reset */
-.dashboard-page-title {
-  font-family: Georgia, 'Times New Roman', Times, serif !important;
-  font-weight: 400 !important;
-}
-
-/* All headings/titles with Georgia / serif */
-h1.font-serif,
-h2.font-serif,
-h3.font-serif,
-h4.font-serif,
-h5.font-serif,
-h6.font-serif,
+.dashboard-page h2,
+.dashboard-page h3,
+.dashboard-page h4,
+.dashboard-page h5,
+.dashboard-page h6,
+.dashboard-page .font-display,
+.dashboard-page-title,
+.dashboard-heading,
+.force-georgia,
+.eventizers-root h1,
+.eventizers-root h2,
+.eventizers-root h3,
+.eventizers-root h4,
+.eventizers-root h5,
+.eventizers-root h6,
+.eventizers-root .font-display,
+.font-display,
 h1.font-display,
 h2.font-display,
 h3.font-display,
 h4.font-display,
 h5.font-display,
 h6.font-display,
-h1[style*="Georgia"],
-h2[style*="Georgia"],
-h3[style*="Georgia"],
-h4[style*="Georgia"],
-h5[style*="Georgia"],
-h6[style*="Georgia"] {
-  font-family: Georgia, Cambria, 'Times New Roman', Times, serif !important;
-  font-weight: 400 !important;
+[data-dashboard] h1,
+[data-dashboard] h2,
+[data-dashboard] h3,
+[data-dashboard] h4,
+[data-dashboard] h5,
+[data-dashboard] h6,
+[data-dashboard] .font-display,
+h1[style*="Red Rose"],
+h2[style*="Red Rose"],
+h3[style*="Red Rose"],
+h4[style*="Red Rose"],
+h5[style*="Red Rose"],
+h6[style*="Red Rose"] {
+  font-family: 'Red Rose', Georgia, serif !important;
+}
+
+/* Serif style for non-dashboard landing pages */
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h1.font-serif:not(.font-display),
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h2.font-serif:not(.font-display),
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h3.font-serif:not(.font-display),
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h4.font-serif:not(.font-display),
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h5.font-serif:not(.font-display),
+:not(.pro-dashboard):not(.individual-dashboard):not(.dashboard-page):not(.eventizers-root) h6.font-serif:not(.font-display) {
+  font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-weight: 400;
 }
 
 /* Gold shimmer effect */

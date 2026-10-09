@@ -113,129 +113,6 @@ export const getProxyImageUrl = (url?: string | null): string => {
   return `/api/proxy-image?url=${encodeURIComponent(normalized)}`;
 };
 
-export interface LoadedImageInfo {
-  src: string;
-  width: number;
-  height: number;
-  element: HTMLImageElement;
-}
-
-export interface LoadImageOptions {
-  crossOrigin?: string;
-  timeoutMs?: number;
-  /** Skip candidates up to (and including) this src — used when advancing a failed chain. */
-  startAfterSrc?: string | null;
-}
-
-/**
- * Builds the ordered candidate list for loading a template image:
- *   1. The normalized direct URL (tried with crossOrigin="anonymous")
- *   2. The relative /assets|/templates variant (absolute foreign-host assets only)
- *   3. The CORS reverse proxy: /api/proxy-image?url=<encoded>
- *
- * Duplicates and data:/blob: URLs are collapsed so the chain always terminates.
- */
-export const buildImageFallbackChain = (url?: string | null, startAfterSrc?: string | null): string[] => {
-  const normalized = normalizeTemplateImageUrl(url);
-  if (!normalized) return [];
-
-  const chain: string[] = [];
-  const push = (candidate?: string | null) => {
-    if (candidate && candidate.trim() && !chain.includes(candidate.trim())) {
-      chain.push(candidate.trim());
-    }
-  };
-
-  // 1. Direct candidate
-  push(normalized);
-
-  // 2. Relative frontend asset fallback (if was full URL to /assets/ or /templates/)
-  const assetMatch = normalized.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
-  if (assetMatch && assetMatch[1] !== normalized) push(assetMatch[1]);
-
-  // 3. Server-side CORS proxy failover: /api/proxy-image?url=<encoded>
-  if (!normalized.startsWith("data:") && !normalized.startsWith("blob:") && !normalized.startsWith("/assets/") && !normalized.startsWith("/templates/")) {
-    push(getProxyImageUrl(normalized));
-
-    // 4. Insecure HTTP upstream: also attempt HTTPS proxied candidate
-    if (normalized.startsWith("http://")) {
-      push(getProxyImageUrl(normalized.replace(/^http:\/\//i, "https://")));
-    }
-  }
-
-  if (!startAfterSrc) return chain;
-  const idx = chain.findIndex((candidate) => candidate === startAfterSrc);
-  return idx >= 0 ? chain.slice(idx + 1) : chain;
-};
-
-/**
- * Loads an image with crossOrigin="anonymous" and walks the fallback chain
- * (direct → relative asset → /api/proxy-image) automatically on failure.
- * Rejects only after every candidate has been exhausted.
- */
-export const loadImageWithFallback = (
-  url?: string | null,
-  options?: LoadImageOptions
-): Promise<LoadedImageInfo> => {
-  const chain = buildImageFallbackChain(url, options?.startAfterSrc);
-  const crossOrigin = options?.crossOrigin ?? "anonymous";
-  const timeoutMs = options?.timeoutMs ?? 12_000;
-
-  return new Promise<LoadedImageInfo>((resolve, reject) => {
-    if (chain.length === 0) {
-      reject(new Error("No image source available"));
-      return;
-    }
-
-    let attempt = 0;
-
-    const tryNext = () => {
-      if (attempt >= chain.length) {
-        reject(new Error("All image load attempts failed"));
-        return;
-      }
-
-      const src = chain[attempt];
-      attempt += 1;
-
-      const img = new Image();
-      let settled = false;
-
-      const timer = window.setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        img.src = "";
-        tryNext();
-      }, timeoutMs);
-
-      img.crossOrigin = crossOrigin;
-
-      img.onload = () => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timer);
-        resolve({
-          src,
-          width: img.naturalWidth || img.width || 600,
-          height: img.naturalHeight || img.height || 840,
-          element: img,
-        });
-      };
-
-      img.onerror = () => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timer);
-        tryNext();
-      };
-
-      img.src = src;
-    };
-
-    tryNext();
-  });
-};
-
 /** Get the live Fabric canvas instance from the global window references. */
 export const getFabricCanvas = (): any => {
   if (typeof window === "undefined") return null;
@@ -282,11 +159,14 @@ export const applyCanvasBackground = (
     return;
   }
 
-  const initialUrl = normalizeTemplateImageUrl(imageUrl);
+  let attemptProxy = false;
 
-  // Automatic failover: direct URL (crossOrigin="anonymous") → relative asset path → /api/proxy-image
-  loadImageWithFallback(initialUrl, { crossOrigin: options?.crossOrigin || "anonymous" }).then(
-    ({ element: imgElement }) => {
+  const tryLoadImage = (srcUrl: string) => {
+    const imgElement = new Image();
+    imgElement.crossOrigin = options?.crossOrigin || "anonymous";
+    imgElement.src = srcUrl;
+
+    imgElement.onload = () => {
       try {
         const imgW = imgElement.naturalWidth || imgElement.width || 600;
         const imgH = imgElement.naturalHeight || imgElement.height || 840;
@@ -359,12 +239,39 @@ export const applyCanvasBackground = (
         console.warn("[applyCanvasBackground] Fabric render error:", err);
         if (callback) callback({ width: 0, height: 0, aspectRatio: 1, error: true });
       }
-    },
-    (err) => {
-      console.warn("[applyCanvasBackground] Failed to load background image:", initialUrl, err);
+    };
+
+    imgElement.onerror = (err) => {
+      // 1. If direct load failed on an absolute asset/template URL, try relative
+      const assetMatch = srcUrl.match(/^(?:https?:\/\/[^/]+)?(\/(?:assets|templates)\/.*)$/i);
+      if (assetMatch && srcUrl !== assetMatch[1]) {
+        console.info("[applyCanvasBackground] Retrying with relative asset path:", assetMatch[1]);
+        tryLoadImage(assetMatch[1]);
+        return;
+      }
+
+      // 2. If direct load failed on an external URL and we haven't tried the CORS proxy yet, retry once via proxy
+      if (
+        !attemptProxy &&
+        (srcUrl.startsWith("http://") || srcUrl.startsWith("https://")) &&
+        !srcUrl.includes("/api/proxy-image")
+      ) {
+        attemptProxy = true;
+        const proxied = getProxyImageUrl(srcUrl);
+        if (proxied && proxied !== srcUrl) {
+          console.info("[applyCanvasBackground] Direct load blocked, retrying with proxy:", proxied);
+          tryLoadImage(proxied);
+          return;
+        }
+      }
+
+      console.warn("[applyCanvasBackground] Failed to load background image:", srcUrl, err);
       if (callback) callback({ width: 0, height: 0, aspectRatio: 1, error: true });
-    }
-  );
+    };
+  };
+
+  const initialUrl = normalizeTemplateImageUrl(imageUrl);
+  tryLoadImage(initialUrl);
 };
 
 /**
@@ -448,10 +355,9 @@ export const syncCanvasLayers = (
           }
         };
         imgEl.onerror = () => {
-          // Automatic proxy failover for external image layers (one shot, never loops)
-          const proxied = getProxyImageUrl(imgSrc);
-          if (proxied && proxied !== imgEl.src && !imgEl.src.includes("/api/proxy-image")) {
-            imgEl.src = proxied;
+          // Retry via proxy if external
+          if ((imgSrc.startsWith("http://") || imgSrc.startsWith("https://")) && !imgSrc.includes("/api/proxy-image")) {
+            imgEl.src = getProxyImageUrl(imgSrc);
           }
         };
         return;

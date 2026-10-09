@@ -21,12 +21,15 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
-  ShieldCheck,
   UserCog,
   ImageIcon,
   MapPin,
   KeyRound,
   QrCode,
+  PartyPopper,
+  Link2,
+  CalendarDays,
+  ScanLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -158,19 +161,14 @@ export default function Sidebar() {
       ]
     : [
         {
-          label: "My Events",
+          label: "Overview",
+          href: "/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Events",
           href: "/dashboard/events",
-          icon: Calendar,
-        },
-        {
-          label: "Guests",
-          href: "/dashboard/guests",
-          icon: Users,
-        },
-        {
-          label: "Canvas",
-          href: "/dashboard/invitations",
-          icon: Mail,
+          icon: CalendarDays,
         },
         {
           label: "Ticketing",
@@ -178,19 +176,9 @@ export default function Sidebar() {
           icon: Ticket,
         },
         {
-          label: "Check-In",
+          label: "Check-in",
           href: "/dashboard/check-in",
-          icon: UserCheck,
-        },
-        {
-          label: "Messages",
-          href: "/dashboard/messages",
-          icon: MessageSquare,
-        },
-        {
-          label: "Attendance Commitment",
-          href: "/dashboard/attendance-commitment",
-          icon: ShieldCheck,
+          icon: ScanLine,
         },
         {
           label: "Analytics",
@@ -198,19 +186,14 @@ export default function Sidebar() {
           icon: BarChart3,
         },
         {
-          label: "Security",
-          href: "/dashboard/security",
-          icon: Shield,
+          label: "AI Agent",
+          href: "/dashboard/ai",
+          icon: Sparkles,
         },
         {
-          label: "Billing",
-          href: "/dashboard/billing",
-          icon: CreditCard,
-        },
-        {
-          label: "Settings",
-          href: "/dashboard/settings",
-          icon: Settings,
+          label: "Connections",
+          href: "/dashboard/connections",
+          icon: Link2,
         },
       ];
 
@@ -254,28 +237,29 @@ export default function Sidebar() {
 
     return (
       <div
-        className="sidebar-shell"
+        className="sidebar-shell eventizers-root"
         data-collapsed={collapsed}
+        style={{ background: '#080d11', borderRight: '1px solid rgba(255,255,255,0.1)', color: '#f5f5f2' }}
       >
         {/* ─── Header: Brand & Toggle ─── */}
-        <div className={`p-4 border-b border-white/30 flex items-center ${collapsed ? "flex-col gap-2 justify-center" : "justify-between gap-3"}`}>
+        <div className={`p-4 flex items-center ${collapsed ? "flex-col gap-2 justify-center" : "justify-between gap-3"}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <Link
             href="/"
             className="flex items-center gap-2.5 overflow-hidden group focus:outline-none"
             title="eventizers"
           >
-            <div className="w-8 h-8 rounded-[10px] bg-[#feba08] text-[#080d11] flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105">
-              <Sparkles className="w-4 h-4 text-[#080d11]" aria-hidden="true" />
-            </div>
+            <span className="grid size-8 place-items-center rounded-[10px] bg-[#feba08] text-[#080d11] flex-shrink-0 shadow-xs transition-transform group-hover:scale-105">
+              <Sparkles className="w-4 h-4" aria-hidden="true" />
+            </span>
             {!collapsed && (
               <div className="overflow-hidden min-w-0">
                 <span
-                  className="font-display text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight block truncate"
+                  className="text-xl font-extrabold tracking-tight leading-tight block truncate text-white"
                   style={{ fontFamily: "'Red Rose', Georgia, serif" }}
                 >
                   eventizers
                 </span>
-                <p className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                <p className="text-[10px] font-normal truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   Create. Invite. Manage.
                 </p>
               </div>
@@ -285,7 +269,8 @@ export default function Sidebar() {
           {/* Toggle / Close button */}
           <button
             onClick={isMobileDrawer ? handleMobileClose : handleDesktopToggle}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/70 transition-colors flex-shrink-0 focus:outline-none"
+            className="p-1.5 rounded-lg transition-colors flex-shrink-0 focus:outline-none hover:bg-white/5"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
             aria-label={
               isMobileDrawer
                 ? "Close navigation"
@@ -334,24 +319,28 @@ export default function Sidebar() {
                     aria-label={collapsed ? item.label : undefined}
                     aria-current={active ? "page" : undefined}
                     className={`sidebar-menu-item ${
-                      active ? "sidebar-menu-item--active" : ""
-                    } ${collapsed ? "sidebar-menu-item--collapsed" : ""} ${
+                      collapsed ? "sidebar-menu-item--collapsed" : ""
+                    } ${
                       disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
-                    }`}
+                    } transition`}
+                    style={active
+                      ? { background: 'rgba(254,186,8,0.15)', color: '#feba08', fontWeight: 600, border: '1px solid transparent' }
+                      : { color: 'rgba(255,255,255,0.65)', border: '1px solid transparent' }
+                    }
                   >
                     {/* Active background pill */}
                     {active && (
                       <motion.div
                         layoutId={isMobileDrawer ? "mobileActiveNav" : "desktopActiveNav"}
                         className="sidebar-menu-item-bg"
+                        style={{ background: 'rgba(254,186,8,0.15)', border: 'none', boxShadow: 'none' }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
 
                     <Icon
-                      className={`sidebar-menu-icon ${
-                        active ? "sidebar-menu-icon--active" : ""
-                      }`}
+                      className="sidebar-menu-icon"
+                      style={{ color: active ? '#feba08' : 'rgba(255,255,255,0.5)' }}
                     />
 
                     <AnimatePresence mode="wait">
@@ -391,8 +380,9 @@ export default function Sidebar() {
                 className={`sidebar-menu-item w-full text-left bg-transparent border-0 outline-none ${
                   collapsed ? "sidebar-menu-item--collapsed" : ""
                 }`}
+                style={{ color: 'rgba(245,245,242,0.5)', border: '1px solid transparent' }}
               >
-                <LogOut className="sidebar-menu-icon" />
+                <LogOut className="sidebar-menu-icon" style={{ color: 'rgba(245,245,242,0.4)' }} />
 
                 <AnimatePresence mode="wait">
                   {!collapsed && (

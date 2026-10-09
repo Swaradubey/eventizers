@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { AnimatePresence, motion } from "framer-motion";
@@ -28,6 +28,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const [mobileFeaturesOpen, setMobileFeaturesOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -167,6 +168,7 @@ export default function Navbar() {
 
   const handleClose = () => {
     setDesktopMenuOpen(false);
+    setNotificationsOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -314,13 +316,52 @@ export default function Navbar() {
         )}
 
         {/* Right Section (User Actions) */}
-        <div className="hidden md:flex items-center font-sans">
+        <div className="hidden md:flex items-center font-sans gap-3">
           {user ? (
-            <div className="flex items-center gap-4">
-              {/* User Greeting */}
-              <span className="text-sm font-medium text-gray-700">
-                Hi, {(user as any)?.name || (user as any)?.firstName || 'sashia'}
-              </span>
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationsOpen((prev) => !prev)}
+                  aria-label="Notifications"
+                  aria-expanded={notificationsOpen}
+                  className="relative grid size-10 place-items-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  <Bell className="size-5 text-gray-700" aria-hidden="true" />
+                  <span className="absolute right-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-white" />
+                </button>
+
+                {notificationsOpen && (
+                  <>
+                    <button
+                      className="fixed inset-0 z-40 bg-transparent"
+                      onClick={() => setNotificationsOpen(false)}
+                      aria-label="Close notifications"
+                    />
+                    <div
+                      role="dialog"
+                      aria-label="Notifications"
+                      className="fixed right-0 top-full mt-2 z-50 w-80 sm:w-96 origin-top-right rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                        <h2 className="font-semibold text-gray-900">Notifications</h2>
+                        <button
+                          onClick={() => setNotificationsOpen(false)}
+                          aria-label="Close"
+                          className="grid size-8 place-items-center rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                          <X className="size-4 text-gray-600" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto">
+                        <li className="px-4 py-3 text-center text-gray-500 text-sm">
+                          No new notifications
+                        </li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Create Event CTA */}
               <button

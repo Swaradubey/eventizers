@@ -5,6 +5,107 @@ import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 import { deduplicateTextLayers, getCleanTemplateSvg } from "./layoutUtils";
 
+export const isDarkColor = (colorStr?: string | null): boolean => {
+  if (!colorStr) return false;
+  const c = colorStr.trim().toLowerCase();
+  if (c === "transparent" || c === "none") return false;
+  if (
+    c === "black" ||
+    c === "#000" ||
+    c === "#000000" ||
+    c === "#111" ||
+    c === "#111111" ||
+    c === "#141414" ||
+    c === "#1a1a1a" ||
+    c === "#1c1f1e" ||
+    c === "#223326" ||
+    c === "#0a0b10" ||
+    c === "#1e1e1e" ||
+    c === "#2c241e"
+  ) {
+    return true;
+  }
+  if (c.startsWith("#")) {
+    const hex = c.replace("#", "");
+    if (hex.length === 3) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+    }
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+    }
+  }
+  if (c.startsWith("rgb")) {
+    const match = c.match(/\d+/g);
+    if (match && match.length >= 3) {
+      const r = parseInt(match[0], 10);
+      const g = parseInt(match[1], 10);
+      const b = parseInt(match[2], 10);
+      return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+    }
+  }
+  return false;
+};
+
+export const getContrastingTextColor = (
+  textColor?: string | null,
+  cardBg?: string | null
+): string => {
+  const isDarkBg = isDarkColor(cardBg);
+  if (!textColor || textColor === "transparent" || textColor === "inherit") {
+    return isDarkBg ? "#F9FAFB" : "#111827";
+  }
+  const isTextDark = isDarkColor(textColor);
+  if (isDarkBg && isTextDark) {
+    return "#F9FAFB";
+  }
+  if (!isDarkBg && !isTextDark) {
+    return "#111827";
+  }
+  return textColor;
+};
+
+export const normalizeFontFamilyWithFallback = (fontFamily?: string | null): string => {
+  if (!fontFamily) return "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+  const f = fontFamily.trim();
+  const lower = f.toLowerCase();
+  if (
+    lower.includes("serif") ||
+    lower.includes("sans-serif") ||
+    lower.includes("cursive") ||
+    lower.includes("monospace")
+  ) {
+    return f;
+  }
+  if (
+    lower.includes("playfair") ||
+    lower.includes("cinzel") ||
+    lower.includes("cormorant") ||
+    lower.includes("bodoni") ||
+    lower.includes("garamond") ||
+    lower.includes("merriweather") ||
+    lower.includes("prata") ||
+    lower.includes("marcellus")
+  ) {
+    return `${f}, Georgia, 'Times New Roman', serif`;
+  }
+  if (
+    lower.includes("vibes") ||
+    lower.includes("script") ||
+    lower.includes("dancing") ||
+    lower.includes("caveat") ||
+    lower.includes("parisienne")
+  ) {
+    return `${f}, 'Brush Script MT', cursive, Georgia, serif`;
+  }
+  return `${f}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
+};
+
 export interface EviteCardPreviewProps {
   template?: any;
   templateId?: string | null;
@@ -55,37 +156,6 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const activeInteractive = isInteractive || interactive;
   const handleTextSelect = onSelectText || onTextClick;
   const [imgError, setImgError] = React.useState(false);
-
-  // ── Admin Layer Editor: layered template detection ────────────────────────
-  // Templates published with the Admin Layer Editor store a RAW background
-  // image plus separate (absolute positioned) text layers. Their raster
-  // thumbnail must therefore NOT be treated as a finalized, text-baked
-  // snapshot — otherwise only the background image renders on preview cards
-  // and the configured text layers never appear.
-  let templateContentObj: any = {};
-  const rawTemplateContent = resolvedTemplate?.content;
-  if (typeof rawTemplateContent === "string" && rawTemplateContent) {
-    try {
-      templateContentObj = JSON.parse(rawTemplateContent);
-    } catch (_) {
-      templateContentObj = {};
-    }
-  } else if (rawTemplateContent && typeof rawTemplateContent === "object") {
-    templateContentObj = rawTemplateContent;
-  }
-
-  const templateLayerSets = [
-    resolvedTemplate?.textLayers,
-    resolvedTemplate?.defaultTextLayers,
-    resolvedTemplate?.defaultTextBlocks,
-    resolvedTemplate?.layers,
-    resolvedTemplate?.canvasData?.layers,
-    templateContentObj?.defaultTextLayers,
-    templateContentObj?.canvasData?.layers,
-  ];
-  const hasTemplateLayers = templateLayerSets.some((s) => Array.isArray(s) && s.length > 0);
-  const isLayeredTemplate =
-    hasTemplateLayers && Boolean(resolvedTemplate?.isLayered || templateContentObj?.isLayered);
 
   // 1. Resolve Backdrop color or gradient or texture image
   const rawBackdrop =
@@ -227,11 +297,9 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
   // If dynamic text layers or interactive mode are present, NEVER use snapshot as card background!
   // Otherwise the snapshot (with baked-in text) renders under dynamic text layers, causing double-text!
-  // Layered templates (Admin Layer Editor) also keep their live text layers visible on top of the raw background.
   const hasDynamicLayers = Boolean(
     (overrideTextLayers && overrideTextLayers.length > 0) ||
-    activeInteractive ||
-    isLayeredTemplate
+    activeInteractive
   );
 
   const isSnapshotUsable = Boolean(
@@ -244,6 +312,9 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
   const displayArtwork = isSnapshotUsable ? candidateSnapshot : cleanCardArtwork;
 
   // 4. Resolve layers from override, textLayers, or defaultTextLayers
+  const candidateConfig = effectiveTemplateId ? getTemplateConfig(effectiveTemplateId) : null;
+  const configLayers = candidateConfig?.defaultTextLayers || candidateConfig?.textLayers || (candidateConfig as any)?.defaultTextBlocks || [];
+
   const rawBaseLayers: any[] =
     overrideTextLayers && overrideTextLayers.length > 0
       ? overrideTextLayers
@@ -253,23 +324,61 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
       ? resolvedTemplate.textLayers
       : resolvedTemplate.defaultTextLayers && resolvedTemplate.defaultTextLayers.length > 0
       ? resolvedTemplate.defaultTextLayers
-      : Array.isArray(resolvedTemplate.canvasData?.layers) && resolvedTemplate.canvasData.layers.length > 0
-      ? resolvedTemplate.canvasData.layers
-      : Array.isArray(resolvedTemplate.layers) && resolvedTemplate.layers.length > 0
-      ? resolvedTemplate.layers
-      : Array.isArray(templateContentObj?.defaultTextLayers) && templateContentObj.defaultTextLayers.length > 0
-      ? templateContentObj.defaultTextLayers
-      : Array.isArray(templateContentObj?.canvasData?.layers) && templateContentObj.canvasData.layers.length > 0
-      ? templateContentObj.canvasData.layers
-      : [];
+      : resolvedTemplate.textElements && resolvedTemplate.textElements.length > 0
+      ? resolvedTemplate.textElements
+      : configLayers.length > 0
+      ? configLayers
+      : [
+          {
+            id: "fb-title",
+            key: "title",
+            text: resolvedTemplate.title || resolvedTemplate.name || "Celebration Invitation",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#111827",
+            top: 42,
+            left: 50,
+          },
+          {
+            id: "fb-subtitle",
+            key: "subtitle",
+            text: "Please join us to celebrate",
+            fontFamily: "'Inter', system-ui, sans-serif",
+            fontSize: 12,
+            fontWeight: 400,
+            color: "#4B5563",
+            top: 32,
+            left: 50,
+          },
+          {
+            id: "fb-datetime",
+            key: "datetime",
+            text: "Saturday, October 24 at 6:00 PM",
+            fontFamily: "'Inter', system-ui, sans-serif",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#4B5563",
+            top: 56,
+            left: 50,
+          },
+          {
+            id: "fb-venue",
+            key: "venue",
+            text: "The Grand Pavilion",
+            fontFamily: "'Inter', system-ui, sans-serif",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#4B5563",
+            top: 68,
+            left: 50,
+          },
+        ];
   const baseLayers = deduplicateTextLayers(rawBaseLayers);
 
   // Inject customized event values into the text layers
   const rawLayers = baseLayers.map((layer: any) => {
-    let text =
-      layer.text ||
-      (typeof layer.content === "string" ? layer.content : "") ||
-      "";
+    let text = layer.text || "";
     const key = (layer.key || layer.id || "").toLowerCase();
 
     if (event) {
@@ -337,7 +446,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
 
     return {
       ...layer,
-      text,
+      text: text || "Event Details",
     };
   });
 
@@ -362,12 +471,25 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           hoverScale ? "group-hover:scale-[1.02]" : ""
         } ${className}`}
       >
-        <img
-          src={candidateSnapshot}
-          alt={resolvedTemplate.title || ""}
-          loading="lazy"
-          className="w-full h-full object-cover pointer-events-none select-none"
-        />
+        {!imgError ? (
+          <img
+            src={candidateSnapshot}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover pointer-events-none select-none"
+          />
+        ) : (
+          <div className="w-full h-full bg-[#FAF8F5] flex flex-col items-center justify-center p-6 text-center">
+            <h4 className="font-serif text-lg font-bold text-neutral-900 mb-1">
+              {resolvedTemplate.title || "Invitation"}
+            </h4>
+            <p className="text-xs text-neutral-500 font-sans">
+              {resolvedTemplate.category || "Curated Template"}
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -458,8 +580,9 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           <img
             src={displayArtwork}
             alt=""
+            aria-hidden="true"
             loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{ zIndex: 0 }}
             onError={() => setImgError(true)}
           />
@@ -487,6 +610,8 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                   const rawLeft = pos?.left !== undefined ? pos.left : (layer.left !== undefined ? layer.left : (layer.x !== undefined ? layer.x : 50));
                   const topPct = typeof rawTop === "string" ? parseFloat(rawTop.replace("%", "")) : rawTop;
                   const leftPct = typeof rawLeft === "string" ? parseFloat(rawLeft.replace("%", "")) : rawLeft;
+                  const fontColor = getContrastingTextColor(layer.color, cardBg);
+                  const fontFamilyWithFallback = normalizeFontFamilyWithFallback(layer.fontFamily);
 
                   return (
                     <div
@@ -501,11 +626,11 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                         transform: "translate(-50%, -50%)",
                         maxWidth: "88%",
                         width: "max-content",
-                        fontFamily: layer.fontFamily || "serif",
+                        fontFamily: fontFamilyWithFallback,
                         fontSize: `${fontScale}px`,
                         fontWeight: layer.fontWeight || 500,
                         fontStyle: layer.fontStyle || undefined,
-                        color: layer.color || "#111827",
+                        color: fontColor,
                         background: isFoil
                           ? layer.foilGradient ||
                             "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)"
@@ -525,7 +650,7 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                             : undefined,
                         lineHeight: layer.lineHeight || 1.25,
                         zIndex: 30,
-                        textShadow: "0 1px 1px rgba(255,255,255,0.4)",
+                        textShadow: isDarkColor(cardBg) ? "0 1px 2px rgba(0,0,0,0.5)" : "0 1px 1px rgba(255,255,255,0.4)",
                       }}
                     >
                       {layer.text}
@@ -539,6 +664,8 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                   const isFoil = Boolean(layer.foilGradient || layer.isFoil);
                   const baseFontSize = layer.fontSize || 14;
                   const fontScale = Math.max(7.5, Math.round(baseFontSize * 0.45));
+                  const fontColor = getContrastingTextColor(layer.color, cardBg);
+                  const fontFamilyWithFallback = normalizeFontFamilyWithFallback(layer.fontFamily);
 
                   return (
                     <div
@@ -548,10 +675,10 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
                         activeInteractive ? "cursor-pointer hover:opacity-80" : ""
                       }`}
                       style={{
-                        fontFamily: layer.fontFamily || "serif",
+                        fontFamily: fontFamilyWithFallback,
                         fontSize: `${fontScale}px`,
                         fontWeight: layer.fontWeight || 500,
-                        color: layer.color || "#111827",
+                        color: fontColor,
                         background: isFoil
                           ? layer.foilGradient ||
                             "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)"

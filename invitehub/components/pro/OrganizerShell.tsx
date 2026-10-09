@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useProAuth } from "@/context/ProAuthContext";
 import {
   Sparkles,
   LayoutDashboard,
@@ -21,6 +22,8 @@ import {
   Eye,
   Check,
   MoreHorizontal,
+  Loader2,
+  LogOut,
 } from "lucide-react";
 
 const NOTIFICATIONS = [
@@ -90,9 +93,28 @@ const MOBILE_PRIMARY_NAV = ["Overview", "Events", "Ticketing", "Check-in", "Cont
 
 export default function OrganizerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { proUser, loading: proLoading, proLogout } = useProAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [moreNavOpen, setMoreNavOpen] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+
+  // Pro authentication guard: strictly requires Pro login
+  useEffect(() => {
+    if (proLoading) return;
+
+    if (!proUser) {
+      router.replace("/pro/login");
+    }
+  }, [proUser, proLoading, router]);
+
+  const handleProLogout = async () => {
+    try {
+      await proLogout();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
   // AI chat states
   const [aiMessages, setAiMessages] = useState<Array<{
@@ -200,22 +222,43 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
     return pathname === item.href || pathname?.startsWith(item.href + "/");
   };
 
+  // Derive user display info
+  const displayName = proUser?.name || proUser?.email?.split("@")[0] || "Organizer";
+  const userInitial = displayName.charAt(0).toUpperCase();
+
+  // Show loading while checking pro authentication
+  if (proLoading || !proUser) {
+    return (
+      <div className="eventizers-root min-h-svh bg-background text-foreground flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm font-medium text-foreground/55">Loading Pro Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="eventizers-root min-h-svh bg-background text-foreground selection:bg-primary selection:text-primary-foreground lg:grid lg:grid-cols-[264px_1fr]">
+    <div className="pro-dashboard organizer-shell eventizers-root min-h-svh bg-background text-foreground selection:bg-primary selection:text-primary-foreground lg:grid lg:grid-cols-[264px_1fr]">
       {/* ============================================================== */}
       {/* Desktop Sidebar */}
       {/* ============================================================== */}
       <aside
-        className="sticky top-0 hidden h-svh flex-col gap-8 border-r border-white/10 px-5 py-6 lg:flex"
+        className="sticky top-0 hidden h-svh flex-col gap-4 border-r border-white/10 px-5 pt-5 pb-6 lg:flex overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.12)_transparent]"
         aria-label="Organizer"
       >
         {/* Brand logo */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Link href="/pro/dashboard" aria-label="Eventizers home" className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
               <Sparkles className="size-4" aria-hidden="true" />
             </span>
-            <span className="font-display text-xl font-extrabold tracking-tight">eventizers</span>
+            <span
+              className="font-display text-xl font-extrabold tracking-tight"
+              style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+            >
+              eventizers
+            </span>
           </Link>
           <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary-foreground">
             Pro
@@ -245,18 +288,28 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
         </nav>
 
         {/* User profile card */}
-        <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3">
-          <span
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-accent font-display text-sm font-extrabold text-primary-foreground"
-            aria-label="Alex, organizer"
-            role="img"
-          >
-            A
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Alex Rivera</p>
-            <p className="truncate text-xs text-foreground/55">Eventizers Events</p>
+        <div className="rounded-2xl bg-white/5 p-3 shrink-0 mt-2">
+          <div className="flex items-center gap-3">
+            <span
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-accent font-display text-sm font-extrabold text-primary-foreground"
+              aria-label={`${displayName}, organizer`}
+              role="img"
+            >
+              {userInitial}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{displayName}</p>
+              <p className="truncate text-xs text-foreground/55">{proUser?.email || "Pro Organizer"}</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleProLogout}
+            className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs font-medium text-foreground/60 transition hover:bg-white/10 hover:text-red-400 cursor-pointer"
+          >
+            <LogOut className="size-3.5" aria-hidden="true" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -272,14 +325,19 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
               <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
                 <Sparkles className="size-4" aria-hidden="true" />
               </span>
-              <span className="font-display text-xl font-extrabold tracking-tight">eventizers</span>
+              <span
+                className="font-display text-xl font-extrabold tracking-tight"
+                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+              >
+                eventizers
+              </span>
             </Link>
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary-foreground">
               Pro
             </span>
           </div>
 
-          <p className="hidden text-sm text-foreground/55 lg:block">
+          <p className="hidden text-sm text-foreground/55 lg:block font-display" style={{ fontFamily: "'Red Rose', Georgia, serif" }}>
             Eventizers Pro · Organizer dashboard
           </p>
 
@@ -321,7 +379,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                     className="fixed inset-x-3 top-[4.5rem] z-50 origin-top-right overflow-hidden rounded-3xl border border-white/10 bg-[#12181d] shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-[3.25rem] sm:w-[380px]"
                   >
                     <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
-                      <h2 className="font-display text-base font-extrabold">Notifications</h2>
+                      <h2
+                        className="font-display text-base font-extrabold"
+                        style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                      >
+                        Notifications
+                      </h2>
                       <button
                         type="button"
                         onClick={() => setNotificationsOpen(false)}
@@ -356,10 +419,10 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
             <div className="lg:hidden">
               <span
                 className="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-accent font-display text-sm font-extrabold text-primary-foreground"
-                aria-label="Alex, organizer"
+                aria-label={`${displayName}, organizer`}
                 role="img"
               >
-                A
+                {userInitial}
               </span>
             </div>
           </div>
@@ -441,7 +504,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
             className="fixed inset-x-0 bottom-0 z-[56] rounded-t-[2rem] border border-white/10 bg-[#12181d] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:hidden animate-in slide-in-from-bottom duration-300"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl font-extrabold">More</h2>
+              <h2
+                className="font-display text-xl font-extrabold"
+                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+              >
+                More
+              </h2>
               <button
                 type="button"
                 onClick={() => setMoreNavOpen(false)}
@@ -465,6 +533,21 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                 </li>
               ))}
             </ul>
+
+            {/* Mobile Sign Out button in More drawer */}
+            <div className="mt-4 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreNavOpen(false);
+                  handleProLogout();
+                }}
+                className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 px-4 text-[15px] font-semibold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
+              >
+                <LogOut className="size-4" />
+                <span>Sign Out from Pro</span>
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -492,7 +575,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                   <Sparkles className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 className="font-display text-lg font-extrabold leading-none">Eventizers AI</h2>
+                  <h2
+                    className="font-display text-lg font-extrabold leading-none"
+                    style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                  >
+                    Eventizers AI
+                  </h2>
                   <p className="mt-1 text-xs text-foreground/55">
                     Knows every event, channel and campaign
                   </p>

@@ -27,6 +27,9 @@ import {
   KeyRound,
   QrCode,
   PartyPopper,
+  Link2,
+  CalendarDays,
+  ScanLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -158,19 +161,14 @@ export default function Sidebar() {
       ]
     : [
         {
-          label: "My Events",
+          label: "Overview",
+          href: "/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Events",
           href: "/dashboard/events",
-          icon: Calendar,
-        },
-        {
-          label: "Guests",
-          href: "/dashboard/guests",
-          icon: Users,
-        },
-        {
-          label: "Canvas",
-          href: "/dashboard/invitations",
-          icon: Mail,
+          icon: CalendarDays,
         },
         {
           label: "Ticketing",
@@ -178,14 +176,9 @@ export default function Sidebar() {
           icon: Ticket,
         },
         {
-          label: "Check-In",
+          label: "Check-in",
           href: "/dashboard/check-in",
-          icon: UserCheck,
-        },
-        {
-          label: "Messages",
-          href: "/dashboard/messages",
-          icon: MessageSquare,
+          icon: ScanLine,
         },
         {
           label: "Analytics",
@@ -193,19 +186,14 @@ export default function Sidebar() {
           icon: BarChart3,
         },
         {
-          label: "Security",
-          href: "/dashboard/security",
-          icon: Shield,
+          label: "AI Agent",
+          href: "/dashboard/ai",
+          icon: Sparkles,
         },
         {
-          label: "Billing",
-          href: "/dashboard/billing",
-          icon: CreditCard,
-        },
-        {
-          label: "Settings",
-          href: "/dashboard/settings",
-          icon: Settings,
+          label: "Connections",
+          href: "/dashboard/connections",
+          icon: Link2,
         },
       ];
 

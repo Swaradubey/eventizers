@@ -17,6 +17,7 @@ import {
   Link2,
   Bell,
   X,
+  ChevronDown,
   Play,
   ArrowUp,
   Eye,
@@ -24,6 +25,8 @@ import {
   MoreHorizontal,
   Loader2,
   LogOut,
+  User,
+  Settings,
 } from "lucide-react";
 
 const NOTIFICATIONS = [
@@ -98,6 +101,7 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [moreNavOpen, setMoreNavOpen] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Pro authentication guard: strictly requires Pro login
   useEffect(() => {
@@ -144,6 +148,7 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
         setNotificationsOpen(false);
         setMoreNavOpen(false);
         setAiAssistantOpen(false);
+        setProfileOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -239,7 +244,7 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="eventizers-root min-h-svh bg-background text-foreground selection:bg-primary selection:text-primary-foreground lg:grid lg:grid-cols-[264px_1fr]">
+    <div className="pro-dashboard organizer-shell eventizers-root min-h-svh bg-background text-foreground selection:bg-primary selection:text-primary-foreground lg:grid lg:grid-cols-[264px_1fr]">
       {/* ============================================================== */}
       {/* Desktop Sidebar */}
       {/* ============================================================== */}
@@ -253,7 +258,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
             <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
               <Sparkles className="size-4" aria-hidden="true" />
             </span>
-            <span className="font-display text-xl font-extrabold tracking-tight">eventizers</span>
+            <span
+              className="font-display text-xl font-extrabold tracking-tight"
+              style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+            >
+              eventizers
+            </span>
           </Link>
           <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary-foreground">
             Pro
@@ -294,7 +304,6 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{displayName}</p>
-              <p className="truncate text-xs text-foreground/55">{proUser?.email || "Pro Organizer"}</p>
             </div>
           </div>
           <button
@@ -320,14 +329,19 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
               <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
                 <Sparkles className="size-4" aria-hidden="true" />
               </span>
-              <span className="font-display text-xl font-extrabold tracking-tight">eventizers</span>
+              <span
+                className="font-display text-xl font-extrabold tracking-tight"
+                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+              >
+                eventizers
+              </span>
             </Link>
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary-foreground">
               Pro
             </span>
           </div>
 
-          <p className="hidden text-sm text-foreground/55 lg:block">
+          <p className="hidden text-sm text-foreground/55 lg:block font-display" style={{ fontFamily: "'Red Rose', Georgia, serif" }}>
             Eventizers Pro · Organizer dashboard
           </p>
 
@@ -369,7 +383,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                     className="fixed inset-x-3 top-[4.5rem] z-50 origin-top-right overflow-hidden rounded-3xl border border-white/10 bg-[#12181d] shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-[3.25rem] sm:w-[380px]"
                   >
                     <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
-                      <h2 className="font-display text-base font-extrabold">Notifications</h2>
+                      <h2
+                        className="font-display text-base font-extrabold"
+                        style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                      >
+                        Notifications
+                      </h2>
                       <button
                         type="button"
                         onClick={() => setNotificationsOpen(false)}
@@ -395,6 +414,85 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                         </li>
                       ))}
                     </ul>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProfileOpen((prev) => !prev)}
+                aria-label="Profile menu"
+                aria-expanded={profileOpen}
+                aria-haspopup="true"
+                className="flex items-center gap-2 rounded-full bg-white/8 hover:bg-white/12 transition p-1 pr-3"
+              >
+                <span
+                  className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary to-accent font-display text-sm font-extrabold text-primary-foreground"
+                  style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                >
+                  {userInitial}
+                </span>
+                <ChevronDown className="size-4 text-foreground/50 hidden sm:block" />
+              </button>
+
+              {profileOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 bg-transparent"
+                    onClick={() => setProfileOpen(false)}
+                    aria-label="Close profile menu"
+                  />
+                  <div
+                    role="menu"
+                    aria-label="Profile menu"
+                    className="fixed right-0 top-full mt-2 z-50 w-56 origin-top-right rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden py-1"
+                  >
+                    <div className="px-4 py-3 border-b border-white/10">
+                      <p className="font-extrabold text-sm text-foreground font-display" style={{ fontFamily: "'Red Rose', Georgia, serif" }}>
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-foreground/45 truncate">
+                        {proUser?.email || ''}
+                      </p>
+                    </div>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        router.push('/pro/dashboard/settings');
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/8 hover:text-foreground transition-colors"
+                    >
+                      <User className="size-4 text-foreground/50" aria-hidden="true" />
+                      Profile
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        router.push('/pro/dashboard/settings');
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/8 hover:text-foreground transition-colors"
+                    >
+                      <Settings className="size-4 text-foreground/50" aria-hidden="true" />
+                      Settings
+                    </button>
+                    <hr className="my-1 border-white/10" />
+                    <button
+                      role="menuitem"
+                      onClick={async () => {
+                        setProfileOpen(false);
+                        await handleProLogout();
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <LogOut className="size-4" aria-hidden="true" />
+                      Logout
+                    </button>
                   </div>
                 </>
               )}
@@ -489,7 +587,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
             className="fixed inset-x-0 bottom-0 z-[56] rounded-t-[2rem] border border-white/10 bg-[#12181d] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:hidden animate-in slide-in-from-bottom duration-300"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl font-extrabold">More</h2>
+              <h2
+                className="font-display text-xl font-extrabold"
+                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+              >
+                More
+              </h2>
               <button
                 type="button"
                 onClick={() => setMoreNavOpen(false)}
@@ -555,7 +658,12 @@ export default function OrganizerShell({ children }: { children: React.ReactNode
                   <Sparkles className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 className="font-display text-lg font-extrabold leading-none">Eventizers AI</h2>
+                  <h2
+                    className="font-display text-lg font-extrabold leading-none"
+                    style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                  >
+                    Eventizers AI
+                  </h2>
                   <p className="mt-1 text-xs text-foreground/55">
                     Knows every event, channel and campaign
                   </p>
