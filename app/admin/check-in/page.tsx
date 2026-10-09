@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import adminService from "../../../services/adminService";
 import { CheckInGuest, CheckInSummary } from "../../../types/checkInTypes";
 import {

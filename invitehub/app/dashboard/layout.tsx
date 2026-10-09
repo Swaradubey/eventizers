@@ -43,7 +43,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         } else if (user?.role === "GUEST") {
           router.replace("/dashboard/guest");
         } else {
-          router.replace("/dashboard/ai-assistant");
+          router.replace("/dashboard/events");
         }
       }
     }

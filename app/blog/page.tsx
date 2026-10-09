@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 import { BLOG_POSTS, getAllBlogCategories } from "@/src/data/blogs";
 import { Sparkles, Clock, ArrowRight, Search, BookOpen, ArrowLeft } from "lucide-react";

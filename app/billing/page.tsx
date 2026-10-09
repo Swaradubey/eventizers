@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 import { AlertCircle } from "lucide-react";
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSidebar } from "../../../context/SidebarContext";
 import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import gpsCheckInService, {
   GpsEvent,
   GpsArrival,

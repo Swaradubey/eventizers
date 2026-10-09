@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Mail, Lock, User as UserIcon, Phone, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/common/Logo";
 
 interface AuthModalProps {
   isOpen: boolean;

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/common/Logo";
 
 export default function LoginPage() {
   const { user, login, error, setError } = useAuth();
@@ -28,7 +28,7 @@ export default function LoginPage() {
         if (redirectUrl && redirectUrl.startsWith("/")) {
           router.push(redirectUrl);
         } else {
-          router.push("/dashboard/ai-assistant");
+          router.push("/dashboard/events");
         }
       }
     }
@@ -56,8 +56,18 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
-
+      const loggedUser = await login(email, password);
+      if (loggedUser) {
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const redirectUrl = params?.get("redirect");
+        if (redirectUrl && redirectUrl.startsWith("/")) {
+          router.push(redirectUrl);
+        } else if (loggedUser.role === "ADMIN") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/dashboard/events");
+        }
+      }
     } catch (err: any) {
       // Error is set in AuthContext
     } finally {
@@ -70,7 +80,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md mx-auto my-auto">
         {/* Branding Header */}
         <div className="text-center">
-          <Logo size="lg" className="mb-2 sm:mb-3" />
+          <Logo size="lg" className="mb-2 sm:mb-3 justify-center" textClassName="!text-black !font-black" />
           <h2 className="text-2xl sm:text-[26px] font-display font-semibold text-[#2D1B3D] tracking-tight">
             Welcome back
           </h2>

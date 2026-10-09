@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import checkInService from "../../../services/checkInService";
 import gpsCheckInService, {
   GpsEvent,

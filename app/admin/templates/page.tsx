@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import templateService, { Template } from "../../../services/templateService";
 import {
   Plus, Search, Trash2, ExternalLink, UploadCloud,
@@ -139,7 +139,7 @@ export default function AdminTemplatesPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) router.push("/login?redirect=/admin/templates");
-      else if (user.role !== "ADMIN") router.push("/dashboard/ai-assistant");
+      else if (user.role !== "ADMIN") router.push("/dashboard/events");
     }
   }, [user, authLoading, router]);
 

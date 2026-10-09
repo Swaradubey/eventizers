@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import { BillingAPI, BillingInfoResponse, PaymentMethod, Invoice } from "../../../services/billingService";
 import API from "../../../services/api";
 import BillingUsageCard from "../../../components/dashboard/billing/BillingUsageCard";

@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { XCircle } from "lucide-react";

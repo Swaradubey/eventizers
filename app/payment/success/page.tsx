@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 import ticketingService from "@/services/ticketingService";
 import { CheckCircle, AlertCircle, Ticket, Calendar, User, DollarSign } from "lucide-react";

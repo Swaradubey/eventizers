@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import messageService, { Message, UserStats, MessageDetail } from "../../../services/messageService";
 import eventService, { Event } from "../../../services/eventService";
 import guestService from "../../../services/guestService";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import { Guest } from "../../../types/guestTypes";
 import {
   Plus,

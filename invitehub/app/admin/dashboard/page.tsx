@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import EventModal from "../../../components/EventModal";
 import adminService, { AdminEvent, AdminDashboardStats } from "../../../services/adminService";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import { getImageUrl } from "../../../utils/imageUrl";
 import EventThumbnail from "../../../components/EventThumbnail";
 

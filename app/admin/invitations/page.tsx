@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import adminService, { AdminInvitation } from "../../../services/adminService";
 import { getImageUrl } from "../../../utils/imageUrl";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import {
   Edit2,
   Trash2,

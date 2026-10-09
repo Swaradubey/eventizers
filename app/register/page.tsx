@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowRight, User, Lock, Mail, Eye, EyeOff, Phone } from "lucide-react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/common/Logo";
 
 export default function RegisterPage() {
   const { user, register, error, setError } = useAuth();
@@ -19,10 +19,16 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, redirect to ai-assistant page
+  // If user is already logged in, redirect to appropriate destination
   useEffect(() => {
     if (user) {
-      router.push("/dashboard/ai-assistant");
+      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const redirectUrl = params?.get("redirect");
+      if (redirectUrl && redirectUrl.startsWith("/")) {
+        router.push(redirectUrl);
+      } else {
+        router.push("/dashboard/events");
+      }
     }
   }, [user, router]);
 

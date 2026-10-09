@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import { useSidebar } from "../../../context/SidebarContext";
 import { useTheme } from "../../../context/ThemeContext";
 import settingsService, {

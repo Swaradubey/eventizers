@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import adminService, { AdminManagedUser } from "../../../services/adminService";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import {
   UserCog,
   Search,

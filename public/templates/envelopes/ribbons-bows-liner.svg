@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
-  <defs>
-    <pattern id="bwStripes" width="30" height="30" patternUnits="userSpaceOnUse">
-      <rect width="15" height="30" fill="#18181B" />
-      <rect x="15" width="15" height="30" fill="#FFFFFF" />
-    </pattern>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#bwStripes)" />
-</svg>

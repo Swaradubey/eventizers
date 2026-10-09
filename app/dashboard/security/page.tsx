@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import securityService from "../../../services/securityService";
 import AttendanceGuaranteeSection from "../../../components/AttendanceGuaranteeSection";
 import { SecurityStats, SecurityAlert, AuditLog } from "../../../types/securityTypes";

@@ -1,0 +1,478 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Red+Rose:wght@300..700&display=swap');
+
+/* Eventizers Scoped Theme & Tokens */
+.eventizers-root {
+  --background: #080d11;
+  --foreground: #f5f5f2;
+  --card: #12181d;
+  --card-foreground: #f5f5f2;
+  --primary: #feba08;
+  --primary-foreground: #080d11;
+  --accent: #ff3a5d;
+  --accent-foreground: #fafaf7;
+  --muted: #1a2026;
+  --muted-foreground: #95a0ab;
+  --border: rgba(255, 255, 255, 0.12);
+  --ring: #feba08;
+  --radius: 1rem;
+  
+  color-scheme: dark;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: clip;
+}
+
+.eventizers-root * {
+  box-sizing: border-box;
+}
+
+.eventizers-root .font-display {
+  font-family: 'Red Rose', Georgia, serif;
+}
+
+.eventizers-root .font-sans,
+.eventizers-root .font-body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* CRITICAL: CSS Container Queries */
+.eventizers-root .\@container,
+.\@container {
+  container-type: inline-size;
+}
+
+/* CRITICAL: Theme Color Overrides to prevent conflicting Tailwind presets */
+.eventizers-root .bg-primary {
+  background-color: var(--primary) !important;
+}
+.eventizers-root .text-primary {
+  color: var(--primary) !important;
+}
+.eventizers-root .border-primary {
+  border-color: var(--primary) !important;
+}
+.eventizers-root .bg-primary-foreground {
+  background-color: var(--primary-foreground) !important;
+}
+.eventizers-root .text-primary-foreground {
+  color: var(--primary-foreground) !important;
+}
+.eventizers-root .bg-foreground {
+  background-color: var(--foreground) !important;
+}
+.eventizers-root .text-foreground {
+  color: var(--foreground) !important;
+}
+.eventizers-root .bg-card {
+  background-color: var(--card) !important;
+}
+.eventizers-root .text-card-foreground {
+  color: var(--card-foreground) !important;
+}
+.eventizers-root .bg-accent {
+  background-color: var(--accent) !important;
+}
+.eventizers-root .text-accent {
+  color: var(--accent) !important;
+}
+.eventizers-root .text-accent-foreground {
+  color: var(--accent-foreground) !important;
+}
+.eventizers-root .border-border {
+  border-color: var(--border) !important;
+}
+
+/* Glassmorphism */
+.eventizers-root .glass {
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.eventizers-root .glass-card {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  background: rgba(18, 24, 29, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Animated Gold Text Sheen */
+.eventizers-root .gold-text {
+  color: transparent !important;
+  animation: 3.6s linear infinite sheen;
+  animation-play-state: var(--play, running);
+  background: linear-gradient(100deg, #d0901e 20%, #fff2b9 45%, #d0901e 70%) 0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Ken Burns Zoom Effect */
+.eventizers-root .kb {
+  animation: 11s ease-in-out infinite alternate kenburns;
+  animation-play-state: var(--play, running);
+  will-change: transform;
+}
+
+/* Retro VHS Scanlines */
+.eventizers-root .scanlines {
+  position: relative;
+}
+.eventizers-root .scanlines::after {
+  content: "";
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+/* VHS Jitter */
+.eventizers-root .jitter {
+  animation: 0.5s steps(2, end) infinite jitter;
+  animation-play-state: var(--play, running);
+}
+
+/* Wipe Transitions */
+.eventizers-root .wipe {
+  animation: 6s cubic-bezier(0.65, 0, 0.35, 1) infinite wipe;
+  animation-play-state: var(--play, running);
+}
+
+.eventizers-root .wipe-line {
+  animation: 6s cubic-bezier(0.65, 0, 0.35, 1) infinite wipe-line;
+  animation-play-state: var(--play, running);
+}
+
+/* Sequences */
+.eventizers-root .seq-a {
+  animation: 7s ease-in-out infinite seq-a;
+  animation-play-state: var(--play, running);
+}
+
+.eventizers-root .seq-b {
+  animation: 7s ease-in-out infinite seq-b;
+  animation-play-state: var(--play, running);
+}
+
+.eventizers-root .seq-c {
+  animation: 7s ease-in-out infinite seq-c;
+  animation-play-state: var(--play, running);
+}
+
+/* Photo Fade 4 Sequence */
+.eventizers-root .fade4 {
+  animation: 12s infinite both fade4;
+  animation-play-state: var(--play, running);
+}
+
+.eventizers-root .fade4-fast {
+  animation: 5.2s infinite both fade4;
+  animation-play-state: var(--play, running);
+}
+
+/* Camera Flashes */
+.eventizers-root .flash {
+  animation: 3.2s infinite flash;
+  animation-play-state: var(--play, running);
+}
+
+/* Floating Rising Sparks */
+.eventizers-root .rise {
+  animation: 4.5s ease-in infinite rise;
+  animation-play-state: var(--play, running);
+}
+
+/* Recording / Live Blink */
+.eventizers-root .blink {
+  animation: 1.1s steps(2, end) infinite blink;
+  animation-play-state: var(--play, running);
+}
+
+/* Breaking News Marquee */
+.eventizers-root .marquee {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  animation: 14s linear infinite marquee;
+  animation-play-state: var(--play, running);
+}
+
+/* Floating animation */
+.eventizers-root .float-y {
+  animation: 6s ease-in-out infinite float-y;
+  animation-play-state: var(--play, running);
+}
+
+/* Keyframes */
+@keyframes kenburns {
+  0% { transform: scale(1.04) translate(0); }
+  100% { transform: scale(1.18) translate(-2.5%, -2%); }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes wipe {
+  0%, 8% { clip-path: inset(0 100% 0 0); }
+  42%, 62% { clip-path: inset(0 0 0 0); }
+  96%, 100% { clip-path: inset(0 100% 0 0); }
+}
+
+@keyframes wipe-line {
+  0%, 8% { opacity: 1; left: 0%; }
+  42% { opacity: 1; left: 100%; }
+  43%, 61% { opacity: 0; }
+  62% { opacity: 1; left: 100%; }
+  96%, 100% { opacity: 1; left: 0%; }
+}
+
+@keyframes seq-a {
+  0%, 4% { opacity: 0; transform: translateY(10px); }
+  10%, 30% { opacity: 1; transform: none; }
+  36%, 100% { opacity: 0; }
+}
+
+@keyframes seq-b {
+  0%, 32% { opacity: 0; transform: scale(0.92); }
+  40%, 64% { opacity: 1; transform: none; }
+  70%, 100% { opacity: 0; }
+}
+
+@keyframes seq-c {
+  0%, 66% { opacity: 0; transform: translateY(10px); }
+  74%, 96% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+
+@keyframes fade4 {
+  0% { opacity: 0; }
+  4%, 25% { opacity: 1; }
+  29%, 100% { opacity: 0; }
+}
+
+@keyframes flash {
+  0%, 86%, 100% { opacity: 0; }
+  88% { opacity: 0.85; }
+  93% { opacity: 0; }
+}
+
+@keyframes jitter {
+  0% { transform: translate(0); }
+  100% { transform: translate(1.5px); }
+}
+
+@keyframes sheen {
+  0% { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
+}
+
+@keyframes rise {
+  0% { opacity: 0; transform: translateY(0); }
+  15% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-160%); }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes scan-line {
+  0%, 100% { top: 8%; }
+  50% { top: 88%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 rgba(254, 186, 8, 0.55), 0 8px 30px rgba(254, 186, 8, 0.35); }
+  50% { box-shadow: 0 0 0 10px rgba(254, 186, 8, 0), 0 8px 40px rgba(254, 186, 8, 0.55); }
+}
+
+/* Hide scrollbars utility */
+.eventizers-root .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.eventizers-root .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ============================================================
+   Eventizers Pro Specific Styles & Utilities
+   ============================================================ */
+
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes spin-angle {
+  0% {
+    --angle: 0deg;
+  }
+  100% {
+    --angle: 360deg;
+  }
+}
+
+.eventizers-root .spin-border {
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--angle), var(--primary), transparent 30%, transparent 55%, var(--primary));
+  padding: 2px;
+  animation: 6s linear infinite spin-angle;
+  position: absolute;
+  inset: 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: 10;
+}
+
+.eventizers-root .tone-card {
+  isolation: isolate;
+  border: 1px solid var(--border);
+  background: var(--card);
+  position: relative;
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.4s, box-shadow 0.4s;
+}
+
+@media (hover: hover) {
+  .eventizers-root .tone-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 22px 44px -22px rgba(254, 186, 8, 0.35);
+  }
+  .eventizers-root .tone-card:hover .tone-icon {
+    transform: rotate(-8deg) scale(1.1);
+  }
+}
+
+.eventizers-root .tone-text {
+  color: var(--primary) !important;
+}
+
+.eventizers-root .tone-bg {
+  background-color: var(--primary) !important;
+}
+
+.eventizers-root .tone-chip {
+  background: rgba(254, 186, 8, 0.16);
+  color: var(--primary);
+  border: 1px solid rgba(254, 186, 8, 0.3);
+}
+
+.eventizers-root .tone-icon {
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.eventizers-root .dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(#000 25%, transparent 75%);
+  mask-image: radial-gradient(#000 25%, transparent 75%);
+}
+
+.eventizers-root .kb-slow {
+  animation: 28s ease-in-out infinite alternate kb-drift;
+  will-change: transform;
+}
+
+@keyframes kb-drift {
+  0% {
+    transform: scale(1.04) translate(0);
+  }
+  100% {
+    transform: scale(1.14) translate(-2%, -2%);
+  }
+}
+
+.eventizers-root .tone-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.eventizers-root .tone-range::-webkit-slider-runnable-track {
+  background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  height: 10px;
+}
+
+.eventizers-root .tone-range::-moz-range-track {
+  background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  height: 10px;
+}
+
+.eventizers-root .tone-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: #ffffff;
+  border: 5px solid var(--primary);
+  width: 26px;
+  height: 26px;
+  box-shadow: 0 0 0 6px rgba(254, 186, 8, 0.25);
+  border-radius: 999px;
+  margin-top: -8px;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.eventizers-root .tone-range::-moz-range-thumb {
+  background: #ffffff;
+  border: 5px solid var(--primary);
+  width: 26px;
+  height: 26px;
+  box-shadow: 0 0 0 6px rgba(254, 186, 8, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.eventizers-root .tone-range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.eventizers-root .grain {
+  position: relative;
+}
+
+.eventizers-root .grain::after {
+  content: "";
+  pointer-events: none;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  position: absolute;
+  inset: 0;
+}
+
+.eventizers-root .text-positive {
+  color: #10b981 !important;
+}
+
+.eventizers-root .bg-positive {
+  background-color: #10b981 !important;
+}
+
+.eventizers-root .bg-positive\/15 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.eventizers-root .bg-positive\/20 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+

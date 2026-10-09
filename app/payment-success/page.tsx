@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, AlertCircle, Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 
 interface SessionVerification {

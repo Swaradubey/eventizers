@@ -13,7 +13,7 @@ import {
   Github,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import Logo from "./Logo";
+import Logo from "@/components/common/Logo";
 import AnimatedHeading from "./AnimatedHeading";
 
 const productLinks = [
@@ -89,9 +89,9 @@ export default function Footer() {
           console.warn("Could not reset event draft storage:", err);
         }
       }
-      router.push("/dashboard/ai-assistant");
+      router.push("/dashboard/invitations?studio=true");
     } else {
-      router.push("/dashboard/ai-assistant");
+      router.push("/dashboard/invitations?studio=true");
     }
   };
 

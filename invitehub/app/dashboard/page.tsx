@@ -21,7 +21,7 @@ export default function DashboardPage() {
       ) {
         router.replace("/dashboard/check-in");
       } else {
-        router.replace("/dashboard/ai-assistant");
+        router.replace("/dashboard/events");
       }
     }
   }, [user, authLoading, router]);

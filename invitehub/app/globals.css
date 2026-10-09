@@ -3,9 +3,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "./eventizers.css";
 
 .font-questrial {
   font-family: 'Questrial', system-ui, -apple-system, sans-serif;
+}
+
+.font-display {
+  font-family: 'Red Rose', Georgia, serif;
 }
 
 :root {

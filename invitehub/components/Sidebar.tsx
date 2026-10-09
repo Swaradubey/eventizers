@@ -158,11 +158,6 @@ export default function Sidebar() {
       ]
     : [
         {
-          label: "AI Assistant",
-          href: "/dashboard/ai-assistant",
-          icon: Sparkles,
-        },
-        {
           label: "My Events",
           href: "/dashboard/events",
           icon: Calendar,
@@ -262,12 +257,35 @@ export default function Sidebar() {
         className="sidebar-shell"
         data-collapsed={collapsed}
       >
-        {/* ─── Header: Toggle ─── */}
-        <div className={`sidebar-header ${collapsed ? "sidebar-header--collapsed" : ""}`}>
-          {/* Toggle button */}
+        {/* ─── Header: Brand & Toggle ─── */}
+        <div className={`p-4 border-b border-white/30 flex items-center ${collapsed ? "flex-col gap-2 justify-center" : "justify-between gap-3"}`}>
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 overflow-hidden group focus:outline-none"
+            title="eventizers"
+          >
+            <div className="w-8 h-8 rounded-[10px] bg-[#feba08] text-[#080d11] flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105">
+              <Sparkles className="w-4 h-4 text-[#080d11]" aria-hidden="true" />
+            </div>
+            {!collapsed && (
+              <div className="overflow-hidden min-w-0">
+                <span
+                  className="font-display text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight block truncate"
+                  style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                >
+                  eventizers
+                </span>
+                <p className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                  Create. Invite. Manage.
+                </p>
+              </div>
+            )}
+          </Link>
+
+          {/* Toggle / Close button */}
           <button
             onClick={isMobileDrawer ? handleMobileClose : handleDesktopToggle}
-            className="sidebar-toggle"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/70 transition-colors flex-shrink-0 focus:outline-none"
             aria-label={
               isMobileDrawer
                 ? "Close navigation"
@@ -284,11 +302,11 @@ export default function Sidebar() {
             }
           >
             {isMobileDrawer ? (
-              <X className="sidebar-toggle-icon" />
+              <X className="w-5 h-5" />
             ) : collapsed ? (
-              <PanelLeftOpen className="sidebar-toggle-icon" />
+              <PanelLeftOpen className="w-5 h-5" />
             ) : (
-              <PanelLeftClose className="sidebar-toggle-icon" />
+              <PanelLeftClose className="w-5 h-5" />
             )}
           </button>
         </div>

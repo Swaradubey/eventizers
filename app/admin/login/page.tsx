@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/common/Logo";
 
 export default function AdminLoginPage() {
   const { user, adminLogin, error, setError } = useAuth();

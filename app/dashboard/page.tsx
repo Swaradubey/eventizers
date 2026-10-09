@@ -11,7 +11,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        router.replace("/dashboard/ai-assistant");
+        router.replace("/login");
       } else if (user.role === "GUEST") {
         router.replace("/dashboard/guest");
       } else if (
@@ -21,7 +21,7 @@ export default function DashboardPage() {
       ) {
         router.replace("/dashboard/check-in");
       } else {
-        router.replace("/dashboard/ai-assistant");
+        router.replace("/dashboard/events");
       }
     }
   }, [user, authLoading, router]);

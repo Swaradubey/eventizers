@@ -4,9 +4,9 @@ import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import EventModal from "../../../components/EventModal";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import eventService, { Event } from "../../../services/eventService";
 import { getImageUrl } from "../../../utils/imageUrl";
 import {

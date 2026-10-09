@@ -4,11 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import guestService from "../../../services/guestService";
 import eventService, { Event } from "../../../services/eventService";
 import { Guest } from "../../../types/guestTypes";
-import Pagination from "../../../components/Pagination";
+import Pagination from "@/components/admin/Pagination";
 import {
   Plus,
   Edit2,

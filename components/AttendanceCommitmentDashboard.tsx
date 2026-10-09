@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import Navbar from "./Navbar";
+import Navbar from "@/components/common/Navbar";
 import eventService, {
   Event,
   AttendanceCommitmentMetrics,

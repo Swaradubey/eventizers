@@ -7177,7 +7177,7 @@ export default function InvitationStudio({
                     const params = new URLSearchParams({ returnTo: "canvas" });
                     if (targetEventId) params.set("eventId", targetEventId);
                     setIsTemplateGalleryOpen(false);
-                    router.push(`/dashboard/ai-assistant?${params.toString()}`);
+                    router.push(`/dashboard/invitations?${params.toString()}`);
                   }}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors cursor-pointer shadow-md shadow-indigo-200"
                 >

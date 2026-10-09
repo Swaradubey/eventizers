@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/Footer";
 import { getBlogPostBySlug, BLOG_POSTS } from "@/src/data/blogs";
 import { ArrowLeft, Clock, Calendar, Share2, Sparkles, Wand2, ArrowRight } from "lucide-react";
