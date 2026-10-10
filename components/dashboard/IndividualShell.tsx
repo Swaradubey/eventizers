@@ -236,7 +236,7 @@ export default function IndividualShell({ children }: { children: React.ReactNod
       >
         {/* Brand logo */}
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/dashboard" aria-label="Eventizers home" className="flex items-center gap-2">
+          <Link href="/" aria-label="Eventizers home" className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
               <Sparkles className="size-4" aria-hidden="true" />
             </span>
@@ -302,10 +302,10 @@ export default function IndividualShell({ children }: { children: React.ReactNod
       {/* ============================================================== */}
       <div className="min-w-0">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-[4.25rem] items-center justify-between gap-3 border-b border-white/10 bg-background/85 px-4 backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[4.25rem] items-center justify-end gap-3 border-b border-white/10 bg-background/85 px-4 backdrop-blur-xl sm:px-6">
           {/* Mobile Logo */}
           <div className="flex items-center gap-2 lg:hidden">
-            <Link href="/dashboard" aria-label="Eventizers home" className="flex items-center gap-2">
+<Link href="/" aria-label="Eventizers home" className="flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground">
                 <Sparkles className="size-4" aria-hidden="true" />
               </span>
@@ -318,11 +318,8 @@ export default function IndividualShell({ children }: { children: React.ReactNod
             </Link>
           </div>
 
-          <p className="hidden text-sm text-foreground/55 lg:block">
-            Eventizers · Host dashboard
-          </p>
-
-          <div className="flex items-center gap-2">
+          {/* Right side actions group */}
+          <div className="flex items-center gap-2 lg:flex">
             {/* Desktop Ask AI button */}
             <button
               type="button"

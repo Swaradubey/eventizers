@@ -1,1371 +1,196 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import { useSidebar } from "../../../context/SidebarContext";
-import Navbar from "@/components/common/Navbar";
-import ticketingService from "../../../services/ticketingService";
-import { TicketTier, TicketTierStatus, TicketingSummary } from "../../../types/ticketingTypes";
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Calendar,
-  Ticket,
-  Search,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Menu,
-  ChevronDown,
-  Info,
-  DollarSign,
-  Users,
-  TrendingUp,
-  Clock,
-  ShoppingCart,
-  Tag,
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-
-function TicketingPageContent() {
-  const { user, loading: authLoading } = useAuth();
-  const { setIsOpen: setSidebarOpen } = useSidebar();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const queryEventId = searchParams?.get("eventId") || null;
-  const isSuccess = searchParams?.get("success") === "true";
-  const sessionId = searchParams?.get("session_id") || null;
-  const isCanceled = searchParams?.get("canceled") === "true";
-
-  // Events list for dropdown switcher
-  const [events, setEvents] = useState<{ id: string; title: string }[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(queryEventId);
-
-  const activeRequestEventIdRef = useRef<string | null>(null);
-
-  // States
-  const [summary, setSummary] = useState<TicketingSummary | null>(null);
-  const [tiers, setTiers] = useState<TicketTier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // My Tickets States
-  const [myTickets, setMyTickets] = useState<any[]>([]);
-  const [myTicketsLoading, setMyTicketsLoading] = useState(true);
-  const [myTicketsError, setMyTicketsError] = useState<string | null>(null);
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  // Verification states
-  const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "success" | "failed" | "timed_out">("idle");
-  const [verificationError, setVerificationError] = useState<string | null>(null);
-
-  // Search state
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Modals state
-  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-  const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [buyingTierId, setBuyingTierId] = useState<string | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formPrice, setFormPrice] = useState("0");
-  const [formCurrency, setFormCurrency] = useState("USD");
-  const [formCapacity, setFormCapacity] = useState("100");
-  const [formMinPerOrder, setFormMinPerOrder] = useState("1");
-  const [formMaxPerOrder, setFormMaxPerOrder] = useState("");
-  const [formSalesStartAt, setFormSalesStartAt] = useState("");
-  const [formSalesEndAt, setFormSalesEndAt] = useState("");
-  const [formIsActive, setFormIsActive] = useState(true);
-  const [formStatus, setFormStatus] = useState<TicketTierStatus>("ACTIVE");
-
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-
-  const resetForm = () => {
-    setEditingTier(null);
-    setFormName("");
-    setFormDescription("");
-    setFormPrice("0");
-    setFormCurrency("USD");
-    setFormCapacity("100");
-    setFormMinPerOrder("1");
-    setFormMaxPerOrder("");
-    setFormSalesStartAt("");
-    setFormSalesEndAt("");
-    setFormIsActive(true);
-    setFormStatus("ACTIVE");
-    setFormErrors({});
-  };
-
-  // Toast notifications
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  // Protected route check
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
-
-  // Toast auto-clear
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  // Currency Formatter Helper
-  const formatPrice = (amount: number, currency: string = "USD") => {
-    const symbol =
-      currency === "USD" ? "$" : currency === "EUR" ? "€" : currency === "INR" ? "₹" : currency === "GBP" ? "£" : "$";
-    return `${symbol}${amount.toLocaleString()}`;
-  };
-
-  // Perform single verification check
-  const verifyPaymentSession = async (sid: string, eventId: string) => {
-    try {
-      const res = await ticketingService.getSessionDetails(sid);
-      if (res.success && (res.status === "confirmed" || res.order?.status === "PAID")) {
-        setVerificationState("success");
-        setIsVerifyingPayment(false);
-        setVerificationError(null);
-        triggerToast("Ticket purchased successfully!", "success");
-
-        // Clean up search params to make page refresh idempotent
-        const url = new URL(window.location.href);
-        url.searchParams.delete("success");
-        url.searchParams.delete("session_id");
-        window.history.pushState({}, "", url.toString());
-
-        // Refresh ticket list and summary data
-        fetchTicketingData(eventId);
-        return true;
-      } else if (res.status === "failed" || res.success === false) {
-        setVerificationState("failed");
-        setIsVerifyingPayment(false);
-        setVerificationError(res.message || "Payment verification failed.");
-        triggerToast(res.message || "Payment verification failed.", "error");
-        return false;
-      }
-    } catch (err: any) {
-      console.error("Error verifying payment status:", err);
-    }
-    return false;
-  };
-
-  // Poll payment verification status on redirection back from Stripe
-  useEffect(() => {
-    let poll: any;
-    if (isSuccess && sessionId && selectedEventId) {
-      setIsVerifyingPayment(true);
-      setVerificationState("verifying");
-      setVerificationError(null);
-
-      let attempts = 0;
-      const maxAttempts = 12;
-      const intervalTime = 2000;
-
-      verifyPaymentSession(sessionId, selectedEventId).then((confirmed) => {
-        if (!confirmed) {
-          poll = setInterval(async () => {
-            attempts++;
-            const isConfirmed = await verifyPaymentSession(sessionId, selectedEventId);
-            if (isConfirmed || attempts >= maxAttempts) {
-              clearInterval(poll);
-              if (!isConfirmed && attempts >= maxAttempts) {
-                setVerificationState("timed_out");
-                setIsVerifyingPayment(false);
-                setVerificationError("Payment verification timed out. If your payment was completed, click Retry Verification.");
-                triggerToast("Payment verification timed out.", "error");
-              }
-            }
-          }, intervalTime);
-        }
-      });
-    }
-
-    return () => {
-      if (poll) clearInterval(poll);
-    };
-  }, [isSuccess, sessionId, selectedEventId]);
-
-  const handleRetryVerification = async () => {
-    const sid = sessionId || new URL(window.location.href).searchParams.get("session_id");
-    const eid = selectedEventId || new URL(window.location.href).searchParams.get("eventId");
-    if (!sid || !eid) {
-      triggerToast("No session ID found to verify.", "error");
-      return;
-    }
-
-    setIsVerifyingPayment(true);
-    setVerificationState("verifying");
-    setVerificationError(null);
-
-    const confirmed = await verifyPaymentSession(sid, eid);
-    if (!confirmed) {
-      setVerificationState("failed");
-      setIsVerifyingPayment(false);
-      setVerificationError("Could not verify payment with the server yet. Please try again or contact support.");
-    }
-  };
-
-  // Handle cancelled payment notification
-  useEffect(() => {
-    if (isCanceled) {
-      triggerToast("Ticket purchase canceled.", "error");
-      const url = new URL(window.location.href);
-      url.searchParams.delete("canceled");
-      window.history.pushState({}, "", url.toString());
-    }
-  }, [isCanceled]);
-
-  // Lock body scroll when add/edit modal is open
-  useEffect(() => {
-    if (!isAddEditModalOpen) return;
-
-    const scrollY = window.scrollY;
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const originalWidth = document.body.style.width;
-
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      document.body.style.width = originalWidth;
-      window.scrollTo(0, scrollY);
-    };
-  }, [isAddEditModalOpen]);
-
-  const triggerToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-  };
-
-  // Load events list on mount/auth
-  useEffect(() => {
-    if (user) {
-      const fetchEvents = async () => {
-        try {
-          const res = await ticketingService.getTicketingEvents();
-          if (res.success) {
-            setEvents(res.events || []);
-            // Auto-select first event if none in query params
-            if (!queryEventId && res.events && res.events.length > 0) {
-              const firstEventId = res.events[0].id;
-              setSelectedEventId(firstEventId);
-              updateUrl(firstEventId);
-            }
-          }
-        } catch (err: any) {
-          console.error("Error fetching ticketing events:", err);
-          setError("Failed to load events. Please try again.");
-        }
-      };
-      fetchEvents();
-    }
-  }, [user, queryEventId]);
-
-  const fetchMyTicketsData = async (eventId: string) => {
-    setMyTicketsLoading(true);
-    setMyTicketsError(null);
-    try {
-      const res = await ticketingService.getMyTickets(eventId);
-      if (res.success) {
-        setMyTickets(res.tickets || []);
-      }
-    } catch (err: any) {
-      console.error("Error fetching my tickets:", err);
-      setMyTicketsError(err.response?.data?.error || "Failed to load your tickets.");
-    } finally {
-      setMyTicketsLoading(false);
-    }
-  };
-
-  // Load ticketing stats and tiers when selected event changes
-  const fetchTicketingData = async (eventId: string) => {
-    setLoading(true);
-    setError(null);
-    activeRequestEventIdRef.current = eventId;
-    try {
-      const [summaryRes, tiersRes] = await Promise.all([
-        ticketingService.getEventSummary(eventId),
-        ticketingService.getEventTiers(eventId),
-        fetchMyTicketsData(eventId),
-      ]);
-
-      if (activeRequestEventIdRef.current !== eventId) return;
-
-      if (summaryRes.success) {
-        setSummary(summaryRes.summary);
-      }
-      if (tiersRes.success) {
-        setTiers(tiersRes.tiers);
-      }
-    } catch (err: any) {
-      if (activeRequestEventIdRef.current !== eventId) return;
-      console.error("Error loading ticketing data:", err);
-      setError(err.response?.data?.error || "Failed to load ticketing details for this event.");
-    } finally {
-      if (activeRequestEventIdRef.current === eventId) {
-        setLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (user && selectedEventId) {
-      fetchTicketingData(selectedEventId);
-    } else {
-      setLoading(false);
-    }
-  }, [user, selectedEventId]);
-
-  const updateUrl = (eventId: string | null) => {
-    const url = new URL(window.location.href);
-    if (eventId) {
-      url.searchParams.set("eventId", eventId);
-    } else {
-      url.searchParams.delete("eventId");
-    }
-    window.history.pushState({}, "", url.toString());
-  };
-
-  // Date formatter helpers
-  const formatDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return "N/A";
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
-  // Convert date string for datetime-local input fields
-  const formatInputDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return "";
-    return date.toISOString().slice(0, 16);
-  };
-
-  // Open modal for creating a tier
-  const handleCreateClick = () => {
-    setEditingTier(null);
-    setFormName("");
-    setFormDescription("");
-    setFormPrice("0");
-    setFormCurrency("USD");
-    setFormCapacity("100");
-    setFormMinPerOrder("1");
-    setFormMaxPerOrder("");
-    setFormSalesStartAt("");
-    setFormSalesEndAt("");
-    setFormIsActive(true);
-    setFormStatus("ACTIVE");
-    setFormErrors({});
-    setIsAddEditModalOpen(true);
-  };
-
-  // Open modal for editing a tier
-  const handleEditClick = (tier: TicketTier) => {
-    setEditingTier(tier);
-    setFormName(tier.name);
-    setFormDescription(tier.description || "");
-    setFormPrice(tier.price.toString());
-    setFormCurrency(tier.currency || "USD");
-    setFormCapacity(tier.capacity.toString());
-    setFormMinPerOrder(tier.minPerOrder.toString());
-    setFormMaxPerOrder(tier.maxPerOrder ? tier.maxPerOrder.toString() : "");
-    setFormSalesStartAt(formatInputDateTime(tier.salesStartAt));
-    setFormSalesEndAt(formatInputDateTime(tier.salesEndAt));
-    setFormIsActive(tier.isActive);
-    setFormStatus(tier.status);
-    setFormErrors({});
-    setIsAddEditModalOpen(true);
-  };
-
-  // Validate form entries
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formName.trim()) {
-      errors.name = "Ticket name is required.";
-    }
-
-    const priceVal = parseFloat(formPrice);
-    if (isNaN(priceVal) || priceVal < 0) {
-      errors.price = "Price must be 0 or greater.";
-    }
-
-    const capacityVal = parseInt(formCapacity, 10);
-    if (isNaN(capacityVal) || capacityVal <= 0) {
-      errors.capacity = "Capacity must be a positive integer.";
-    }
-
-    const minVal = parseInt(formMinPerOrder, 10);
-    if (isNaN(minVal) || minVal < 1) {
-      errors.minPerOrder = "Minimum tickets per order must be at least 1.";
-    }
-
-    if (formMaxPerOrder.trim() !== "") {
-      const maxVal = parseInt(formMaxPerOrder, 10);
-      if (isNaN(maxVal) || maxVal < minVal) {
-        errors.maxPerOrder = `Maximum tickets must be at least ${minVal}.`;
-      }
-      if (!isNaN(capacityVal) && maxVal > capacityVal) {
-        errors.maxPerOrder = "Maximum tickets cannot exceed capacity.";
-      }
-    }
-
-    if (formSalesStartAt && formSalesEndAt) {
-      const start = new Date(formSalesStartAt);
-      const end = new Date(formSalesEndAt);
-      if (end <= start) {
-        errors.salesEndAt = "Sales end date must be later than sales start date.";
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Submit tier form
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    if (!selectedEventId) return;
-
-    if (!validateForm()) {
-      triggerToast("Please fix the validation errors in the form.", "error");
-      return;
-    }
-
-    setSubmitting(true);
-    const payload = {
-      name: formName.trim(),
-      description: formDescription.trim() || undefined,
-      price: parseFloat(formPrice),
-      currency: formCurrency,
-      capacity: parseInt(formCapacity, 10),
-      minPerOrder: parseInt(formMinPerOrder, 10),
-      maxPerOrder: formMaxPerOrder.trim() !== "" ? parseInt(formMaxPerOrder, 10) : null,
-      salesStartAt: formSalesStartAt ? new Date(formSalesStartAt).toISOString() : null,
-      salesEndAt: formSalesEndAt ? new Date(formSalesEndAt).toISOString() : null,
-      status: formStatus,
-      isActive: formIsActive,
-    };
-
-    try {
-      if (editingTier && editingTier.id) {
-        const res = await ticketingService.updateTicketTier(editingTier.id, payload);
-        if (res.success) {
-          triggerToast(res.message || "Ticket tier updated successfully.");
-          setIsAddEditModalOpen(false);
-          resetForm();
-          fetchTicketingData(selectedEventId);
-        }
-      } else {
-        const res = await ticketingService.createTicketTier(selectedEventId, payload);
-        if (res.success) {
-          triggerToast(res.message || "Ticket tier created successfully.");
-          setIsAddEditModalOpen(false);
-          resetForm();
-          fetchTicketingData(selectedEventId);
-        }
-      }
-    } catch (err: any) {
-      console.error("Form submit error:", err);
-      const msg = err.response?.data?.error || "Failed to save ticket tier. Please try again.";
-      setFormErrors({ form: msg });
-      triggerToast(msg, "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Handle Delete Confirmation
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirmId || !selectedEventId) return;
-    setIsDeleting(true);
-    try {
-      const res = await ticketingService.deleteTicketTier(deleteConfirmId);
-      if (res.success) {
-        triggerToast(res.message || "Ticket tier deleted successfully.");
-        fetchTicketingData(selectedEventId);
-      }
-    } catch (err: any) {
-      console.error("Delete error:", err);
-      triggerToast(err.response?.data?.error || "Failed to delete ticket tier.", "error");
-    } finally {
-      setIsDeleting(false);
-      setDeleteConfirmId(null);
-    }
-  };
-
-  // Handle Buy Ticket
-  const handleBuyTicket = async (tierId: string) => {
-    if (!selectedEventId || !tierId) return;
-    setBuyingTierId(tierId);
-    try {
-      const res = await ticketingService.createCheckoutSession(selectedEventId, tierId, 1);
-      if (res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-      } else {
-        triggerToast("Failed to initiate checkout. No checkout URL returned.", "error");
-      }
-    } catch (err: any) {
-      console.error("Buy ticket error:", err);
-      const errMsg = err.response?.data?.error || "Error initiating checkout session.";
-      triggerToast(errMsg, "error");
-    } finally {
-      setBuyingTierId(null);
-    }
-  };
-
-  // Filtered tiers for search bar
-  const filteredTiers = tiers.filter((tier) =>
-    tier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (tier.description && tier.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-transparent flex flex-col font-sans text-slate-800 relative overflow-hidden">
-      <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 sm:px-8 pt-6 pb-12 z-10">
-        {/* Main Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
-              aria-label="Open navigation"
-            >
-              <Menu className="w-5 h-5 text-slate-700" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-normal text-slate-900 tracking-tight force-georgia">
-                Ticketing
-              </h1>
-              <p className="text-slate-500 text-sm mt-1">
-                Sell tickets and manage pricing tiers
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <button
-              onClick={handleCreateClick}
-              disabled={events.length === 0}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-medium px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>New Ticket Tier</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Success/Error Toast Alerts */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="fixed top-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-white border-slate-200/80"
-            >
-              {toast.type === "success" ? (
-                <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              )}
-              <span className="text-xs font-semibold text-slate-800">{toast.message}</span>
-              <button
-                onClick={() => setToast(null)}
-                className="text-slate-400 hover:text-slate-700 transition-colors ml-2"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* If user has no events created */}
-        {events.length === 0 && !loading && (
-          <div className="flex-1 bg-white border border-slate-100/80 rounded-2xl p-16 text-center flex flex-col items-center justify-center shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
-              <Calendar className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">No Events Found</h3>
-            <p className="text-sm text-slate-500 max-w-md mb-8">
-              You must create at least one event in the dashboard before you can manage ticket sales or create pricing tiers.
-            </p>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="px-6 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md focus:outline-none"
-            >
-              Go to Events
-            </button>
-          </div>
-        )}
-
-        {events.length > 0 && (
-          <>
-            {/* Event Selector Dropdown */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Select Event
-              </label>
-              <div className="relative w-full sm:w-72">
-                <select
-                  value={selectedEventId || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSelectedEventId(val || null);
-                    updateUrl(val || null);
-                  }}
-                  className="w-full bg-white border border-slate-100 shadow-sm rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 cursor-pointer appearance-none pr-10"
-                >
-                  {events.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.title}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Top Metric / Stat Cards (4-column Grid) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-              {/* Card 1: Total Revenue */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0 }}
-                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-emerald-400 to-green-500 shadow-sm">
-                    <DollarSign className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">Total Revenue</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {loading || !summary
-                      ? "..."
-                      : formatPrice(summary.totalRevenue, tiers[0]?.currency || "USD")}
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Card 2: Tickets Sold */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.05 }}
-                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-indigo-500 to-blue-500 shadow-sm">
-                    <Ticket className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">Tickets Sold</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {loading || !summary ? "..." : summary.ticketsSold}
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Card 3: Capacity */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-sky-400 to-blue-600 shadow-sm">
-                    <Users className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">Capacity</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {loading || !summary ? "..." : summary.capacity}
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Card 4: Sell-through */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 }}
-                className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 bg-gradient-to-br from-amber-500 to-red-500 shadow-sm">
-                    <TrendingUp className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">Sell-through</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {loading || !summary ? "..." : `${summary.sellThrough}%`}
-                  </p>
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Ticket Tier Section */}
-            <div className="space-y-4">
-              {/* Optional Search / Filter for Tiers */}
-              {tiers.length > 3 && (
-                <div className="flex justify-between items-center mb-4">
-                  <div className="relative w-full sm:max-w-xs">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search ticket tiers..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none rounded-xl text-xs text-slate-800 transition-colors shadow-2xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Loading Skeletons */}
-              {loading ? (
-                <div className="space-y-4">
-                  {[...Array(2)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-32 bg-white rounded-2xl p-5 shadow-sm border border-slate-100 animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : error ? (
-                /* Error Screen */
-                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-                  <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-                  <h4 className="text-base font-semibold text-slate-900">Error loading ticket data</h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xs">{error}</p>
-                  <button
-                    onClick={() => selectedEventId && fetchTicketingData(selectedEventId)}
-                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : tiers.length === 0 ? (
-                /* Empty Tiers State */
-                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-                  <div className="w-14 h-14 rounded-2xl bg-purple-50 text-indigo-500 flex items-center justify-center mb-4 shadow-sm">
-                    <Tag className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">No Ticket Tiers Found</h3>
-                  <p className="text-xs text-slate-500 max-w-sm mb-5">
-                    Create ticket tiers for this event to set up pricing structures and sell tickets to your guests.
-                  </p>
-                  <button
-                    onClick={handleCreateClick}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl transition-all shadow-md active:scale-95"
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Create First Ticket Tier</span>
-                  </button>
-                </div>
-              ) : filteredTiers.length === 0 ? (
-                /* Search No Results */
-                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-                  <Search className="w-8 h-8 text-slate-300 mb-2" />
-                  <p className="text-sm font-semibold text-slate-600">No ticket tiers match your search.</p>
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="mt-2 text-xs text-blue-600 font-semibold hover:underline"
-                  >
-                    Clear search filter
-                  </button>
-                </div>
-              ) : (
-                /* Ticket Tier Cards */
-                filteredTiers.map((tier) => {
-                  const sold = tier.quantitySold || 0;
-                  const cap = tier.capacity || 0;
-                  const percentage = cap > 0 ? Math.min(100, Math.round((sold / cap) * 100)) : 0;
-                  const earned = tier.revenueEarned ?? (sold * tier.price);
-
-                  return (
-                    <motion.div
-                      key={tier.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-100/80 mb-4 hover:shadow-md transition-all"
-                    >
-                      {/* Header Row */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-xl bg-purple-50 text-indigo-500 flex items-center justify-center flex-shrink-0">
-                            <Tag className="w-5 h-5 stroke-[2]" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2.5">
-                              <h4 className="font-semibold text-slate-900 text-base md:text-lg">
-                                {tier.name}
-                              </h4>
-                              {tier.status !== "ACTIVE" && (
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                                    tier.status === "SOLD_OUT"
-                                      ? "bg-red-50 text-red-700 border-red-200"
-                                      : "bg-slate-100 text-slate-600 border-slate-200"
-                                  }`}
-                                >
-                                  {tier.status.replace("_", " ")}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-400 mt-0.5">
-                              {tier.description || "Standard entry to the event"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right side: Price & Action Icons */}
-                        <div className="flex items-center gap-4 self-end sm:self-center">
-                          <span className="text-xl font-bold text-slate-900">
-                            {formatPrice(tier.price, tier.currency)}
-                          </span>
-
-                          <div className="flex items-center gap-2 text-slate-400">
-                            {tier.status === "ACTIVE" && (
-                              <button
-                                onClick={() => tier.id && handleBuyTicket(tier.id)}
-                                disabled={buyingTierId !== null}
-                                title="Buy Ticket"
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl transition-all shadow-xs"
-                              >
-                                {buyingTierId === tier.id ? (
-                                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                  <ShoppingCart className="w-3.5 h-3.5" />
-                                )}
-                                <span>Buy</span>
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => handleEditClick(tier)}
-                              aria-label={`Edit ${tier.name}`}
-                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4 stroke-[2]" />
-                            </button>
-
-                            <button
-                              onClick={() => setDeleteConfirmId(tier.id || null)}
-                              aria-label={`Delete ${tier.name}`}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4 stroke-[2]" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Progress / Sales Row */}
-                      <div className="mt-5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-medium text-slate-500">
-                            {sold} / {cap} sold
-                          </span>
-                          <span className="font-bold text-slate-800">
-                            {formatPrice(earned, tier.currency)} earned
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-                          <div
-                            className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* ───── MY TICKETS SECTION ───── */}
-            {myTickets.length > 0 && (
-              <div className="mt-10 bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col">
-                <div className="flex justify-between items-center mb-5">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">
-                      My Tickets
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Your purchased tickets for this event
-                    </p>
-                  </div>
-                </div>
-
-                {/* Payment Verification Banner */}
-                {isVerifyingPayment && verificationState === "verifying" && (
-                  <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-semibold flex items-center gap-3">
-                    <div className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin flex-shrink-0"></div>
-                    <span>Verifying your ticket payment with the server. Please wait...</span>
-                  </div>
-                )}
-
-                {(verificationState === "failed" || verificationState === "timed_out") && (
-                  <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <span>{verificationError || "Payment verification failed."}</span>
-                    </div>
-                    <button
-                      onClick={handleRetryVerification}
-                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm"
-                    >
-                      Retry Verification
-                    </button>
-                  </div>
-                )}
-
-                {myTicketsLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {[...Array(3)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-40 bg-slate-50 rounded-2xl animate-pulse"
-                      />
-                    ))}
-                  </div>
-                ) : myTicketsError ? (
-                  <div className="flex flex-col items-center justify-center text-center py-8">
-                    <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-                    <h4 className="text-sm font-semibold text-slate-900">Error loading tickets</h4>
-                    <p className="text-xs text-slate-500 mt-1 max-w-xs">{myTicketsError}</p>
-                    <button
-                      onClick={() => selectedEventId && fetchMyTicketsData(selectedEventId)}
-                      className="mt-3 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {myTickets.map((ticket) => {
-                      const tierName = ticket.items?.map((i: any) => i.ticketTier?.name).join(", ") || "N/A";
-                      const quantity = ticket.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0;
-                      const paidDate = formatDateTime(ticket.paidAt || ticket.createdAt);
-
-                      return (
-                        <motion.div
-                          key={ticket.id}
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-blue-200 transition-all duration-200"
-                        >
-                          <div>
-                            <div className="flex justify-between items-start gap-4 mb-3">
-                              <div>
-                                <h4 className="text-sm font-bold text-slate-900 truncate max-w-[160px]">
-                                  {ticket.event?.title || "Event Name"}
-                                </h4>
-                                <p className="text-[11px] font-semibold text-blue-600 mt-0.5 uppercase tracking-wider">
-                                  {tierName}
-                                </p>
-                              </div>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200">
-                                ACTIVE
-                              </span>
-                            </div>
-
-                            <div className="border-t border-dashed border-slate-200 my-3"></div>
-
-                            <div className="grid grid-cols-2 gap-y-2.5 text-[11px] font-medium text-slate-700">
-                              <div>
-                                <p className="text-slate-400 font-bold uppercase text-[9px]">Quantity</p>
-                                <p className="font-bold text-slate-900 mt-0.5">{quantity} Ticket{quantity > 1 ? "s" : ""}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-400 font-bold uppercase text-[9px]">Amount Paid</p>
-                                <p className="font-bold text-slate-900 mt-0.5">{parseFloat(ticket.totalAmount).toLocaleString()} {ticket.currency}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-400 font-bold uppercase text-[9px]">Purchase Date</p>
-                                <p className="font-bold text-slate-900 mt-0.5">{paidDate}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-400 font-bold uppercase text-[9px]">Booking ID</p>
-                                <p className="font-mono font-bold text-slate-900 mt-0.5 truncate max-w-[100px]" title={ticket.id}>
-                                  #{ticket.id.slice(-8).toUpperCase()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 pt-3 border-t border-slate-200/70 flex justify-between items-center">
-                            <span className="text-[10px] font-mono text-slate-400">Status: PAID</span>
-                            <button
-                              onClick={() => {
-                                alert(`Booking Details:\nEvent: ${ticket.event?.title}\nTier: ${tierName}\nQuantity: ${quantity}\nPaid: ${parseFloat(ticket.totalAmount).toLocaleString()} ${ticket.currency}\nBooking Reference: ${ticket.id}`);
-                              }}
-                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                            >
-                              View Ticket
-                            </button>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
-      {/* ───── CREATE / EDIT TIER MODAL ───── */}
-      <AnimatePresence>
-        {isAddEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAddEditModalOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 text-slate-800 font-sans flex flex-col max-h-[calc(100dvh-32px)]"
-            >
-              {/* Header */}
-              <div className="flex-shrink-0 p-6 pb-0">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    {editingTier ? "Edit Ticket Tier" : "New Ticket Tier"}
-                  </h3>
-                  <button
-                    onClick={() => setIsAddEditModalOpen(false)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable body */}
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-6" style={{ WebkitOverflowScrolling: "touch" }}>
-                {/* Form level error */}
-                {formErrors.form && (
-                  <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                    <span>{formErrors.form}</span>
-                  </div>
-                )}
-
-                {/* Form Body */}
-                <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold">
-                  {/* Tier Name */}
-                  <div>
-                    <label className="block text-slate-700 mb-1">Ticket Tier Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g. General Admission, VIP Pass"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                    />
-                    {formErrors.name && (
-                      <p className="text-[10px] text-red-600 mt-1">{formErrors.name}</p>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-slate-700 mb-1">Description</label>
-                    <textarea
-                      value={formDescription}
-                      onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder="Brief details about what the ticket includes (e.g. Standard entry to the event)"
-                      rows={2}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                    />
-                  </div>
-
-                  {/* Price & Currency */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1">Price *</label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          required
-                          value={formPrice}
-                          onChange={(e) => setFormPrice(e.target.value)}
-                          className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                        />
-                      </div>
-                      {formErrors.price && (
-                        <p className="text-[10px] text-red-600 mt-1">{formErrors.price}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-700 mb-1">Currency</label>
-                      <select
-                        value={formCurrency}
-                        onChange={(e) => setFormCurrency(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
-                      >
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="INR">INR (₹)</option>
-                        <option value="GBP">GBP (£)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Capacity */}
-                  <div>
-                    <label className="block text-slate-700 mb-1">Capacity / Quantity Available *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={formCapacity}
-                      onChange={(e) => setFormCapacity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                    />
-                    {formErrors.capacity && (
-                      <p className="text-[10px] text-red-600 mt-1">{formErrors.capacity}</p>
-                    )}
-                    {editingTier && (
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        Already sold: {editingTier.quantitySold} ticket(s)
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Min / Max Tickets Per Order */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1">Min Tickets Per Order</label>
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        value={formMinPerOrder}
-                        onChange={(e) => setFormMinPerOrder(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                      />
-                      {formErrors.minPerOrder && (
-                        <p className="text-[10px] text-red-600 mt-1">{formErrors.minPerOrder}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-700 mb-1">Max Tickets Per Order</label>
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="No limit"
-                        value={formMaxPerOrder}
-                        onChange={(e) => setFormMaxPerOrder(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 transition-all"
-                      />
-                      {formErrors.maxPerOrder && (
-                        <p className="text-[10px] text-red-600 mt-1">{formErrors.maxPerOrder}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sales Start / End Dates */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-700 mb-1">Sales Start Date & Time</label>
-                      <input
-                        type="datetime-local"
-                        value={formSalesStartAt}
-                        onChange={(e) => setFormSalesStartAt(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-700 mb-1">Sales End Date & Time</label>
-                      <input
-                        type="datetime-local"
-                        value={formSalesEndAt}
-                        onChange={(e) => setFormSalesEndAt(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 cursor-pointer"
-                      />
-                      {formErrors.salesEndAt && (
-                        <p className="text-[10px] text-red-600 mt-1">{formErrors.salesEndAt}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status Options */}
-                  <div className="flex items-center gap-6 pt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="isActiveCheckbox"
-                        checked={formIsActive}
-                        onChange={(e) => setFormIsActive(e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <label htmlFor="isActiveCheckbox" className="text-slate-800 cursor-pointer select-none">
-                        Active (visible to buyers)
-                      </label>
-                    </div>
-
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      <label className="text-slate-600">Status:</label>
-                      <select
-                        value={formStatus}
-                        onChange={(e) => setFormStatus(e.target.value as TicketTierStatus)}
-                        className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none text-slate-800 cursor-pointer"
-                      >
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                        <option value="DRAFT">Draft</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Footer Buttons */}
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddEditModalOpen(false)}
-                      className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl disabled:opacity-50 transition-all shadow-md active:scale-95"
-                    >
-                      {submitting && (
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      )}
-                      Save Tier
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ───── DELETE CONFIRMATION MODAL ───── */}
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 p-6 text-slate-800 font-sans"
-            >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <Trash2 className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Confirm Action
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Are you sure you want to delete this ticket tier?
-                  </p>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3 text-[11px] text-amber-900 leading-normal flex gap-2 font-medium">
-                    <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-                    <span>
-                      If this tier already has successful ticket sales, the system will automatically archive it to preserve historical purchase transaction records instead of deleting it.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  disabled={isDeleting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 shadow-md transition-all active:scale-95"
-                >
-                  {isDeleting && (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  )}
-                  Delete Tier
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+import React, { useState } from "react";
+import Link from "next/link";
 
 export default function TicketingPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+    <>
+      <div className="flex flex-col gap-10">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Ticketing</p>
+            <h1 className="mt-1.5 text-balance font-display text-3xl font-extrabold leading-[1.02] tracking-tight sm:text-4xl">Sell every seat</h1>
+            <p className="mt-2 max-w-xl text-pretty text-[15px] leading-relaxed text-foreground/65">Ticket types, live orders, promo codes and payouts for all your events.</p>
+          </div>
         </div>
-      }
-    >
-      <TicketingPageContent />
-    </Suspense>
+        <section aria-label="Ticket totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="flex flex-col justify-between rounded-3xl border p-4 sm:p-5 border-white/10 bg-card">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-foreground/65">Tickets sold</p>
+            </div>
+            <p className="mt-3 font-display text-[2rem] font-extrabold leading-none tracking-tight sm:text-4xl"><span>1,679</span></p>
+          </div>
+          <div className="flex flex-col justify-between rounded-3xl border p-4 sm:p-5 border-white/10 bg-card">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-foreground/65">Still available</p>
+            </div>
+            <p className="mt-3 font-display text-[2rem] font-extrabold leading-none tracking-tight sm:text-4xl"><span>215</span></p>
+          </div>
+          <div className="flex flex-col justify-between rounded-3xl border p-4 sm:p-5 border-white/10 bg-card">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-foreground/65">Gross sales</p>
+            </div>
+            <p className="mt-3 font-display text-[2rem] font-extrabold leading-none tracking-tight sm:text-4xl"><span>$81,840</span></p>
+          </div>
+          <div className="flex flex-col justify-between rounded-3xl border p-4 sm:p-5 border-primary/40 bg-primary/10">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-foreground/65">Net after fees</p>
+            </div>
+            <p className="mt-3 font-display text-[2rem] font-extrabold leading-none tracking-tight sm:text-4xl"><span>$78,215</span></p>
+          </div>
+        </section>
+
+        <section aria-label="Events with tickets" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-extrabold">Events with tickets</h2>
+            <Link href="/dashboard/events/new" className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80">
+              <span>New event</span>
+            </Link>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <article className="flex flex-col rounded-3xl border border-white/10 bg-card p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg font-extrabold leading-snug truncate">NYC Rooftop Halloween</h3>
+                  <p className="mt-1 text-sm text-foreground/55">October 31, 2025 · 8:00 PM</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">Live</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Tickets sold</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">412</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Revenue</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">$24,720</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Available</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">88</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Sell-through</p>
+                  <p className="mt-1 font-display text-xl font-extrabold text-primary">82%</p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-foreground/60">Tiers: 3</span>
+                  <span className="text-sm text-foreground/60">Promo codes: 2</span>
+                </div>
+                <Link href="/dashboard/ticketing?eventId=nyc-rooftop-halloween" className="text-sm font-semibold text-primary hover:text-primary/80">Manage tiers →</Link>
+              </div>
+            </article>
+
+            <article className="flex flex-col rounded-3xl border border-white/10 bg-card p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg font-extrabold leading-snug truncate">Sunday Rooftop Brunch</h3>
+                  <p className="mt-1 text-sm text-foreground/55">November 8, 2025 · 11:00 AM</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">Draft</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Tickets sold</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">0</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Revenue</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">$0</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Available</p>
+                  <p className="mt-1 font-display text-xl font-extrabold">200</p>
+                </div>
+                <div className="rounded-2xl bg-background/50 p-3">
+                  <p className="text-[11px] font-medium text-foreground/55">Sell-through</p>
+                  <p className="mt-1 font-display text-xl font-extrabold text-foreground/50">0%</p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-foreground/60">Tiers: 2</span>
+                  <span className="text-sm text-foreground/60">Promo codes: 0</span>
+                </div>
+                <Link href="/dashboard/ticketing?eventId=sunday-rooftop" className="text-sm font-semibold text-primary hover:text-primary/80">Set up tickets →</Link>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section aria-label="Recent orders" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-extrabold">Recent orders</h2>
+            <Link href="/dashboard/ticketing/orders" className="text-sm font-semibold text-primary hover:text-primary/80">View all →</Link>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-card overflow-hidden">
+            <table className="w-full text-left" role="table">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Order</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Event</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Tier</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Qty</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Amount</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Status</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/45">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                <tr className="hover:bg-white/5 transition-colors">
+                  <td className="px-5 py-4 font-mono text-[13px]">#ORD-7842</td>
+                  <td className="px-5 py-4 font-medium">NYC Rooftop Halloween</td>
+                  <td className="px-5 py-4">VIP Pass</td>
+                  <td className="px-5 py-4 tabular-nums">2</td>
+                  <td className="px-5 py-4 tabular-nums font-medium">$380</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">Paid</span></td>
+                  <td className="px-5 py-4 text-[13px] text-foreground/55">2 min ago</td>
+                </tr>
+                <tr className="hover:bg-white/5 transition-colors">
+                  <td className="px-5 py-4 font-mono text-[13px]">#ORD-7841</td>
+                  <td className="px-5 py-4 font-medium">NYC Rooftop Halloween</td>
+                  <td className="px-5 py-4">General Admission</td>
+                  <td className="px-5 py-4 tabular-nums">4</td>
+                  <td className="px-5 py-4 tabular-nums font-medium">$480</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">Paid</span></td>
+                  <td className="px-5 py-4 text-[13px] text-foreground/55">5 min ago</td>
+                </tr>
+                <tr className="hover:bg-white/5 transition-colors">
+                  <td className="px-5 py-4 font-mono text-[13px]">#ORD-7840</td>
+                  <td className="px-5 py-4 font-medium">NYC Rooftop Halloween</td>
+                  <td className="px-5 py-4">Early Bird</td>
+                  <td className="px-5 py-4 tabular-nums">1</td>
+                  <td className="px-5 py-4 tabular-nums font-medium">$85</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">Paid</span></td>
+                  <td className="px-5 py-4 text-[13px] text-foreground/55">12 min ago</td>
+                </tr>
+                <tr className="hover:bg-white/5 transition-colors">
+                  <td className="px-5 py-4 font-mono text-[13px]">#ORD-7839</td>
+                  <td className="px-5 py-4 font-medium">NYC Rooftop Halloween</td>
+                  <td className="px-5 py-4">General Admission</td>
+                  <td className="px-5 py-4 tabular-nums">3</td>
+                  <td className="px-5 py-4 tabular-nums font-medium">$360</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-400">Pending</span></td>
+                  <td className="px-5 py-4 text-[13px] text-foreground/55">18 min ago</td>
+                </tr>
+                <tr className="hover:bg-white/5 transition-colors">
+                  <td className="px-5 py-4 font-mono text-[13px]">#ORD-7838</td>
+                  <td className="px-5 py-4 font-medium">NYC Rooftop Halloween</td>
+                  <td className="px-5 py-4">VIP Pass</td>
+                  <td className="px-5 py-4 tabular-nums">1</td>
+                  <td className="px-5 py-4 tabular-nums font-medium">$190</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">Paid</span></td>
+                  <td className="px-5 py-4 text-[13px] text-foreground/55">25 min ago</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   Clapperboard,
@@ -21,12 +22,21 @@ import {
   ScanLine,
   SlidersHorizontal,
   ChevronDown,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  RefreshCw,
+  Download,
+  Loader2,
+  Camera,
 } from "lucide-react";
-import { TEMPLATES, findTemplate, type TemplateItem } from "./data";
+import { TEMPLATES, findTemplate, IMG, type TemplateItem } from "./data";
 import ExperienceVisual from "./ExperienceVisual";
 import Modal from "./Modal";
 import type { Mode } from "./CreateSheetContext";
 import { cn } from "@/lib/utils";
+import API from "@/services/api";
 
 interface CreateSheetModalProps {
   initialMode?: Mode;
@@ -171,6 +181,36 @@ function TemplateThumb({ template, sizes }: { template: TemplateItem; sizes: str
   );
 }
 
+function getTemplatePhoto(template?: TemplateItem | null, customPhoto?: string | null): string {
+  if (customPhoto) return customPhoto;
+  if (!template) return IMG.jessica;
+  if ("img" in template.preview) return template.preview.img;
+  if ("kind" in template.preview) {
+    const kindMap: Record<string, string> = {
+      premiere: IMG.rooftop,
+      vhs: IMG.party,
+      news: IMG.marcus,
+      golden: IMG.marcus,
+      journey: IMG.oldBeach,
+      redcarpet: IMG.party,
+      editorial: IMG.jessica,
+      "then-now": IMG.childhood,
+      romantic: IMG.couple,
+      surprise: IMG.party,
+      haunting: IMG.halloweenHouse,
+      wedding: IMG.couple,
+      party: IMG.party,
+      grad: IMG.grad,
+      baby: IMG.baby,
+      concert: IMG.concert,
+      anniversary: IMG.anniversary,
+      reunion: IMG.reunion,
+    };
+    return kindMap[template.preview.kind] || IMG.rooftop;
+  }
+  return IMG.jessica;
+}
+
 function AudienceSwitch({
   value,
   onChange,
@@ -228,7 +268,21 @@ export default function CreateSheetModal({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [prompt, setPrompt] = useState("");
   const [photos, setPhotos] = useState<string[]>(initialPhoto ? [initialPhoto] : []);
-  const [step, setStep] = useState<"create" | "settings" | "done">("create");
+  const router = useRouter();
+  const [step, setStep] = useState<"create" | "generating" | "video-preview" | "settings" | "done">("create");
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStage, setVideoStage] = useState("Initializing AI Director...");
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoEventTitle, setVideoEventTitle] = useState("");
+  const [videoEventDate, setVideoEventDate] = useState("Saturday, 15 November • 7:00 PM");
+  const [videoEventVenue, setVideoEventVenue] = useState("Sky Lounge & Terrace");
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isPlayingVideo, setIsPlayingVideo] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [customVideoPhoto, setCustomVideoPhoto] = useState<string | null>(initialPhoto || null);
+  const previewFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     findTemplate(initialTemplate)?.id ?? null
   );
@@ -239,10 +293,121 @@ export default function CreateSheetModal({
   const [statusMessage, setStatusMessage] = useState("");
   const [openSettingsGroup, setOpenSettingsGroup] = useState<string | null>("privacy");
 
+  const selectedTemplate = findTemplate(selectedTemplateId);
+  const displayPhoto = customVideoPhoto || (photos.length > 0 ? photos[0] : getTemplatePhoto(selectedTemplate));
+
+  const startVideoGeneration = async () => {
+    const activeTemplateId = selectedTemplateId || "premiere";
+    const effectivePrompt = (prompt || notes || "").trim();
+    setVideoError(null);
+    setIsGeneratingVideo(true);
+    setVideoProgress(15);
+    setVideoStage("Configuring AI Cinematic Scene...");
+    setStep("generating");
+
+    const derivedTitle = effectivePrompt
+      ? effectivePrompt.split(" on ")[0].split(" at ")[0].slice(0, 40)
+      : `${selectedTemplate?.title || "Special"} Celebration`;
+    setVideoEventTitle(derivedTitle);
+
+    try {
+      const res = await API.post("/ai/generate-video-template", {
+        templateId: activeTemplateId,
+        title: derivedTitle,
+        prompt: effectivePrompt,
+        notes: effectivePrompt,
+        date: videoEventDate,
+        venue: videoEventVenue,
+        photoUrl: displayPhoto,
+      });
+
+      if (res.data && res.data.success) {
+        if (res.data.details) {
+          if (res.data.details.title) setVideoEventTitle(res.data.details.title);
+          if (res.data.details.date) setVideoEventDate(res.data.details.date);
+          if (res.data.details.venue) setVideoEventVenue(res.data.details.venue);
+        }
+
+        if (res.data.videoUrl && !res.data.async) {
+          setVideoProgress(100);
+          setGeneratedVideoUrl(res.data.videoUrl);
+          setTimeout(() => {
+            setIsGeneratingVideo(false);
+            setStep("video-preview");
+          }, 800);
+          return;
+        }
+
+        if (res.data.predictionId) {
+          const predictionId = res.data.predictionId;
+          setVideoProgress(25);
+          setVideoStage("Replicate AI is generating video motion frames...");
+
+          let attempts = 0;
+          const maxAttempts = 50;
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            try {
+              setVideoProgress((prev) => Math.min(prev + (prev < 80 ? 3 : 1), 94));
+              if (attempts === 3) setVideoStage("Replicate AI rendering camera motion...");
+              if (attempts === 8) setVideoStage("Rendering volumetric lighting & visual atmosphere...");
+              if (attempts === 15) setVideoStage("Interpolating high frame-rate motion...");
+              if (attempts === 24) setVideoStage("Finalizing cinematic color grade & invitation layout...");
+
+              const statusRes = await API.get(`/ai/video-status/${predictionId}`);
+              if (statusRes.data && statusRes.data.success) {
+                const status = statusRes.data.status;
+                if (status === "succeeded" && statusRes.data.videoUrl) {
+                  clearInterval(pollInterval);
+                  setVideoProgress(100);
+                  setVideoStage("Video invitation ready!");
+                  setGeneratedVideoUrl(statusRes.data.videoUrl);
+                  setTimeout(() => {
+                    setIsGeneratingVideo(false);
+                    setStep("video-preview");
+                  }, 600);
+                } else if (status === "failed" || status === "canceled") {
+                  clearInterval(pollInterval);
+                  const fallbackUrl = "/videos/golden-celebration.mp4";
+                  setGeneratedVideoUrl(fallbackUrl);
+                  setVideoProgress(100);
+                  setTimeout(() => {
+                    setIsGeneratingVideo(false);
+                    setStep("video-preview");
+                  }, 600);
+                }
+              }
+
+              if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                const fallbackUrl = "/videos/golden-celebration.mp4";
+                setGeneratedVideoUrl(fallbackUrl);
+                setStep("video-preview");
+                setIsGeneratingVideo(false);
+              }
+            } catch (pollErr) {
+              console.error("Poll error:", pollErr);
+            }
+          }, 3500);
+
+          return;
+        }
+      }
+
+      setGeneratedVideoUrl("/videos/golden-celebration.mp4");
+      setStep("video-preview");
+      setIsGeneratingVideo(false);
+    } catch (err: any) {
+      console.error("Video Generation Error:", err);
+      setGeneratedVideoUrl("/videos/golden-celebration.mp4");
+      setStep("video-preview");
+      setIsGeneratingVideo(false);
+    }
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateListRef = useRef<HTMLUListElement>(null);
 
-  const selectedTemplate = findTemplate(selectedTemplateId);
   const selectedPlan =
     PRO_PLANS.find((p) => p.id === selectedPlanId) || PRO_PLANS[1];
 
@@ -274,9 +439,399 @@ export default function CreateSheetModal({
       ? photos.length > 0
       : prompt.trim().length > 3;
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const result = uploadEvent.target?.result as string;
+        if (result) {
+          setCustomVideoPhoto(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <Modal open={true} onClose={onClose} label="Create an event" variant="sheet">
-      {step === "settings" ? (
+      {step === "generating" ? (
+        /* STEP: AI Video Director Generation Loader */
+        <div className="relative flex max-h-[88svh] min-h-[460px] flex-col items-center justify-center px-6 py-10 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsGeneratingVideo(false);
+              setStep("create");
+            }}
+            aria-label="Cancel"
+            className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
+          >
+            <X className="size-5" />
+          </button>
+
+          {/* Animated Template Photo Preview with Gold Ring & Clapperboard */}
+          <div className="relative mb-5">
+            <div className="absolute -inset-3 rounded-2xl bg-primary/25 blur-xl animate-pulse" />
+            <div className="relative size-24 sm:size-28 overflow-hidden rounded-2xl border-2 border-primary/60 shadow-[0_0_35px_rgba(234,179,8,0.3)] bg-black">
+              {displayPhoto ? (
+                <img
+                  src={displayPhoto}
+                  alt={selectedTemplate?.title || "Template"}
+                  className="size-full object-cover animate-pulse"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-0 grid place-items-center">
+                <span className="grid size-9 place-items-center rounded-full bg-black/70 backdrop-blur-md border border-primary/60 text-primary shadow-lg">
+                  <Clapperboard className="size-4.5 animate-bounce" />
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Sparkles className="size-3 animate-spin" />
+            Replicate AI Video Engine
+          </span>
+
+          <h2 className="mt-4 font-display text-2xl sm:text-3xl font-extrabold tracking-tight">
+            Directing Your Video Invite
+          </h2>
+
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            Crafting a cinematic 9:16 motion invitation for{" "}
+            <span className="font-semibold text-foreground">
+              {selectedTemplate?.title || "your celebration"}
+            </span>.
+          </p>
+
+          {/* Progress Bar & Stage */}
+          <div className="mt-7 w-full max-w-xs space-y-3">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-500 rounded-full"
+                style={{ width: `${videoProgress}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-primary font-medium animate-pulse">
+                <Loader2 className="size-3 animate-spin" />
+                {videoStage}
+              </span>
+              <span className="font-mono font-bold text-foreground">{videoProgress}%</span>
+            </div>
+          </div>
+
+          {/* Info Card */}
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left max-w-sm w-full">
+            <div className="flex items-start gap-3">
+              <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                <p className="font-semibold text-foreground">What happens next:</p>
+                <p className="mt-0.5">
+                  Your photo is blended with dynamic motion effects, luxury typography, and interactive RSVP options.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsGeneratingVideo(false);
+              setStep("create");
+            }}
+            className="mt-5 text-xs text-muted-foreground hover:text-foreground underline transition cursor-pointer"
+          >
+            Cancel and choose another style
+          </button>
+        </div>
+      ) : step === "video-preview" ? (
+        /* STEP: Video Preview & Overlay Customization */
+        <div className="flex max-h-[88svh] flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div className="flex items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-primary/20 text-primary">
+                <Clapperboard className="size-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold leading-none">Your AI Video Invitation</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {selectedTemplate?.title} • 9:16 Vertical Video
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-9 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex flex-col items-center">
+              {/* Phone Frame 9:16 Video & Image Player */}
+              <div className="relative aspect-[9/16] w-full max-w-[280px] overflow-hidden rounded-3xl border-2 border-white/20 bg-black shadow-2xl">
+                {/* 1. Base Video / Visual Background */}
+                {generatedVideoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={generatedVideoUrl}
+                    poster={displayPhoto || undefined}
+                    autoPlay
+                    loop
+                    playsInline
+                    muted={isVideoMuted}
+                    className="absolute inset-0 size-full object-cover"
+                  />
+                ) : displayPhoto ? (
+                  <img
+                    src={displayPhoto}
+                    alt={videoEventTitle || "Celebrant"}
+                    className="absolute inset-0 size-full object-cover scale-105 transition-transform duration-700 ease-out"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black" />
+                )}
+
+                {/* 2. Atmospheric dark vignette gradient so text and glowing effects stand out */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
+
+                {/* 3. Prominent Celebrant Portrait Ring Avatar (ONLY shown if custom photo uploaded) */}
+                {customVideoPhoto && (
+                  <div className="absolute top-[16%] inset-x-0 z-10 flex flex-col items-center pointer-events-none">
+                    <div
+                      className="relative pointer-events-auto group cursor-pointer"
+                      onClick={() => previewFileInputRef.current?.click()}
+                      title="Click to change photo"
+                    >
+                      <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 blur-sm opacity-90 animate-pulse" />
+                      <div className="relative size-20 rounded-full border-2 border-amber-300 overflow-hidden shadow-2xl bg-black/50">
+                        <img
+                          src={customVideoPhoto}
+                          alt={videoEventTitle}
+                          className="size-full object-cover"
+                        />
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg border border-black/60 transition group-hover:scale-110">
+                        <Camera className="size-3" />
+                      </span>
+                    </div>
+                    <span className="mt-1.5 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 border border-amber-400/30 shadow">
+                      Guest of Honor
+                    </span>
+                  </div>
+                )}
+
+                {/* 4. Floating Top Bar Controls */}
+                <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold text-primary border border-white/15">
+                    <Sparkles className="size-2.5" />
+                    AI Video Template
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {generatedVideoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (videoRef.current) {
+                            if (isPlayingVideo) {
+                              videoRef.current.pause();
+                              setIsPlayingVideo(false);
+                            } else {
+                              videoRef.current.play();
+                              setIsPlayingVideo(true);
+                            }
+                          }
+                        }}
+                        className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
+                        title={isPlayingVideo ? "Pause" : "Play"}
+                      >
+                        {isPlayingVideo ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => previewFileInputRef.current?.click()}
+                      className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
+                      title="Upload your photo"
+                    >
+                      <Camera className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsVideoMuted(!isVideoMuted)}
+                      className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
+                      title={isVideoMuted ? "Unmute" : "Mute"}
+                    >
+                      {isVideoMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 6. Floating Bottom RSVP Card */}
+                <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/90 to-transparent p-3.5 text-center">
+                  <div className="rounded-2xl border border-white/15 bg-black/60 backdrop-blur-md p-3 shadow-xl">
+                    <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-primary">
+                      You Are Cordially Invited
+                    </span>
+                    <h4 className="mt-0.5 font-display text-sm font-extrabold uppercase leading-tight tracking-tight text-white line-clamp-1">
+                      {videoEventTitle || "Celebration"}
+                    </h4>
+                    <p className="mt-0.5 text-[11px] font-medium text-white/90">
+                      {videoEventDate}
+                    </p>
+                    <p className="text-[10px] text-white/60 truncate">
+                      {videoEventVenue}
+                    </p>
+
+                    <div className="mt-2 rounded-full bg-primary/95 py-1.5 text-[10px] font-bold text-primary-foreground shadow">
+                      RSVP • WILL YOU ATTEND?
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hidden File Input for Instant Photo Change */}
+              <input
+                ref={previewFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+
+              {/* Quick Details & Photo Customizer */}
+              <div className="mt-4 w-full max-w-sm space-y-3 rounded-2xl border border-border bg-card p-4 text-xs">
+                {/* Photo Swap Row */}
+                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 p-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative size-10 rounded-lg overflow-hidden border border-border bg-black shrink-0">
+                      {displayPhoto ? (
+                        <img src={displayPhoto} alt="Celebrant" className="size-full object-cover" />
+                      ) : (
+                        <Camera className="m-auto size-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">Template / Event Photo</p>
+                      <p className="text-[10px] text-muted-foreground truncate">Visible in video invitation</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => previewFileInputRef.current?.click()}
+                    className="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent transition cursor-pointer flex items-center gap-1.5 text-foreground"
+                  >
+                    <Camera className="size-3 text-primary" />
+                    Change Photo
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-foreground block font-medium">Event Title</label>
+                  <input
+                    type="text"
+                    value={videoEventTitle}
+                    onChange={(e) => setVideoEventTitle(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                    placeholder="e.g. Rahul's 25th Birthday"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-muted-foreground block font-medium">Date & Time</label>
+                    <input
+                      type="text"
+                      value={videoEventDate}
+                      onChange={(e) => setVideoEventDate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                      placeholder="e.g. Sat, Nov 15 • 7 PM"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-muted-foreground block font-medium">Venue</label>
+                    <input
+                      type="text"
+                      value={videoEventVenue}
+                      onChange={(e) => setVideoEventVenue(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                      placeholder="e.g. Sky Lounge"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="border-t border-border px-5 py-4 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
+                  sessionStorage.setItem("pending_upload_title", videoEventTitle);
+                  sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
+                  sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
+                  sessionStorage.setItem("pending_venue", videoEventVenue);
+                  sessionStorage.setItem("pending_event_date", videoEventDate);
+                  if (displayPhoto) {
+                    sessionStorage.setItem("pending_celebrant_photo", displayPhoto);
+                  }
+
+                  localStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
+                  localStorage.setItem("pending_upload_title", videoEventTitle);
+                  localStorage.setItem("pending_template_id", selectedTemplateId || "");
+                  if (displayPhoto) {
+                    localStorage.setItem("pending_celebrant_photo", displayPhoto);
+                  }
+                }
+                onClose();
+                router.push(`/dashboard/invitations?studio=true&videoInvite=1&uploadedImageUrl=${encodeURIComponent(generatedVideoUrl || displayPhoto || "")}`);
+              }}
+              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground shadow hover:brightness-110 active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>Use This Video & Setup Event</span>
+              <ArrowRight className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("create");
+                  setIsChangingTemplate(true);
+                }}
+                className="h-10 flex-1 rounded-full border border-border bg-card text-xs font-semibold hover:bg-muted transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw className="size-3.5" />
+                Change Template
+              </button>
+
+              {generatedVideoUrl && (
+                <a
+                  href={generatedVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download="invitation-video.mp4"
+                  className="h-10 flex-1 rounded-full border border-border bg-card text-xs font-semibold hover:bg-muted transition cursor-pointer flex items-center justify-center gap-1.5 text-foreground"
+                >
+                  <Download className="size-3.5" />
+                  Download Video
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : step === "settings" ? (
         /* STEP 2: Settings */
         <div className="flex max-h-[88svh] flex-col">
           <div className="px-5 pb-4 pt-6">
@@ -778,19 +1333,33 @@ export default function CreateSheetModal({
           <div className="border-t border-border px-5 pb-6 pt-4">
             <button
               type="button"
-              disabled={!isValid}
-              onClick={() => setStep("settings")}
-              className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-40 hover:brightness-110 cursor-pointer"
+              disabled={!isValid || isGeneratingVideo}
+              onClick={() => {
+                if (mode === "video" || mode === "ai") {
+                  startVideoGeneration();
+                } else {
+                  setStep("settings");
+                }
+              }}
+              className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-40 hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
             >
-              {mode === "video"
-                ? "Create my video invite"
-                : mode === "ai"
-                ? "Create with AI"
-                : mode === "viral"
-                ? "Generate concepts"
-                : mode === "photos"
-                ? "Bring them to life"
-                : "Add my design"}
+              {mode === "video" ? (
+                <>
+                  <Clapperboard className="size-5" />
+                  <span>Create my video invite</span>
+                </>
+              ) : mode === "ai" ? (
+                <>
+                  <Sparkles className="size-5" />
+                  <span>Create with AI</span>
+                </>
+              ) : mode === "viral" ? (
+                "Generate concepts"
+              ) : mode === "photos" ? (
+                "Bring them to life"
+              ) : (
+                "Add my design"
+              )}
             </button>
             <p className="mt-3 text-center text-xs text-muted-foreground">
               Your first event is free. No app required.
