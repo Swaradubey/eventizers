@@ -30,10 +30,19 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Replicate token not configured" }, { status: 500 });
     }
 
-    const Replicate = (await import("replicate")).default;
-    const replicate = new Replicate({ auth: replicateToken });
+    const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      headers: {
+        Authorization: `Bearer ${replicateToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
 
-    const prediction = await replicate.predictions.get(predictionId);
+    const prediction = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(prediction.detail || prediction.error || `Replicate status error (${response.status})`);
+    }
+
     console.log(`[Next.js Replicate Status] ${predictionId}: ${prediction.status}`);
 
     let videoUrl = null;

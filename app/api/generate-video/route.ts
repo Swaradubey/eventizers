@@ -58,14 +58,27 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const Replicate = (await import("replicate")).default;
-      const replicate = new Replicate({ auth: replicateToken });
-
       const videoPrompt = `Cinematic vertical 9:16 mobile invitation video backdrop for ${
         resolvedDetails.title
       }${resolvedDetails.age ? " - " + resolvedDetails.age : ""}. Style: ${prompt}. Ultra-smooth slow camera motion, 4k photorealistic, aesthetic lighting, seamless loop, clean negative space for invitation text.`;
 
       console.log(`[Next.js Replicate] Initiating prediction for template '${templateId}', photo: ${uploadedImageUrl ? "provided" : "none"}...`);
+
+      const callReplicate = async (endpoint: string, payload: any) => {
+        const response = await fetch(`https://api.replicate.com/v1${endpoint}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${replicateToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.detail || data.error || `Replicate API error (${response.status})`);
+        }
+        return data;
+      };
 
       let prediction: any = null;
 
@@ -73,7 +86,7 @@ export async function POST(req: NextRequest) {
         // Image-to-Video Pipeline: Animate uploaded celebrant photo directly
         try {
           console.log("[Next.js Replicate] Calling Stability AI Stable Video Diffusion for uploaded photo...");
-          prediction = await replicate.predictions.create({
+          prediction = await callReplicate("/predictions", {
             version: "3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438",
             input: {
               input_image: uploadedImageUrl,
@@ -83,8 +96,7 @@ export async function POST(req: NextRequest) {
           });
         } catch (svdErr: any) {
           console.warn("[Next.js Replicate] SVD failed, trying Minimax video-01:", svdErr.message);
-          prediction = await replicate.predictions.create({
-            model: "minimax/video-01",
+          prediction = await callReplicate("/models/minimax/video-01/predictions", {
             input: {
               prompt: videoPrompt,
               first_frame_image: uploadedImageUrl,
@@ -94,8 +106,7 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // Strategy 3: Text-to-Video with template prompt
-        prediction = await replicate.predictions.create({
-          model: "minimax/video-01",
+        prediction = await callReplicate("/models/minimax/video-01/predictions", {
           input: {
             prompt: videoPrompt,
             prompt_optimizer: true,
