@@ -54,6 +54,8 @@ import { NEW_TEMPLATES, NEW_TEMPLATES_CONFIG, getTemplateConfig, isTemplatePremi
 import GuestSelectionModal from "./GuestSelectionModal";
 import FullScreenCardPreview from "./FullScreenCardPreview";
 import InvitationCanvasStage from "./InvitationCanvasStage";
+import VideoInviteStudioStage from "./VideoInviteStudioStage";
+import VideoInvitePlayer from "./VideoInvitePlayer";
 import EviteCardPreview from "./EviteCardPreview";
 import RsvpOptionsModal, { RsvpOptionsState, parseDeadline, combineDateTimeToIso } from "./RsvpOptionsModal";
 import InvitationWorkflowPreviewPane from "./InvitationWorkflowPreviewPane";
@@ -63,7 +65,7 @@ import InvitationWorkflowReview from "./InvitationWorkflowReview";
 import { useAuth } from "../../context/AuthContext";
 import AuthModal from "../AuthModal";
 import { invitationStore } from "../../hooks/useInvitationStore";
-import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage, isSnapshotOrRasterUrl } from "./layoutUtils";
+import { deduplicateTextLayers, extractCleanSnapshotData, deduplicateBy, getCleanTemplateSvg as resolveCleanTemplateSvg, isUserUploadedImage as checkIsUserUploadedImage, isSnapshotOrRasterUrl, isVideoMediaUrl } from "./layoutUtils";
 import { applyCanvasBackground, getFabricCanvas, teardownTextLayersPreservingBackground, cleanFabricCanvas, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
 import IsolatedInvitationCard, { IsolatedInvitationData } from "./IsolatedInvitationCard";
 
@@ -330,6 +332,10 @@ export interface StudioDesignState {
   viewMode?: "card" | "envelope";
   hideEnvelope?: boolean;
   gifting?: GiftingState;
+  videoUrl?: string | null;
+  isVideo?: boolean;
+  celebrantPhoto?: string | null;
+  aspectRatio?: string;
   backgroundImage?: string | { url?: string; src?: string };
   backgroundUrl?: string;
   canvasData?: {
@@ -347,6 +353,9 @@ interface InvitationStudioProps {
   onSelectEvent?: (eventId: string) => void;
   templateIdQuery?: string | null;
   uploadedImageUrl?: string | null;
+  videoUrl?: string | null;
+  videoInvite?: boolean;
+  celebrantPhoto?: string | null;
   onSave?: (updated: any) => Promise<any>;
   onBack?: () => void;
 }
@@ -474,6 +483,9 @@ export default function InvitationStudio({
   onSelectEvent,
   templateIdQuery,
   uploadedImageUrl,
+  videoUrl,
+  videoInvite,
+  celebrantPhoto,
   onSave,
   onBack,
 }: InvitationStudioProps) {
@@ -488,14 +500,55 @@ export default function InvitationStudio({
     invite: Invitation | null,
     isExplicitSwitch?: boolean
   ): StudioDesignState => {
+    const isVideoInvite = Boolean(
+      videoInvite ||
+      videoUrl ||
+      (typeof window !== "undefined" &&
+        (window.location.search.includes("videoInvite=1") ||
+         Boolean(new URLSearchParams(window.location.search).get("videoUrl")) ||
+         sessionStorage.getItem("pending_is_video") === "true" ||
+         Boolean(sessionStorage.getItem("pending_video_url"))))
+    );
+
+    const pendingVideoUrl =
+      videoUrl ||
+      (typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("videoUrl") ||
+          sessionStorage.getItem("pending_video_url") ||
+          localStorage.getItem("pending_video_url")
+        : null);
+
+    const pendingCelebrantPhoto =
+      celebrantPhoto ||
+      (typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("celebrantPhoto") ||
+          sessionStorage.getItem("pending_celebrant_photo") ||
+          localStorage.getItem("pending_celebrant_photo")
+        : null);
+
+    const pendingVenue = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("venue") ||
+        sessionStorage.getItem("pending_venue") ||
+        localStorage.getItem("pending_venue")
+      : null;
+
+    const pendingEventDate = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("date") ||
+        sessionStorage.getItem("pending_event_date") ||
+        localStorage.getItem("pending_event_date")
+      : null;
+
     // If the user uploaded an existing invitation, detect it immediately (prioritizing tplId if explicitly supplied)
     const pendingUploadUrl = !isExplicitSwitch && !tplId
-      ? getPendingOrUploadedImageUrl(invite, evt, uploadedImageUrl)
-      : (uploadedImageUrl ? uploadedImageUrl : null);
-    const effectiveTplId = pendingUploadUrl ? null : tplId;
+      ? (pendingVideoUrl || getPendingOrUploadedImageUrl(invite, evt, uploadedImageUrl))
+      : (uploadedImageUrl ? uploadedImageUrl : (pendingVideoUrl || null));
+    const effectiveTplId = isVideoInvite
+      ? (tplId || (typeof window !== "undefined" ? sessionStorage.getItem("pending_template_id") : null) || "haunting")
+      : (pendingUploadUrl ? null : tplId);
     const tplConfig = effectiveTplId ? getTemplateConfig(effectiveTplId) : null;
 
     const isDark =
+      isVideoInvite ||
       tplConfig?.textColor === "#FFFFFF" ||
       tplConfig?.textColor?.toLowerCase() === "#f8fafc" ||
       tplConfig?.backgroundColor?.toLowerCase() === "#0a0b10" ||
@@ -503,7 +556,9 @@ export default function InvitationStudio({
       false;
 
     const pendingUploadTitle = typeof window !== "undefined"
-      ? sessionStorage.getItem("pending_upload_title")
+      ? new URLSearchParams(window.location.search).get("title") ||
+        sessionStorage.getItem("pending_upload_title") ||
+        localStorage.getItem("pending_upload_title")
       : null;
 
     const titleText =
@@ -515,7 +570,8 @@ export default function InvitationStudio({
       "YOU'RE INVITED!";
 
     const dateText =
-      tplConfig?.date
+      pendingEventDate ||
+      (tplConfig?.date
         ? `${tplConfig.date}${tplConfig.time ? " AT " + tplConfig.time : ""}`
         : invite?.eventDate
           ? `${new Date(invite.eventDate).toLocaleDateString("en-US", {
@@ -529,9 +585,10 @@ export default function InvitationStudio({
               month: "short",
               day: "numeric",
             }).toUpperCase()}${evt.eventTime ? " AT " + evt.eventTime : ""}`
-            : "SATURDAY, OCTOBER 14 AT 4:00 PM";
+            : "SATURDAY, OCTOBER 14 AT 4:00 PM");
 
     const venueText =
+      pendingVenue ||
       tplConfig?.venue ||
       invite?.eventVenue ||
       invite?.mainText ||
@@ -676,6 +733,100 @@ export default function InvitationStudio({
     const hasSavedLayers = Boolean(!isExplicitSwitch && invite?.textElements && Array.isArray(invite.textElements) && invite.textElements.length > 0);
     if (hasSavedLayers) {
       resolvedTextLayers = deduplicateTextLayers((invite!.textElements as TextLayer[]).map((tl) => ({ ...tl })));
+    } else if (isVideoInvite) {
+      // 9:16 Vertical Video layout matching AI preview modal
+      resolvedTextLayers = deduplicateTextLayers([
+        {
+          id: "layer-intro",
+          key: "intro",
+          text: "YOU ARE CORDIALLY INVITED",
+          x: 50,
+          y: 71,
+          top: 71,
+          left: 50,
+          fontSize: 10,
+          fontFamily: "'Inter', sans-serif",
+          color: "#f59e0b",
+          casing: "uppercase",
+          align: "center",
+          textAlign: "center",
+          letterSpacing: 2.5,
+          lineHeight: 1.2,
+          fontWeight: "700",
+        },
+        {
+          id: "layer-title",
+          key: "title",
+          text: titleText.toUpperCase(),
+          x: 50,
+          y: 77,
+          top: 77,
+          left: 50,
+          fontSize: 18,
+          fontFamily: titleFont || "'Cinzel', 'Playfair Display', serif",
+          color: "#ffffff",
+          casing: "uppercase",
+          align: "center",
+          textAlign: "center",
+          letterSpacing: 1.5,
+          lineHeight: 1.15,
+          fontWeight: "800",
+        },
+        {
+          id: "layer-datetime",
+          key: "datetime",
+          text: dateText,
+          x: 50,
+          y: 83,
+          top: 83,
+          left: 50,
+          fontSize: 12,
+          fontFamily: "'Inter', sans-serif",
+          color: "rgba(255, 255, 255, 0.95)",
+          casing: "none",
+          align: "center",
+          textAlign: "center",
+          letterSpacing: 0.8,
+          lineHeight: 1.2,
+          fontWeight: "600",
+        },
+        {
+          id: "layer-venue",
+          key: "venue",
+          text: venueText,
+          x: 50,
+          y: 87,
+          top: 87,
+          left: 50,
+          fontSize: 11,
+          fontFamily: "'Inter', sans-serif",
+          color: "rgba(255, 255, 255, 0.75)",
+          casing: "none",
+          align: "center",
+          textAlign: "center",
+          letterSpacing: 0.5,
+          lineHeight: 1.2,
+          fontWeight: "500",
+        },
+        {
+          id: "layer-rsvp",
+          key: "rsvp",
+          text: "RSVP • WILL YOU ATTEND?",
+          x: 50,
+          y: 93,
+          top: 93,
+          left: 50,
+          fontSize: 11,
+          fontFamily: "'Inter', sans-serif",
+          color: "#000000",
+          casing: "uppercase",
+          align: "center",
+          textAlign: "center",
+          letterSpacing: 1.5,
+          lineHeight: 1.2,
+          fontWeight: "700",
+        },
+      ]);
     } else if (!hasSavedLayers && (tplConfig as any)?.defaultTextBlocks && Array.isArray((tplConfig as any).defaultTextBlocks) && (tplConfig as any).defaultTextBlocks.length > 0) {
       resolvedTextLayers = deduplicateTextLayers(
         (tplConfig as any).defaultTextBlocks.map((b: any) => {
@@ -900,25 +1051,29 @@ export default function InvitationStudio({
 
     const tplInnerBg = (tplConfig as any)?.innerCardLayer?.backgroundColor || (tplConfig as any)?.card?.cssConfig?.backgroundColor || (tplConfig as any)?.card?.backgroundColor || tplConfig?.backgroundColor || "#ffffff";
 
-    const resolvedCard = pendingUploadUrl ? null : {
+    const resolvedCard = (pendingUploadUrl && !isVideoInvite) ? null : {
       ...((tplConfig as any)?.card || {}),
       ...((invite as any)?.card || {}),
-      artworkUrl: (invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : ""),
+      artworkUrl: isVideoInvite ? (pendingVideoUrl || pendingUploadUrl || "") : ((invite as any)?.card?.artworkUrl || (tplConfig as any)?.card?.borderIllustration || (tplConfig as any)?.card?.artworkUrl || (cardBgType === "image" ? cardBgValue : "")),
+      videoUrl: isVideoInvite ? pendingVideoUrl : null,
+      isVideo: isVideoInvite,
+      celebrantPhoto: isVideoInvite ? pendingCelebrantPhoto : null,
+      aspectRatio: isVideoInvite ? "9/16" : ((tplConfig as any)?.card?.aspectRatio || "5/7"),
       borderIllustration: (invite as any)?.card?.borderIllustration || (tplConfig as any)?.card?.borderIllustration,
       safeArea: (invite as any)?.card?.safeArea || (tplConfig as any)?.card?.safeArea,
-      backgroundColor: tplInnerBg,
+      backgroundColor: isVideoInvite ? "#000000" : tplInnerBg,
       cssConfig: (tplConfig as any)?.card?.cssConfig || (invite as any)?.card?.cssConfig || ((tplConfig as any)?.innerCardLayer ? {
-        backgroundColor: (tplConfig as any)?.innerCardLayer?.backgroundColor || "#ffffff",
+        backgroundColor: (tplConfig as any)?.innerCardLayer?.backgroundColor || (isVideoInvite ? "#000000" : "#ffffff"),
         backgroundGradient: (tplConfig as any)?.innerCardLayer?.backgroundGradient,
-        borderRadius: (tplConfig as any)?.innerCardLayer?.borderRadius || "14px",
+        borderRadius: (tplConfig as any)?.innerCardLayer?.borderRadius || (isVideoInvite ? "24px" : "14px"),
         border: (tplConfig as any)?.innerCardLayer?.border,
         paperShadow: (tplConfig as any)?.innerCardLayer?.paperShadow,
       } : undefined),
-      decorations: (invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || ((tplConfig as any)?.cardStyle?.illustrationSvg ? [(tplConfig as any).cardStyle.illustrationSvg] : []),
-      illustrationSvg: (tplConfig as any)?.cardStyle?.illustrationSvg || (tplConfig as any)?.card?.illustrationSvg || (invite as any)?.card?.illustrationSvg || null,
-      decorativeImages: (invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : []),
-      illustrationLayers: (invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || [],
-      stickerElements: (invite as any)?.card?.stickerElements || (tplConfig as any)?.card?.stickerElements || [],
+      decorations: isVideoInvite ? [] : ((invite as any)?.decorations || (invite as any)?.card?.decorations || (tplConfig as any)?.card?.decorations || (tplConfig as any)?.decorations || ((tplConfig as any)?.cardStyle?.illustrationSvg ? [(tplConfig as any).cardStyle.illustrationSvg] : [])),
+      illustrationSvg: isVideoInvite ? null : ((tplConfig as any)?.cardStyle?.illustrationSvg || (tplConfig as any)?.card?.illustrationSvg || (invite as any)?.card?.illustrationSvg || null),
+      decorativeImages: isVideoInvite ? [] : ((invite as any)?.card?.decorativeImages || (tplConfig as any)?.card?.decorativeImages || ((tplConfig as any)?.card?.artworkUrl ? [(tplConfig as any).card.artworkUrl] : [])),
+      illustrationLayers: isVideoInvite ? [] : ((invite as any)?.card?.illustrationLayers || (tplConfig as any)?.card?.illustrationLayers || []),
+      stickerElements: isVideoInvite ? [] : ((invite as any)?.card?.stickerElements || (tplConfig as any)?.card?.stickerElements || []),
     };
 
     const resolvedDecorations = resolvedCard?.decorations || [];
@@ -937,11 +1092,11 @@ export default function InvitationStudio({
     };
 
     const resolvedInnerCardLayer = (tplConfig as any)?.innerCardLayer || {
-      backgroundColor: resolvedCard?.backgroundColor || "#ffffff",
-      borderRadius: resolvedCard?.cssConfig?.borderRadius || "14px",
+      backgroundColor: resolvedCard?.backgroundColor || (isVideoInvite ? "#000000" : "#ffffff"),
+      borderRadius: resolvedCard?.cssConfig?.borderRadius || (isVideoInvite ? "24px" : "14px"),
       border: resolvedCard?.cssConfig?.border,
       paperShadow: resolvedCard?.cssConfig?.paperShadow,
-      aspectRatio: "5/7",
+      aspectRatio: isVideoInvite ? "9/16" : "5/7",
     };
 
     const isPremiumTemplate = Boolean(
@@ -949,36 +1104,38 @@ export default function InvitationStudio({
       isTemplatePremium(invite)
     );
     const isFreeTemplate = Boolean(tplConfig || effectiveTplId) && !isPremiumTemplate;
-    const shouldHideEnvelope = Boolean(pendingUploadUrl || isFreeTemplate);
+    const shouldHideEnvelope = Boolean(isVideoInvite || pendingUploadUrl || isFreeTemplate);
 
     return {
-      activeTemplateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
-      templateId: pendingUploadUrl ? null : (tplConfig?.id || tplId || null),
-      isPureCss: pendingUploadUrl ? false : ((tplConfig as any)?.isPureCss || false),
+      activeTemplateId: isVideoInvite ? (tplConfig?.id || tplId || "haunting") : (pendingUploadUrl ? null : (tplConfig?.id || tplId || null)),
+      templateId: isVideoInvite ? (tplConfig?.id || tplId || "haunting") : (pendingUploadUrl ? null : (tplConfig?.id || tplId || null)),
+      isPureCss: isVideoInvite ? false : (pendingUploadUrl ? false : ((tplConfig as any)?.isPureCss || false)),
       card: resolvedCard,
       decorations: resolvedDecorations,
-      cardImageFit: pendingUploadUrl ? "contain" : ((tplConfig as any)?.cardImageFit || "cover"),
+      cardImageFit: isVideoInvite ? "cover" : (pendingUploadUrl ? "contain" : ((tplConfig as any)?.cardImageFit || "cover")),
       isLandscape: invite?.isLandscape !== undefined ? !!invite.isLandscape : !!tplConfig?.isLandscape,
-      photoSlot: pendingUploadUrl ? null : (tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null),
+      photoSlot: isVideoInvite ? null : (pendingUploadUrl ? null : (tplConfig?.photoSlot ? { ...tplConfig.photoSlot } : null)),
       textLayers: resolvedTextLayers,
       selectedTextId: defaultSelectedId,
       cardBg: {
-        type: cardBgType,
-        value: cardBgValue,
+        type: isVideoInvite ? "color" : cardBgType,
+        value: isVideoInvite ? "#000000" : cardBgValue,
       },
-      backgroundImageUrl: cardBgType === "image" && !isSnapshotOrRasterUrl(cardBgValue)
+      backgroundImageUrl: isVideoInvite ? (pendingVideoUrl || null) : (cardBgType === "image" && !isSnapshotOrRasterUrl(cardBgValue)
         ? cardBgValue
-        : ((invite as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl) ? (invite as any).backgroundImageUrl : null),
-      stageBackdrop: pendingUploadUrl
+        : ((invite as any)?.backgroundImageUrl && !isSnapshotOrRasterUrl((invite as any).backgroundImageUrl) ? (invite as any).backgroundImageUrl : null)),
+      stageBackdrop: isVideoInvite
+        ? { type: "color", value: "#0b0f19" }
+        : (pendingUploadUrl
         ? { type: "color", value: "#f8fafc" }
         : {
           ...(savedBackdrop || {}),
           type: (savedBackdrop as any)?.type || (tplConfig as any)?.backdrop?.type || "color",
           value: initialBackdropValue,
           gradient: (tplConfig?.backdrop as any)?.gradient || (savedBackdrop as any)?.gradient || initialBackdropValue,
-        },
-      canvasWorkspaceBg: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
-      backdropBackground: pendingUploadUrl ? "#f8fafc" : initialBackdropValue,
+        }),
+      canvasWorkspaceBg: isVideoInvite ? "#0b0f19" : (pendingUploadUrl ? "#f8fafc" : initialBackdropValue),
+      backdropBackground: isVideoInvite ? "#0b0f19" : (pendingUploadUrl ? "#f8fafc" : initialBackdropValue),
       envelope: {
         ...savedEnvelope,
         color: (tplConfig as any)?.envelope?.outerColor || (tplConfig as any)?.envelopeColor || (savedEnvelope as any).color,
@@ -996,12 +1153,16 @@ export default function InvitationStudio({
       backgroundLayer: resolvedBackgroundLayer,
       frameLayers: resolvedFrameLayers,
       innerCardLayer: resolvedInnerCardLayer,
-      viewMode: shouldHideEnvelope ? "card" : "envelope",
-      hideEnvelope: shouldHideEnvelope,
+      viewMode: isVideoInvite ? "card" : (shouldHideEnvelope ? "card" : "envelope"),
+      hideEnvelope: isVideoInvite ? true : shouldHideEnvelope,
+      videoUrl: isVideoInvite ? pendingVideoUrl : null,
+      isVideo: isVideoInvite,
+      celebrantPhoto: isVideoInvite ? pendingCelebrantPhoto : null,
+      aspectRatio: isVideoInvite ? "9/16" : undefined,
       eventDetails: {
         title: invite?.eventTitle || invite?.title || evt?.title || tplConfig?.title || titleText,
         host: invite?.subtitle || tplConfig?.host || hostText,
-        date: invite?.eventDate || evt?.eventDate || tplConfig?.date || "2026-10-14",
+        date: invite?.eventDate || evt?.eventDate || tplConfig?.date || dateText,
         time: invite?.eventTime || evt?.eventTime || tplConfig?.time || "16:00",
         venue: invite?.eventVenue || invite?.mainText || evt?.venue || tplConfig?.venue || venueText,
         address: invite?.eventVenue || evt?.address || tplConfig?.venue || venueText,
@@ -1156,8 +1317,18 @@ export default function InvitationStudio({
         undefined,
     };
 
+    const isVideoInvite = Boolean(
+      videoInvite ||
+      videoUrl ||
+      (typeof window !== "undefined" &&
+        (window.location.search.includes("videoInvite=1") ||
+         Boolean(new URLSearchParams(window.location.search).get("videoUrl")) ||
+         sessionStorage.getItem("pending_is_video") === "true" ||
+         Boolean(sessionStorage.getItem("pending_video_url"))))
+    );
+
     const pendingUploadUrl = getPendingOrUploadedImageUrl(mergedInvite as any, initialEvent, uploadedImageUrl);
-    const isUploadedSession = Boolean(pendingUploadUrl);
+    const isUploadedSession = Boolean(pendingUploadUrl) && !isVideoInvite;
 
     const effectiveTemplateId = isUploadedSession
       ? null
@@ -1202,7 +1373,7 @@ export default function InvitationStudio({
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
-    if (isUploadedSession && pendingUploadUrl) {
+    if (isUploadedSession && pendingUploadUrl && !isVideoInvite && !baseState.isVideo) {
       baseState.cardBg = { type: "image", value: pendingUploadUrl };
       baseState.backgroundImageUrl = pendingUploadUrl;
       if (!baseState.card) baseState.card = {};
@@ -1400,8 +1571,10 @@ export default function InvitationStudio({
     setCurrentStepIndex(0);
     setCanvasKey((k) => k + 1);
 
-    // Open the template gallery so user picks a fresh template
-    setIsTemplateGalleryOpen(true);
+    // Open the template gallery so user picks a fresh template (skip for video invites)
+    if (!videoInvite) {
+      setIsTemplateGalleryOpen(true);
+    }
 
     // Clear URL query params of event/invitation-specific data
     if (typeof window !== "undefined") {
@@ -1413,13 +1586,27 @@ export default function InvitationStudio({
         window.history.replaceState({}, "", url.pathname);
       } catch (e) { }
     }
-  }, [initialEvent?.id, propSelectedEventId]);
+  }, [initialEvent?.id, propSelectedEventId, videoInvite]);
 
   // --- Canvas Zoom & Aspect Ratio Controls ---
   const [canvasZoom, setCanvasZoom] = useState(100); // 50-150%
   type CanvasPreset = "portrait-5x7" | "square-5x5" | "story-9x16" | "landscape-4x3";
+  const isInitialVideoFlow = Boolean(
+    videoInvite ||
+    (designState as any)?.isVideo ||
+    (designState as any)?.videoUrl ||
+    (designState as any)?.aspectRatio === "9/16" ||
+    (typeof window !== "undefined" && (
+      new URLSearchParams(window.location.search).get("videoInvite") === "1" ||
+      new URLSearchParams(window.location.search).get("aspectRatio") === "9/16" ||
+      sessionStorage.getItem("pending_is_video") === "true" ||
+      sessionStorage.getItem("pending_aspect_ratio") === "9/16" ||
+      sessionStorage.getItem("pending_video_url")
+    ))
+  );
+
   const [canvasPreset, setCanvasPreset] = useState<CanvasPreset>(
-    designState.isLandscape ? "landscape-4x3" : "portrait-5x7"
+    isInitialVideoFlow ? "story-9x16" : (designState.isLandscape ? "landscape-4x3" : "portrait-5x7")
   );
 
   const CANVAS_PRESETS: { id: CanvasPreset; label: string; aspect: string; maxW: number; isLandscape: boolean }[] = [
@@ -1481,7 +1668,17 @@ export default function InvitationStudio({
       initialInvitation?.id ||
       (initialEvent?.id && localStorage.getItem(`invitation_4layer_${initialEvent.id}`))
     );
-    if (!hasTemplate && !hasDraft) {
+    const isVideoSession = Boolean(
+      isInitialVideoFlow ||
+      videoInvite ||
+      (designState as any)?.isVideo ||
+      (designState as any)?.videoUrl ||
+      (typeof window !== "undefined" && (
+        sessionStorage.getItem("pending_is_video") === "true" ||
+        sessionStorage.getItem("pending_video_url")
+      ))
+    );
+    if (!hasTemplate && !hasDraft && !isVideoSession) {
       setIsTemplateGalleryOpen(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1568,8 +1765,8 @@ export default function InvitationStudio({
   // which clears all stale text layer DOM nodes before the new event's layers mount.
   const [canvasKey, setCanvasKey] = useState(0);
 
-  // Centralized Multi-Step Workflow Navigation ("Design", "Details", "Gifting", "Review", "Add guests")
-  const WORKFLOW_TABS = ["Design", "Details", "Gifting", "Review", "Add guests"] as const;
+  // Centralized Multi-Step Workflow Navigation ("Video Invite", "Details", "Gifting", "Review", "Add guests")
+  const WORKFLOW_TABS = ["Video Invite", "Details", "Gifting", "Review", "Add guests"] as const;
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   // Workflow State: Host Details, RSVP Options, Wishlists, Charities, Funds
@@ -1876,7 +2073,7 @@ export default function InvitationStudio({
   const dragStartPos = useRef<{ mouseX: number; mouseY: number; layerX: number; layerY: number } | null>(null);
 
   // Active selected text layer - strictly decoupled: only active when a layer is explicitly selected
-  const activeLayer = designState.selectedTextId
+  const activeLayer: any = designState.selectedTextId
     ? designState.textLayers.find((l) => l.id === designState.selectedTextId) || null
     : null;
 
@@ -2505,6 +2702,22 @@ export default function InvitationStudio({
         : null);
 
     if (!uploadedUrl) return;
+
+    if (
+      videoInvite ||
+      (designState as any)?.isVideo ||
+      (designState as any)?.videoUrl ||
+      isVideoMediaUrl(uploadedUrl) ||
+      (typeof window !== "undefined" && (
+        sessionStorage.getItem("pending_is_video") === "true" ||
+        sessionStorage.getItem("pending_aspect_ratio") === "9/16" ||
+        sessionStorage.getItem("pending_video_url")
+      ))
+    ) {
+      setCanvasPreset("story-9x16");
+      setDesignState((prev) => ({ ...prev, isLandscape: false }));
+      return;
+    }
 
     const img = new Image();
     img.onload = () => {
@@ -3279,7 +3492,15 @@ export default function InvitationStudio({
       fontWeight: titleLayer?.fontWeight || "900",
       fontFamily: titleLayer?.fontFamily || "'Londrina Solid', cursive",
       textAlignment: titleLayer?.align || "center",
-      imageUrl: resolvedImageUrl,
+      imageUrl: designState.videoUrl || resolvedImageUrl,
+      videoUrl: designState.videoUrl || (typeof window !== "undefined" ? sessionStorage.getItem("pending_video_url") || localStorage.getItem("pending_video_url") : null) || null,
+      videoMetadata: {
+        templateId: activeTplId,
+        aspectRatio: "9/16",
+        source: "replicate-ai",
+        photoUrl: (designState as any).celebrantPhoto || null,
+      },
+      isVideo: true,
       buttonText,
       buttonColor: accentColor,
       buttonRadius: 12,
@@ -3296,7 +3517,7 @@ export default function InvitationStudio({
       decorations: decorativeImages,
       containerDimensions: { width: 540, height: 756, aspectRatio: designState.isLandscape ? "landscape" : "5x7" },
       canvasPreset,
-      aspectRatio: activePreset.aspect,
+      aspectRatio: designState.videoUrl ? "9/16" : activePreset.aspect,
       background: fullBackgroundModel,
       cardBg: fullBackgroundModel,
       backgroundImageUrl: explicitBackgroundImageUrl,
@@ -3310,13 +3531,21 @@ export default function InvitationStudio({
       isLandscape: designState.isLandscape,
       location: designState.eventDetails.address || designState.eventDetails.venue || null,
       selectedTemplateId: activeTplId,
-      previewUrl: resolvedImageUrl,
-      thumbnailUrl: resolvedImageUrl,
+      previewUrl: designState.videoUrl || resolvedImageUrl,
+      thumbnailUrl: designState.videoUrl || resolvedImageUrl,
       canvasState: {
         templateId: activeTplId,
         activeTemplateId: activeTplId,
         textLayers: normalizedTextLayers,
         layers: normalizedTextLayers,
+        videoUrl: designState.videoUrl || (typeof window !== "undefined" ? sessionStorage.getItem("pending_video_url") || localStorage.getItem("pending_video_url") : null) || null,
+        videoMetadata: {
+          templateId: activeTplId,
+          aspectRatio: "9/16",
+          source: "replicate-ai",
+          photoUrl: (designState as any).celebrantPhoto || null,
+        },
+        isVideo: true,
         card: fullCardModel,
         cardBg: fullBackgroundModel,
         background: fullBackgroundModel,
@@ -3750,11 +3979,11 @@ export default function InvitationStudio({
   const handleProceedNext = async () => {
     if (isGeneratingSnapshot || isSavingDraft || isPreparingDispatch) return;
 
-    // When on "Design" step (step 0): capture snapshot, save payload, and advance to "Details" (step 1)
+    // When on "Video Invite" step (step 0): save video payload and advance to "Details" (step 1)
     if (currentStepIndex === 0) {
       if (!user) {
         try {
-          const draftPayload = constructPayload(null);
+          const draftPayload = constructPayload(designState.videoUrl || null);
           localStorage.setItem("guestDraft", JSON.stringify(draftPayload));
           localStorage.setItem("guestDraftTemplateId", designState.activeTemplateId || "");
         } catch (e) { }
@@ -3762,10 +3991,16 @@ export default function InvitationStudio({
         setIsAuthModalOpen(true);
         return;
       }
-      const { dataUrl, uploadedUrl } = await generateSnapshot();
-      const saved = await saveDesign(uploadedUrl || dataUrl);
+      let mediaUrl = designState.videoUrl;
+      if (!mediaUrl) {
+        try {
+          const { dataUrl, uploadedUrl } = await generateSnapshot();
+          mediaUrl = uploadedUrl || dataUrl;
+        } catch (_) {}
+      }
+      const saved = await saveDesign(mediaUrl || null);
       if (saved) {
-        setToast({ message: "Design saved! Advancing to details... ✨", type: "success" });
+        setToast({ message: "Video invite saved! Advancing to details... ✨", type: "success" });
         setCurrentStepIndex(1);
       }
       return;
@@ -4589,9 +4824,19 @@ export default function InvitationStudio({
       </div>
 
       {/* ========================================================================= */}
-      {/* STEP 0: CANVAS STUDIO (CANVAS CONTROLS BAR + CANVAS WORKSPACE)            */}
+      {/* STEP 0: VIDEO INVITE STAGE (REPLACES STATIC CANVAS EDITOR WORKSPACE)       */}
       {/* ========================================================================= */}
       {currentStepIndex === 0 && (
+        <VideoInviteStudioStage
+          designState={designState}
+          onUpdateDesignState={setDesignState}
+          onProceedToDetails={() => setCurrentStepIndex(1)}
+          onSaveDraft={saveDesign}
+        />
+      )}
+
+      {/* Deprecated Static Canvas Workspace (dormant) */}
+      {false && currentStepIndex === 0 && (
         <>
           <div className="h-10 bg-white border-b border-slate-200/80 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 z-20 flex-shrink-0 shadow-2xs overflow-x-auto [&::-webkit-scrollbar]:hidden">
             {/* Aspect Ratio / Size Presets */}
@@ -5450,9 +5695,9 @@ export default function InvitationStudio({
                             className="w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 bg-white flex-shrink-0 cursor-pointer shadow-xs hover:border-amber-500 transition-colors relative group"
                             title="Click to change photo"
                           >
-                            {designState.photoSlot.imageUrl ? (
+                            {(designState.photoSlot as any)?.imageUrl ? (
                               <img
-                                src={designState.photoSlot.imageUrl}
+                                src={(designState.photoSlot as any)?.imageUrl || ""}
                                 alt="Photo preview"
                                 className="w-full h-full object-cover"
                               />

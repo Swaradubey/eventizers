@@ -78,6 +78,7 @@ const AI_KNOWLEDGE = [
 const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard, exact: true },
   { label: "Events", href: "/dashboard/events", icon: CalendarDays },
+  { label: "Video Invites", href: "/dashboard/invitations?videoInvite=1", icon: Sparkles },
   { label: "Ticketing", href: "/dashboard/ticketing", icon: Ticket },
   { label: "Check-in", href: "/dashboard/check-in", icon: ScanLine },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
@@ -85,7 +86,7 @@ const NAV_ITEMS = [
   { label: "Connections", href: "/dashboard/connections", icon: Link2 },
 ];
 
-const MOBILE_PRIMARY_NAV = ["Overview", "Events", "Ticketing", "Check-in"];
+const MOBILE_PRIMARY_NAV = ["Overview", "Events", "Video Invites", "Ticketing", "Check-in"];
 
 export default function IndividualShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -96,13 +97,14 @@ export default function IndividualShell({ children }: { children: React.ReactNod
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  // Authentication guard
+  // Authentication guard (invitations canvas studio allows guest customization)
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    const isInvitationsRoute = pathname?.startsWith("/dashboard/invitations");
+    if (!user && !isInvitationsRoute) {
       router.replace("/login");
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -213,8 +215,9 @@ export default function IndividualShell({ children }: { children: React.ReactNod
   const displayName = user?.name || user?.email?.split("@")[0] || "Host";
   const userInitial = displayName.charAt(0).toUpperCase();
 
-  // Show loading while checking auth
-  if (authLoading || !user) {
+  // Show loading while checking auth (skip for guest invitations canvas)
+  const isInvitationsRoute = pathname?.startsWith("/dashboard/invitations");
+  if (authLoading || (!user && !isInvitationsRoute)) {
     return (
       <div className="eventizers-root min-h-svh bg-background text-foreground flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">

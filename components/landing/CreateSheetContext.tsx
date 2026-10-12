@@ -84,9 +84,9 @@ export function CreateSheetProvider({ children }: { children: ReactNode }) {
         <PreviewModal
           templateId={previewTemplateId}
           onClose={closePreview}
-          onSelectForCreation={(id) => {
+          onSelectForCreation={(id, photo) => {
             closePreview();
-            open("video", { template: id });
+            open("video", { template: id, photo });
           }}
         />
       )}

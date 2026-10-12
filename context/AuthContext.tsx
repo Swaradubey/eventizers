@@ -147,11 +147,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       if (typeof window !== "undefined") {
         if (window.location.pathname.startsWith("/admin")) {
-          window.location.href = "/admin/login";
+          window.location.href = "/";
         } else if (window.location.pathname.startsWith("/pro")) {
-          window.location.href = "/pro/login";
+          window.location.href = "/";
         } else if (window.location.pathname.startsWith("/dashboard")) {
-          window.location.href = "/login";
+          window.location.href = "/";
         }
       }
     } catch (err) {

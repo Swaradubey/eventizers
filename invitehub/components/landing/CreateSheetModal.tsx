@@ -37,6 +37,8 @@ import Modal from "./Modal";
 import type { Mode } from "./CreateSheetContext";
 import { cn } from "@/lib/utils";
 import API from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 interface CreateSheetModalProps {
   initialMode?: Mode;
@@ -269,6 +271,9 @@ export default function CreateSheetModal({
   const [prompt, setPrompt] = useState("");
   const [photos, setPhotos] = useState<string[]>(initialPhoto ? [initialPhoto] : []);
   const router = useRouter();
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const [step, setStep] = useState<"create" | "generating" | "video-preview" | "settings" | "done">("create");
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -297,6 +302,14 @@ export default function CreateSheetModal({
   const displayPhoto = customVideoPhoto || (photos.length > 0 ? photos[0] : getTemplatePhoto(selectedTemplate));
 
   const startVideoGeneration = async () => {
+    if (!user) {
+      pendingActionRef.current = () => {
+        startVideoGeneration();
+      };
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     const activeTemplateId = selectedTemplateId || "premiere";
     const effectivePrompt = (prompt || notes || "").trim();
     setVideoError(null);
@@ -775,27 +788,92 @@ export default function CreateSheetModal({
           <div className="border-t border-border px-5 py-4 flex flex-col gap-2">
             <button
               type="button"
+              id="use-this-video-btn-legacy"
               onClick={() => {
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
-                  sessionStorage.setItem("pending_upload_title", videoEventTitle);
-                  sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
-                  sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
-                  sessionStorage.setItem("pending_venue", videoEventVenue);
-                  sessionStorage.setItem("pending_event_date", videoEventDate);
-                  if (displayPhoto) {
-                    sessionStorage.setItem("pending_celebrant_photo", displayPhoto);
-                  }
+                if (!user) {
+                  pendingActionRef.current = () => {
+                    const btn = document.getElementById("use-this-video-btn-legacy");
+                    if (btn) btn.click();
+                  };
+                  setIsAuthModalOpen(true);
+                  return;
+                }
 
-                  localStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
-                  localStorage.setItem("pending_upload_title", videoEventTitle);
-                  localStorage.setItem("pending_template_id", selectedTemplateId || "");
-                  if (displayPhoto) {
-                    localStorage.setItem("pending_celebrant_photo", displayPhoto);
+                const finalMediaUrl = generatedVideoUrl || displayPhoto || "";
+                const celebrantImg = customVideoPhoto || (displayPhoto !== IMG.jessica ? displayPhoto : "");
+
+                if (typeof window !== "undefined") {
+                  try {
+                    const guestDraft = {
+                      type: "video",
+                      isVideo: Boolean(generatedVideoUrl),
+                      videoUrl: generatedVideoUrl || "",
+                      imageUrl: displayPhoto || "",
+                      uploadUrl: finalMediaUrl,
+                      uploadTitle: videoEventTitle,
+                      uploadName: videoEventTitle,
+                      celebrantPhoto: celebrantImg || "",
+                      templateId: selectedTemplateId || "premiere",
+                      templateName: selectedTemplate?.title || "Video Celebration",
+                      title: videoEventTitle,
+                      venue: videoEventVenue,
+                      date: videoEventDate,
+                      aspectRatio: "9/16",
+                    };
+
+                    sessionStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+                    localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+
+                    sessionStorage.setItem("pending_upload_invite", finalMediaUrl);
+                    sessionStorage.setItem("pending_video_url", generatedVideoUrl || "");
+                    sessionStorage.setItem("pending_upload_title", videoEventTitle);
+                    sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
+                    sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
+                    sessionStorage.setItem("pending_venue", videoEventVenue);
+                    sessionStorage.setItem("pending_event_date", videoEventDate);
+                    sessionStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
+                    sessionStorage.setItem("pending_aspect_ratio", "9/16");
+                    if (celebrantImg) {
+                      sessionStorage.setItem("pending_celebrant_photo", celebrantImg);
+                    }
+
+                    localStorage.setItem("pending_upload_invite", finalMediaUrl);
+                    localStorage.setItem("pending_video_url", generatedVideoUrl || "");
+                    localStorage.setItem("pending_upload_title", videoEventTitle);
+                    localStorage.setItem("pending_template_id", selectedTemplateId || "");
+                    localStorage.setItem("pending_venue", videoEventVenue);
+                    localStorage.setItem("pending_event_date", videoEventDate);
+                    localStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
+                    localStorage.setItem("pending_aspect_ratio", "9/16");
+                    if (celebrantImg) {
+                      localStorage.setItem("pending_celebrant_photo", celebrantImg);
+                    }
+                  } catch (e) {
+                    console.warn("Failed to store video invite draft:", e);
                   }
                 }
                 onClose();
-                router.push(`/dashboard/invitations?studio=true&videoInvite=1&uploadedImageUrl=${encodeURIComponent(generatedVideoUrl || displayPhoto || "")}`);
+
+                const isSafeUrlParam = (val?: string | null): val is string => {
+                  if (!val || typeof val !== "string") return false;
+                  const trimmed = val.trim();
+                  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return false;
+                  return trimmed.length < 500;
+                };
+
+                const params = new URLSearchParams();
+                params.set("studio", "true");
+                params.set("videoInvite", "1");
+                params.set("aspectRatio", "9/16");
+                if (isSafeUrlParam(generatedVideoUrl)) params.set("videoUrl", generatedVideoUrl);
+                if (isSafeUrlParam(finalMediaUrl)) params.set("uploadedImageUrl", finalMediaUrl);
+                if (selectedTemplateId) params.set("templateId", selectedTemplateId);
+                if (videoEventTitle) params.set("title", videoEventTitle);
+                if (videoEventDate) params.set("date", videoEventDate);
+                if (videoEventVenue) params.set("venue", videoEventVenue);
+                if (isSafeUrlParam(celebrantImg)) params.set("celebrantPhoto", celebrantImg);
+
+                router.push(`/canvas?${params.toString()}`);
               }}
               className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground shadow hover:brightness-110 active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-2"
             >
@@ -1335,6 +1413,18 @@ export default function CreateSheetModal({
               type="button"
               disabled={!isValid || isGeneratingVideo}
               onClick={() => {
+                if (!user) {
+                  pendingActionRef.current = () => {
+                    if (mode === "video" || mode === "ai") {
+                      startVideoGeneration();
+                    } else {
+                      setStep("settings");
+                    }
+                  };
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+
                 if (mode === "video" || mode === "ai") {
                   startVideoGeneration();
                 } else {
@@ -1367,6 +1457,24 @@ export default function CreateSheetModal({
           </div>
         </div>
       )}
+
+      {/* Mandatory Sign-in Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          pendingActionRef.current = null;
+        }}
+        initialMode="signin"
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          if (pendingActionRef.current) {
+            const act = pendingActionRef.current;
+            pendingActionRef.current = null;
+            act();
+          }
+        }}
+      />
     </Modal>
   );
 }

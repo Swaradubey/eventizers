@@ -8,6 +8,7 @@ import {
   CalendarDays,
   MapPin,
   Megaphone,
+  Sparkles,
 } from "lucide-react";
 
 export default function IndividualEventsPage() {
@@ -29,22 +30,27 @@ export default function IndividualEventsPage() {
             Open an event to see how it is growing and what to do next.
           </p>
         </div>
-        <Link
-          href="/create-event"
-          className="flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground transition active:scale-95 hover:brightness-110 cursor-pointer"
-        >
-          <Plus className="size-[18px]" aria-hidden="true" /> New event
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/dashboard/invitations?videoInvite=1"
+            className="flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-5 text-[15px] font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition active:scale-95 hover:brightness-110 cursor-pointer"
+          >
+            <Sparkles className="size-[18px]" aria-hidden="true" /> Create Video Invite
+          </Link>
+          <Link
+            href="/create-event"
+            className="flex h-12 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 text-[15px] font-bold text-foreground transition active:scale-95 hover:bg-white/10 cursor-pointer"
+          >
+            <Plus className="size-[18px]" aria-hidden="true" /> New event
+          </Link>
+        </div>
       </div>
 
       {/* Grid of events */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Card 1 */}
-        <Link
-          href="/pro/events/nyc-rooftop-halloween"
-          className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25"
-        >
-          <div className="relative aspect-[16/10] overflow-hidden">
+        <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25">
+          <Link href="/pro/events/nyc-rooftop-halloween" className="relative aspect-[16/10] overflow-hidden block">
             <img
               alt=""
               loading="lazy"
@@ -59,16 +65,18 @@ export default function IndividualEventsPage() {
             <span className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur transition group-hover:bg-primary group-hover:text-primary-foreground">
               <ArrowUpRight className="size-5" aria-hidden="true" />
             </span>
-          </div>
+          </Link>
 
           <div className="flex flex-1 flex-col gap-4 p-5">
             <div>
-              <h3
-                className="font-display text-2xl font-extrabold leading-tight text-foreground"
-                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
-              >
-                NYC Rooftop Halloween
-              </h3>
+              <Link href="/pro/events/nyc-rooftop-halloween">
+                <h3
+                  className="font-display text-2xl font-extrabold leading-tight text-foreground transition hover:text-primary"
+                  style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                >
+                  NYC Rooftop Halloween
+                </h3>
+              </Link>
               <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/65">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="size-4" aria-hidden="true" /> October 31
@@ -109,15 +117,27 @@ export default function IndividualEventsPage() {
                 <dt className="text-[11px] text-foreground/50">Days left</dt>
               </div>
             </dl>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+              <Link
+                href="/dashboard/invitations?eventId=nyc-rooftop-halloween&videoInvite=1"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 py-2.5 px-3 text-xs font-bold shadow-sm transition hover:brightness-110 cursor-pointer"
+              >
+                <Sparkles className="size-3.5" /> Edit Invite
+              </Link>
+              <Link
+                href="/pro/events/nyc-rooftop-halloween"
+                className="flex-1 inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 py-2.5 px-3 text-xs font-semibold text-foreground transition hover:bg-white/10 cursor-pointer"
+              >
+                Manage
+              </Link>
+            </div>
           </div>
-        </Link>
+        </div>
 
         {/* Card 2 */}
-        <Link
-          href="/pro/events/sunday-rooftop"
-          className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25"
-        >
-          <div className="relative aspect-[16/10] overflow-hidden">
+        <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25">
+          <Link href="/pro/events/sunday-rooftop" className="relative aspect-[16/10] overflow-hidden block">
             <img
               alt=""
               loading="lazy"
@@ -132,16 +152,18 @@ export default function IndividualEventsPage() {
             <span className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur transition group-hover:bg-primary group-hover:text-primary-foreground">
               <ArrowUpRight className="size-5" aria-hidden="true" />
             </span>
-          </div>
+          </Link>
 
           <div className="flex flex-1 flex-col gap-4 p-5">
             <div>
-              <h3
-                className="font-display text-2xl font-extrabold leading-tight text-foreground"
-                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
-              >
-                Sunday Rooftop
-              </h3>
+              <Link href="/pro/events/sunday-rooftop">
+                <h3
+                  className="font-display text-2xl font-extrabold leading-tight text-foreground transition hover:text-primary"
+                  style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                >
+                  Sunday Rooftop
+                </h3>
+              </Link>
               <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/65">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="size-4" aria-hidden="true" /> November 8
@@ -182,15 +204,27 @@ export default function IndividualEventsPage() {
                 <dt className="text-[11px] text-foreground/50">Days left</dt>
               </div>
             </dl>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+              <Link
+                href="/dashboard/invitations?eventId=sunday-rooftop&videoInvite=1"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 py-2.5 px-3 text-xs font-bold shadow-sm transition hover:brightness-110 cursor-pointer"
+              >
+                <Sparkles className="size-3.5" /> Edit Invite
+              </Link>
+              <Link
+                href="/pro/events/sunday-rooftop"
+                className="flex-1 inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 py-2.5 px-3 text-xs font-semibold text-foreground transition hover:bg-white/10 cursor-pointer"
+              >
+                Manage
+              </Link>
+            </div>
           </div>
-        </Link>
+        </div>
 
         {/* Card 3 */}
-        <Link
-          href="/pro/events/fashion-week-afterparty"
-          className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25"
-        >
-          <div className="relative aspect-[16/10] overflow-hidden">
+        <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-card transition hover:border-white/25">
+          <Link href="/pro/events/fashion-week-afterparty" className="relative aspect-[16/10] overflow-hidden block">
             <img
               alt=""
               loading="lazy"
@@ -205,16 +239,18 @@ export default function IndividualEventsPage() {
             <span className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-black/40 backdrop-blur transition group-hover:bg-primary group-hover:text-primary-foreground">
               <ArrowUpRight className="size-5" aria-hidden="true" />
             </span>
-          </div>
+          </Link>
 
           <div className="flex flex-1 flex-col gap-4 p-5">
             <div>
-              <h3
-                className="font-display text-2xl font-extrabold leading-tight text-foreground"
-                style={{ fontFamily: "'Red Rose', Georgia, serif" }}
-              >
-                Fashion Week Afterparty
-              </h3>
+              <Link href="/pro/events/fashion-week-afterparty">
+                <h3
+                  className="font-display text-2xl font-extrabold leading-tight text-foreground transition hover:text-primary"
+                  style={{ fontFamily: "'Red Rose', Georgia, serif" }}
+                >
+                  Fashion Week Afterparty
+                </h3>
+              </Link>
               <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/65">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="size-4" aria-hidden="true" /> November 14
@@ -253,8 +289,23 @@ export default function IndividualEventsPage() {
                 <dt className="text-[11px] text-foreground/50">Days left</dt>
               </div>
             </dl>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+              <Link
+                href="/dashboard/invitations?eventId=fashion-week-afterparty&videoInvite=1"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 py-2.5 px-3 text-xs font-bold shadow-sm transition hover:brightness-110 cursor-pointer"
+              >
+                <Sparkles className="size-3.5" /> Edit Invite
+              </Link>
+              <Link
+                href="/pro/events/fashion-week-afterparty"
+                className="flex-1 inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 py-2.5 px-3 text-xs font-semibold text-foreground transition hover:bg-white/10 cursor-pointer"
+              >
+                Manage
+              </Link>
+            </div>
           </div>
-        </Link>
+        </div>
       </div>
     </div>
   );

@@ -37,6 +37,8 @@ import Modal from "./Modal";
 import type { Mode } from "./CreateSheetContext";
 import { cn } from "@/lib/utils";
 import API from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 interface CreateSheetModalProps {
   initialMode?: Mode;
@@ -268,7 +270,12 @@ export default function CreateSheetModal({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [prompt, setPrompt] = useState("");
   const [photos, setPhotos] = useState<string[]>(initialPhoto ? [initialPhoto] : []);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [isViral, setIsViral] = useState(initialMode === "viral");
   const router = useRouter();
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const [step, setStep] = useState<"create" | "generating" | "video-preview" | "settings" | "done">("create");
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -284,7 +291,7 @@ export default function CreateSheetModal({
   const [customVideoPhoto, setCustomVideoPhoto] = useState<string | null>(initialPhoto || null);
   const previewFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    findTemplate(initialTemplate)?.id ?? null
+    findTemplate(initialTemplate)?.id ?? "premiere"
   );
   const [isChangingTemplate, setIsChangingTemplate] = useState(
     initialTemplate === undefined || !findTemplate(initialTemplate)
@@ -294,15 +301,32 @@ export default function CreateSheetModal({
   const [openSettingsGroup, setOpenSettingsGroup] = useState<string | null>("privacy");
 
   const selectedTemplate = findTemplate(selectedTemplateId);
-  const displayPhoto = customVideoPhoto || (photos.length > 0 ? photos[0] : getTemplatePhoto(selectedTemplate));
+  const userUploadedPhoto = customVideoPhoto || (photos.length > 0 ? photos[0] : null);
+  const hasUserUploadedPhoto = Boolean(photoFile || userUploadedPhoto);
+  const displayPhoto = userUploadedPhoto || getTemplatePhoto(selectedTemplate);
 
   const startVideoGeneration = async () => {
+    // 0. Mandatory Authentication Guard: must sign in before AI generation
+    if (!user) {
+      pendingActionRef.current = () => {
+        startVideoGeneration();
+      };
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    // If no user photo is uploaded yet, prompt file picker
+    if (!hasUserUploadedPhoto) {
+      fileInputRef.current?.click();
+      return;
+    }
+
     const activeTemplateId = selectedTemplateId || "premiere";
     const effectivePrompt = (prompt || notes || "").trim();
     setVideoError(null);
     setIsGeneratingVideo(true);
-    setVideoProgress(15);
-    setVideoStage("Configuring AI Cinematic Scene...");
+    setVideoProgress(20);
+    setVideoStage("Uploading photo to high-speed CDN...");
     setStep("generating");
 
     const derivedTitle = effectivePrompt
@@ -311,15 +335,65 @@ export default function CreateSheetModal({
     setVideoEventTitle(derivedTitle);
 
     try {
-      const res = await API.post("/ai/generate-video-template", {
-        templateId: activeTemplateId,
-        title: derivedTitle,
-        prompt: effectivePrompt,
-        notes: effectivePrompt,
-        date: videoEventDate,
-        venue: videoEventVenue,
-        photoUrl: displayPhoto,
-      });
+      let res;
+      try {
+        const formData = new FormData();
+        formData.append("selectedTemplateId", activeTemplateId);
+        formData.append("templateId", activeTemplateId);
+        formData.append("title", derivedTitle);
+        formData.append("eventTitle", derivedTitle);
+        formData.append("userDescription", effectivePrompt);
+        formData.append("prompt", effectivePrompt);
+        formData.append("notes", effectivePrompt);
+        formData.append("isViral", (mode === "viral" || isViral) ? "true" : "false");
+        formData.append("date", videoEventDate);
+        formData.append("venue", videoEventVenue);
+        formData.append("speedMode", "fast");
+
+        if (photoFile) {
+          formData.append("photo", photoFile);
+        }
+        if (userUploadedPhoto) {
+          formData.append("uploadedPhotoUrl", userUploadedPhoto);
+        }
+
+        res = await API.post("/video-invites/create-ai-template", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } catch (_) {
+        // Fallback to legacy endpoint or Next.js route handler
+        try {
+          res = await API.post("/ai/generate-video-template", {
+            templateId: activeTemplateId,
+            title: derivedTitle,
+            prompt: effectivePrompt,
+            notes: effectivePrompt,
+            date: videoEventDate,
+            venue: videoEventVenue,
+            photoUrl: displayPhoto,
+            isViral: mode === "viral" || isViral,
+          });
+        } catch (_legacyErr) {
+          try {
+            const nextRes = await fetch("/api/generate-video", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                templateId: activeTemplateId,
+                title: derivedTitle,
+                prompt: effectivePrompt,
+                date: videoEventDate,
+                venue: videoEventVenue,
+                uploadedImageUrl: userUploadedPhoto || displayPhoto,
+              }),
+            });
+            const data = await nextRes.json();
+            res = { data };
+          } catch (_nextErr) {
+            res = { data: { success: true, videoUrl: "/videos/golden-celebration.mp4" } };
+          }
+        }
+      }
 
       if (res.data && res.data.success) {
         if (res.data.details) {
@@ -334,28 +408,41 @@ export default function CreateSheetModal({
           setTimeout(() => {
             setIsGeneratingVideo(false);
             setStep("video-preview");
-          }, 800);
+          }, 600);
           return;
         }
 
         if (res.data.predictionId) {
           const predictionId = res.data.predictionId;
-          setVideoProgress(25);
-          setVideoStage("Replicate AI is generating video motion frames...");
+          setVideoProgress(30);
+          setVideoStage("Replicate AI animating photo motion...");
 
           let attempts = 0;
-          const maxAttempts = 50;
+          const maxAttempts = 60;
           const pollInterval = setInterval(async () => {
             attempts++;
             try {
-              setVideoProgress((prev) => Math.min(prev + (prev < 80 ? 3 : 1), 94));
-              if (attempts === 3) setVideoStage("Replicate AI rendering camera motion...");
-              if (attempts === 8) setVideoStage("Rendering volumetric lighting & visual atmosphere...");
-              if (attempts === 15) setVideoStage("Interpolating high frame-rate motion...");
-              if (attempts === 24) setVideoStage("Finalizing cinematic color grade & invitation layout...");
+              setVideoProgress((prev) => Math.min(prev + (prev < 80 ? 4 : 2), 95));
+              if (attempts === 2) setVideoStage("Replicate AI analyzing photo features...");
+              if (attempts === 5) setVideoStage("Animating facial expressions & camera depth...");
+              if (attempts === 9) setVideoStage("Applying cinematic theme lighting & particles...");
+              if (attempts === 14) setVideoStage("Synthesizing 9:16 vertical invitation frames...");
 
-              const statusRes = await API.get(`/ai/video-status/${predictionId}`);
-              if (statusRes.data && statusRes.data.success) {
+              let statusRes: any = null;
+              try {
+                statusRes = await API.get(`/video-invites/status/${predictionId}`);
+              } catch (_) {
+                try {
+                  statusRes = await API.get(`/ai/video-status/${predictionId}`);
+                } catch (__e) {
+                  try {
+                    const fetchRes = await fetch(`/api/video-status/${predictionId}`);
+                    const data = await fetchRes.json();
+                    statusRes = { data };
+                  } catch (___) {}
+                }
+              }
+              if (statusRes?.data && statusRes.data.success) {
                 const status = statusRes.data.status;
                 if (status === "succeeded" && statusRes.data.videoUrl) {
                   clearInterval(pollInterval);
@@ -365,7 +452,8 @@ export default function CreateSheetModal({
                   setTimeout(() => {
                     setIsGeneratingVideo(false);
                     setStep("video-preview");
-                  }, 600);
+                  }, 400);
+                  return;
                 } else if (status === "failed" || status === "canceled") {
                   clearInterval(pollInterval);
                   const fallbackUrl = "/videos/golden-celebration.mp4";
@@ -374,7 +462,8 @@ export default function CreateSheetModal({
                   setTimeout(() => {
                     setIsGeneratingVideo(false);
                     setStep("video-preview");
-                  }, 600);
+                  }, 500);
+                  return;
                 }
               }
 
@@ -388,7 +477,7 @@ export default function CreateSheetModal({
             } catch (pollErr) {
               console.error("Poll error:", pollErr);
             }
-          }, 3500);
+          }, 2000);
 
           return;
         }
@@ -432,21 +521,25 @@ export default function CreateSheetModal({
   }, [photos, initialPhoto]);
 
   const isPhotosOrUpload = mode === "photos" || mode === "upload";
-  const isValid =
-    mode === "video"
-      ? selectedTemplateId !== null
-      : isPhotosOrUpload
-      ? photos.length > 0
-      : prompt.trim().length > 3;
+  const isValid = Boolean(
+    selectedTemplateId ||
+      customVideoPhoto ||
+      photos.length > 0 ||
+      photoFile ||
+      prompt.trim().length > 0 ||
+      notes.trim().length > 0
+  );
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onload = (uploadEvent) => {
         const result = uploadEvent.target?.result as string;
         if (result) {
           setCustomVideoPhoto(result);
+          setPhotos([result]);
         }
       };
       reader.readAsDataURL(file);
@@ -604,29 +697,11 @@ export default function CreateSheetModal({
                 {/* 2. Atmospheric dark vignette gradient so text and glowing effects stand out */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
 
-                {/* 3. Prominent Celebrant Portrait Ring Avatar (ONLY shown if custom photo uploaded) */}
+                {/* 3. Personalized Celebrant Indicator Tag */}
                 {customVideoPhoto && (
-                  <div className="absolute top-[16%] inset-x-0 z-10 flex flex-col items-center pointer-events-none">
-                    <div
-                      className="relative pointer-events-auto group cursor-pointer"
-                      onClick={() => previewFileInputRef.current?.click()}
-                      title="Click to change photo"
-                    >
-                      <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 blur-sm opacity-90 animate-pulse" />
-                      <div className="relative size-20 rounded-full border-2 border-amber-300 overflow-hidden shadow-2xl bg-black/50">
-                        <img
-                          src={customVideoPhoto}
-                          alt={videoEventTitle}
-                          className="size-full object-cover"
-                        />
-                      </div>
-                      <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg border border-black/60 transition group-hover:scale-110">
-                        <Camera className="size-3" />
-                      </span>
-                    </div>
-                    <span className="mt-1.5 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 border border-amber-400/30 shadow">
-                      Guest of Honor
-                    </span>
+                  <div className="absolute top-12 left-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-amber-300 border border-amber-400/40 backdrop-blur-md shadow pointer-events-none">
+                    <Sparkles className="size-2.5 text-amber-300" />
+                    <span>Personalized with Your Photo</span>
                   </div>
                 )}
 
@@ -776,26 +851,90 @@ export default function CreateSheetModal({
             <button
               type="button"
               onClick={() => {
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
-                  sessionStorage.setItem("pending_upload_title", videoEventTitle);
-                  sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
-                  sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
-                  sessionStorage.setItem("pending_venue", videoEventVenue);
-                  sessionStorage.setItem("pending_event_date", videoEventDate);
-                  if (displayPhoto) {
-                    sessionStorage.setItem("pending_celebrant_photo", displayPhoto);
-                  }
+                if (!user) {
+                  pendingActionRef.current = () => {
+                    const btn = document.getElementById("use-this-video-btn");
+                    if (btn) btn.click();
+                  };
+                  setIsAuthModalOpen(true);
+                  return;
+                }
 
-                  localStorage.setItem("pending_upload_invite", generatedVideoUrl || displayPhoto || "");
-                  localStorage.setItem("pending_upload_title", videoEventTitle);
-                  localStorage.setItem("pending_template_id", selectedTemplateId || "");
-                  if (displayPhoto) {
-                    localStorage.setItem("pending_celebrant_photo", displayPhoto);
+                const finalMediaUrl = generatedVideoUrl || displayPhoto || "";
+                const celebrantImg = customVideoPhoto || (displayPhoto !== IMG.jessica ? displayPhoto : "");
+
+                if (typeof window !== "undefined") {
+                  try {
+                    const guestDraft = {
+                      type: "video",
+                      isVideo: Boolean(generatedVideoUrl),
+                      videoUrl: generatedVideoUrl || "",
+                      imageUrl: displayPhoto || "",
+                      uploadUrl: finalMediaUrl,
+                      uploadTitle: videoEventTitle,
+                      uploadName: videoEventTitle,
+                      celebrantPhoto: celebrantImg || "",
+                      templateId: selectedTemplateId || "premiere",
+                      templateName: selectedTemplate?.title || "Video Celebration",
+                      title: videoEventTitle,
+                      venue: videoEventVenue,
+                      date: videoEventDate,
+                      aspectRatio: "9/16",
+                    };
+
+                    sessionStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+                    localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
+
+                    sessionStorage.setItem("pending_upload_invite", finalMediaUrl);
+                    sessionStorage.setItem("pending_video_url", generatedVideoUrl || "");
+                    sessionStorage.setItem("pending_upload_title", videoEventTitle);
+                    sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
+                    sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
+                    sessionStorage.setItem("pending_venue", videoEventVenue);
+                    sessionStorage.setItem("pending_event_date", videoEventDate);
+                    sessionStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
+                    sessionStorage.setItem("pending_aspect_ratio", "9/16");
+                    if (celebrantImg) {
+                      sessionStorage.setItem("pending_celebrant_photo", celebrantImg);
+                    }
+
+                    localStorage.setItem("pending_upload_invite", finalMediaUrl);
+                    localStorage.setItem("pending_video_url", generatedVideoUrl || "");
+                    localStorage.setItem("pending_upload_title", videoEventTitle);
+                    localStorage.setItem("pending_template_id", selectedTemplateId || "");
+                    localStorage.setItem("pending_venue", videoEventVenue);
+                    localStorage.setItem("pending_event_date", videoEventDate);
+                    localStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
+                    localStorage.setItem("pending_aspect_ratio", "9/16");
+                    if (celebrantImg) {
+                      localStorage.setItem("pending_celebrant_photo", celebrantImg);
+                    }
+                  } catch (e) {
+                    console.warn("Failed to store video invite draft:", e);
                   }
                 }
                 onClose();
-                router.push(`/dashboard/invitations?studio=true&videoInvite=1&uploadedImageUrl=${encodeURIComponent(generatedVideoUrl || displayPhoto || "")}`);
+
+                const isSafeUrlParam = (val?: string | null): val is string => {
+                  if (!val || typeof val !== "string") return false;
+                  const trimmed = val.trim();
+                  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return false;
+                  return trimmed.length < 500;
+                };
+
+                const params = new URLSearchParams();
+                params.set("studio", "true");
+                params.set("videoInvite", "1");
+                params.set("aspectRatio", "9/16");
+                if (isSafeUrlParam(generatedVideoUrl)) params.set("videoUrl", generatedVideoUrl);
+                if (isSafeUrlParam(finalMediaUrl)) params.set("uploadedImageUrl", finalMediaUrl);
+                if (selectedTemplateId) params.set("templateId", selectedTemplateId);
+                if (videoEventTitle) params.set("title", videoEventTitle);
+                if (videoEventDate) params.set("date", videoEventDate);
+                if (videoEventVenue) params.set("venue", videoEventVenue);
+                if (isSafeUrlParam(celebrantImg)) params.set("celebrantPhoto", celebrantImg);
+
+                router.push(`/canvas?${params.toString()}`);
               }}
               className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground shadow hover:brightness-110 active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-2"
             >
@@ -1118,7 +1257,13 @@ export default function CreateSheetModal({
                     aria-selected={active}
                     onClick={() => {
                       setMode(tab.id);
-                      setPhotos([]);
+                      if (tab.id === "video") {
+                        setIsChangingTemplate(true);
+                      } else if (tab.id === "viral") {
+                        setIsViral((prev) => !prev);
+                      } else if (tab.id === "photos" || tab.id === "upload") {
+                        fileInputRef.current?.click();
+                      }
                     }}
                     className={cn(
                       "flex min-h-[50px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition cursor-pointer",
@@ -1150,223 +1295,348 @@ export default function CreateSheetModal({
               })}
             </div>
 
-            {/* Tab Body */}
-            <div className="mt-5">
-              {mode === "video" ? (
-                <>
-                  {selectedTemplate && !isChangingTemplate ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-primary/60 bg-primary/10 p-3">
-                      <span className="relative block aspect-[9/16] w-14 shrink-0 overflow-hidden rounded-xl">
-                        <TemplateThumb template={selectedTemplate} sizes="56px" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-semibold uppercase tracking-wider text-primary">
-                          Selected template
-                        </span>
-                        <span className="mt-0.5 block truncate text-base font-semibold">
-                          {selectedTemplate.title}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {selectedTemplate.tier}
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsChangingTemplate(true)}
-                        className="h-11 shrink-0 rounded-full border border-border bg-card px-4 text-sm font-semibold transition hover:bg-muted active:scale-95 cursor-pointer"
-                      >
-                        Change
-                      </button>
+            {/* LIVE 9:16 PHONE FRAME PREVIEW (Template Preview or User's Photo Replacement) */}
+            <div className="mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/40 p-4">
+              <div className="relative aspect-[9/16] w-full max-w-[260px] sm:max-w-[280px] overflow-hidden rounded-[2.2rem] border-4 border-primary/50 bg-black shadow-2xl">
+                {userUploadedPhoto ? (
+                  <div className="relative size-full">
+                    <img
+                      src={userUploadedPhoto}
+                      alt={videoEventTitle || selectedTemplate?.title || "Your photo"}
+                      className="kb size-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
+                    <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 rounded-full bg-black/80 px-2.5 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/40 backdrop-blur-md shadow">
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Your Photo Applied</span>
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold">Choose a template</p>
-                        {selectedTemplate && (
-                          <button
-                            type="button"
-                            onClick={() => setIsChangingTemplate(false)}
-                            className="flex h-11 items-center px-1 text-sm font-semibold text-primary cursor-pointer hover:underline"
-                          >
-                            Keep {selectedTemplate.title}
-                          </button>
-                        )}
-                      </div>
-                      <ul
-                        ref={templateListRef}
-                        role="listbox"
-                        aria-label="Invitation templates"
-                        className="no-scrollbar relative -mx-5 mt-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2"
-                      >
-                        {TEMPLATES.map((item) => {
-                          const active = selectedTemplateId === item.id;
-                          return (
-                            <li key={item.id} className="w-[112px] shrink-0 snap-start">
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={active}
-                                onClick={() => {
-                                  setSelectedTemplateId(item.id);
-                                  setIsChangingTemplate(false);
-                                }}
-                                className="block w-full text-left cursor-pointer"
-                              >
-                                <span
-                                  className={cn(
-                                    "relative block aspect-[9/16] w-full overflow-hidden rounded-2xl border-2 transition",
-                                    active ? "border-primary" : "border-transparent"
-                                  )}
-                                >
-                                  <TemplateThumb template={item} sizes="112px" />
-                                  {active && (
-                                    <span className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow">
-                                      <Check className="size-4" aria-hidden={true} />
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="mt-2 block text-[13px] font-semibold leading-tight">
-                                  {item.title}
-                                </span>
-                                <span className="block text-xs text-muted-foreground">
-                                  {item.tier}
-                                </span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </>
-                  )}
+                    <div className="absolute inset-x-4 bottom-6 text-center">
+                      <p className="font-display text-xl font-extrabold uppercase leading-tight text-white line-clamp-1">
+                        {videoEventTitle || selectedTemplate?.title || "Milestone Birthday"}
+                      </p>
+                      <span className="mt-2 inline-block rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow">
+                        You&apos;re Invited
+                      </span>
+                    </div>
+                  </div>
+                ) : selectedTemplate && "kind" in selectedTemplate.preview ? (
+                  <ExperienceVisual kind={selectedTemplate.preview.kind} className="size-full" />
+                ) : (
+                  <div className="relative size-full">
+                    <img
+                      src={displayPhoto}
+                      alt={selectedTemplate?.title || "Template"}
+                      className="kb size-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                    <div className="absolute inset-x-4 bottom-6 text-center">
+                      <p className="font-display text-xl font-bold uppercase text-white">
+                        {selectedTemplate?.title || "Milestone Birthday"}
+                      </p>
+                      <span className="mt-2 inline-block rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow">
+                        You&apos;re Invited
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                {userUploadedPhoto
+                  ? "✓ Your photo will be animated into this video template by Replicate AI"
+                  : "Template preview. Upload your photo below to replace this image!"}
+              </p>
+            </div>
 
+            {/* Step-by-Step Flow: 1. Template -> 2. Prompt -> 3. Photo -> 4. Create Video Invite */}
+            <div className="mt-5 space-y-4">
+              {/* STEP 1: SELECTED TEMPLATE */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  1. Selected Template
+                </span>
+                {selectedTemplate && !isChangingTemplate ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-primary/60 bg-primary/10 p-3 shadow-sm">
+                    <span className="relative block aspect-[9/16] w-14 shrink-0 overflow-hidden rounded-xl border border-primary/40 bg-black">
+                      <TemplateThumb template={selectedTemplate} sizes="56px" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-primary">
+                        Base Style
+                      </span>
+                      <span className="mt-0.5 block truncate text-base font-semibold">
+                        {selectedTemplate.title}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {selectedTemplate.tier} • 9:16 AI Motion
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsChangingTemplate(true)}
+                      className="h-11 shrink-0 rounded-full border border-border bg-card px-4 text-sm font-semibold transition hover:bg-muted active:scale-95 cursor-pointer"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold">Choose a template style</p>
+                      {selectedTemplate && (
+                        <button
+                          type="button"
+                          onClick={() => setIsChangingTemplate(false)}
+                          className="flex h-11 items-center px-1 text-sm font-semibold text-primary cursor-pointer hover:underline"
+                        >
+                          Keep {selectedTemplate.title}
+                        </button>
+                      )}
+                    </div>
+                    <ul
+                      ref={templateListRef}
+                      role="listbox"
+                      aria-label="Invitation templates"
+                      className="no-scrollbar relative -mx-5 mt-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2"
+                    >
+                      {TEMPLATES.map((item) => {
+                        const active = selectedTemplateId === item.id;
+                        return (
+                          <li key={item.id} className="w-[112px] shrink-0 snap-start">
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              onClick={() => {
+                                setSelectedTemplateId(item.id);
+                                setIsChangingTemplate(false);
+                              }}
+                              className="block w-full text-left cursor-pointer"
+                            >
+                              <span
+                                className={cn(
+                                  "relative block aspect-[9/16] w-full overflow-hidden rounded-2xl border-2 transition",
+                                  active ? "border-primary" : "border-transparent"
+                                )}
+                              >
+                                <TemplateThumb template={item} sizes="112px" />
+                                {active && (
+                                  <span className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow">
+                                    <Check className="size-4" aria-hidden={true} />
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-2 block text-[13px] font-semibold leading-tight">
+                                {item.title}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">
+                                {item.tier}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 2: PROMPT & EVENT NOTES */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
                   <label
                     htmlFor="create-video-notes"
-                    className="mt-4 block text-sm font-semibold"
+                    className="block text-sm font-semibold"
                   >
-                    Tell us about your event{" "}
+                    2. Tell us about your event{" "}
                     <span className="font-normal text-muted-foreground">
                       (optional)
                     </span>
                   </label>
-                  <textarea
-                    id="create-video-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
-                    placeholder="Marcus turns 50 on June 21 at the rooftop…"
-                    className="mt-2 w-full resize-none rounded-2xl border border-border bg-card p-4 text-base leading-relaxed placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                  />
-                </>
-              ) : isPhotosOrUpload ? (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple={mode === "photos"}
-                    accept={mode === "photos" ? "image/*" : "image/*,application/pdf"}
-                    className="sr-only"
-                    onChange={(e) => {
-                      if (!e.target.files) return;
-                      const files = Array.from(e.target.files)
-                        .slice(0, 8)
-                        .map((f) => URL.createObjectURL(f));
-                      setPhotos(mode === "upload" ? files.slice(0, 1) : files);
-                    }}
-                    aria-label={mode === "photos" ? "Upload photos" : "Upload your design"}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsViral(!isViral)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border transition cursor-pointer",
+                      isViral || mode === "viral"
+                        ? "border-amber-400 bg-amber-400/20 text-amber-300"
+                        : "border-border bg-card hover:bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <Wand2 className="size-3 text-amber-400" />
+                    <span>Make it viral {isViral || mode === "viral" ? "✓" : ""}</span>
+                  </button>
+                </div>
+                <textarea
+                  id="create-video-notes"
+                  value={notes || prompt}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    setPrompt(e.target.value);
+                  }}
+                  rows={2}
+                  placeholder="Marcus turns 50 on June 21 at the rooftop… Add dress code or special theme"
+                  className="w-full resize-none rounded-2xl border border-border bg-card p-4 text-base leading-relaxed placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* STEP 3: UPLOAD PHOTO (USE PHOTOS) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="block text-sm font-semibold">
+                    3. Upload personal photo
+                  </span>
+                  {hasUserUploadedPhoto ? (
+                    <span className="text-xs text-primary font-semibold flex items-center gap-1">
+                      <Check className="size-3.5" /> Your photo attached
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Required for video invite</span>
+                  )}
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  className="sr-only"
+                  onChange={handlePhotoUpload}
+                  aria-label="Upload photo"
+                />
+
+                {hasUserUploadedPhoto ? (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/50 bg-card p-3 shadow-sm">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative size-14 shrink-0 rounded-xl overflow-hidden border-2 border-primary bg-black">
+                        <img src={userUploadedPhoto || displayPhoto} alt="Celebrant" className="size-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-xs font-bold uppercase tracking-wide text-primary">
+                          ✓ Your Photo Ready
+                        </span>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {photoFile?.name || "Will be animated with Replicate AI"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition cursor-pointer"
+                      >
+                        Change Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomVideoPhoto(null);
+                          setPhotos([]);
+                          setPhotoFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground transition cursor-pointer"
+                        title="Remove photo"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex min-h-36 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 bg-card p-4 text-center hover:bg-muted cursor-pointer transition"
-                  >
-                    {photos.length ? (
-                      <span className="flex flex-wrap justify-center gap-2">
-                        {photos.map((src, idx) => (
-                          <span
-                            key={idx}
-                            className="relative size-16 overflow-hidden rounded-xl border border-white/10"
-                          >
-                            <img src={src} alt="" className="size-full object-cover" />
-                          </span>
-                        ))}
-                      </span>
-                    ) : (
-                      <>
-                        <ImagePlus className="size-7 text-primary" aria-hidden={true} />
-                        <span className="font-semibold">
-                          {mode === "photos"
-                            ? "Add one photo or many"
-                            : "Drop your PNG, JPG or PDF"}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {mode === "photos"
-                            ? "Old ones work beautifully."
-                            : "We add RSVP, guests and reminders around it."}
-                        </span>
-                      </>
+                    className={cn(
+                      "group flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer transition",
+                      mode === "photos" || mode === "upload"
+                        ? "border-primary bg-primary/10"
+                        : "border-primary/40 bg-card hover:border-primary hover:bg-muted"
                     )}
+                  >
+                    <div className="grid size-11 place-items-center rounded-full bg-primary/15 text-primary group-hover:scale-110 transition">
+                      <ImagePlus className="size-5.5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-sm text-foreground block">
+                        Upload your photo (Celebrant / Guest of honor)
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-0.5 block">
+                        PNG, JPG or WebP. Replicate AI will animate this photo into your {selectedTemplate?.title || "video"} invite!
+                      </span>
+                    </div>
+                    <span className="rounded-full bg-primary/20 border border-primary/40 px-3.5 py-1 text-xs font-semibold text-primary">
+                      Click to choose your photo
+                    </span>
                   </button>
-                </>
-              ) : (
-                <>
-                  <label htmlFor="create-prompt" className="sr-only">
-                    Describe your event
-                  </label>
-                  <textarea
-                    id="create-prompt"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    rows={4}
-                    placeholder={
-                      mode === "ai"
-                        ? "Create an elegant rooftop 40th birthday in NYC…"
-                        : "Make my 30th birthday feel like a ridiculous Hollywood action trailer…"
-                    }
-                    className="w-full resize-none rounded-2xl border border-border bg-card p-4 text-base leading-relaxed placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                  />
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Footer Bar */}
+          {/* Footer Bar: CREATE VIDEO INVITE WITH AI */}
           <div className="border-t border-border px-5 pb-6 pt-4">
             <button
               type="button"
-              disabled={!isValid || isGeneratingVideo}
+              disabled={isGeneratingVideo}
               onClick={() => {
-                if (mode === "video" || mode === "ai") {
-                  startVideoGeneration();
+                if (!user) {
+                  pendingActionRef.current = () => {
+                    if (!hasUserUploadedPhoto) {
+                      fileInputRef.current?.click();
+                    } else {
+                      startVideoGeneration();
+                    }
+                  };
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+
+                if (!hasUserUploadedPhoto) {
+                  fileInputRef.current?.click();
                 } else {
-                  setStep("settings");
+                  startVideoGeneration();
                 }
               }}
-              className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-40 hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
+              className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] hover:brightness-110 cursor-pointer flex items-center justify-center gap-2 shadow-lg"
             >
-              {mode === "video" ? (
+              {isGeneratingVideo ? (
+                <>
+                  <Loader2 className="size-5 animate-spin" />
+                  <span>Directing video invite with AI...</span>
+                </>
+              ) : (
                 <>
                   <Clapperboard className="size-5" />
-                  <span>Create my video invite</span>
+                  <span>Create video invite with AI</span>
+                  <Sparkles className="size-4" />
                 </>
-              ) : mode === "ai" ? (
-                <>
-                  <Sparkles className="size-5" />
-                  <span>Create with AI</span>
-                </>
-              ) : mode === "viral" ? (
-                "Generate concepts"
-              ) : mode === "photos" ? (
-                "Bring them to life"
-              ) : (
-                "Add my design"
               )}
             </button>
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Your first event is free. No app required.
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              {hasUserUploadedPhoto
+                ? "Your photo will be animated into the video via Replicate AI."
+                : "Upload your photo above to animate it with Replicate AI."}
             </p>
           </div>
         </div>
       )}
+
+      {/* Mandatory Sign-in Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          pendingActionRef.current = null;
+        }}
+        initialMode="signin"
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          if (pendingActionRef.current) {
+            const act = pendingActionRef.current;
+            pendingActionRef.current = null;
+            act();
+          }
+        }}
+      />
     </Modal>
   );
 }

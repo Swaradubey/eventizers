@@ -133,6 +133,10 @@ export interface CanvasStageConfig {
   viewMode?: "card" | "envelope";
   hideEnvelope?: boolean;
   gifting?: GiftingState;
+  videoUrl?: string | null;
+  isVideo?: boolean;
+  celebrantPhoto?: string | null;
+  aspectRatio?: string;
 }
 
 export interface GiftItem {

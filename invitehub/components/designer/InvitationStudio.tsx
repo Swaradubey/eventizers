@@ -1156,8 +1156,18 @@ export default function InvitationStudio({
         undefined,
     };
 
+    const isVideoInvite = Boolean(
+      videoInvite ||
+      videoUrl ||
+      (typeof window !== "undefined" &&
+        (window.location.search.includes("videoInvite=1") ||
+         Boolean(new URLSearchParams(window.location.search).get("videoUrl")) ||
+         sessionStorage.getItem("pending_is_video") === "true" ||
+         Boolean(sessionStorage.getItem("pending_video_url"))))
+    );
+
     const pendingUploadUrl = getPendingOrUploadedImageUrl(mergedInvite as any, initialEvent, uploadedImageUrl);
-    const isUploadedSession = Boolean(pendingUploadUrl);
+    const isUploadedSession = Boolean(pendingUploadUrl) && !isVideoInvite;
 
     const effectiveTemplateId = isUploadedSession
       ? null
@@ -1202,7 +1212,7 @@ export default function InvitationStudio({
 
     // If the user came from "Upload Existing", override the card background with the
     // uploaded/in-painted image URL in standalone Card Only mode with a clean, neutral background.
-    if (isUploadedSession && pendingUploadUrl) {
+    if (isUploadedSession && pendingUploadUrl && !isVideoInvite && !baseState.isVideo) {
       baseState.cardBg = { type: "image", value: pendingUploadUrl };
       baseState.backgroundImageUrl = pendingUploadUrl;
       if (!baseState.card) baseState.card = {};

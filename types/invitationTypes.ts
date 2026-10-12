@@ -133,6 +133,10 @@ export interface CanvasStageConfig {
   viewMode?: "card" | "envelope";
   hideEnvelope?: boolean;
   gifting?: GiftingState;
+  videoUrl?: string | null;
+  isVideo?: boolean;
+  celebrantPhoto?: string | null;
+  aspectRatio?: string;
 }
 
 export interface GiftItem {
@@ -204,6 +208,9 @@ export interface Invitation {
   isLandscape?: boolean;
   designData?: any;
   gifting?: GiftingState;
+  videoUrl?: string | null;
+  videoMetadata?: any;
+  isVideo?: boolean;
 }
 
 export interface InvitationPayload {
@@ -223,6 +230,9 @@ export interface InvitationPayload {
   imageUrl?: string;
   previewUrl?: string;
   templatePreviewUrl?: string;
+  videoUrl?: string | null;
+  videoMetadata?: any;
+  isVideo?: boolean;
   buttonText?: string;
   buttonColor?: string;
   buttonRadius?: number;

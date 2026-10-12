@@ -42,24 +42,10 @@ export const DEFAULT_ENVELOPE_LINER = "gold-foil";
 
 // Stamp data dictionary for quick name/emoji/artwork lookup
 export const STAMP_GRAPHICS: Record<string, { name: string; emoji: string; bg: string }> = {
-  "blush-floral": { name: "Blush Floral", emoji: "🌸", bg: "#fdf2f4" },
-  "pink-roses": { name: "Vintage Roses", emoji: "🌹", bg: "#fce7f3" },
-  "red-rose": { name: "Crimson Rose", emoji: "🥀", bg: "#ffe4e6" },
-  "sweet-heart": { name: "Heart Love", emoji: "❤️", bg: "#fef2f2" },
-  "party-neon": { name: "Party Neon", emoji: "🎉", bg: "#18181b" },
-  "holiday-ornament": { name: "Bauble", emoji: "✨", bg: "#fef3c7" },
-  "cherries": { name: "Cherries", emoji: "🍒", bg: "#fff1f2" },
-  "strawberry": { name: "Strawberry", emoji: "🍓", bg: "#fdf2f8" },
-  "moon-stars": { name: "Moon & Stars", emoji: "🌙", bg: "#1e1b4b" },
-  "celebrate": { name: "Celebrate", emoji: "🥂", bg: "#fffbeb" },
-  "olive-branch": { name: "Olive Branch", emoji: "🌿", bg: "#f0fdf4" },
-  "sparkle-magic": { name: "Sparkle Star", emoji: "⭐", bg: "#faf5ff" },
-  "birthday-cake": { name: "Birthday Cake", emoji: "🎂", bg: "#fdf4ff" },
-  "vintage-airmail": { name: "Airmail", emoji: "✈️", bg: "#eff6ff" },
-  "airmail": { name: "Airmail", emoji: "✈️", bg: "#eff6ff" },
-  "rose": { name: "Rose", emoji: "🌹", bg: "#fce7f3" },
-  "wax": { name: "Wax Seal", emoji: "⚜️", bg: "#fffbeb" },
-  "cake": { name: "Cake", emoji: "🎂", bg: "#fdf4ff" },
+  airmail: { name: "Airmail", emoji: "✈️", bg: "#eff6ff" },
+  rose: { name: "Rose", emoji: "🌹", bg: "#fce7f3" },
+  wax: { name: "Wax Seal", emoji: "⚜️", bg: "#fffbeb" },
+  cake: { name: "Cake", emoji: "🎂", bg: "#fdf4ff" },
 };
 
 export default function EnvelopeBackdrop({

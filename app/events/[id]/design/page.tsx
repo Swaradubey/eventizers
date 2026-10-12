@@ -13,9 +13,9 @@ export default function EventDesignRedirectPage() {
     if (eventId) {
       const templateId = searchParams?.get("templateId");
       const tplQuery = templateId ? `&templateId=${templateId}` : "";
-      router.replace(`/dashboard/invitations?eventId=${eventId}&studio=true${tplQuery}`);
+      router.replace(`/dashboard/invitations?eventId=${eventId}&studio=true&videoInvite=1${tplQuery}`);
     } else {
-      router.replace("/dashboard/invitations?studio=true");
+      router.replace("/dashboard/invitations?studio=true&videoInvite=1");
     }
   }, [eventId, router, searchParams]);
 
@@ -23,7 +23,7 @@ export default function EventDesignRedirectPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-        <p className="text-sm font-medium text-slate-600">Loading Evite Invitation Studio...</p>
+        <p className="text-sm font-medium text-slate-600">Loading Video Invite Studio...</p>
       </div>
     </div>
   );

@@ -17,20 +17,10 @@ export default function LoginPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, redirect to appropriate dashboard
+  // If user is already logged in, redirect to homepage
   useEffect(() => {
     if (user) {
-      if (user.role === "ADMIN") {
-        router.push("/admin/dashboard");
-      } else {
-        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-        const redirectUrl = params?.get("redirect");
-        if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
-          router.push(redirectUrl);
-        } else {
-          router.push("/dashboard/events");
-        }
-      }
+      router.push("/");
     }
   }, [user, router]);
 
@@ -62,15 +52,7 @@ export default function LoginPage() {
       if (loggedUser) {
         localStorage.removeItem("proAuthenticated");
         localStorage.removeItem("proOAuthPending");
-        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-        const redirectUrl = params?.get("redirect");
-        if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
-          router.push(redirectUrl);
-        } else if (loggedUser.role === "ADMIN") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/dashboard/events");
-        }
+        router.push("/");
       }
     } catch (err: any) {
       // Error is set in AuthContext

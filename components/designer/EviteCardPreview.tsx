@@ -3,7 +3,7 @@
 import React from "react";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
-import { deduplicateTextLayers, getCleanTemplateSvg } from "./layoutUtils";
+import { deduplicateTextLayers, getCleanTemplateSvg, isVideoMediaUrl } from "./layoutUtils";
 
 export const isDarkColor = (colorStr?: string | null): boolean => {
   if (!colorStr) return false;
@@ -574,18 +574,30 @@ export const EviteCardPreview: React.FC<EviteCardPreviewProps> = ({
           />
         )}
 
-        {/* Background Artwork / Vector SVG */}
-        {displayArtwork && !imgError && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={displayArtwork}
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-            style={{ zIndex: 0 }}
-            onError={() => setImgError(true)}
-          />
+        {/* Background Artwork / Vector SVG / Video */}
+        {displayArtwork && (
+          isVideoMediaUrl(displayArtwork) ? (
+            <video
+              src={displayArtwork}
+              autoPlay
+              loop
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+              style={{ zIndex: 0 }}
+            />
+          ) : !imgError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={displayArtwork}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+              style={{ zIndex: 0 }}
+              onError={() => setImgError(true)}
+            />
+          ) : null
         )}
 
         {/* Optional Clean Corner/Header Icon (e.g. Champagne Glasses) */}

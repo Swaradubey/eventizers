@@ -20,6 +20,7 @@ import {
   MapPin,
   Sparkles,
 } from "lucide-react";
+import VideoInviteModal from "@/components/invitation/VideoInviteModal";
 
 const REVENUE_DATA = [
   { label: "Nov", value: 3200 },
@@ -39,6 +40,7 @@ const REVENUE_DATA = [
 export default function IndividualOverview() {
   const { user } = useAuth();
   const [activeChartIndex, setActiveChartIndex] = useState<number | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -85,12 +87,21 @@ export default function IndividualOverview() {
             Your events are active and guest RSVPs are coming in. Here is everything at a glance.
           </p>
         </div>
-        <Link
-          href="/create-event"
-          className="flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground transition active:scale-95 hover:brightness-110 cursor-pointer"
-        >
-          <Plus className="size-[18px]" aria-hidden="true" /> New event
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsVideoModalOpen(true)}
+            className="flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-5 text-[15px] font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition active:scale-95 hover:brightness-110 cursor-pointer"
+          >
+            <Sparkles className="size-[18px]" aria-hidden="true" /> Create Video Invite
+          </button>
+          <Link
+            href="/create-event"
+            className="flex h-12 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 text-[15px] font-bold text-foreground transition active:scale-95 hover:bg-white/10 cursor-pointer"
+          >
+            <Plus className="size-[18px]" aria-hidden="true" /> New event
+          </Link>
+        </div>
       </div>
 
       {/* Quick Access 3 Cards */}
@@ -263,8 +274,14 @@ export default function IndividualOverview() {
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2.5">
                 <Link
+                  href="/dashboard/invitations?videoInvite=1"
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-5 text-sm font-bold text-slate-950 shadow-md shadow-amber-500/20 transition active:scale-95 hover:brightness-110 cursor-pointer"
+                >
+                  <Sparkles className="size-4" aria-hidden="true" /> Edit Invite
+                </Link>
+                <Link
                   href="/dashboard/events"
-                  className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground transition active:scale-95 hover:brightness-110 cursor-pointer"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold transition hover:bg-white/10 cursor-pointer"
                 >
                   Manage event
                 </Link>
@@ -278,21 +295,26 @@ export default function IndividualOverview() {
             </div>
 
             {/* Event Preview Visual */}
-            <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-black to-accent/20 border border-white/10 p-5 flex flex-col justify-end">
+            <Link
+              href="/dashboard/invitations?videoInvite=1"
+              className="group relative min-h-[220px] overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-black to-accent/20 border border-white/10 p-5 flex flex-col justify-end transition hover:border-primary/50 cursor-pointer"
+            >
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(254,186,8,0.15),transparent_70%)]" />
               <div className="relative z-10">
                 <span className="rounded-md bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-primary uppercase tracking-wider">
                   Live invitation
                 </span>
                 <p
-                  className="mt-2 font-display text-2xl font-extrabold text-white leading-tight"
+                  className="mt-2 font-display text-2xl font-extrabold text-white leading-tight group-hover:text-primary transition-colors"
                   style={{ fontFamily: "'Red Rose', Georgia, serif" }}
                 >
                   Golden Autumn Gala
                 </p>
-                <p className="text-xs text-white/70 mt-1">Video invite & QR tickets active</p>
+                <p className="text-xs text-white/70 mt-1 flex items-center gap-1.5">
+                  <Sparkles className="size-3 text-primary" /> Video invite active · Click to edit
+                </p>
               </div>
-            </div>
+            </Link>
           </div>
         </article>
       </section>
@@ -534,6 +556,12 @@ export default function IndividualOverview() {
           ))}
         </div>
       </section>
+
+      {/* Template-Driven Video Invite Modal */}
+      <VideoInviteModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
     </div>
   );
 }

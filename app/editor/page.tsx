@@ -32,10 +32,10 @@ function EditorRedirectContent() {
 
     const tier = searchParams?.get("tier") || "premium";
 
-    // Route to Canvas Editor
+    // Route to Video Invite Studio
     const targetUrl = isGuest
-      ? `/canvas?guest=true&templateId=${encodeURIComponent(templateId)}&tier=${encodeURIComponent(tier)}`
-      : `/dashboard/invitations?studio=true&templateId=${encodeURIComponent(templateId)}&tier=${encodeURIComponent(tier)}`;
+      ? `/canvas?guest=true&videoInvite=1&templateId=${encodeURIComponent(templateId)}&tier=${encodeURIComponent(tier)}`
+      : `/dashboard/invitations?studio=true&videoInvite=1&templateId=${encodeURIComponent(templateId)}&tier=${encodeURIComponent(tier)}`;
 
     router.replace(targetUrl);
   }, [user, authLoading, router, searchParams]);
@@ -45,7 +45,7 @@ function EditorRedirectContent() {
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-3 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
         <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400 font-sans">
-          Loading Canvas Editor...
+          Loading Video Invite Studio...
         </p>
       </div>
     </div>

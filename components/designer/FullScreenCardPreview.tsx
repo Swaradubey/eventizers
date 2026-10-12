@@ -4,6 +4,8 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, X, MapPin, User, Send } from "lucide-react";
 import InvitationCanvasStage from "./InvitationCanvasStage";
+import VideoInvitePlayer from "./VideoInvitePlayer";
+import { isVideoMediaUrl } from "./layoutUtils";
 import { StudioDesignState } from "./InvitationStudio";
 
 interface HostDetailsData {
@@ -151,17 +153,32 @@ export default function FullScreenCardPreview({
                   }}
                 >
                   <div className="w-full shadow-2xl shadow-stone-300/60 rounded-xl overflow-hidden">
-                    <InvitationCanvasStage
-                      config={{
-                        ...designState,
-                        selectedTextId: null,
-                      }}
-                      zoom={Math.min(canvasZoom, 100)}
-                      maxW={activePreset.maxW}
-                      aspectRatio={activePreset.aspect}
-                      readOnly={true}
-                      className="w-full"
-                    />
+                    {Boolean(designState.videoUrl || designState.isVideo || isVideoMediaUrl(designState.videoUrl) || isVideoMediaUrl(designState.backgroundImageUrl)) ? (
+                      <div className="w-full max-w-[420px] mx-auto bg-black rounded-xl overflow-hidden">
+                        <VideoInvitePlayer
+                          src={designState.videoUrl || designState.backgroundImageUrl || "/videos/golden-celebration.mp4"}
+                          title={eventDetails.title}
+                          subtitle={displayDate || ""}
+                          aspectRatio="9/16"
+                          autoPlay={true}
+                          loop={true}
+                          muted={true}
+                          className="w-full"
+                        />
+                      </div>
+                    ) : (
+                      <InvitationCanvasStage
+                        config={{
+                          ...designState,
+                          selectedTextId: null,
+                        }}
+                        zoom={Math.min(canvasZoom, 100)}
+                        maxW={activePreset.maxW}
+                        aspectRatio={activePreset.aspect}
+                        readOnly={true}
+                        className="w-full"
+                      />
+                    )}
                   </div>
                 </div>
               </div>

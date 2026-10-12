@@ -19,16 +19,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If user is already logged in, redirect to appropriate destination
+  // If user is already logged in, redirect to homepage
   useEffect(() => {
     if (user) {
-      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-      const redirectUrl = params?.get("redirect");
-      if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/pro")) {
-        router.push(redirectUrl);
-      } else {
-        router.push("/dashboard/events");
-      }
+      router.push("/");
     }
   }, [user, router]);
 

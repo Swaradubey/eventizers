@@ -1,6 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
+import { isVideoMediaUrl } from "./layoutUtils";
 
 export interface IsolatedCardElement {
   id: string;
@@ -31,7 +32,7 @@ export interface IsolatedInvitationData {
   templateId: string;
   backgroundImage: string | null;
   backgroundColor?: string;
-  aspectRatio?: string; // "5/7", "1/1", "4/3", "square"
+  aspectRatio?: string; // "5/7", "1/1", "4/3", "square", "9/16"
   isLandscape?: boolean;
   cardImageFit?: "cover" | "contain";
   decorations?: string[];
@@ -43,8 +44,8 @@ export interface IsolatedInvitationData {
 }
 
 export interface IsolatedInvitationCardProps {
-  data: IsolatedInvitationData;
   cardWidth?: number; // Base width for offscreen rendering, defaults to 600px
+  data: IsolatedInvitationData;
 }
 
 /**
@@ -63,6 +64,8 @@ const IsolatedInvitationCard = forwardRef<HTMLDivElement, IsolatedInvitationCard
       cardHeight = cardWidth;
     } else if (ratioStr === "4/3" || isLandscape) {
       cardHeight = Math.round((cardWidth * 3) / 4);
+    } else if (ratioStr === "9/16" || ratioStr === "story" || ratioStr === "story-9x16") {
+      cardHeight = Math.round((cardWidth * 16) / 9);
     }
 
     // Scale font size proportionally from base design width (500px)
@@ -84,22 +87,41 @@ const IsolatedInvitationCard = forwardRef<HTMLDivElement, IsolatedInvitationCard
           WebkitUserSelect: "none",
         }}
       >
-        {/* Base Clean Artwork / Background Image (Guaranteed textless SVG or user upload) */}
+        {/* Base Clean Artwork / Background Image or Video (Guaranteed textless SVG, video, or user upload) */}
         {data.backgroundImage && (
-          <img
-            src={data.backgroundImage}
-            alt="Invitation Card Artwork"
-            crossOrigin={data.backgroundImage.startsWith("http") ? "anonymous" : undefined}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: data.cardImageFit || (data.backgroundImage.includes("/uploads/") ? "contain" : "cover"),
-              zIndex: 0,
-              pointerEvents: "none",
-            }}
-          />
+          isVideoMediaUrl(data.backgroundImage) ? (
+            <video
+              src={data.backgroundImage}
+              autoPlay
+              loop
+              playsInline
+              muted
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: data.cardImageFit || "cover",
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+          ) : (
+            <img
+              src={data.backgroundImage}
+              alt="Invitation Card Artwork"
+              crossOrigin={data.backgroundImage.startsWith("http") ? "anonymous" : undefined}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: data.cardImageFit || (data.backgroundImage.includes("/uploads/") ? "contain" : "cover"),
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+          )
         )}
 
         {/* Decorative illustrations (balloons, florals, confetti, etc.) */}

@@ -9,5 +9,5 @@ export default function EditEventRedirectPage({
 }) {
   const templateId = searchParams?.templateId;
   const tplQuery = templateId ? `&templateId=${encodeURIComponent(templateId)}` : "";
-  redirect(`/dashboard/invitations?eventId=${params.id}&studio=true${tplQuery}`);
+  redirect(`/dashboard/invitations?eventId=${params.id}&studio=true&videoInvite=1${tplQuery}`);
 }

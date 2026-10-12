@@ -137,20 +137,6 @@ function resolveEnvelope(canvasState: unknown, invitationEnvelope?: unknown): En
 }
 
 const STAMP_EMOJI: Record<string, string> = {
-  "blush-floral": "🌸",
-  "pink-roses": "🌹",
-  "red-rose": "🥀",
-  "sweet-heart": "❤️",
-  "party-neon": "🎉",
-  "holiday-ornament": "✨",
-  cherries: "🍒",
-  strawberry: "🍓",
-  "moon-stars": "🌙",
-  celebrate: "🥂",
-  "olive-branch": "🌿",
-  "sparkle-magic": "⭐",
-  "birthday-cake": "🎂",
-  "vintage-airmail": "✈️",
   airmail: "✈️",
   rose: "🌹",
   wax: "⚜️",

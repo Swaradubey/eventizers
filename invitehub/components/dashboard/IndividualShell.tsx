@@ -92,13 +92,14 @@ export default function IndividualShell({ children }: { children: React.ReactNod
   const [moreNavOpen, setMoreNavOpen] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
-  // Authentication guard
+  // Authentication guard (invitations canvas studio allows guest customization)
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    const isInvitationsRoute = pathname?.startsWith("/dashboard/invitations");
+    if (!user && !isInvitationsRoute) {
       router.replace("/login");
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -208,8 +209,9 @@ export default function IndividualShell({ children }: { children: React.ReactNod
   const displayName = user?.name || user?.email?.split("@")[0] || "Host";
   const userInitial = displayName.charAt(0).toUpperCase();
 
-  // Show loading while checking auth
-  if (authLoading || !user) {
+  // Show loading while checking auth (skip for guest invitations canvas)
+  const isInvitationsRoute = pathname?.startsWith("/dashboard/invitations");
+  if (authLoading || (!user && !isInvitationsRoute)) {
     return (
       <div className="eventizers-root min-h-svh bg-background text-foreground flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">

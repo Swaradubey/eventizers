@@ -50,6 +50,34 @@ function InvitationPageContent() {
           sessionStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
           localStorage.setItem("pending_stationery_design", JSON.stringify(draft.stationeryDesign));
         }
+      } else if (draft.type === "video" || draft.videoUrl || draft.isVideo) {
+        const videoMedia = draft.videoUrl || draft.uploadUrl || draft.imageUrl || "";
+        if (videoMedia) {
+          sessionStorage.setItem("pending_video_url", draft.videoUrl || videoMedia);
+          sessionStorage.setItem("pending_upload_invite", videoMedia);
+          localStorage.setItem("pending_upload_invite", videoMedia);
+        }
+        if (draft.title || draft.uploadTitle) {
+          const t = draft.title || draft.uploadTitle;
+          sessionStorage.setItem("pending_upload_title", t);
+          localStorage.setItem("pending_upload_title", t);
+        }
+        if (draft.templateId) {
+          sessionStorage.setItem("pending_template_id", draft.templateId);
+          localStorage.setItem("pending_template_id", draft.templateId);
+        }
+        if (draft.venue) {
+          sessionStorage.setItem("pending_venue", draft.venue);
+        }
+        if (draft.date) {
+          sessionStorage.setItem("pending_event_date", draft.date);
+        }
+        if (draft.celebrantPhoto) {
+          sessionStorage.setItem("pending_celebrant_photo", draft.celebrantPhoto);
+          localStorage.setItem("pending_celebrant_photo", draft.celebrantPhoto);
+        }
+        sessionStorage.setItem("pending_aspect_ratio", "9/16");
+        sessionStorage.setItem("pending_is_video", "true");
       } else if (draft.type === "ai") {
         if (draft.prompt && !sessionStorage.getItem("pending_prompt")) {
           sessionStorage.setItem("pending_prompt", draft.prompt);
@@ -118,9 +146,14 @@ function InvitationPageContent() {
     }
   }, [queryEventId]);
 
-  // When opening a specific template, clear any stale pending upload drafts
+  // When opening a specific template, clear any stale pending upload drafts (except during video invite flows)
   useEffect(() => {
-    if (queryTemplateId && typeof window !== "undefined") {
+    const isVideo =
+      searchParams?.get("videoInvite") === "1" ||
+      Boolean(searchParams?.get("videoUrl")) ||
+      (typeof window !== "undefined" && sessionStorage.getItem("pending_is_video") === "true");
+
+    if (!isVideo && queryTemplateId && typeof window !== "undefined") {
       try {
         sessionStorage.removeItem("pending_upload_invite");
         localStorage.removeItem("pending_upload_invite");
@@ -128,14 +161,14 @@ function InvitationPageContent() {
         localStorage.removeItem("pending_stationery_design");
       } catch (_) {}
     }
-  }, [queryTemplateId]);
+  }, [queryTemplateId, searchParams]);
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-xs text-slate-400 font-medium">Loading Canvas Studio...</p>
+          <p className="text-xs text-slate-400 font-medium">Loading Video Invite Studio...</p>
         </div>
       </div>
     );
@@ -154,18 +187,29 @@ function InvitationPageContent() {
     searchParams?.get("imageUrl") ||
     null;
 
-  const hasPendingUpload =
-    !queryTemplateId &&
-    (Boolean(queryUploadedImageUrl) ||
-      (typeof window !== "undefined" &&
-        Boolean(
-          sessionStorage.getItem("pending_upload_invite") ||
-          localStorage.getItem("pending_upload_invite") ||
-          sessionStorage.getItem("pending_stationery_design") ||
-          localStorage.getItem("pending_stationery_design")
-        )));
+  const isVideoInvite =
+    searchParams?.get("videoInvite") === "1" ||
+    Boolean(searchParams?.get("videoUrl")) ||
+    Boolean(activeEvent?.videoUrl) ||
+    Boolean((activeEvent as any)?.isVideo) ||
+    Boolean((invitation as any)?.videoUrl) ||
+    (typeof window !== "undefined" &&
+      (sessionStorage.getItem("pending_is_video") === "true" ||
+        Boolean(sessionStorage.getItem("pending_video_url"))));
 
-  const resolvedTemplateId = hasPendingUpload
+  const hasPendingUpload =
+    isVideoInvite ||
+    (!queryTemplateId &&
+      (Boolean(queryUploadedImageUrl) ||
+        (typeof window !== "undefined" &&
+          Boolean(
+            sessionStorage.getItem("pending_upload_invite") ||
+            localStorage.getItem("pending_upload_invite") ||
+            sessionStorage.getItem("pending_stationery_design") ||
+            localStorage.getItem("pending_stationery_design")
+          ))));
+
+  const resolvedTemplateId = hasPendingUpload && !isVideoInvite
     ? null
     : (queryTemplateId ||
        invitation?.templateId ||
@@ -175,6 +219,21 @@ function InvitationPageContent() {
          ? sessionStorage.getItem("pending_template_id") || localStorage.getItem("pending_template_id")
          : null));
 
+  const resolvedVideoUrl =
+    searchParams?.get("videoUrl") ||
+    activeEvent?.videoUrl ||
+    (invitation as any)?.videoUrl ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("pending_video_url") || localStorage.getItem("pending_video_url") : null);
+
+  const resolvedCelebrantPhoto =
+    searchParams?.get("celebrantPhoto") ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("pending_celebrant_photo") || localStorage.getItem("pending_celebrant_photo") : null);
+
+  const resolvedUploadMedia =
+    queryUploadedImageUrl ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("pending_upload_invite") || localStorage.getItem("pending_upload_invite") : null) ||
+    resolvedVideoUrl;
+
   return (
     <InvitationStudio
       initialEvent={activeEvent}
@@ -182,7 +241,10 @@ function InvitationPageContent() {
       events={events}
       selectedEventId={selectedEventId}
       templateIdQuery={resolvedTemplateId}
-      uploadedImageUrl={queryUploadedImageUrl}
+      uploadedImageUrl={resolvedUploadMedia}
+      videoUrl={resolvedVideoUrl}
+      videoInvite={isVideoInvite}
+      celebrantPhoto={resolvedCelebrantPhoto}
       onSelectEvent={(eventId) => {
         setSelectedEventId(eventId);
         if (typeof window !== "undefined") {
@@ -227,19 +289,32 @@ function InvitationPageContent() {
         if (saved) {
           setInvitation(saved);
           if (targetEventId) {
-            const preview = (saved as any)?.previewUrl || (saved as any)?.imageUrl || payload.previewUrl || payload.imageUrl;
+            const videoAsset = (saved as any)?.videoUrl || payload.videoUrl || null;
+            const preview = videoAsset || (saved as any)?.previewUrl || (saved as any)?.imageUrl || payload.previewUrl || payload.imageUrl;
             if (preview) {
               try {
                 await eventService.updateEvent(targetEventId, {
                   coverImage: preview,
                   previewUrl: preview,
                   templatePreviewUrl: preview,
+                  videoUrl: videoAsset,
+                  videoMetadata: (saved as any)?.videoMetadata || payload.videoMetadata || null,
+                  isVideo: Boolean(videoAsset),
                   selectedTemplateId: payload.templateId,
                 } as any);
                 setEvents((prev) =>
                   prev.map((e) =>
                     e.id === targetEventId
-                      ? { ...e, coverImage: preview, previewUrl: preview, templatePreviewUrl: preview, selectedTemplateId: payload.templateId }
+                      ? {
+                          ...e,
+                          coverImage: preview,
+                          previewUrl: preview,
+                          templatePreviewUrl: preview,
+                          videoUrl: videoAsset,
+                          videoMetadata: (saved as any)?.videoMetadata || payload.videoMetadata || null,
+                          isVideo: Boolean(videoAsset),
+                          selectedTemplateId: payload.templateId,
+                        }
                       : e
                   )
                 );
@@ -252,7 +327,11 @@ function InvitationPageContent() {
         return saved;
       }}
       onBack={() => {
-        router.push("/dashboard");
+        if (isVideoInvite) {
+          router.push("/");
+        } else {
+          router.push("/dashboard");
+        }
       }}
     />
   );

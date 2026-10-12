@@ -118,6 +118,12 @@ export interface TemplateItem {
 }
 
 export const TEMPLATES: TemplateItem[] = [
+  { id: "baby-dance", title: "Baby Dance", tier: "Included", preview: { img: IMG.baby } },
+  { id: "groove-duo", title: "Groove Duo", tier: "Included", preview: { img: IMG.party } },
+  { id: "mic-drop", title: "Mic Drop Rap", tier: "Premium", preview: { img: IMG.concert } },
+  { id: "burj-khalifa", title: "Burj Khalifa Birthday", tier: "Signature", preview: { img: IMG.rooftop } },
+  { id: "lion-lady", title: "Lion & The Lady", tier: "Signature", preview: { img: IMG.anniversary } },
+  { id: "rooftop-40th", title: "Rooftop 40th Birthday", tier: "Premium", preview: { img: IMG.jessica } },
   { id: "jessica", title: "Milestone birthday", tier: "Included", preview: { img: IMG.jessica } },
   { id: "premiere", title: "Movie Premiere", tier: "Premium", preview: { kind: "premiere" } },
   { id: "wedding", title: "Wedding", tier: "Premium", preview: { img: IMG.couple } },

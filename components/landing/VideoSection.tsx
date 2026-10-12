@@ -106,22 +106,30 @@ function PreviewModalContent({
             filter: `saturate(${1 + 0.6 * satRatio}) contrast(${1 + 0.25 * conRatio})`,
           }}
         >
-          <ExperienceVisual kind={item.kind} className="absolute inset-0" />
+          {generationState === "done" && photos[0] ? (
+            <video
+              src="/videos/golden-celebration.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 size-full object-cover"
+            />
+          ) : (
+            <ExperienceVisual kind={item.kind} photo={photos[0]} className="absolute inset-0" />
+          )}
           {photos[0] && (
-            <div className="absolute bottom-3 right-3 size-14 overflow-hidden rounded-xl border-2 border-primary shadow-xl">
-              <Image
-                src={photos[0]}
-                alt="Your uploaded photo"
-                fill
-                sizes="56px"
-                unoptimized
-                className="object-cover"
-              />
+            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Your Photo Applied</span>
             </div>
           )}
           {generationState === "working" && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-black/60 backdrop-blur-sm">
-              <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
+            <div className="absolute inset-0 z-10 grid place-items-center bg-black/70 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="size-9 animate-spin text-primary" aria-hidden />
+                <p className="text-xs font-semibold text-white animate-pulse">Replicate AI generating motion...</p>
+              </div>
             </div>
           )}
         </div>
@@ -245,34 +253,43 @@ function PreviewModalContent({
         {generationState === "done" ? (
           <div className="rounded-2xl bg-primary/15 p-4">
             <p className="flex items-center gap-2 font-semibold text-primary">
-              <Check className="size-4" aria-hidden /> Your invite is ready to render
+              <Check className="size-4" aria-hidden /> Your AI Video Invite is ready
             </p>
             <p className="mt-1 text-sm text-foreground/70">
-              Create your free event to save it and share one link.
+              Personalized with your photo in the {item.title} style.
             </p>
             <button
               type="button"
               onClick={() => {
                 onClose();
-                open("photos", { photo: photos[0] });
+                open("video", { template: item.id, photo: photos[0] });
               }}
-              className="mt-3 h-12 w-full rounded-full bg-primary text-[15px] font-bold text-primary-foreground transition active:scale-[0.98]"
+              className="mt-3 h-12 w-full rounded-full bg-primary text-[15px] font-bold text-primary-foreground transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
             >
-              Continue
+              <span>Setup Event with This Video</span>
+              <ArrowRight className="size-4" />
             </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => {
+              if (photos.length === 0) {
+                fileInputRef.current?.click();
+                return;
+              }
               setGenerationState("working");
               setTimeout(() => setGenerationState("done"), 1700);
             }}
             disabled={generationState === "working"}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-60"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-60 cursor-pointer shadow-lg"
           >
             <Sparkles className="size-5" aria-hidden />
-            {generationState === "working" ? "Generating..." : "Generate My Invite"}
+            {generationState === "working"
+              ? "Generating with Replicate AI..."
+              : photos.length === 0
+              ? "Upload Photo & Generate Invite"
+              : "Generate My Video Invite"}
           </button>
         )}
       </div>

@@ -142,6 +142,8 @@ export interface ApplyCanvasBackgroundOptions {
  * @param callback   - Called after the background has been painted (or on error)
  * @param options    - Scaling, aspect ratio, and proxy options
  */
+import { isVideoMediaUrl } from "./layoutUtils";
+
 export const applyCanvasBackground = (
   canvas: any,
   imageUrl: string | null | undefined,
@@ -150,6 +152,19 @@ export const applyCanvasBackground = (
 ): void => {
   if (!canvas || !imageUrl) {
     if (callback) callback();
+    return;
+  }
+
+  // If media is a video, Fabric background is cleared so HTML5 video player underneath is visible
+  if (isVideoMediaUrl(imageUrl)) {
+    try {
+      if (typeof canvas.setBackgroundImage === "function") {
+        canvas.setBackgroundImage(null, () => {
+          if (typeof canvas.renderAll === "function") canvas.renderAll();
+        });
+      }
+    } catch (_) {}
+    if (callback) callback({ width: 1080, height: 1920, aspectRatio: 9 / 16 });
     return;
   }
 

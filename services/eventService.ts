@@ -20,6 +20,9 @@ export interface Event {
   previewUrl?: string | null;
   templatePreviewUrl?: string | null;
   previewImage?: string | null;
+  videoUrl?: string | null;
+  videoMetadata?: any;
+  isVideo?: boolean;
   canvasState?: any;
   designData?: any;
   selectedTemplateId?: string | null;

@@ -358,7 +358,27 @@ export function isSnapshotOrRasterUrl(url?: string | null): boolean {
 }
 
 /**
- * Checks whether an image URL is a user-uploaded asset or AI-cleaned in-painted background.
+ * Detects whether a URL or media source is a video asset (.mp4, .webm, data:video, /videos/, etc.)
+ */
+export function isVideoMediaUrl(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim().toLowerCase();
+  return (
+    trimmed.endsWith(".mp4") ||
+    trimmed.endsWith(".webm") ||
+    trimmed.endsWith(".mov") ||
+    trimmed.includes(".mp4?") ||
+    trimmed.includes(".webm?") ||
+    trimmed.includes(".mov?") ||
+    trimmed.includes("/videos/") ||
+    trimmed.startsWith("data:video/")
+  );
+}
+
+export const isVideoMedia = isVideoMediaUrl;
+
+/**
+ * Checks whether an image or video URL is a user-uploaded asset, video invite, or AI-generated media.
  * Strictly excludes template SVGs, template asset paths, and canvas export snapshots.
  */
 export function checkIsUserUploadedImage(url?: string | null): boolean {
@@ -369,10 +389,13 @@ export function checkIsUserUploadedImage(url?: string | null): boolean {
   }
   if (trimmed.startsWith("#")) return false;
   if (trimmed.includes("/assets/templates/") || trimmed.endsWith(".svg")) return false;
-  if (trimmed.startsWith("data:image/")) return true;
+  if (trimmed.startsWith("data:image/") || trimmed.startsWith("data:video/")) return true;
   if (trimmed.startsWith("blob:")) return true;
+  if (isVideoMediaUrl(trimmed)) return true;
   return (
     trimmed.includes("/uploads/") ||
+    trimmed.startsWith("/images/") ||
+    trimmed.startsWith("/videos/") ||
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://")
   );
@@ -458,7 +481,9 @@ export function extractCleanSnapshotData(designState: any, baseWidth = 600) {
   const targetDims: ContainerDimensions = {
     width: baseWidth,
     height:
-      cardAspectRatio === "1/1" || cardAspectRatio === "square"
+      cardAspectRatio === "9/16" || cardAspectRatio === "story-9x16" || cardAspectRatio === "9:16"
+        ? Math.round((baseWidth * 16) / 9)
+        : cardAspectRatio === "1/1" || cardAspectRatio === "square"
         ? baseWidth
         : isLandscape || cardAspectRatio === "4/3"
         ? Math.round((baseWidth * 3) / 4)

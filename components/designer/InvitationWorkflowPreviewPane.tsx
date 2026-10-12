@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Monitor, Smartphone, User, Users, MapPin, Sparkles } from "lucide-react";
 import InvitationCanvasStage from "./InvitationCanvasStage";
+import VideoInvitePlayer from "./VideoInvitePlayer";
 import { StudioDesignState, teardownCanvasTextLayers } from "./InvitationStudio";
-import { deduplicateTextLayers, isSnapshotOrRasterUrl, getCleanTemplateSvg } from "./layoutUtils";
+import { deduplicateTextLayers, isSnapshotOrRasterUrl, getCleanTemplateSvg, isVideoMediaUrl } from "./layoutUtils";
 import { getTemplateConfig } from "../../lib/newTemplatesData";
 import { HostDetailsData } from "./InvitationWorkflowDetails";
 
@@ -29,6 +30,24 @@ export default function InvitationWorkflowPreviewPane({
 }: InvitationWorkflowPreviewPaneProps) {
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [selectedRsvp, setSelectedRsvp] = useState<"yes" | "maybe" | "no" | null>(null);
+
+  const isVideo = Boolean(
+    designState.videoUrl ||
+    designState.isVideo ||
+    isVideoMediaUrl(designState.videoUrl) ||
+    isVideoMediaUrl(designState.backgroundImageUrl) ||
+    isVideoMediaUrl(previewUrl) ||
+    isVideoMediaUrl(snapshotUrl) ||
+    (typeof window !== "undefined" && sessionStorage.getItem("pending_is_video") === "true")
+  );
+
+  const effectiveVideoUrl =
+    designState.videoUrl ||
+    (isVideoMediaUrl(previewUrl) ? previewUrl : null) ||
+    (isVideoMediaUrl(snapshotUrl) ? snapshotUrl : null) ||
+    (isVideoMediaUrl(designState.backgroundImageUrl) ? designState.backgroundImageUrl : null) ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("pending_video_url") || localStorage.getItem("pending_video_url") : null) ||
+    (isVideo ? "/videos/golden-celebration.mp4" : null);
 
   // Candidate flattened snapshot URL (if present)
   const effectiveSnapshotUrl =
@@ -195,7 +214,20 @@ export default function InvitationWorkflowPreviewPane({
           {viewMode === "desktop" ? (
             <div className="w-full max-w-[460px] flex items-center justify-center transition-all duration-300">
               <div className="w-full shadow-2xl rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
-                {activeOption === "snapshot" && effectiveSnapshotUrl ? (
+                {isVideo && effectiveVideoUrl ? (
+                  <div className="w-full bg-black">
+                    <VideoInvitePlayer
+                      src={effectiveVideoUrl}
+                      title={eventDetails.title}
+                      subtitle={displayDateTime || undefined}
+                      aspectRatio="9/16"
+                      autoPlay={true}
+                      loop={true}
+                      muted={true}
+                      className="w-full !rounded-none border-0"
+                    />
+                  </div>
+                ) : activeOption === "snapshot" && effectiveSnapshotUrl ? (
                   /* Option A: The flattened preview image WITHOUT any dynamic text overlays */
                   <div className="w-full aspect-[5/7] max-h-[640px] flex items-center justify-center bg-white overflow-hidden p-2">
                     <img
@@ -222,7 +254,20 @@ export default function InvitationWorkflowPreviewPane({
             <div className="w-[320px] rounded-[36px] p-2.5 bg-slate-900 shadow-2xl ring-1 ring-slate-800/80 transition-all duration-300">
               <div className="w-24 h-4 bg-slate-800 rounded-full mx-auto mb-2" />
               <div className="rounded-[26px] overflow-hidden bg-white max-h-[520px] overflow-y-auto">
-                {activeOption === "snapshot" && effectiveSnapshotUrl ? (
+                {isVideo && effectiveVideoUrl ? (
+                  <div className="w-full bg-black">
+                    <VideoInvitePlayer
+                      src={effectiveVideoUrl}
+                      title={eventDetails.title}
+                      subtitle={displayDateTime || undefined}
+                      aspectRatio="9/16"
+                      autoPlay={true}
+                      loop={true}
+                      muted={true}
+                      className="w-full !rounded-none border-0"
+                    />
+                  </div>
+                ) : activeOption === "snapshot" && effectiveSnapshotUrl ? (
                   /* Option A (Mobile): The flattened preview image WITHOUT any dynamic text overlays */
                   <div className="w-full aspect-[5/7] max-h-[520px] flex items-center justify-center bg-white overflow-hidden p-2">
                     <img

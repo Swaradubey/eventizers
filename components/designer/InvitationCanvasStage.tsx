@@ -2,13 +2,13 @@
 
 import React, { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle } from "lucide-react";
+import { Upload, Trash2 as Trash2Icon, Copy as CopyIcon, RotateCw, AlertCircle, Play, Pause, Volume2, VolumeX, Sparkles, Camera } from "lucide-react";
 import { CanvasStageConfig, TextLayer } from "../../types/invitationTypes";
 import { getCleanTemplateSvg, isUserUploadedImage, teardownCanvasTextLayers, syncCanvasTextLayers } from "./InvitationStudio";
 import { applyCanvasBackground, getFabricCanvas, cleanFabricCanvas, getProxyImageUrl, normalizeTemplateImageUrl } from "./canvasBackgroundUtils";
 import { getTemplateConfig, isTemplatePremium, isTemplateFree } from "../../lib/newTemplatesData";
 import EvitePureCssStage, { CssBorderOverlay } from "./EvitePureCssStage";
-import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl } from "./layoutUtils";
+import { computeAntiCollisionLayout, ContainerDimensions, deduplicateTextLayers, isSnapshotOrRasterUrl, isVideoMediaUrl } from "./layoutUtils";
 import EnvelopeBackdrop from "./EnvelopeBackdrop";
 
 export { teardownCanvasTextLayers };
@@ -150,6 +150,10 @@ export default function InvitationCanvasStage({
     width: maxW || 500,
     height: isLandscape ? Math.round((maxW || 500) * 0.75) : Math.round((maxW || 500) * 1.4),
   });
+
+  const canvasVideoRef = useRef<HTMLVideoElement>(null);
+  const [isPlayingVideo, setIsPlayingVideo] = useState(true);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
 
   useEffect(() => {
     const el = effectiveCardRef.current;
@@ -641,9 +645,47 @@ export default function InvitationCanvasStage({
   const [hasImgError, setHasImgError] = useState(false);
   const [bgNaturalDimensions, setBgNaturalDimensions] = useState<{ width: number; height: number; aspectRatio: string } | null>(null);
 
+  const videoSourceUrl =
+    (config as any)?.videoUrl ||
+    (config.card as any)?.videoUrl ||
+    (imgSrc && isVideoMediaUrl(imgSrc) ? imgSrc : null) ||
+    (cleanCardImage && isVideoMediaUrl(cleanCardImage) ? cleanCardImage : null) ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("pending_video_url") || localStorage.getItem("pending_video_url")
+      : null);
+
+  const isVideoInvite = Boolean(
+    config.isVideo ||
+    (config.card as any)?.isVideo ||
+    (config as any)?.videoUrl ||
+    (config.card as any)?.videoUrl ||
+    (imgSrc && isVideoMediaUrl(imgSrc)) ||
+    (cleanCardImage && isVideoMediaUrl(cleanCardImage)) ||
+    videoSourceUrl ||
+    (typeof window !== "undefined" &&
+      (window.location.search.includes("videoInvite=1") ||
+       sessionStorage.getItem("pending_is_video") === "true"))
+  );
+
+  const celebrantPhotoUrl =
+    (config as any)?.celebrantPhoto ||
+    (config.card as any)?.celebrantPhoto ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("pending_celebrant_photo") || localStorage.getItem("pending_celebrant_photo")
+      : null);
+
   useEffect(() => {
     if (!cleanCardImage) {
       setBgNaturalDimensions(null);
+      return;
+    }
+    if (isVideoMediaUrl(cleanCardImage)) {
+      setHasImgError(false);
+      setBgNaturalDimensions({
+        width: 1080,
+        height: 1920,
+        aspectRatio: "9 / 16",
+      });
       return;
     }
     let isProbeActive = true;
@@ -675,7 +717,7 @@ export default function InvitationCanvasStage({
   const resolvedStageAspect =
     aspectRatio === "square" || aspectRatio === "1/1" || aspectRatio === "1 / 1" || aspectRatio === "1:1" || aspectRatio === "square-5x5" || aspectRatio === "5x5" || aspectRatio === "5/5"
       ? "1 / 1"
-      : aspectRatio === "story-9x16" || aspectRatio === "9/16" || aspectRatio === "9 / 16" || aspectRatio === "9:16" || aspectRatio === "story"
+      : aspectRatio === "story-9x16" || aspectRatio === "9/16" || aspectRatio === "9 / 16" || aspectRatio === "9:16" || aspectRatio === "story" || isVideoInvite
       ? "9 / 16"
       : aspectRatio === "portrait-5x7" || aspectRatio === "3/4.2" || aspectRatio === "5/7" || aspectRatio === "5x7" || aspectRatio === "5 / 7" || aspectRatio === "portrait"
       ? "3 / 4.2"
@@ -695,11 +737,11 @@ export default function InvitationCanvasStage({
     if (activeCanvas) {
       cleanFabricCanvas(activeCanvas, {
         preserveBackground: true,
-        backgroundUrl: cleanCardImage,
+        backgroundUrl: isVideoMediaUrl(cleanCardImage) ? undefined : cleanCardImage,
         aspectRatio: resolvedStageAspect,
       });
       if (!isMounted) return;
-      if (cleanCardImage) {
+      if (cleanCardImage && !isVideoMediaUrl(cleanCardImage)) {
         applyCanvasBackground(
           activeCanvas,
           cleanCardImage,
@@ -1094,13 +1136,16 @@ export default function InvitationCanvasStage({
                 if (setEditingTextId) setEditingTextId(null);
               }
             }}
-            className={`relative z-10 w-full h-full shadow-2xl bg-white rounded-sm overflow-hidden transition-all duration-300 ${cardTextureClass} ${
+            className={`relative z-10 w-full h-full shadow-2xl ${
+              isVideoInvite ? "bg-black rounded-3xl border-2 border-white/20" : "bg-white rounded-sm"
+            } overflow-hidden transition-all duration-300 ${cardTextureClass} ${
               resolvedEnvelopeView === "closed" ? "pointer-events-none" : ""
             }`}
             style={{
               zIndex: 10,
-              backgroundColor: cardBgColor,
+              backgroundColor: isVideoInvite ? "#000000" : cardBgColor,
               background:
+                !isVideoInvite &&
                 (config.cardBg?.type === "preset" || config.cardBg?.type === "gradient") &&
                 !(config as any).innerCardLayer?.backgroundColor &&
                 config.cardBg.value !== backdropGradient &&
@@ -1146,10 +1191,103 @@ export default function InvitationCanvasStage({
           ) : (
             <>
               {/* Border Overlay if defined by cssConfig or innerCardLayer */}
-              {cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
+              {!isVideoInvite && cssConfig?.border && <CssBorderOverlay border={cssConfig.border} />}
 
-              {/* 3A: Clean Decorative Artwork / User Uploaded Base Layer */}
-              {imgSrc && (
+              {/* 3A: Clean Decorative Artwork / Video / User Uploaded Base Layer */}
+              {isVideoInvite && videoSourceUrl ? (
+                <div className="absolute inset-0 size-full overflow-hidden select-none" style={{ zIndex: 0 }}>
+                  {/* 1. Base Video Element */}
+                  <video
+                    ref={canvasVideoRef}
+                    src={videoSourceUrl}
+                    poster={celebrantPhotoUrl || undefined}
+                    autoPlay
+                    loop
+                    playsInline
+                    muted={isVideoMuted}
+                    className="absolute inset-0 size-full object-cover"
+                  />
+
+                  {/* 2. Atmospheric dark vignette gradient so text and glowing effects stand out */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
+
+                  {/* 3. Prominent Celebrant Portrait Ring Avatar ("Guest of Honor") if present */}
+                  {celebrantPhotoUrl && (
+                    <div className="absolute top-[14%] inset-x-0 z-10 flex flex-col items-center pointer-events-none">
+                      <div
+                        className="relative pointer-events-auto group cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (photoInputRef?.current) photoInputRef.current.click();
+                          else if (onPhotoClick) onPhotoClick();
+                        }}
+                        title="Click to change photo"
+                      >
+                        <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 blur-sm opacity-90 animate-pulse" />
+                        <div className="relative size-16 sm:size-20 rounded-full border-2 border-amber-300 overflow-hidden shadow-2xl bg-black/50">
+                          <img
+                            src={celebrantPhotoUrl}
+                            alt="Celebrant"
+                            className="size-full object-cover"
+                          />
+                        </div>
+                        <span className="absolute -bottom-1 -right-1 grid size-5 sm:size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg border border-black/60 transition group-hover:scale-110">
+                          <Camera className="size-3" />
+                        </span>
+                      </div>
+                      <span className="mt-1 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 border border-amber-400/30 shadow">
+                        Guest of Honor
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 4. Floating Top Controls (Badge + Play/Pause + Mute) */}
+                  <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between pointer-events-auto">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold text-primary border border-white/15 shadow">
+                      <Sparkles className="size-2.5" />
+                      AI Video Template
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canvasVideoRef.current) {
+                            if (isPlayingVideo) {
+                              canvasVideoRef.current.pause();
+                              setIsPlayingVideo(false);
+                            } else {
+                              canvasVideoRef.current.play();
+                              setIsPlayingVideo(true);
+                            }
+                          }
+                        }}
+                        className="grid size-7 sm:size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer shadow"
+                        title={isPlayingVideo ? "Pause" : "Play"}
+                      >
+                        {isPlayingVideo ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsVideoMuted(!isVideoMuted);
+                        }}
+                        className="grid size-7 sm:size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer shadow"
+                        title={isVideoMuted ? "Unmute" : "Mute"}
+                      >
+                        {isVideoMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 5. Glassmorphic RSVP Card Backdrop Frame (sits right behind editable text layers) */}
+                  <div className="absolute inset-x-3 bottom-3 z-1 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-md p-3 shadow-xl pointer-events-none" style={{ height: "30%" }}>
+                    {/* RSVP button pill background placed at bottom of the glassmorphic frame */}
+                    <div className="absolute inset-x-3 bottom-2.5 h-7 rounded-full bg-primary/95 shadow pointer-events-none" />
+                  </div>
+                </div>
+              ) : imgSrc && !isVideoMediaUrl(imgSrc) ? (
                 <img
                   src={imgSrc}
                   alt="Invitation Card Artwork"
@@ -1173,7 +1311,7 @@ export default function InvitationCanvasStage({
                   style={{ zIndex: 0 }}
                   draggable={false}
                 />
-              )}
+              ) : null}
 
 
 
