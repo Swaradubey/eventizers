@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -22,6 +21,7 @@ import {
   ScanLine,
   SlidersHorizontal,
   ChevronDown,
+  ChevronUp,
   Play,
   Pause,
   Volume2,
@@ -30,6 +30,26 @@ import {
   Download,
   Loader2,
   Camera,
+  Coins,
+  Calendar,
+  Clock,
+  MapPin,
+  ChevronRight,
+  Share2,
+  ExternalLink,
+  Copy,
+  CheckCheck,
+  Mail,
+  UserPlus,
+  Search,
+  Send,
+  Eye,
+  Type,
+  Palette,
+  ShieldCheck,
+  Sparkle,
+  Plus,
+  AlertCircle,
 } from "lucide-react";
 import { TEMPLATES, findTemplate, IMG, type TemplateItem } from "./data";
 import ExperienceVisual from "./ExperienceVisual";
@@ -39,6 +59,129 @@ import { cn } from "@/lib/utils";
 import API from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
+import eventService from "@/services/eventService";
+import { VIDEO_TEMPLATES_CATALOG, findVideoTemplate } from "@/data/videoTemplates";
+import { createInvitation } from "@/services/invitationService";
+import videoInviteService from "@/services/videoInviteService";
+
+interface DraggableTextProps {
+  id: string;
+  text: string;
+  position: { x: number; y: number };
+  onPositionChange: (pos: { x: number; y: number }) => void;
+  style: React.CSSProperties;
+}
+
+function DraggableText({ id, text, position, onPositionChange, style }: DraggableTextProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ clientX: number; clientY: number; x: number; y: number } | null>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      x: position.x,
+      y: position.y,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !dragStartRef.current) return;
+      const cardCanvas = document.querySelector('[data-card-canvas]') as HTMLElement;
+      if (!cardCanvas) return;
+      const rect = cardCanvas.getBoundingClientRect();
+      const deltaX = ((e.clientX - dragStartRef.current.clientX) / rect.width) * 100;
+      const deltaY = ((e.clientY - dragStartRef.current.clientY) / rect.height) * 100;
+      const newX = Math.round(Math.max(5, Math.min(95, dragStartRef.current.x + deltaX)));
+      const newY = Math.round(Math.max(5, Math.min(95, dragStartRef.current.y + deltaY)));
+      onPositionChange({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        dragStartRef.current = null;
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, onPositionChange]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragStartRef.current = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      x: position.x,
+      y: position.y,
+    };
+  };
+
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging || !dragStartRef.current) return;
+      const touch = e.touches[0];
+      const cardCanvas = document.querySelector('[data-card-canvas]') as HTMLElement;
+      if (!cardCanvas) return;
+      const rect = cardCanvas.getBoundingClientRect();
+      const deltaX = ((touch.clientX - dragStartRef.current.clientX) / rect.width) * 100;
+      const deltaY = ((touch.clientY - dragStartRef.current.clientY) / rect.height) * 100;
+      const newX = Math.round(Math.max(5, Math.min(95, dragStartRef.current.x + deltaX)));
+      const newY = Math.round(Math.max(5, Math.min(95, dragStartRef.current.y + deltaY)));
+      onPositionChange({ x: newX, y: newY });
+    };
+
+    const handleTouchEnd = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        dragStartRef.current = null;
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener("touchmove", handleTouchMove, { passive: false });
+      window.addEventListener("touchend", handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isDragging, onPositionChange]);
+
+  const containerStyle: React.CSSProperties = {
+    position: "absolute",
+    left: `${position.x}%`,
+    top: `${position.y}%`,
+    transform: "translate(-50%, -50%)",
+    pointerEvents: "auto",
+    ...style,
+  };
+
+  return (
+    <div
+      style={containerStyle}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      className={isDragging ? "cursor-grabbing" : "cursor-grab hover:cursor-grab"}
+      data-draggable-text={id}
+    >
+      <span style={{ display: "block" }}>{text}</span>
+    </div>
+  );
+}
 
 interface CreateSheetModalProps {
   initialMode?: Mode;
@@ -49,213 +192,55 @@ interface CreateSheetModalProps {
   onClose: () => void;
 }
 
-const TABS = [
-  {
-    id: "video",
-    label: "AI video template",
-    hint: "Pick a style from our library",
-    icon: Clapperboard,
-  },
-  {
-    id: "ai",
-    label: "Describe it",
-    hint: "AI builds the whole event",
-    icon: Sparkles,
-  },
-  {
-    id: "viral",
-    label: "Make it viral",
-    hint: "Something nobody has seen",
-    icon: Wand2,
-  },
-  {
-    id: "photos",
-    label: "Use photos",
-    hint: "Turn memories into the invite",
-    icon: ImagePlus,
-  },
-  {
-    id: "upload",
-    label: "Upload design",
-    hint: "Bring your own artwork",
-    icon: Upload,
-  },
-] as const;
-
-const AUDIENCES = [
-  { id: "individual", label: "Individual", icon: User },
-  { id: "pro", label: "Pros", icon: Briefcase },
-] as const;
-
-const PRO_PLANS = [
-  {
-    id: "creator",
-    name: "Creator",
-    who: "Solo hosts running one event at a time",
-    monthly: 29,
-    annual: 23,
-    fee: "2.5% on paid tickets",
-    featured: false,
-    points: [
-      "1 active event",
-      "3 connected channels",
-      "Content calendar and scheduling",
-      "Tracking links on every post",
-      "Basic analytics",
-      "30 AI drafts a month",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    who: "Promoters and creators selling tickets every month",
-    monthly: 79,
-    annual: 63,
-    fee: "1.5% on paid tickets",
-    featured: true,
-    points: [
-      "Unlimited events",
-      "All 5 channels, posted from one place",
-      "Post-level sales attribution",
-      "Unified inbox and CRM sync",
-      "AI agent that fixes slow sales",
-      "Guest referral links and QR check-in",
-    ],
-  },
-  {
-    id: "studio",
-    name: "Studio",
-    who: "Agencies and venues running many brands",
-    monthly: 199,
-    annual: 159,
-    fee: "0.9% on paid tickets",
-    featured: false,
-    points: [
-      "Everything in Pro",
-      "5 team seats with approvals",
-      "Multiple brands and workspaces",
-      "Audience groups and exports",
-      "Custom domain for event pages",
-      "Priority support",
-    ],
-  },
+// Curated templates matching the reference website
+const MODAL_TEMPLATES = [
+  { id: "party", title: "House party", tier: "Included", img: "/images/party.webp" },
+  { id: "pumpkin-patch", title: "Halloween · Kids trick-or-treat", tier: "Included", img: "/images/halloween-kids.png" },
+  { id: "marcus", title: "Milestone birthday", tier: "Included", img: "/images/marcus.webp" },
+  { id: "baby", title: "Baby shower", tier: "Included", img: "/images/baby.webp" },
+  { id: "concert", title: "Afterparty", tier: "Premium", img: "/images/concert.webp" },
+  { id: "reunion", title: "Reunion", tier: "Included", img: "/images/reunion.webp" },
+  { id: "haunting", title: "Halloween · Haunted house", tier: "Premium", img: "/images/halloween-house.png" },
+  { id: "jessica", title: "Milestone birthday", tier: "Included", img: "/images/jessica.webp" },
+  { id: "premiere", title: "Movie Premiere", tier: "Premium", img: "/images/rooftop.webp" },
+  { id: "grad", title: "Graduation", tier: "Included", img: "/images/grad.webp" },
+  { id: "wedding", title: "Wedding", tier: "Premium", img: "/images/couple.webp" },
+  { id: "anniversary", title: "Anniversary", tier: "Premium", img: "/images/anniversary.webp" },
+  { id: "vhs", title: "Retro VHS", tier: "Premium", img: "/images/party.webp" },
 ];
 
-const PRESETS = [
-  {
-    id: "open",
-    label: "Open party",
-    hint: "Anyone with the link can RSVP",
-  },
-  {
-    id: "private",
-    label: "Private invite",
-    hint: "Approved guests only, address hidden",
-  },
-  {
-    id: "ticketed",
-    label: "Ticketed event",
-    hint: "Paid tickets, check-in QR codes",
-  },
+const TEMPLATE_VIDEO_MAP: Record<string, string> = {
+  marcus: "/videos/golden-celebration.mp4",
+  party: "/videos/celebration-motion.mp4",
+  "pumpkin-patch": "/videos/golden-celebration.mp4",
+  anniversary: "/videos/golden-celebration.mp4",
+  baby: "/videos/golden-celebration.mp4",
+  concert: "/videos/celebration-motion.mp4",
+  reunion: "/videos/celebration-motion.mp4",
+  haunting: "/videos/golden-celebration.mp4",
+  jessica: "/videos/golden-celebration.mp4",
+  premiere: "/videos/golden-celebration.mp4",
+  grad: "/videos/golden-celebration.mp4",
+  wedding: "/videos/golden-celebration.mp4",
+  vhs: "/videos/celebration-motion.mp4",
+};
+
+interface ContactItem {
+  id: string;
+  name: string;
+  email: string;
+  category: "Family" | "Friends" | "Work" | "Neighbors";
+  avatarBg: string;
+}
+
+const DEFAULT_CONTACTS: ContactItem[] = [
+  { id: "c1", name: "Ava Carter", email: "ava.carter@example.com", category: "Family", avatarBg: "bg-amber-600" },
+  { id: "c2", name: "Noah Rossi", email: "noah.rossi@example.com", category: "Friends", avatarBg: "bg-emerald-600" },
+  { id: "c3", name: "Liam Smith", email: "liam.smith@example.com", category: "Work", avatarBg: "bg-blue-600" },
+  { id: "c4", name: "Emma Davis", email: "emma.davis@example.com", category: "Friends", avatarBg: "bg-purple-600" },
+  { id: "c5", name: "Marcus Johnson", email: "marcus.j@example.com", category: "Neighbors", avatarBg: "bg-rose-600" },
+  { id: "c6", name: "Sophia Wilson", email: "sophia.w@example.com", category: "Family", avatarBg: "bg-indigo-600" },
 ];
-
-const SETTINGS_GROUPS = [
-  { id: "privacy", title: "Privacy and access", icon: Lock, summary: "Public • Anyone can RSVP" },
-  { id: "rsvp", title: "RSVP", icon: CheckCircle, summary: "Standard RSVP • Unlimited guests" },
-  { id: "guestlist", title: "Guest list and co-hosts", icon: Users, summary: "Visible to guests • Host only" },
-  { id: "payments", title: "Payments", icon: CreditCard, summary: "Free event • No ticket fee" },
-  { id: "reminders", title: "Reminders", icon: Bell, summary: "24h and 2h before • Email and SMS" },
-  { id: "dayof", title: "Day of the event", icon: ScanLine, summary: "QR check-in enabled" },
-  { id: "extras", title: "More options", icon: SlidersHorizontal, summary: "Standard event link" },
-];
-
-function TemplateThumb({ template, sizes }: { template: TemplateItem; sizes: string }) {
-  if (!template) return null;
-  if ("kind" in template.preview) {
-    return <ExperienceVisual kind={template.preview.kind} className="absolute inset-0" />;
-  }
-  return (
-    <img
-      src={template.preview.img}
-      alt={template.title}
-      className="size-full object-cover"
-    />
-  );
-}
-
-function getTemplatePhoto(template?: TemplateItem | null, customPhoto?: string | null): string {
-  if (customPhoto) return customPhoto;
-  if (!template) return IMG.jessica;
-  if ("img" in template.preview) return template.preview.img;
-  if ("kind" in template.preview) {
-    const kindMap: Record<string, string> = {
-      premiere: IMG.rooftop,
-      vhs: IMG.party,
-      news: IMG.marcus,
-      golden: IMG.marcus,
-      journey: IMG.oldBeach,
-      redcarpet: IMG.party,
-      editorial: IMG.jessica,
-      "then-now": IMG.childhood,
-      romantic: IMG.couple,
-      surprise: IMG.party,
-      haunting: IMG.halloweenHouse,
-      wedding: IMG.couple,
-      party: IMG.party,
-      grad: IMG.grad,
-      baby: IMG.baby,
-      concert: IMG.concert,
-      anniversary: IMG.anniversary,
-      reunion: IMG.reunion,
-    };
-    return kindMap[template.preview.kind] || IMG.rooftop;
-  }
-  return IMG.jessica;
-}
-
-function AudienceSwitch({
-  value,
-  onChange,
-  className,
-}: {
-  value: "individual" | "pro";
-  onChange: (val: "individual" | "pro") => void;
-  className?: string;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Who is this for"
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-border bg-card p-1 w-full",
-        className
-      )}
-    >
-      {AUDIENCES.map((item) => {
-        const Icon = item.icon;
-        const active = item.id === value;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(item.id)}
-            className={cn(
-              "flex h-11 min-w-[7.25rem] flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors cursor-pointer",
-              active
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground/70 hover:text-foreground"
-            )}
-          >
-            <Icon className="size-4" aria-hidden={true} />
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function CreateSheetModal({
   initialMode = "ai",
@@ -265,454 +250,2421 @@ export default function CreateSheetModal({
   initialPlan = "pro",
   onClose,
 }: CreateSheetModalProps) {
-  const [audience, setAudience] = useState<"individual" | "pro">(initialAudience);
-  const [selectedPlanId, setSelectedPlanId] = useState(initialPlan);
-  const [mode, setMode] = useState<Mode>(initialMode);
-  const [prompt, setPrompt] = useState("");
-  const [photos, setPhotos] = useState<string[]>(initialPhoto ? [initialPhoto] : []);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [isViral, setIsViral] = useState(initialMode === "viral");
   const router = useRouter();
   const { user } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
-  const [step, setStep] = useState<"create" | "generating" | "video-preview" | "settings" | "done">("create");
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoProgress, setVideoProgress] = useState(0);
-  const [videoStage, setVideoStage] = useState("Initializing AI Director...");
+
+  // 1. Modal Stepper State: 1 | 2 | 3 | 4
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
+
+  // 2. Audience & Credits State
+  const [audience, setAudience] = useState<"individual" | "pro">(initialAudience);
+  const [credits, setCredits] = useState(30);
+  const [isBuyCreditsOpen, setIsBuyCreditsOpen] = useState(false);
+  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+  const [creditNotification, setCreditNotification] = useState<string | null>(null);
+  const [selectedCreditPack, setSelectedCreditPack] = useState<number>(25);
+
+  // Sync real-time credits from backend
+  useEffect(() => {
+    let mounted = true;
+    videoInviteService
+      .getCredits()
+      .then((res) => {
+        if (mounted && res?.credits !== undefined) {
+          setCredits(res.credits);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch remote credits:", err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Clear credit notification toast after 4.5s
+  useEffect(() => {
+    if (creditNotification) {
+      const timer = setTimeout(() => setCreditNotification(null), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [creditNotification]);
+
+  // 3. Step 1: Format & Mode State
+  const [inviteFormat, setInviteFormat] = useState<"image" | "video">(
+    initialMode === "video" ? "video" : "image"
+  );
+
+  // If initialTemplate was passed from a carousel click, start in "template" mode with that template selected
+  const [creationMode, setCreationMode] = useState<"describe" | "template" | "upload">(
+    initialTemplate ? "template" : "describe"
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(initialTemplate || null);
+  // Video template selection state (for when inviteFormat === "video" && creationMode === "template")
+  const [selectedVideoTemplateId, setSelectedVideoTemplateId] = useState<string>("burj-khalifa");
+
+  // isDesignReady is false initially; only becomes true after AI generates or user confirms template
+  const [isDesignReady, setIsDesignReady] = useState(false);
+  const [designSubTab, setDesignSubTab] = useState<"details" | "style" | "background" | "envelope">("details");
+
+  // Step 1 Details & Options
+  const [prompt, setPrompt] = useState("");
+  const [isViral, setIsViral] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [videoSize, setVideoSize] = useState<"9:16" | "4:5" | "1:1" | "16:9">("9:16");
+  const [videoLength, setVideoLength] = useState<"5 sec" | "10 sec" | "15 sec">("10 sec");
+  const [aiModel, setAiModel] = useState<"fast" | "auto" | "quality" | "cinematic">("auto");
+  const [mobileTab, setMobileTab] = useState<"form" | "preview">("form");
+  const [userPhoto, setUserPhoto] = useState<string | null>(initialPhoto || null);
+  const [userPhotoFile, setUserPhotoFile] = useState<File | null>(null);
+  const [generationStage, setGenerationStage] = useState<string>("");
+
+  // Dynamic Credits calculation: Video invite creation costs 2 credits
+  const getRequiredCredits = () => {
+    if (inviteFormat === "video") return 2;
+    if (creationMode === "template") return 2;
+    if (aiModel === "fast") return 2;
+    if (aiModel === "auto") return 3;
+    if (aiModel === "quality") return 4;
+    if (aiModel === "cinematic") return 6;
+    return 3;
+  };
+
+  // Event Attributes
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [eventVenue, setEventVenue] = useState("");
+
+  const [showTitleOnInvite, setShowTitleOnInvite] = useState(true);
+  const [showDateOnInvite, setShowDateOnInvite] = useState(true);
+  const [showVenueOnInvite, setShowVenueOnInvite] = useState(true);
+
+  // Style & Envelope settings
+  const [selectedFont, setSelectedFont] = useState("Playfair Display");
+  const [titleAlignment, setTitleAlignment] = useState<"left" | "center" | "right">("center");
+  const [titleFontSize, setTitleFontSize] = useState(42);
+  const [titleColor, setTitleColor] = useState("#FFFFFF");
+  const [titleLetterSpacing, setTitleLetterSpacing] = useState(2);
+  const [titleLineHeight, setTitleLineHeight] = useState(1.1);
+  const [titleFontWeight, setTitleFontWeight] = useState<"400" | "500" | "600" | "700" | "800" | "900">("800");
+  const [titleTextShadow, setTitleTextShadow] = useState(false);
+  const [datetimeFontSize, setDatetimeFontSize] = useState(15);
+  const [datetimeColor, setDatetimeColor] = useState("#FFFFFF");
+  const [venueFontSize, setVenueFontSize] = useState(14);
+  const [venueColor, setVenueColor] = useState("rgba(255, 255, 255, 0.85)");
+  const [textPositions, setTextPositions] = useState<Record<string, { x: number; y: number }>>({
+    title: { x: 50, y: 32 },
+    datetime: { x: 50, y: 50 },
+    venue: { x: 50, y: 60 },
+  });
+  const [envelopeReveal, setEnvelopeReveal] = useState(true);
+  const [envelopeColor, setEnvelopeColor] = useState("#6B1D2F");
+  const [envelopeSeal, setEnvelopeSeal] = useState("Gold Wax Seal");
+
+  // Step 2: Event Setup State
+  const [quickSetup, setQuickSetup] = useState<"open" | "private" | "ticketed" | "host-copay">("private");
+  const [openAccordion, setOpenAccordion] = useState<string | null>("privacy");
+  const [privacyMode, setPrivacyMode] = useState<"public" | "private">("private");
+  const [hideAddressUntilApproved, setHideAddressUntilApproved] = useState(true);
+  const [rsvpSpots, setRsvpSpots] = useState(40);
+  const [allowPlusOnes, setAllowPlusOnes] = useState(true);
+  const [isPaidEvent, setIsPaidEvent] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState("25");
+  const [sendReminders, setSendReminders] = useState(true);
+  const [qrCheckInEnabled, setQrCheckInEnabled] = useState(true);
+
+  // Step 3: Guests State
+  const [contacts, setContacts] = useState<ContactItem[]>(DEFAULT_CONTACTS);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
+  const [guestCategoryFilter, setGuestCategoryFilter] = useState<string>("All");
+  const [guestSearchQuery, setGuestSearchQuery] = useState("");
+  const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  const [newGuestName, setNewGuestName] = useState("");
+  const [newGuestEmail, setNewGuestEmail] = useState("");
+  const [newGuestCategory, setNewGuestCategory] = useState<"Family" | "Friends" | "Work" | "Neighbors">("Friends");
+
+  // Step 4: Publish & AI Generation Output State
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
-  const [videoError, setVideoError] = useState<string | null>(null);
-  const [videoEventTitle, setVideoEventTitle] = useState("");
-  const [videoEventDate, setVideoEventDate] = useState("Saturday, 15 November • 7:00 PM");
-  const [videoEventVenue, setVideoEventVenue] = useState("Sky Lounge & Terrace");
-  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedSlug, setPublishedSlug] = useState<string>("");
+  const [isPublished, setIsPublished] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Video Player Controls
   const [isPlayingVideo, setIsPlayingVideo] = useState(true);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [customVideoPhoto, setCustomVideoPhoto] = useState<string | null>(initialPhoto || null);
-  const previewFileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    findTemplate(initialTemplate)?.id ?? "premiere"
-  );
-  const [isChangingTemplate, setIsChangingTemplate] = useState(
-    initialTemplate === undefined || !findTemplate(initialTemplate)
-  );
-  const [notes, setNotes] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [openSettingsGroup, setOpenSettingsGroup] = useState<string | null>("privacy");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cardCanvasRef = useRef<HTMLDivElement>(null);
 
-  const selectedTemplate = findTemplate(selectedTemplateId);
-  const userUploadedPhoto = customVideoPhoto || (photos.length > 0 ? photos[0] : null);
-  const hasUserUploadedPhoto = Boolean(photoFile || userUploadedPhoto);
-  const displayPhoto = userUploadedPhoto || getTemplatePhoto(selectedTemplate);
+  // Current templates list matching reference website (22 for video, 11 for image)
+  const currentTemplates =
+    inviteFormat === "video" ? TEMPLATES : TEMPLATES.filter((t) => "img" in t.preview);
 
-  const startVideoGeneration = async () => {
-    // 0. Mandatory Authentication Guard: must sign in before AI generation
-    if (!user) {
-      pendingActionRef.current = () => {
-        startVideoGeneration();
-      };
-      setIsAuthModalOpen(true);
+  // Find selected template item
+  const selectedTemplate = selectedTemplateId
+    ? findTemplate(selectedTemplateId) || TEMPLATES.find((t) => t.id === selectedTemplateId) || null
+    : null;
+
+  // Active video source when inviteFormat === "video"
+  const activeVideoSrc =
+    generatedVideoUrl ||
+    (inviteFormat === "video"
+      ? creationMode === "template"
+        ? findVideoTemplate(selectedVideoTemplateId).videoUrl
+        : (selectedTemplateId && TEMPLATE_VIDEO_MAP[selectedTemplateId]) || "/videos/golden-celebration.mp4"
+      : null);
+
+  // Active display photo for preview
+  // When in video+template mode, use the selected video template's thumbnail so preview matches the card
+  const activeVideoTemplate = (inviteFormat === "video" && creationMode === "template")
+    ? findVideoTemplate(selectedVideoTemplateId)
+    : null;
+
+  const activeDisplayPhoto =
+    userPhoto ||
+    generatedImageUrl ||
+    (activeVideoTemplate ? activeVideoTemplate.thumbnail : null) ||
+    (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : "/images/marcus.webp");
+
+  // Dynamic slug calculation
+  const cleanSlug =
+    publishedSlug ||
+    (eventTitle
+      ? eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      : "celebration");
+
+  // Handle Photo Upload (image or video)
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUserPhotoFile(file);
+      if (file.type.startsWith("video/")) {
+        const vUrl = URL.createObjectURL(file);
+        setGeneratedVideoUrl(vUrl);
+        setInviteFormat("video");
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const res = event.target?.result as string;
+          if (res) {
+            setUserPhoto(res);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  // Buy Credits Handler
+  const handleBuyCredits = async (amount: number) => {
+    setIsBuyingCredits(true);
+    try {
+      const res = await videoInviteService.buyCredits(amount);
+      if (res.success) {
+        setCredits(res.credits);
+        setCreditNotification(`Successfully purchased ${amount} credits! New balance: ${res.credits} credits`);
+        setIsBuyCreditsOpen(false);
+      }
+    } catch (err) {
+      console.error("Failed to buy credits:", err);
+      setCreditNotification("Failed to purchase credits. Please try again.");
+    } finally {
+      setIsBuyingCredits(false);
+    }
+  };
+
+  // Main Generation Handler for Step 1
+  const handleGenerateInvite = async () => {
+    const requiredCredits = getRequiredCredits();
+
+    // Check balance
+    if (credits < requiredCredits) {
+      setCreditNotification(`Insufficient credits (${requiredCredits} credits required). Please buy credits.`);
+      setIsBuyCreditsOpen(true);
       return;
     }
 
-    // If no user photo is uploaded yet, prompt file picker
-    if (!hasUserUploadedPhoto) {
+    // Mode-specific validation for video invites
+    if (inviteFormat === "video" && creationMode === "template" && !userPhoto) {
+      setCreditNotification("Please add your photo! A photo is required for the video template.");
       fileInputRef.current?.click();
       return;
     }
 
-    const activeTemplateId = selectedTemplateId || "premiere";
-    const effectivePrompt = (prompt || notes || "").trim();
-    setVideoError(null);
-    setIsGeneratingVideo(true);
-    setVideoProgress(20);
-    setVideoStage("Uploading photo to high-speed CDN...");
-    setStep("generating");
-
-    const derivedTitle = effectivePrompt
-      ? effectivePrompt.split(" on ")[0].split(" at ")[0].slice(0, 40)
-      : `${selectedTemplate?.title || "Special"} Celebration`;
-    setVideoEventTitle(derivedTitle);
+    setIsGenerating(true);
 
     try {
-      let res;
-      try {
-        const formData = new FormData();
-        formData.append("selectedTemplateId", activeTemplateId);
-        formData.append("templateId", activeTemplateId);
-        formData.append("title", derivedTitle);
-        formData.append("eventTitle", derivedTitle);
-        formData.append("userDescription", effectivePrompt);
-        formData.append("prompt", effectivePrompt);
-        formData.append("notes", effectivePrompt);
-        formData.append("isViral", (mode === "viral" || isViral) ? "true" : "false");
-        formData.append("date", videoEventDate);
-        formData.append("venue", videoEventVenue);
-        formData.append("speedMode", "fast");
-
-        if (photoFile) {
-          formData.append("photo", photoFile);
+      if (inviteFormat === "image") {
+        if (creationMode === "template") {
+          if (userPhoto) {
+            // User selected template AND uploaded photo -> Generate AI artwork via Node.js Backend & Replicate!
+            setGenerationStage("Replicate AI transforming photo into template artwork...");
+            try {
+              const res = await API.post("/ai/generate-event-template", {
+                templateId: selectedTemplateId || "marcus",
+                userPhoto: userPhoto,
+                title: eventTitle,
+                eventType: "Celebration",
+                prompt: prompt || (selectedTemplate?.title ? `${selectedTemplate.title} celebration` : undefined),
+              });
+              if (res.data?.imageUrl) {
+                setGeneratedImageUrl(res.data.imageUrl);
+              } else {
+                setGeneratedImageUrl(userPhoto || (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : "/images/marcus.webp"));
+              }
+            } catch (err) {
+              console.warn("Backend AI template generation error, fallback to Next.js route:", err);
+              try {
+                const fallbackRes = await fetch("/api/generate-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    templateId: selectedTemplateId || "marcus",
+                    userPhoto,
+                    title: eventTitle,
+                    eventType: "Celebration",
+                    prompt: prompt || selectedTemplate?.title,
+                  }),
+                });
+                const fbData = await fallbackRes.json();
+                setGeneratedImageUrl(fbData.imageUrl || userPhoto);
+              } catch (_) {
+                setGeneratedImageUrl(userPhoto || (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : "/images/marcus.webp"));
+              }
+            }
+          } else {
+            // No custom photo uploaded: use the polished template directly
+            const chosenImage =
+              (selectedTemplate && "img" in selectedTemplate.preview
+                ? selectedTemplate.preview.img
+                : "/images/marcus.webp");
+            setGeneratedImageUrl(chosenImage);
+          }
+          setCredits((prev) => Math.max(0, prev - requiredCredits));
+          setIsGenerating(false);
+          setIsDesignReady(true);
+          return;
         }
-        if (userUploadedPhoto) {
-          formData.append("uploadedPhotoUrl", userUploadedPhoto);
+
+        if (creationMode === "upload") {
+          // 2. User uploaded their photo/flyer directly
+          const chosenImage = userPhoto || "/images/marcus.webp";
+          setGeneratedImageUrl(chosenImage);
+          setCredits((prev) => Math.max(0, prev - requiredCredits));
+          setIsGenerating(false);
+          setIsDesignReady(true);
+          return;
         }
 
-        res = await API.post("/video-invites/create-ai-template", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } catch (_) {
-        // Fallback to legacy endpoint or Next.js route handler
+        // 3. User gave a prompt ("Describe it"): Generate via Node.js Backend & Replicate FLUX
+        setGenerationStage("Replicate FLUX generating mobile invitation artwork...");
         try {
-          res = await API.post("/ai/generate-video-template", {
-            templateId: activeTemplateId,
-            title: derivedTitle,
-            prompt: effectivePrompt,
-            notes: effectivePrompt,
-            date: videoEventDate,
-            venue: videoEventVenue,
-            photoUrl: displayPhoto,
-            isViral: mode === "viral" || isViral,
+          const res = await API.post("/ai/generate-event-template", {
+            prompt: prompt || (selectedTemplate?.title ? `${selectedTemplate.title} celebration` : "Luxury party celebration"),
+            eventType: "Celebration",
+            title: eventTitle,
+            templateId: selectedTemplateId || "marcus",
+            userPhoto: userPhoto || undefined,
           });
-        } catch (_legacyErr) {
+          if (res.data?.imageUrl) {
+            setGeneratedImageUrl(res.data.imageUrl);
+          } else {
+            setGeneratedImageUrl(
+              (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : null) ||
+                "/images/marcus.webp"
+            );
+          }
+        } catch (_) {
+          // Next.js fallback
           try {
-            const nextRes = await fetch("/api/generate-video", {
+            const fbRes = await fetch("/api/generate-image", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                templateId: activeTemplateId,
-                title: derivedTitle,
-                prompt: effectivePrompt,
-                date: videoEventDate,
-                venue: videoEventVenue,
-                uploadedImageUrl: userUploadedPhoto || displayPhoto,
+                prompt: prompt || (selectedTemplate?.title ? `${selectedTemplate.title} celebration` : "Luxury party celebration"),
+                eventType: "Celebration",
+                title: eventTitle,
+                templateId: selectedTemplateId || "marcus",
+                userPhoto: userPhoto || undefined,
               }),
             });
-            const data = await nextRes.json();
-            res = { data };
-          } catch (_nextErr) {
-            res = { data: { success: true, videoUrl: "/videos/golden-celebration.mp4" } };
+            const fbData = await fbRes.json();
+            setGeneratedImageUrl(fbData?.imageUrl || "/images/marcus.webp");
+          } catch {
+            setGeneratedImageUrl(
+              (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : null) ||
+                "/images/marcus.webp"
+            );
           }
         }
-      }
 
-      if (res.data && res.data.success) {
-        if (res.data.details) {
-          if (res.data.details.title) setVideoEventTitle(res.data.details.title);
-          if (res.data.details.date) setVideoEventDate(res.data.details.date);
-          if (res.data.details.venue) setVideoEventVenue(res.data.details.venue);
-        }
+        setCredits((prev) => Math.max(0, prev - requiredCredits));
+        setIsGenerating(false);
+        setIsDesignReady(true);
+      } else {
+        // Video Generation: Replicate AI ByteDance Seedance Video Model
+        const chosenVideoFallback =
+          (selectedTemplateId && TEMPLATE_VIDEO_MAP[selectedTemplateId]) ||
+          "/videos/golden-celebration.mp4";
+        let finalVideoUrl = chosenVideoFallback;
 
-        if (res.data.videoUrl && !res.data.async) {
-          setVideoProgress(100);
-          setGeneratedVideoUrl(res.data.videoUrl);
-          setTimeout(() => {
-            setIsGeneratingVideo(false);
-            setStep("video-preview");
-          }, 600);
-          return;
-        }
+        setGenerationStage("Connecting to ByteDance Seedance AI...");
+        setCreditNotification("2 credits deducted for AI Video generation");
 
-        if (res.data.predictionId) {
-          const predictionId = res.data.predictionId;
-          setVideoProgress(30);
-          setVideoStage("Replicate AI animating photo motion...");
+        try {
+          const res = await videoInviteService.generateVideo({
+            creationMode: creationMode === "describe" ? "describe" : "template",
+            templateId: selectedTemplateId || selectedVideoTemplateId || "premiere",
+            prompt: prompt,
+            userDescription: prompt,
+            uploadedPhotoUrl: userPhoto || undefined,
+            photo: userPhotoFile || undefined,
+            eventTitle: eventTitle || "Special Celebration",
+            eventDate: eventDate ? `${eventDate} • ${eventTime}` : undefined,
+            eventVenue: eventVenue || undefined,
+            aspectRatio: "9:16",
+            isViral: isViral,
+            waitForCompletion: false,
+          });
 
-          let attempts = 0;
-          const maxAttempts = 60;
-          const pollInterval = setInterval(async () => {
-            attempts++;
-            try {
-              setVideoProgress((prev) => Math.min(prev + (prev < 80 ? 4 : 2), 95));
-              if (attempts === 2) setVideoStage("Replicate AI analyzing photo features...");
-              if (attempts === 5) setVideoStage("Animating facial expressions & camera depth...");
-              if (attempts === 9) setVideoStage("Applying cinematic theme lighting & particles...");
-              if (attempts === 14) setVideoStage("Synthesizing 9:16 vertical invitation frames...");
+          if (res?.remainingCredits !== undefined) {
+            setCredits(res.remainingCredits);
+          } else {
+            setCredits((prev) => Math.max(0, prev - 2));
+          }
 
-              let statusRes: any = null;
+          if (res?.async && res?.predictionId) {
+            setGenerationStage("ByteDance Seedance animating photo into 24fps video...");
+            const predictionId = res.predictionId;
+            let attempts = 0;
+            const maxAttempts = 35; // 35 * 2.5s = ~88s
+            while (attempts < maxAttempts) {
+              await new Promise((r) => setTimeout(r, 2500));
+              attempts++;
               try {
-                statusRes = await API.get(`/video-invites/status/${predictionId}`);
-              } catch (_) {
-                try {
-                  statusRes = await API.get(`/ai/video-status/${predictionId}`);
-                } catch (__e) {
-                  try {
-                    const fetchRes = await fetch(`/api/video-status/${predictionId}`);
-                    const data = await fetchRes.json();
-                    statusRes = { data };
-                  } catch (___) {}
+                const statusRes = await videoInviteService.checkStatus(predictionId);
+                if (statusRes?.status === "succeeded" && statusRes?.videoUrl) {
+                  finalVideoUrl = statusRes.videoUrl;
+                  setCreditNotification("AI Video generated successfully!");
+                  break;
+                } else if (statusRes?.status === "failed" || statusRes?.status === "canceled") {
+                  if (statusRes.refunded) {
+                    if (statusRes.remainingCredits !== undefined) {
+                      setCredits(statusRes.remainingCredits);
+                    } else {
+                      setCredits((prev) => prev + 2);
+                    }
+                    setCreditNotification("Generation failed. 2 credits refunded to your balance.");
+                  }
+                  console.warn("Replicate Seedance prediction failed, using template fallback");
+                  break;
+                } else {
+                  setGenerationStage(
+                    `Seedance AI rendering 9:16 mobile motion... (${Math.min(95, 20 + attempts * 2.5).toFixed(0)}%)`
+                  );
                 }
-              }
-              if (statusRes?.data && statusRes.data.success) {
-                const status = statusRes.data.status;
-                if (status === "succeeded" && statusRes.data.videoUrl) {
-                  clearInterval(pollInterval);
-                  setVideoProgress(100);
-                  setVideoStage("Video invitation ready!");
-                  setGeneratedVideoUrl(statusRes.data.videoUrl);
-                  setTimeout(() => {
-                    setIsGeneratingVideo(false);
-                    setStep("video-preview");
-                  }, 400);
-                  return;
-                } else if (status === "failed" || status === "canceled") {
-                  clearInterval(pollInterval);
-                  const fallbackUrl = "/videos/golden-celebration.mp4";
-                  setGeneratedVideoUrl(fallbackUrl);
-                  setVideoProgress(100);
-                  setTimeout(() => {
-                    setIsGeneratingVideo(false);
-                    setStep("video-preview");
-                  }, 500);
-                  return;
-                }
-              }
-
-              if (attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-                const fallbackUrl = "/videos/golden-celebration.mp4";
-                setGeneratedVideoUrl(fallbackUrl);
-                setStep("video-preview");
-                setIsGeneratingVideo(false);
-              }
-            } catch (pollErr) {
-              console.error("Poll error:", pollErr);
+              } catch (_) {}
             }
-          }, 2000);
-
-          return;
+          } else if (res?.videoUrl) {
+            finalVideoUrl = res.videoUrl;
+            setCreditNotification("AI Video generated successfully!");
+          }
+        } catch (err: any) {
+          console.warn("Video generation error, using fallback video:", err);
+          if (err?.response?.data?.refunded) {
+            if (err.response.data.remainingCredits !== undefined) {
+              setCredits(err.response.data.remainingCredits);
+            } else {
+              setCredits((prev) => prev + 2);
+            }
+            setCreditNotification("Generation failed. 2 credits refunded.");
+          } else if (err?.response?.status === 402) {
+            setCreditNotification("Insufficient credits. Please purchase credits to continue.");
+            setIsBuyCreditsOpen(true);
+            setIsGenerating(false);
+            return;
+          }
         }
+
+        setGeneratedVideoUrl(finalVideoUrl);
+        setIsPlayingVideo(true);
+        setIsGenerating(false);
+        setIsDesignReady(true);
+      }
+    } catch (err) {
+      console.error("Generation error:", err);
+      setIsGenerating(false);
+      setIsDesignReady(true);
+    }
+  };
+
+  // Step 4: Publish Event to Database
+  const handlePublishEvent = async () => {
+    setIsPublishing(true);
+
+    try {
+      const cover = generatedVideoUrl || generatedImageUrl || activeDisplayPhoto || "/images/party.webp";
+      const createdSlug = cleanSlug + "-" + Math.random().toString(36).substring(2, 6);
+
+      // 1. Create Event via eventService (connected to Neon PostgreSQL)
+      let eventId: string | undefined;
+      try {
+        const newEvtRes = await eventService.createEvent({
+          title: eventTitle,
+          venue: eventVenue,
+          eventDate: new Date(eventDate).toISOString(),
+          eventTime: eventTime + ":00",
+          coverImage: cover,
+          videoUrl: generatedVideoUrl || undefined,
+          isVideo: Boolean(generatedVideoUrl),
+          selectedTemplateId: selectedTemplateId || undefined,
+          status: "published",
+        });
+        if (newEvtRes?.event?.id) {
+          eventId = newEvtRes.event.id;
+        }
+      } catch (err) {
+        console.warn("Event creation in DB notice:", err);
       }
 
-      setGeneratedVideoUrl("/videos/golden-celebration.mp4");
-      setStep("video-preview");
-      setIsGeneratingVideo(false);
-    } catch (err: any) {
-      console.error("Video Generation Error:", err);
-      setGeneratedVideoUrl("/videos/golden-celebration.mp4");
-      setStep("video-preview");
-      setIsGeneratingVideo(false);
+      // 2. Create Base Invitation
+      if (eventId) {
+        try {
+          await createInvitation({
+            eventId,
+            title: eventTitle,
+            subtitle: eventVenue,
+            mainText: `You are cordially invited to celebrate with us.`,
+            imageUrl: cover,
+            accentColor: envelopeColor,
+            fontFamily: selectedFont,
+            buttonText: "RSVP Now",
+          });
+        } catch (_) {}
+      }
+
+      setPublishedSlug(createdSlug);
+      setIsPublishing(false);
+      setIsPublished(true);
+    } catch (publishErr) {
+      console.error("Publishing error:", publishErr);
+      setIsPublishing(false);
+      setIsPublished(true);
     }
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const templateListRef = useRef<HTMLUListElement>(null);
-
-  const selectedPlan =
-    PRO_PLANS.find((p) => p.id === selectedPlanId) || PRO_PLANS[1];
-
-  useEffect(() => {
-    if (mode !== "video" || !isChangingTemplate) return;
-    const listEl = templateListRef.current;
-    const activeEl = listEl?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (listEl && activeEl) {
-      listEl.scrollLeft =
-        activeEl.offsetLeft - (listEl.clientWidth - activeEl.offsetWidth) / 2;
-    }
-  }, [mode, isChangingTemplate]);
-
-  useEffect(() => {
-    return () => {
-      photos.forEach((src) => {
-        if (src.startsWith("blob:") && src !== initialPhoto) {
-          URL.revokeObjectURL(src);
-        }
-      });
-    };
-  }, [photos, initialPhoto]);
-
-  const isPhotosOrUpload = mode === "photos" || mode === "upload";
-  const isValid = Boolean(
-    selectedTemplateId ||
-      customVideoPhoto ||
-      photos.length > 0 ||
-      photoFile ||
-      prompt.trim().length > 0 ||
-      notes.trim().length > 0
-  );
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const result = uploadEvent.target?.result as string;
-        if (result) {
-          setCustomVideoPhoto(result);
-          setPhotos([result]);
-        }
-      };
-      reader.readAsDataURL(file);
+  const copyEventLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(`${window.location.origin}/e/${cleanSlug}`);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     }
   };
+
+  const filteredContacts = contacts.filter((c) => {
+    const matchCategory = guestCategoryFilter === "All" || c.category === guestCategoryFilter;
+    const matchSearch =
+      !guestSearchQuery ||
+      c.name.toLowerCase().includes(guestSearchQuery.toLowerCase()) ||
+      c.email.toLowerCase().includes(guestSearchQuery.toLowerCase());
+    return matchCategory && matchSearch;
+  });
 
   return (
-    <Modal open={true} onClose={onClose} label="Create an event" variant="sheet">
-      {step === "generating" ? (
-        /* STEP: AI Video Director Generation Loader */
-        <div className="relative flex max-h-[88svh] min-h-[460px] flex-col items-center justify-center px-6 py-10 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsGeneratingVideo(false);
-              setStep("create");
-            }}
-            aria-label="Cancel"
-            className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
-
-          {/* Animated Template Photo Preview with Gold Ring & Clapperboard */}
-          <div className="relative mb-5">
-            <div className="absolute -inset-3 rounded-2xl bg-primary/25 blur-xl animate-pulse" />
-            <div className="relative size-24 sm:size-28 overflow-hidden rounded-2xl border-2 border-primary/60 shadow-[0_0_35px_rgba(234,179,8,0.3)] bg-black">
-              {displayPhoto ? (
-                <img
-                  src={displayPhoto}
-                  alt={selectedTemplate?.title || "Template"}
-                  className="size-full object-cover animate-pulse"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute inset-0 grid place-items-center">
-                <span className="grid size-9 place-items-center rounded-full bg-black/70 backdrop-blur-md border border-primary/60 text-primary shadow-lg">
-                  <Clapperboard className="size-4.5 animate-bounce" />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Sparkles className="size-3 animate-spin" />
-            Replicate AI Video Engine
-          </span>
-
-          <h2 className="mt-4 font-display text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Directing Your Video Invite
-          </h2>
-
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Crafting a cinematic 9:16 motion invitation for{" "}
-            <span className="font-semibold text-foreground">
-              {selectedTemplate?.title || "your celebration"}
-            </span>.
-          </p>
-
-          {/* Progress Bar & Stage */}
-          <div className="mt-7 w-full max-w-xs space-y-3">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-500 rounded-full"
-                style={{ width: `${videoProgress}%` }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5 text-primary font-medium animate-pulse">
-                <Loader2 className="size-3 animate-spin" />
-                {videoStage}
-              </span>
-              <span className="font-mono font-bold text-foreground">{videoProgress}%</span>
-            </div>
-          </div>
-
-          {/* Info Card */}
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left max-w-sm w-full">
-            <div className="flex items-start gap-3">
-              <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />
-              <div className="text-xs text-muted-foreground leading-relaxed">
-                <p className="font-semibold text-foreground">What happens next:</p>
-                <p className="mt-0.5">
-                  Your photo is blended with dynamic motion effects, luxury typography, and interactive RSVP options.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsGeneratingVideo(false);
-              setStep("create");
-            }}
-            className="mt-5 text-xs text-muted-foreground hover:text-foreground underline transition cursor-pointer"
-          >
-            Cancel and choose another style
-          </button>
-        </div>
-      ) : step === "video-preview" ? (
-        /* STEP: Video Preview & Overlay Customization */
-        <div className="flex max-h-[88svh] flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-xl bg-primary/20 text-primary">
-                <Clapperboard className="size-4" />
-              </span>
-              <div>
-                <h3 className="text-sm font-bold leading-none">Your AI Video Invitation</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {selectedTemplate?.title} • 9:16 Vertical Video
-                </p>
-              </div>
-            </div>
+    <Modal open={true} onClose={onClose} label="Create an event" variant="wide">
+      <div className="relative flex h-full max-h-[96svh] sm:max-h-[88vh] w-full flex-col overflow-hidden bg-[#0c1015] text-white">
+        {/* ========================================================= */}
+        {/* TOP HEADER STEPPER (1. Create -> 2. Event setup -> 3. Guests -> 4. Publish) */}
+        {/* ========================================================= */}
+        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3 shrink-0 bg-[#0c1015] z-20">
+          <div className="flex flex-1 items-center gap-2 sm:gap-6 overflow-x-auto no-scrollbar py-0.5">
+            {/* Step 1 */}
             <button
               type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="grid size-9 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
+              onClick={() => setActiveStep(1)}
+              className="flex items-center gap-2.5 text-left transition cursor-pointer shrink-0"
             >
-              <X className="size-5" />
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-full text-xs font-bold transition",
+                  activeStep === 1
+                    ? "border-2 border-amber-400 bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.5)]"
+                    : activeStep > 1
+                    ? "bg-amber-400 text-black"
+                    : "border border-white/30 text-white/60"
+                )}
+              >
+                {activeStep > 1 ? <Check className="size-4 stroke-[3]" /> : "1"}
+              </span>
+              <div>
+                <span className={cn("block text-xs sm:text-sm font-bold leading-none", activeStep === 1 ? "text-white" : "text-white/80")}>
+                  Create
+                </span>
+                <span className="hidden sm:block text-[11px] text-white/50 leading-tight mt-0.5">
+                  Design and details
+                </span>
+              </div>
+            </button>
+
+            <div className={cn("h-0.5 w-6 sm:w-10 rounded transition shrink-0", activeStep > 1 ? "bg-amber-400" : "bg-white/15")} />
+
+            {/* Step 2 */}
+            <button
+              type="button"
+              onClick={() => setActiveStep(2)}
+              className="flex items-center gap-2.5 text-left transition cursor-pointer shrink-0"
+            >
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-full text-xs font-bold transition",
+                  activeStep === 2
+                    ? "border-2 border-amber-400 bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.5)]"
+                    : activeStep > 2
+                    ? "bg-amber-400 text-black"
+                    : "border border-white/30 text-white/60"
+                )}
+              >
+                {activeStep > 2 ? <Check className="size-4 stroke-[3]" /> : "2"}
+              </span>
+              <div>
+                <span className={cn("block text-xs sm:text-sm font-bold leading-none", activeStep === 2 ? "text-white" : "text-white/80")}>
+                  Event setup
+                </span>
+                <span className="hidden sm:block text-[11px] text-white/50 leading-tight mt-0.5">
+                  Privacy and RSVP
+                </span>
+              </div>
+            </button>
+
+            <div className={cn("h-0.5 w-6 sm:w-10 rounded transition shrink-0", activeStep > 2 ? "bg-amber-400" : "bg-white/15")} />
+
+            {/* Step 3 */}
+            <button
+              type="button"
+              onClick={() => setActiveStep(3)}
+              className="flex items-center gap-2.5 text-left transition cursor-pointer shrink-0"
+            >
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-full text-xs font-bold transition",
+                  activeStep === 3
+                    ? "border-2 border-amber-400 bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.5)]"
+                    : activeStep > 3
+                    ? "bg-amber-400 text-black"
+                    : "border border-white/30 text-white/60"
+                )}
+              >
+                {activeStep > 3 ? <Check className="size-4 stroke-[3]" /> : "3"}
+              </span>
+              <div>
+                <span className={cn("block text-xs sm:text-sm font-bold leading-none", activeStep === 3 ? "text-white" : "text-white/80")}>
+                  Guests
+                </span>
+                <span className="hidden sm:block text-[11px] text-white/50 leading-tight mt-0.5">
+                  Who and how
+                </span>
+              </div>
+            </button>
+
+            <div className={cn("h-0.5 w-6 sm:w-10 rounded transition shrink-0", activeStep > 3 ? "bg-amber-400" : "bg-white/15")} />
+
+            {/* Step 4 */}
+            <button
+              type="button"
+              onClick={() => setActiveStep(4)}
+              className="flex items-center gap-2.5 text-left transition cursor-pointer shrink-0"
+            >
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-full text-xs font-bold transition",
+                  activeStep === 4
+                    ? "border-2 border-amber-400 bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.5)]"
+                    : "border border-white/30 text-white/60"
+                )}
+              >
+                4
+              </span>
+              <div>
+                <span className={cn("block text-xs sm:text-sm font-bold leading-none", activeStep === 4 ? "text-white" : "text-white/80")}>
+                  Publish
+                </span>
+                <span className="hidden sm:block text-[11px] text-white/50 leading-tight mt-0.5">
+                  Link and RSVPs
+                </span>
+              </div>
             </button>
           </div>
 
-          {/* Content */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            <div className="flex flex-col items-center">
-              {/* Phone Frame 9:16 Video & Image Player */}
-              <div className="relative aspect-[9/16] w-full max-w-[280px] overflow-hidden rounded-3xl border-2 border-white/20 bg-black shadow-2xl">
-                {/* 1. Base Video / Visual Background */}
-                {generatedVideoUrl ? (
-                  <video
-                    ref={videoRef}
-                    src={generatedVideoUrl}
-                    poster={displayPhoto || undefined}
-                    autoPlay
-                    loop
-                    playsInline
-                    muted={isVideoMuted}
-                    className="absolute inset-0 size-full object-cover"
-                  />
-                ) : displayPhoto ? (
-                  <img
-                    src={displayPhoto}
-                    alt={videoEventTitle || "Celebrant"}
-                    className="absolute inset-0 size-full object-cover scale-105 transition-transform duration-700 ease-out"
-                  />
+          {/* Close X Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="grid size-8 sm:size-9 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer ml-2 sm:ml-3 shrink-0"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Mobile View Switcher (< lg screens) */}
+        <div className="flex lg:hidden items-center justify-center p-2 bg-black/40 border-b border-white/10 shrink-0 z-10">
+          <div className="inline-flex rounded-full border border-white/15 bg-white/5 p-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setMobileTab("form")}
+              className={cn(
+                "rounded-full px-4 py-1.5 transition cursor-pointer",
+                mobileTab === "form" ? "bg-amber-400 text-black shadow" : "text-white/70 hover:text-white"
+              )}
+            >
+              Edit Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("preview")}
+              className={cn(
+                "rounded-full px-4 py-1.5 transition flex items-center gap-1.5 cursor-pointer",
+                mobileTab === "preview" ? "bg-amber-400 text-black shadow" : "text-white/70 hover:text-white"
+              )}
+            >
+              <Eye className="size-3.5" />
+              Preview Invite
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* TWO-COLUMN BODY (Left: Form Content, Right: Live Preview) */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-0 flex-1 overflow-hidden">
+          {/* --------------------------------------------------------- */}
+          {/* LEFT COLUMN (~60%): STEP CONTENT */}
+          {/* --------------------------------------------------------- */}
+          <div
+            className={cn(
+              "lg:col-span-7 flex flex-col min-h-0 h-full border-r border-white/10 overflow-hidden",
+              mobileTab === "preview" ? "hidden lg:flex" : "flex"
+            )}
+          >
+            {/* Scrollable Form Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-6">
+            {/* ================= STEP 1: CREATE ================= */}
+            {activeStep === 1 && (
+              <>
+                {/* Audience Toggle (Individual vs Pros) */}
+                <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 p-1 w-full max-w-sm">
+                  <button
+                    type="button"
+                    onClick={() => setAudience("individual")}
+                    className={cn(
+                      "flex h-9 flex-1 items-center justify-center gap-2 rounded-full text-xs font-bold transition cursor-pointer",
+                      audience === "individual"
+                        ? "bg-amber-400 text-black shadow"
+                        : "text-white/70 hover:text-white"
+                    )}
+                  >
+                    <User className="size-3.5" />
+                    Individual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAudience("pro")}
+                    className={cn(
+                      "flex h-9 flex-1 items-center justify-center gap-2 rounded-full text-xs font-bold transition cursor-pointer",
+                      audience === "pro"
+                        ? "bg-amber-400 text-black shadow"
+                        : "text-white/70 hover:text-white"
+                    )}
+                  >
+                    <Briefcase className="size-3.5" />
+                    Pros
+                  </button>
+                </div>
+
+                {!isDesignReady ? (
+                  /* SUB-VIEW A: CHOOSE FORMAT & CREATION MODE */
+                  <div className="space-y-5">
+                    {/* Header + Credits */}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                        Create your invite
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setIsBuyCreditsOpen(true)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition cursor-pointer group shadow-sm",
+                          inviteFormat === "video" && credits < 2
+                            ? "border-red-500/50 bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                            : "border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
+                        )}
+                        title="Click to buy more credits"
+                      >
+                        <Coins className={cn("size-3.5", inviteFormat === "video" && credits < 2 ? "text-red-400" : "text-amber-400")} />
+                        <span>{credits} credits</span>
+                        <span className="rounded bg-amber-400/25 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-amber-300 group-hover:bg-amber-400 group-hover:text-black transition">
+                          + Buy
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Insufficient Credits Banner for Video Invite */}
+                    {inviteFormat === "video" && credits < 2 && (
+                      <div className="flex items-center justify-between rounded-2xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="size-4 text-red-400 shrink-0" />
+                          <span>
+                            <strong>Low balance:</strong> 2 credits required to generate a video invite.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsBuyCreditsOpen(true)}
+                          className="inline-flex items-center gap-1 font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer shrink-0 ml-2"
+                        >
+                          <Coins className="size-3 text-amber-400" />
+                          Buy Credits
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Format Radios (Image Invite vs Video Invite) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setInviteFormat("image")}
+                        className={cn(
+                          "flex items-center gap-3 rounded-2xl border p-3.5 text-left transition cursor-pointer",
+                          inviteFormat === "image"
+                            ? "border-amber-400 bg-amber-400/10 shadow-[0_0_15px_rgba(251,191,36,0.15)]"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        )}
+                      >
+                        <span className={cn("grid size-10 place-items-center rounded-xl", inviteFormat === "image" ? "bg-amber-400/20 text-amber-300" : "bg-white/10 text-white/70")}>
+                          <ImagePlus className="size-5" />
+                        </span>
+                        <div>
+                          <span className="block text-sm font-bold leading-tight">Image invite</span>
+                          <span className="block text-[11px] text-white/60 leading-tight mt-0.5">A designed picture</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInviteFormat("video")}
+                        className={cn(
+                          "flex items-center gap-3 rounded-2xl border p-3.5 text-left transition cursor-pointer",
+                          inviteFormat === "video"
+                            ? "border-amber-400 bg-amber-400/10 shadow-[0_0_15px_rgba(251,191,36,0.15)]"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        )}
+                      >
+                        <span className={cn("grid size-10 place-items-center rounded-xl", inviteFormat === "video" ? "bg-amber-400/20 text-amber-300" : "bg-white/10 text-white/70")}>
+                          <Clapperboard className="size-5" />
+                        </span>
+                        <div>
+                          <span className="block text-sm font-bold leading-tight">Video invite</span>
+                          <span className="block text-[11px] text-white/60 leading-tight mt-0.5">Animated and shareable</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Mode Tabs (Describe it, Pick a template, Upload yours) */}
+                    <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/40 p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCreationMode("describe")}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          creationMode === "describe"
+                            ? "border border-amber-400 bg-amber-400/15 text-amber-300"
+                            : "text-white/70 hover:text-white"
+                        )}
+                      >
+                        <Sparkles className="size-3.5" />
+                        Describe it
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCreationMode("template")}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          creationMode === "template"
+                            ? "border border-amber-400 bg-amber-400/15 text-amber-300"
+                            : "text-white/70 hover:text-white"
+                        )}
+                      >
+                        <SlidersHorizontal className="size-3.5" />
+                        Pick a template
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCreationMode("upload")}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          creationMode === "upload"
+                            ? "border border-amber-400 bg-amber-400/15 text-amber-300"
+                            : "text-white/70 hover:text-white"
+                        )}
+                      >
+                        <Upload className="size-3.5" />
+                        Upload yours
+                      </button>
+                    </div>
+
+                    {/* MODE 1: DESCRIBE IT */}
+                    {creationMode === "describe" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="describe-event-prompt" className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-1.5">
+                            Tell us about your event
+                          </label>
+                          <textarea
+                            id="describe-event-prompt"
+                            rows={3}
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            placeholder="An elegant rooftop 40th birthday in NYC..."
+                            className="w-full rounded-2xl border border-white/15 bg-white/5 p-4 text-sm leading-relaxed placeholder:text-white/40 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
+                          />
+                        </div>
+
+                        {/* Make it viral checkbox */}
+                        <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isViral}
+                            onChange={(e) => setIsViral(e.target.checked)}
+                            className="size-4 rounded border-white/20 bg-white/10 text-amber-400 focus:ring-0 cursor-pointer"
+                          />
+                          <Wand2 className="size-3.5 text-amber-400" />
+                          <span>Make it viral</span>
+                          <span className="text-white/50 font-normal">Something nobody has seen</span>
+                        </label>
+
+                        {/* Add photos optional */}
+                        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3.5">
+                          <div className="flex items-center gap-3">
+                            <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/80">
+                              <Camera className="size-4" />
+                            </span>
+                            <div>
+                              <span className="block text-xs font-bold">Add photos (optional)</span>
+                              <span className="block text-[11px] text-white/50">Personalize your invitation artwork</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold hover:bg-white/15 transition cursor-pointer"
+                          >
+                            {userPhoto ? "Change photo" : "Upload photo"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MODE 2: PICK A TEMPLATE */}
+                    {creationMode === "template" && (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-bold text-white">Choose a template</span>
+                            <span className="text-xs text-white/50">
+                              {selectedTemplate ? selectedTemplate.title : `${currentTemplates.length} styles`}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition cursor-pointer shadow",
+                              inviteFormat === "video"
+                                ? "bg-amber-400 text-black hover:bg-amber-300"
+                                : "border border-white/20 bg-white/5 text-white hover:bg-white/10"
+                            )}
+                          >
+                            <Camera className="size-3.5" />
+                            {userPhoto ? (
+                              <>
+                                <span>Photo added</span>
+                                <span className="text-[10px] opacity-70 font-semibold">Change</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>{inviteFormat === "video" ? "Add your photo" : "Add photos"}</span>
+                                <span className={cn("text-[10px]", inviteFormat === "video" ? "opacity-75 font-semibold" : "text-white/50")}>
+                                  {inviteFormat === "video" ? "Required" : "Optional"}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <ul
+                          role="listbox"
+                          aria-label="Invitation templates"
+                          className="mt-2 grid grid-cols-3 gap-x-2.5 gap-y-3 sm:grid-cols-5 max-h-[350px] overflow-y-auto pr-1"
+                        >
+                          {currentTemplates.map((tpl) => {
+                            const isSelected = selectedTemplateId === tpl.id;
+                            return (
+                              <li key={tpl.id}>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isSelected}
+                                  onClick={() => {
+                                    setSelectedTemplateId(tpl.id);
+                                  }}
+                                  className="block w-full text-left cursor-pointer group"
+                                >
+                                  <span
+                                    className={cn(
+                                      "relative block aspect-[4/5] w-full overflow-hidden rounded-xl border-2 transition bg-black",
+                                      isSelected
+                                        ? "border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+                                        : "border-transparent hover:border-white/25"
+                                    )}
+                                  >
+                                    {"kind" in tpl.preview ? (
+                                      <ExperienceVisual
+                                        kind={tpl.preview.kind}
+                                        playing={true}
+                                        className="absolute inset-0 pointer-events-none"
+                                      />
+                                    ) : (
+                                      <img
+                                        src={tpl.preview.img}
+                                        alt={tpl.title}
+                                        className="size-full object-cover transition duration-300 group-hover:scale-105"
+                                      />
+                                    )}
+                                    {isSelected && (
+                                      <span className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-amber-400 text-black shadow">
+                                        <Check className="size-4 stroke-[3]" />
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="mt-1.5 block truncate text-xs font-semibold leading-tight text-white">
+                                    {tpl.title}
+                                  </span>
+                                  <span className="block text-[11px] leading-tight text-white/50 mt-0.5">
+                                    {tpl.tier}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* MODE 3: UPLOAD YOURS */}
+                    {creationMode === "upload" && (
+                      <div className="space-y-4">
+                        {userPhoto ? (
+                          <div className="rounded-2xl border border-white/15 bg-white/5 p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div className="relative size-16 rounded-xl overflow-hidden border border-amber-400/40 bg-black shrink-0">
+                                <img src={userPhoto} alt="Uploaded preview" className="size-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                                  <Check className="size-3.5 stroke-[3]" />
+                                  <span>Photo uploaded successfully</span>
+                                </div>
+                                <p className="text-[11px] text-white/60 truncate mt-0.5">
+                                  Formatted into 9:16 mobile invitation card
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="text-[11px] font-semibold text-amber-400 hover:underline mt-1 cursor-pointer"
+                                >
+                                  Upload a different photo
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Animate with Replicate AI prompt banner */}
+                            <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="size-4 text-amber-400 shrink-0" />
+                                <div>
+                                  <span className="block text-xs font-bold text-white">Animate with Replicate AI</span>
+                                  <span className="block text-[10px] text-white/60">Turn this photo into an animated 24fps video invite</span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInviteFormat("video");
+                                }}
+                                className={cn(
+                                  "rounded-full px-3 py-1.5 text-xs font-bold transition cursor-pointer shrink-0",
+                                  inviteFormat === "video"
+                                    ? "bg-amber-400 text-black shadow"
+                                    : "border border-amber-400/40 bg-white/5 text-amber-300 hover:bg-amber-400/20"
+                                )}
+                              >
+                                {inviteFormat === "video" ? "Video active" : "Enable video"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center cursor-pointer hover:border-amber-400/70 hover:bg-white/10 transition"
+                          >
+                            <div className="grid size-12 place-items-center rounded-full bg-amber-400/10 text-amber-400 mb-2">
+                              <Upload className="size-6" />
+                            </div>
+                            <span className="text-sm font-bold text-white">Upload your design or flyer</span>
+                            <span className="text-xs text-white/50 mt-1 max-w-xs">
+                              PNG, JPG, WebP or MP4 up to 15MB. We'll optimize it into a 9:16 interactive mobile invite.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Hidden Photo Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/mp4"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+
+                    {/* Expandable "More options" Panel matching user screenshot */}
+                    {showMoreOptions && (
+                      <div className="rounded-2xl border border-white/15 bg-[#0f141c] p-4 sm:p-5 space-y-4 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-1">
+                          <h3 className="text-sm sm:text-base font-bold text-white">More options</h3>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreOptions(false)}
+                            aria-label="Close more options"
+                            className="grid size-7 place-items-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </div>
+
+                        {/* Video size / Image size */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-white">
+                              {inviteFormat === "video" ? "Video size" : "Image size"}
+                            </span>
+                            <span className="text-white/50 text-[11px]">Reels, TikTok and Stories</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              { id: "9:16", label: "Story", iconH: "h-5 w-3.5" },
+                              { id: "4:5", label: "Portrait", iconH: "h-4.5 w-3.5" },
+                              { id: "1:1", label: "Square", iconH: "size-4" },
+                              { id: "16:9", label: "Wide", iconH: "h-3.5 w-5" },
+                            ].map((size) => {
+                              const isSelected = videoSize === size.id;
+                              return (
+                                <button
+                                  key={size.id}
+                                  type="button"
+                                  onClick={() => setVideoSize(size.id as any)}
+                                  className={cn(
+                                    "flex flex-col items-center justify-center rounded-2xl border p-2.5 sm:p-3 text-center transition cursor-pointer",
+                                    isSelected
+                                      ? "border-amber-400 bg-amber-400/10 shadow-[0_0_12px_rgba(251,191,36,0.25)] text-white"
+                                      : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
+                                  )}
+                                >
+                                  <div className={cn("rounded-[3px] border-2 border-current mx-auto mb-1.5 flex items-center justify-center", size.iconH)} />
+                                  <span className="block text-xs font-bold leading-tight">{size.id}</span>
+                                  <span className="block text-[10px] text-white/50 leading-tight mt-0.5">{size.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Length (only when inviteFormat === 'video') */}
+                        {inviteFormat === "video" && (
+                          <div className="space-y-2">
+                            <span className="block text-xs font-bold text-white">Length</span>
+                            <div className="grid grid-cols-3 gap-2">
+                              {["5 sec", "10 sec", "15 sec"].map((len) => {
+                                const isSelected = videoLength === len;
+                                return (
+                                  <button
+                                    key={len}
+                                    type="button"
+                                    onClick={() => setVideoLength(len as any)}
+                                    className={cn(
+                                      "rounded-xl sm:rounded-2xl border py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-center transition cursor-pointer",
+                                      isSelected
+                                        ? "border-amber-400 bg-amber-400/10 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.2)]"
+                                        : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
+                                    )}
+                                  >
+                                    {len}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI model */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-white">AI model</span>
+                            <span className="text-white/50 text-[11px]">Higher quality uses more credits</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                              {
+                                id: "fast",
+                                name: "Fast",
+                                desc: "Quick drafts",
+                                credits: inviteFormat === "video" ? "6 credits" : "2 credits",
+                              },
+                              {
+                                id: "auto",
+                                name: "Auto",
+                                desc: "Best fit, recommended",
+                                credits: inviteFormat === "video" ? "12 credits" : "3 credits",
+                              },
+                              {
+                                id: "quality",
+                                name: "Quality",
+                                desc: "Richer detail",
+                                credits: inviteFormat === "video" ? "18 credits" : "4 credits",
+                              },
+                              {
+                                id: "cinematic",
+                                name: "Cinematic",
+                                desc: "Best motion and polish",
+                                credits: inviteFormat === "video" ? "24 credits" : "6 credits",
+                              },
+                            ].map((model) => {
+                              const isSelected = aiModel === model.id;
+                              return (
+                                <button
+                                  key={model.id}
+                                  type="button"
+                                  onClick={() => setAiModel(model.id as any)}
+                                  className={cn(
+                                    "relative flex flex-col justify-between rounded-2xl border p-2.5 sm:p-3 text-left transition cursor-pointer min-h-[78px]",
+                                    isSelected
+                                      ? "border-amber-400 bg-amber-400/10 shadow-[0_0_12px_rgba(251,191,36,0.2)]"
+                                      : "border-white/10 bg-white/5 hover:border-white/20"
+                                  )}
+                                >
+                                  {isSelected && (
+                                    <span className="absolute top-2 right-2 text-amber-400">
+                                      <Check className="size-3.5 stroke-[3]" />
+                                    </span>
+                                  )}
+                                  <div>
+                                    <span className="block text-xs font-bold text-white leading-tight">{model.name}</span>
+                                    <span className="block text-[10px] text-white/50 leading-tight mt-0.5 line-clamp-1">{model.desc}</span>
+                                  </div>
+                                  <span className="block text-[11px] font-bold text-amber-400 mt-2">
+                                    {model.credits}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black" />
-                )}
+                  /* SUB-VIEW B: DESIGN YOUR INVITE (Details, Style, Background, Envelope) */
+                  <div className="space-y-5">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                        Design your invite
+                      </h2>
+                      <p className="text-xs text-white/60 mt-0.5">
+                        Your AI draft is ready. Editing never costs credits, and Premium extras are free to try.
+                      </p>
+                    </div>
 
-                {/* 2. Atmospheric dark vignette gradient so text and glowing effects stand out */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
+                    {/* 4 Sub-Tabs: Details, Style, Background, Envelope */}
+                    <div className="grid grid-cols-4 gap-2 border-b border-white/10 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setDesignSubTab("details")}
+                        className={cn(
+                          "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          designSubTab === "details"
+                            ? "bg-white/15 text-amber-300 border border-white/20"
+                            : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        <Calendar className="size-3.5" />
+                        Details
+                      </button>
 
-                {/* 3. Personalized Celebrant Indicator Tag */}
-                {customVideoPhoto && (
-                  <div className="absolute top-12 left-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-amber-300 border border-amber-400/40 backdrop-blur-md shadow pointer-events-none">
-                    <Sparkles className="size-2.5 text-amber-300" />
-                    <span>Personalized with Your Photo</span>
+                      <button
+                        type="button"
+                        onClick={() => setDesignSubTab("style")}
+                        className={cn(
+                          "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          designSubTab === "style"
+                            ? "bg-white/15 text-amber-300 border border-white/20"
+                            : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        <Type className="size-3.5" />
+                        Style
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDesignSubTab("background")}
+                        className={cn(
+                          "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          designSubTab === "background"
+                            ? "bg-white/15 text-amber-300 border border-white/20"
+                            : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        <Palette className="size-3.5" />
+                        Background
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDesignSubTab("envelope")}
+                        className={cn(
+                          "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
+                          designSubTab === "envelope"
+                            ? "bg-white/15 text-amber-300 border border-white/20"
+                            : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        <Mail className="size-3.5" />
+                        Envelope
+                      </button>
+                    </div>
+
+                    {/* SUBTAB 1: DETAILS */}
+                    {designSubTab === "details" && (
+                      <div className="space-y-4">
+                        {/* Event title */}
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span>Event title</span>
+                            <label className="flex items-center gap-1.5 text-[11px] text-white/70 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showTitleOnInvite}
+                                onChange={(e) => setShowTitleOnInvite(e.target.checked)}
+                                className="size-3.5 rounded bg-white/10 text-amber-400"
+                              />
+                              Show on invite
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            value={eventTitle}
+                            onChange={(e) => setEventTitle(e.target.value)}
+                            placeholder="e.g. Marcus turns 50"
+                            className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Date and time */}
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span>Date and time</span>
+                            <label className="flex items-center gap-1.5 text-[11px] text-white/70 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showDateOnInvite}
+                                onChange={(e) => setShowDateOnInvite(e.target.checked)}
+                                className="size-3.5 rounded bg-white/10 text-amber-400"
+                              />
+                              Show on invite
+                            </label>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="date"
+                              value={eventDate}
+                              onChange={(e) => setEventDate(e.target.value)}
+                              className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                            />
+                            <input
+                              type="time"
+                              value={eventTime}
+                              onChange={(e) => setEventTime(e.target.value)}
+                              className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Venue */}
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span>Venue</span>
+                            <label className="flex items-center gap-1.5 text-[11px] text-white/70 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showVenueOnInvite}
+                                onChange={(e) => setShowVenueOnInvite(e.target.checked)}
+                                className="size-3.5 rounded bg-white/10 text-amber-400"
+                              />
+                              Show on invite
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            value={eventVenue}
+                            onChange={(e) => setEventVenue(e.target.value)}
+                            placeholder="e.g. Sky Lounge, Rooftop"
+                            className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUBTAB 2: STYLE */}
+                    {designSubTab === "style" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Typography Font
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {["Playfair Display", "DM Sans", "Cinzel", "Montserrat", "Bebas Neue", "Caveat", "Londrina Solid", "Permanent Marker", "Dancing Script", "Inter"].map((font) => (
+                              <button
+                                key={font}
+                                type="button"
+                                onClick={() => setSelectedFont(font)}
+                                className={cn(
+                                  "rounded-xl border p-2.5 text-xs text-left font-medium transition cursor-pointer",
+                                  selectedFont === font
+                                    ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                                    : "border-white/10 bg-white/5 hover:border-white/20"
+                                )}
+                              >
+                                {font}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Text Alignment
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {(["left", "center", "right"] as const).map((align) => (
+                              <button
+                                key={align}
+                                type="button"
+                                onClick={() => setTitleAlignment(align)}
+                                className={cn(
+                                  "flex-1 rounded-xl border py-2 text-xs font-bold uppercase transition cursor-pointer",
+                                  titleAlignment === align
+                                    ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                                    : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                                )}
+                              >
+                                {align}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Font Size
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="24"
+                              max="72"
+                              value={titleFontSize}
+                              onChange={(e) => setTitleFontSize(parseInt(e.target.value))}
+                              className="flex-1 h-2 bg-white/10 rounded-lg appearance-none accent-amber-400 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-300 w-12 text-right">{titleFontSize}px</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Color
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="color"
+                              value={titleColor}
+                              onChange={(e) => setTitleColor(e.target.value)}
+                              className="size-10 rounded-xl border border-white/20 cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={titleColor}
+                              onChange={(e) => setTitleColor(e.target.value)}
+                              className="flex-1 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none font-mono"
+                              placeholder="#FFFFFF"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Letter Spacing
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0"
+                              max="10"
+                              step="0.5"
+                              value={titleLetterSpacing}
+                              onChange={(e) => setTitleLetterSpacing(parseFloat(e.target.value))}
+                              className="flex-1 h-2 bg-white/10 rounded-lg appearance-none accent-amber-400 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-300 w-12 text-right">{titleLetterSpacing}px</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Line Height
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0.8"
+                              max="2"
+                              step="0.1"
+                              value={titleLineHeight}
+                              onChange={(e) => setTitleLineHeight(parseFloat(e.target.value))}
+                              className="flex-1 h-2 bg-white/10 rounded-lg appearance-none accent-amber-400 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-300 w-12 text-right">{titleLineHeight}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Font Weight
+                          </label>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {["400", "500", "600", "700", "800", "900"].map((weight) => (
+                              <button
+                                key={weight}
+                                type="button"
+                                onClick={() => setTitleFontWeight(weight as any)}
+                                className={cn(
+                                  "rounded-xl border px-3 py-1.5 text-xs font-bold transition cursor-pointer",
+                                  titleFontWeight === weight
+                                    ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                                    : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                                )}
+                              >
+                                {weight}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Title Text Shadow
+                          </label>
+                          <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={titleTextShadow}
+                              onChange={(e) => setTitleTextShadow(e.target.checked)}
+                              className="size-4 rounded border-white/20 bg-white/10 text-amber-400 focus:ring-0 cursor-pointer"
+                            />
+                            <span>Add subtle shadow for better readability</span>
+                          </label>
+                        </div>
+
+                        <div className="border-t border-white/10 pt-4">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Date & Time Font Size
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="10"
+                              max="24"
+                              value={datetimeFontSize}
+                              onChange={(e) => setDatetimeFontSize(parseInt(e.target.value))}
+                              className="flex-1 h-2 bg-white/10 rounded-lg appearance-none accent-amber-400 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-300 w-12 text-right">{datetimeFontSize}px</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Date & Time Color
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="color"
+                              value={datetimeColor}
+                              onChange={(e) => setDatetimeColor(e.target.value)}
+                              className="size-10 rounded-xl border border-white/20 cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={datetimeColor}
+                              onChange={(e) => setDatetimeColor(e.target.value)}
+                              className="flex-1 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none font-mono"
+                              placeholder="#FFFFFF"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/10 pt-4">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Venue Font Size
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="10"
+                              max="20"
+                              value={venueFontSize}
+                              onChange={(e) => setVenueFontSize(parseInt(e.target.value))}
+                              className="flex-1 h-2 bg-white/10 rounded-lg appearance-none accent-amber-400 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-300 w-12 text-right">{venueFontSize}px</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Venue Color
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="color"
+                              value={venueColor}
+                              onChange={(e) => setVenueColor(e.target.value)}
+                              className="size-10 rounded-xl border border-white/20 cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={venueColor}
+                              onChange={(e) => setVenueColor(e.target.value)}
+                              className="flex-1 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none font-mono"
+                              placeholder="rgba(255, 255, 255, 0.85)"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUBTAB 3: BACKGROUND */}
+                    {designSubTab === "background" && (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                          <span className="block text-xs font-bold">Custom Image Background</span>
+                          <div className="flex items-center gap-3">
+                            <div className="relative size-14 rounded-xl overflow-hidden border border-white/20 bg-black shrink-0">
+                              {activeDisplayPhoto ? (
+                                <img src={activeDisplayPhoto} alt="Background" className="size-full object-cover" />
+                              ) : (
+                                <div className="size-full bg-white/10" />
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20 transition cursor-pointer"
+                              >
+                                Change photo
+                              </button>
+                              <p className="text-[10px] text-white/50">Supports high-res PNG, JPG or WebP</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUBTAB 4: ENVELOPE */}
+                    {designSubTab === "envelope" && (
+                      <div className="space-y-4">
+                        {/* Envelope reveal toggle */}
+                        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold">Envelope reveal</span>
+                              <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                Premium
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-white/50 mt-0.5">
+                              Guests tap an envelope to open your invite.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEnvelopeReveal(!envelopeReveal)}
+                            className={cn(
+                              "relative h-6 w-11 rounded-full transition cursor-pointer",
+                              envelopeReveal ? "bg-amber-400" : "bg-white/20"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "absolute top-1 size-4 rounded-full bg-black transition",
+                                envelopeReveal ? "left-6" : "left-1"
+                              )}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Envelope colours */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Envelope colour
+                          </label>
+                          <div className="flex items-center gap-2.5">
+                            {[
+                              { id: "#6B1D2F", name: "Burgundy" },
+                              { id: "#1E293B", name: "Navy" },
+                              { id: "#2D4A3E", name: "Sage" },
+                              { id: "#835C4A", name: "Terracotta" },
+                              { id: "#111827", name: "Charcoal" },
+                              { id: "#C59B27", name: "Gold" },
+                            ].map((col) => (
+                              <button
+                                key={col.id}
+                                type="button"
+                                onClick={() => setEnvelopeColor(col.id)}
+                                className={cn(
+                                  "size-8 rounded-full border-2 transition cursor-pointer",
+                                  envelopeColor === col.id ? "border-amber-400 scale-110" : "border-transparent"
+                                )}
+                                style={{ backgroundColor: col.id }}
+                                title={col.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Seal */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                            Seal
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {["Gold Wax Seal", "Royal Crest", "Star Seal", "Heart Wax"].map((seal) => (
+                              <button
+                                key={seal}
+                                type="button"
+                                onClick={() => setEnvelopeSeal(seal)}
+                                className={cn(
+                                  "rounded-xl border px-3 py-2 text-xs font-semibold transition cursor-pointer",
+                                  envelopeSeal === seal
+                                    ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                                    : "border-white/10 bg-white/5 hover:border-white/20"
+                                )}
+                              >
+                                {seal}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Premium Notice Banner */}
+                    <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 flex items-start gap-2.5 text-xs text-amber-200">
+                      <Sparkles className="size-4 shrink-0 text-amber-400 mt-0.5" />
+                      <div>
+                        <span className="font-bold">Premium in use:</span> Custom background, Envelope. You can upgrade when you publish.
+                      </div>
+                    </div>
+
                   </div>
                 )}
+              </>
+            )}
 
-                {/* 4. Floating Top Bar Controls */}
-                <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-black/70 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold text-primary border border-white/15">
-                    <Sparkles className="size-2.5" />
-                    AI Video Template
+            {/* ================= STEP 2: EVENT SETUP ================= */}
+            {activeStep === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <span className="text-[11px] font-extrabold tracking-wider uppercase text-amber-400">
+                    STEP 2 OF 4
                   </span>
-                  <div className="flex items-center gap-1.5">
-                    {generatedVideoUrl && (
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-0.5">
+                    Set up your event
+                  </h2>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Your title, date and venue are already saved. Pick a quick setup or open any group.
+                  </p>
+                </div>
+
+                {/* Quick Setup Pills */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-2">
+                    Quick setup
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: "open", title: "Open party", desc: "Anyone with link can RSVP" },
+                      { id: "private", title: "Private invite", desc: "Approved guests only" },
+                      { id: "ticketed", title: "Ticketed", desc: "Guests pay, QR check-in" },
+                      { id: "host-copay", title: "Host co-pay", desc: "You pay, guests reserve" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setQuickSetup(opt.id as any)}
+                        className={cn(
+                          "rounded-2xl border p-3 text-left transition cursor-pointer",
+                          quickSetup === opt.id
+                            ? "border-amber-400 bg-amber-400/10"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        )}
+                      >
+                        <span className="block text-xs font-bold text-white">{opt.title}</span>
+                        <span className="block text-[10px] text-white/50 mt-0.5 leading-tight">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Accordions */}
+                <div className="space-y-2">
+                  {/* 1. Privacy and access */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAccordion(openAccordion === "privacy" ? null : "privacy")}
+                      className="flex w-full items-center justify-between p-4 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 place-items-center rounded-xl bg-amber-400/10 text-amber-400">
+                          <Lock className="size-4" />
+                        </span>
+                        <div>
+                          <span className="block text-xs font-bold">Privacy and access</span>
+                          <span className="block text-[11px] text-white/50">
+                            {privacyMode === "public" ? "Public • Anyone can RSVP" : "Private • Approval needed"}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronDown className={cn("size-4 transition", openAccordion === "privacy" && "rotate-180")} />
+                    </button>
+
+                    {openAccordion === "privacy" && (
+                      <div className="border-t border-white/10 p-4 space-y-3 bg-black/30">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setPrivacyMode("public")}
+                            className={cn(
+                              "flex-1 rounded-xl border p-2.5 text-xs font-semibold text-center transition cursor-pointer",
+                              privacyMode === "public" ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-white/10 bg-white/5"
+                            )}
+                          >
+                            Public
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPrivacyMode("private")}
+                            className={cn(
+                              "flex-1 rounded-xl border p-2.5 text-xs font-semibold text-center transition cursor-pointer",
+                              privacyMode === "private" ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-white/10 bg-white/5"
+                            )}
+                          >
+                            Private (Approval needed)
+                          </button>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer pt-1">
+                          <input
+                            type="checkbox"
+                            checked={hideAddressUntilApproved}
+                            onChange={(e) => setHideAddressUntilApproved(e.target.checked)}
+                            className="size-3.5 rounded bg-white/10 text-amber-400"
+                          />
+                          Hide address until guest RSVP is approved
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. RSVP Capacity & +1s */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAccordion(openAccordion === "rsvp" ? null : "rsvp")}
+                      className="flex w-full items-center justify-between p-4 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 place-items-center rounded-xl bg-amber-400/10 text-amber-400">
+                          <CheckCircle className="size-4" />
+                        </span>
+                        <div>
+                          <span className="block text-xs font-bold">RSVP & Capacity</span>
+                          <span className="block text-[11px] text-white/50">{rsvpSpots} spots • +1 allowed</span>
+                        </div>
+                      </div>
+                      <ChevronDown className={cn("size-4 transition", openAccordion === "rsvp" && "rotate-180")} />
+                    </button>
+
+                    {openAccordion === "rsvp" && (
+                      <div className="border-t border-white/10 p-4 space-y-3 bg-black/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs">Capacity limit:</span>
+                          <input
+                            type="number"
+                            value={rsvpSpots}
+                            onChange={(e) => setRsvpSpots(Number(e.target.value))}
+                            className="w-24 rounded-lg border border-white/15 bg-black/50 px-2 py-1 text-xs text-right text-white"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allowPlusOnes}
+                            onChange={(e) => setAllowPlusOnes(e.target.checked)}
+                            className="size-3.5 rounded bg-white/10 text-amber-400"
+                          />
+                          Allow each guest to bring +1 companion
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Payments */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAccordion(openAccordion === "payments" ? null : "payments")}
+                      className="flex w-full items-center justify-between p-4 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 place-items-center rounded-xl bg-amber-400/10 text-amber-400">
+                          <CreditCard className="size-4" />
+                        </span>
+                        <div>
+                          <span className="block text-xs font-bold">Payments & Tickets</span>
+                          <span className="block text-[11px] text-white/50">
+                            {isPaidEvent ? `$${ticketPrice} per ticket` : "Free event • No ticket fee"}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronDown className={cn("size-4 transition", openAccordion === "payments" && "rotate-180")} />
+                    </button>
+
+                    {openAccordion === "payments" && (
+                      <div className="border-t border-white/10 p-4 space-y-3 bg-black/30">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsPaidEvent(false)}
+                            className={cn(
+                              "flex-1 rounded-xl border p-2 text-xs font-semibold cursor-pointer",
+                              !isPaidEvent ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-white/10"
+                            )}
+                          >
+                            Free Event
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsPaidEvent(true)}
+                            className={cn(
+                              "flex-1 rounded-xl border p-2 text-xs font-semibold cursor-pointer",
+                              isPaidEvent ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-white/10"
+                            )}
+                          >
+                            Paid Tickets
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ================= STEP 3: GUESTS ================= */}
+            {activeStep === 3 && (
+              <div className="space-y-5">
+                <div>
+                  <span className="text-[11px] font-extrabold tracking-wider uppercase text-amber-400">
+                    STEP 3 OF 4
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-0.5">
+                    Who are you inviting?
+                  </h2>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Choose guests from your contacts, or add someone new. Only the people you tick get an invite.
+                  </p>
+                </div>
+
+                {/* Search Bar + Add Guest */}
+                <div className="flex items-center gap-2.5">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-white/40" />
+                    <input
+                      type="text"
+                      value={guestSearchQuery}
+                      onChange={(e) => setGuestSearchQuery(e.target.value)}
+                      placeholder="Search by name or email"
+                      className="w-full rounded-2xl border border-white/15 bg-white/5 py-2.5 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-white/40 focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddGuestModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+                  >
+                    <UserPlus className="size-4 text-amber-400" />
+                    <span>Add guest</span>
+                  </button>
+                </div>
+
+                {/* Category Pills (All, Family, Friends, Work, Neighbors) */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {["All", "Family", "Friends", "Work", "Neighbors"].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setGuestCategoryFilter(cat)}
+                      className={cn(
+                        "rounded-full px-3.5 py-1.5 text-xs font-bold transition cursor-pointer shrink-0",
+                        guestCategoryFilter === cat
+                          ? "bg-amber-400 text-black"
+                          : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Contacts List with Checkboxes */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5 text-xs text-white/60">
+                    <span>
+                      {selectedGuestIds.length > 0
+                        ? `${selectedGuestIds.length} selected`
+                        : "No one selected yet"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const shownIds = filteredContacts.map((c) => c.id);
+                        setSelectedGuestIds((prev) => Array.from(new Set([...prev, ...shownIds])));
+                      }}
+                      className="text-amber-400 font-bold hover:underline cursor-pointer"
+                    >
+                      Select shown
+                    </button>
+                  </div>
+
+                  <div className="max-h-[220px] overflow-y-auto divide-y divide-white/5">
+                    {filteredContacts.map((contact) => {
+                      const isChecked = selectedGuestIds.includes(contact.id);
+                      return (
+                        <div
+                          key={contact.id}
+                          onClick={() => {
+                            setSelectedGuestIds((prev) =>
+                              isChecked ? prev.filter((id) => id !== contact.id) : [...prev, contact.id]
+                            );
+                          }}
+                          className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="size-4 rounded border-white/20 bg-white/10 text-amber-400 cursor-pointer"
+                            />
+                            <span className={cn("grid size-8 place-items-center rounded-full text-xs font-bold text-white", contact.avatarBg)}>
+                              {contact.name.split(" ").map((n) => n[0]).join("")}
+                            </span>
+                            <div>
+                              <span className="block text-xs font-bold text-white leading-none">{contact.name}</span>
+                              <span className="block text-[11px] text-white/50 leading-tight mt-0.5">{contact.email}</span>
+                            </div>
+                          </div>
+
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] text-white/60">
+                            {contact.category}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ================= STEP 4: PUBLISH ================= */}
+            {activeStep === 4 && (
+              <div className="space-y-5">
+                <div>
+                  <span className="text-[11px] font-extrabold tracking-wider uppercase text-amber-400">
+                    STEP 4 OF 4
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-0.5">
+                    Ready to publish
+                  </h2>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Review what you set up. The details you entered build your event page, so you only fill them in once.
+                  </p>
+                </div>
+
+                {/* Review Table Card */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-white/60">Event</span>
+                    <span className="font-bold text-white">{eventTitle}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-white/60">When</span>
+                    <span className="font-bold text-white">{eventDate} • {eventTime}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-white/60">Where</span>
+                    <span className="font-bold text-white">{eventVenue}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-white/60">Access</span>
+                    <span className="font-bold text-white">
+                      {privacyMode === "public" ? "Public • Anyone can RSVP" : "Private • Approval needed"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-white/60">RSVP</span>
+                    <span className="font-bold text-white">{rsvpSpots} spots • +1 each</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-white/60">Guests</span>
+                    <span className="font-bold text-white">
+                      {selectedGuestIds.length > 0 ? `${selectedGuestIds.length} invited` : "None yet"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Your event page slug card */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
+                  <div>
+                    <span className="block text-[11px] text-white/50">Your event page</span>
+                    <span className="block text-sm font-mono font-bold text-amber-300">
+                      /e/{cleanSlug}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyEventLink}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold hover:bg-white/20 transition cursor-pointer"
+                  >
+                    {copiedLink ? <CheckCheck className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                    <span>{copiedLink ? "Copied" : "Copy link"}</span>
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* STICKY FOOTER ACTION BAR (Pins cleanly at the bottom) */}
+          <div className="shrink-0 border-t border-white/10 bg-[#0c1015]/95 backdrop-blur-md px-4 sm:px-6 py-3 z-20">
+            {/* Step 1 Sub-View A (Creation Mode) Footer */}
+            {activeStep === 1 && !isDesignReady && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreOptions(!showMoreOptions)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 sm:gap-2 rounded-full border px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold transition cursor-pointer shrink-0",
+                      showMoreOptions
+                        ? "border-amber-400 bg-amber-400/10 text-white shadow-[0_0_12px_rgba(251,191,36,0.2)]"
+                        : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                    )}
+                  >
+                    <SlidersHorizontal className="size-3.5" />
+                    <span className="hidden sm:inline">More options</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300">
+                      <Coins className="size-3 text-amber-400" />
+                      {getRequiredCredits()} credits
+                    </span>
+                    {showMoreOptions ? (
+                      <ChevronUp className="size-3.5 ml-0.5 text-amber-400" />
+                    ) : (
+                      <ChevronDown className="size-3.5 ml-0.5 opacity-60" />
+                    )}
+                  </button>
+
+                  {/* Buy Credits Button right next to More options */}
+                  <button
+                    type="button"
+                    onClick={() => setIsBuyCreditsOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-400/15 px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-400/25 hover:border-amber-400 transition cursor-pointer shadow-sm active:scale-95 shrink-0"
+                  >
+                    <Coins className="size-3.5 text-amber-400" />
+                    <span>Buy Credits</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    disabled={isGenerating || (inviteFormat === "video" && credits < 2)}
+                    onClick={() => {
+                      if (inviteFormat === "video" && credits < 2) {
+                        setIsBuyCreditsOpen(true);
+                        return;
+                      }
+                      handleGenerateInvite();
+                    }}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-2 rounded-full px-5 sm:px-8 py-2.5 sm:py-3 text-xs sm:text-sm font-extrabold transition active:scale-95 shadow-[0_0_20px_rgba(251,191,36,0.3)]",
+                      inviteFormat === "video" && credits < 2
+                        ? "bg-amber-400/35 text-black/60 cursor-not-allowed border border-amber-400/20"
+                        : "bg-amber-400 text-black hover:bg-amber-300 cursor-pointer"
+                    )}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>{generationStage || "Generating..."}</span>
+                      </>
+                    ) : inviteFormat === "video" && credits < 2 ? (
+                      <span className="flex items-center gap-1.5">
+                        <Coins className="size-4 text-black/60" />
+                        <span>Buy Credits to Create</span>
+                      </span>
+                    ) : inviteFormat === "video" ? (
+                      <span>Create my video invite</span>
+                    ) : creationMode === "template" ? (
+                      <span>Create from template</span>
+                    ) : creationMode === "upload" ? (
+                      <span>Create from photo</span>
+                    ) : (
+                      <span>Create with AI</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 1 Sub-View B (Design Customizer) Footer */}
+            {activeStep === 1 && isDesignReady && (
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsDesignReady(false)}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold hover:bg-white/10 transition cursor-pointer"
+                >
+                  ← Back to styles
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(2)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow cursor-pointer"
+                >
+                  <span>Continue to event setup</span>
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Step 2 Footer */}
+            {activeStep === 2 && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <CheckCheck className="size-3.5" /> All changes saved.
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(3)}
+                    className="rounded-full px-3 sm:px-4 py-2 text-xs font-semibold text-white/70 hover:text-white transition cursor-pointer"
+                  >
+                    Skip for now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(3)}
+                    className="rounded-full bg-amber-400 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow cursor-pointer"
+                  >
+                    Save and continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3 Footer */}
+            {activeStep === 3 && (
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(2)}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold hover:bg-white/10 transition cursor-pointer"
+                >
+                  ← Back
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(4)}
+                  className="rounded-full bg-amber-400 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow cursor-pointer"
+                >
+                  {selectedGuestIds.length > 0
+                    ? `Continue with ${selectedGuestIds.length} guests`
+                    : "Continue without inviting"}
+                </button>
+              </div>
+            )}
+
+            {/* Step 4 Footer */}
+            {activeStep === 4 && (
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(3)}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold hover:bg-white/10 transition cursor-pointer"
+                >
+                  ← Back
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isPublishing}
+                  onClick={handlePublishEvent}
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow-[0_0_20px_rgba(251,191,36,0.3)] cursor-pointer"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      <span>Publishing event...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-4" />
+                      <span>Publish event page</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* --------------------------------------------------------- */}
+        {/* RIGHT COLUMN (~40%): LIVE PREVIEW & METADATA */}
+        {/* --------------------------------------------------------- */}
+        <div
+          className={cn(
+            "lg:col-span-5 flex flex-col min-h-0 h-full overflow-y-auto bg-black/40 p-4 sm:p-5 space-y-4",
+            mobileTab === "form" ? "hidden lg:flex" : "flex"
+          )}
+        >
+          <span className="block text-xs font-extrabold uppercase tracking-wider text-white/50">
+            LIVE PREVIEW
+          </span>
+
+          {/* 9:16 Vertical Mobile Phone Mockup */}
+          <div
+            ref={cardCanvasRef}
+            data-card-canvas="true"
+            className="relative mx-auto aspect-[9/16] w-full max-w-[210px] sm:max-w-[240px] xl:max-w-[260px] overflow-hidden rounded-[2rem] border-2 border-white/20 bg-[#070a0e] shadow-2xl shrink-0"
+          >
+              {/* If no template chosen and design not ready -> "Your invite appears here" */}
+              {(!selectedTemplate && !activeDisplayPhoto && !generatedVideoUrl) ? (
+                <div className="absolute inset-0 grid place-items-center p-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Sparkles className="size-8 text-amber-400 animate-pulse" />
+                    <span className="text-sm font-bold text-white/80">Your invite appears here</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Media Background (ExperienceVisual, Video, or Image) */}
+                  {generatedVideoUrl ? (
+                    <video
+                      ref={videoRef}
+                      key={generatedVideoUrl}
+                      src={generatedVideoUrl}
+                      autoPlay
+                      loop
+                      playsInline
+                      muted={isVideoMuted}
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  ) : creationMode === "template" && selectedTemplate && "kind" in selectedTemplate.preview ? (
+                    <ExperienceVisual
+                      kind={selectedTemplate.preview.kind}
+                      photo={userPhoto || undefined}
+                      playing={isPlayingVideo}
+                      className="absolute inset-0"
+                    />
+                  ) : activeVideoSrc ? (
+                    <video
+                      ref={videoRef}
+                      key={activeVideoSrc}
+                      src={activeVideoSrc}
+                      autoPlay
+                      loop
+                      playsInline
+                      muted={isVideoMuted}
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={userPhoto || (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : activeDisplayPhoto || "/images/marcus.webp")}
+                      alt={eventTitle}
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  )}
+
+                  {/* Dark Gradient Vignette for Text Legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 pointer-events-none" />
+
+                  {/* Floating Top Tag */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/70 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold text-amber-300 border border-white/10 shadow-sm">
+                      <Sparkles className="size-2.5" />
+                      {inviteFormat === "video" || activeVideoSrc ? "AI Video Invite" : "AI Image Invite"}
+                    </span>
+                  </div>
+
+                  {/* Video Player Floating Controls */}
+                  {activeVideoSrc && (
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -726,901 +2678,506 @@ export default function CreateSheetModal({
                             }
                           }
                         }}
-                        className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
-                        title={isPlayingVideo ? "Pause" : "Play"}
+                        className="grid size-6 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white transition cursor-pointer"
                       >
-                        {isPlayingVideo ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                        {isPlayingVideo ? <Pause className="size-2.5" /> : <Play className="size-2.5" />}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => previewFileInputRef.current?.click()}
-                      className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
-                      title="Upload your photo"
-                    >
-                      <Camera className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsVideoMuted(!isVideoMuted)}
-                      className="grid size-8 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition cursor-pointer"
-                      title={isVideoMuted ? "Unmute" : "Mute"}
-                    >
-                      {isVideoMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 6. Floating Bottom RSVP Card */}
-                <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/90 to-transparent p-3.5 text-center">
-                  <div className="rounded-2xl border border-white/15 bg-black/60 backdrop-blur-md p-3 shadow-xl">
-                    <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-primary">
-                      You Are Cordially Invited
-                    </span>
-                    <h4 className="mt-0.5 font-display text-sm font-extrabold uppercase leading-tight tracking-tight text-white line-clamp-1">
-                      {videoEventTitle || "Celebration"}
-                    </h4>
-                    <p className="mt-0.5 text-[11px] font-medium text-white/90">
-                      {videoEventDate}
-                    </p>
-                    <p className="text-[10px] text-white/60 truncate">
-                      {videoEventVenue}
-                    </p>
-
-                    <div className="mt-2 rounded-full bg-primary/95 py-1.5 text-[10px] font-bold text-primary-foreground shadow">
-                      RSVP • WILL YOU ATTEND?
+                      <button
+                        type="button"
+                        onClick={() => setIsVideoMuted(!isVideoMuted)}
+                        className="grid size-6 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white transition cursor-pointer"
+                      >
+                        {isVideoMuted ? <VolumeX className="size-2.5" /> : <Volume2 className="size-2.5" />}
+                      </button>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  )}
 
-              {/* Hidden File Input for Instant Photo Change */}
-              <input
-                ref={previewFileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-
-              {/* Quick Details & Photo Customizer */}
-              <div className="mt-4 w-full max-w-sm space-y-3 rounded-2xl border border-border bg-card p-4 text-xs">
-                {/* Photo Swap Row */}
-                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 p-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="relative size-10 rounded-lg overflow-hidden border border-border bg-black shrink-0">
-                      {displayPhoto ? (
-                        <img src={displayPhoto} alt="Celebrant" className="size-full object-cover" />
-                      ) : (
-                        <Camera className="m-auto size-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">Template / Event Photo</p>
-                      <p className="text-[10px] text-muted-foreground truncate">Visible in video invitation</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => previewFileInputRef.current?.click()}
-                    className="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent transition cursor-pointer flex items-center gap-1.5 text-foreground"
+                  {/* Dynamic Live Text Overlays */}
+                  <div
+                    className="absolute inset-0 z-10 pointer-events-none"
+                    ref={cardCanvasRef}
                   >
-                    <Camera className="size-3 text-primary" />
-                    Change Photo
-                  </button>
-                </div>
+                    {showTitleOnInvite && eventTitle && (
+                      <DraggableText
+                        id="title"
+                        text={eventTitle}
+                        position={textPositions.title}
+                        onPositionChange={(pos) => setTextPositions((prev) => ({ ...prev, title: pos }))}
+                        style={{
+                          fontFamily: selectedFont,
+                          fontSize: `${titleFontSize}px`,
+                          color: titleColor,
+                          letterSpacing: `${titleLetterSpacing}px`,
+                          lineHeight: titleLineHeight,
+                          fontWeight: titleFontWeight,
+                          textShadow: titleTextShadow ? "0 2px 4px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)" : "none",
+                          textAlign: titleAlignment,
+                          textTransform: "uppercase",
+                        }}
+                      />
+                    )}
+                    {showDateOnInvite && eventDate && eventTime && (
+                      <DraggableText
+                        id="datetime"
+                        text={`${eventDate} • ${eventTime}`}
+                        position={textPositions.datetime}
+                        onPositionChange={(pos) => setTextPositions((prev) => ({ ...prev, datetime: pos }))}
+                        style={{
+                          fontSize: `${datetimeFontSize}px`,
+                          color: datetimeColor,
+                          fontWeight: "500",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                          textAlign: titleAlignment,
+                        }}
+                      />
+                    )}
+                    {showVenueOnInvite && eventVenue && (
+                      <DraggableText
+                        id="venue"
+                        text={eventVenue}
+                        position={textPositions.venue}
+                        onPositionChange={(pos) => setTextPositions((prev) => ({ ...prev, venue: pos }))}
+                        style={{
+                          fontSize: `${venueFontSize}px`,
+                          color: venueColor,
+                          fontWeight: "500",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                          textAlign: titleAlignment,
+                        }}
+                      />
+                    )}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 bottom-8 z-10 pointer-events-none"
+                      style={{ textAlign: titleAlignment }}
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-400 block">
+                        YOU'RE INVITED
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground block font-medium">Event Title</label>
-                  <input
-                    type="text"
-                    value={videoEventTitle}
-                    onChange={(e) => setVideoEventTitle(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                    placeholder="e.g. Rahul's 25th Birthday"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-muted-foreground block font-medium">Date & Time</label>
-                    <input
-                      type="text"
-                      value={videoEventDate}
-                      onChange={(e) => setVideoEventDate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                      placeholder="e.g. Sat, Nov 15 • 7 PM"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-muted-foreground block font-medium">Venue</label>
-                    <input
-                      type="text"
-                      value={videoEventVenue}
-                      onChange={(e) => setVideoEventVenue(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                      placeholder="e.g. Sky Lounge"
-                    />
-                  </div>
-                </div>
+            {/* Summary Metadata Table matching screenshot */}
+            <div className="space-y-2 border-t border-white/10 pt-4 text-xs">
+              <div className="flex items-center justify-between text-white/60">
+                <span>Started from</span>
+                <span className="font-bold text-white">
+                  {creationMode === "describe" ? "Describe it" : creationMode === "template" ? "AI template" : "Upload"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-white/60">
+                <span>Style</span>
+                <span className="font-bold text-white">
+                  {creationMode === "template"
+                    ? (selectedTemplate?.title || "Not chosen yet")
+                    : aiModel === "cinematic"
+                    ? "Cinematic"
+                    : aiModel === "quality"
+                    ? "Quality"
+                    : aiModel === "fast"
+                    ? "Fast"
+                    : "AI picks"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-white/60">
+                <span>Format</span>
+                <span className="font-bold text-white">{inviteFormat === "video" ? "9:16 · 10 sec" : "Image"}</span>
+              </div>
+              <div className="flex items-center justify-between text-white/60">
+                <span>Plan</span>
+                <span className="font-bold text-white">Free trial</span>
+              </div>
+              <div className="flex items-center justify-between text-white/60">
+                <span>Credits</span>
+                <span className="font-bold text-amber-300">
+                  {getRequiredCredits()} credits
+                </span>
               </div>
             </div>
+
+            {/* Next Step Info Card */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs space-y-2">
+              {activeStep === 1 && (
+                <>
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <ArrowRight className="size-3.5" />
+                    <span>Next: Event setup</span>
+                  </div>
+                  <ul className="space-y-1 text-white/70 text-[11px]">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Choose who can see it and who can RSVP
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Co-hosts, reminders and payments
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Your details are reused, so nothing to retype
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              {activeStep === 2 && (
+                <>
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <ArrowRight className="size-3.5" />
+                    <span>Next: Guests</span>
+                  </div>
+                  <ul className="space-y-1 text-white/70 text-[11px]">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Start with a sample guest list
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Choose how invites are sent
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              {activeStep === 3 && (
+                <>
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <ArrowRight className="size-3.5" />
+                    <span>Next: Publish</span>
+                  </div>
+                  <ul className="space-y-1 text-white/70 text-[11px]">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Review everything in one place
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Get your event page link
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Send invites and watch RSVPs come in
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              {activeStep === 4 && (
+                <>
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <ArrowRight className="size-3.5" />
+                    <span>After this</span>
+                  </div>
+                  <ul className="space-y-1 text-white/70 text-[11px]">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Reminders go out automatically
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Guests RSVP without an app
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="size-3 text-amber-400" />
+                      Check guests in at the door
+                    </li>
+                  </ul>
+                </>
+              )}
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Footer Actions */}
-          <div className="border-t border-border px-5 py-4 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (!user) {
-                  pendingActionRef.current = () => {
-                    const btn = document.getElementById("use-this-video-btn");
-                    if (btn) btn.click();
-                  };
-                  setIsAuthModalOpen(true);
-                  return;
-                }
-
-                const finalMediaUrl = generatedVideoUrl || displayPhoto || "";
-                const celebrantImg = customVideoPhoto || (displayPhoto !== IMG.jessica ? displayPhoto : "");
-
-                if (typeof window !== "undefined") {
-                  try {
-                    const guestDraft = {
-                      type: "video",
-                      isVideo: Boolean(generatedVideoUrl),
-                      videoUrl: generatedVideoUrl || "",
-                      imageUrl: displayPhoto || "",
-                      uploadUrl: finalMediaUrl,
-                      uploadTitle: videoEventTitle,
-                      uploadName: videoEventTitle,
-                      celebrantPhoto: celebrantImg || "",
-                      templateId: selectedTemplateId || "premiere",
-                      templateName: selectedTemplate?.title || "Video Celebration",
-                      title: videoEventTitle,
-                      venue: videoEventVenue,
-                      date: videoEventDate,
-                      aspectRatio: "9/16",
-                    };
-
-                    sessionStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
-                    localStorage.setItem("guestEventDraft", JSON.stringify(guestDraft));
-
-                    sessionStorage.setItem("pending_upload_invite", finalMediaUrl);
-                    sessionStorage.setItem("pending_video_url", generatedVideoUrl || "");
-                    sessionStorage.setItem("pending_upload_title", videoEventTitle);
-                    sessionStorage.setItem("pending_template_id", selectedTemplateId || "");
-                    sessionStorage.setItem("pending_event_type", selectedTemplate?.title || "Video Celebration");
-                    sessionStorage.setItem("pending_venue", videoEventVenue);
-                    sessionStorage.setItem("pending_event_date", videoEventDate);
-                    sessionStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
-                    sessionStorage.setItem("pending_aspect_ratio", "9/16");
-                    if (celebrantImg) {
-                      sessionStorage.setItem("pending_celebrant_photo", celebrantImg);
-                    }
-
-                    localStorage.setItem("pending_upload_invite", finalMediaUrl);
-                    localStorage.setItem("pending_video_url", generatedVideoUrl || "");
-                    localStorage.setItem("pending_upload_title", videoEventTitle);
-                    localStorage.setItem("pending_template_id", selectedTemplateId || "");
-                    localStorage.setItem("pending_venue", videoEventVenue);
-                    localStorage.setItem("pending_event_date", videoEventDate);
-                    localStorage.setItem("pending_is_video", generatedVideoUrl ? "true" : "false");
-                    localStorage.setItem("pending_aspect_ratio", "9/16");
-                    if (celebrantImg) {
-                      localStorage.setItem("pending_celebrant_photo", celebrantImg);
-                    }
-                  } catch (e) {
-                    console.warn("Failed to store video invite draft:", e);
-                  }
-                }
-                onClose();
-
-                const isSafeUrlParam = (val?: string | null): val is string => {
-                  if (!val || typeof val !== "string") return false;
-                  const trimmed = val.trim();
-                  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return false;
-                  return trimmed.length < 500;
-                };
-
-                const params = new URLSearchParams();
-                params.set("studio", "true");
-                params.set("videoInvite", "1");
-                params.set("aspectRatio", "9/16");
-                if (isSafeUrlParam(generatedVideoUrl)) params.set("videoUrl", generatedVideoUrl);
-                if (isSafeUrlParam(finalMediaUrl)) params.set("uploadedImageUrl", finalMediaUrl);
-                if (selectedTemplateId) params.set("templateId", selectedTemplateId);
-                if (videoEventTitle) params.set("title", videoEventTitle);
-                if (videoEventDate) params.set("date", videoEventDate);
-                if (videoEventVenue) params.set("venue", videoEventVenue);
-                if (isSafeUrlParam(celebrantImg)) params.set("celebrantPhoto", celebrantImg);
-
-                router.push(`/canvas?${params.toString()}`);
-              }}
-              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground shadow hover:brightness-110 active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>Use This Video & Setup Event</span>
-              <ArrowRight className="size-4" />
-            </button>
-
-            <div className="flex items-center gap-2">
+      {/* Quick Add Guest Modal */}
+      {showAddGuestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#111827] p-5 text-white space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold">Add a new guest</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddGuestModal(false)}
+                className="text-white/60 hover:text-white"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-white/70 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={newGuestName}
+                  onChange={(e) => setNewGuestName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full rounded-xl border border-white/15 bg-black/50 p-2.5 text-white focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-white/70 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newGuestEmail}
+                  onChange={(e) => setNewGuestEmail(e.target.value)}
+                  placeholder="e.g. john@example.com"
+                  className="w-full rounded-xl border border-white/15 bg-black/50 p-2.5 text-white focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-white/70 mb-1">Category</label>
+                <select
+                  value={newGuestCategory}
+                  onChange={(e) => setNewGuestCategory(e.target.value as any)}
+                  className="w-full rounded-xl border border-white/15 bg-black/50 p-2.5 text-white focus:border-amber-400 focus:outline-none"
+                >
+                  <option value="Friends">Friends</option>
+                  <option value="Family">Family</option>
+                  <option value="Work">Work</option>
+                  <option value="Neighbors">Neighbors</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAddGuestModal(false)}
+                className="rounded-full px-4 py-1.5 text-xs text-white/60 hover:text-white"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={() => {
-                  setStep("create");
-                  setIsChangingTemplate(true);
+                  if (newGuestName.trim()) {
+                    const newId = "c-" + Date.now();
+                    const newContact: ContactItem = {
+                      id: newId,
+                      name: newGuestName.trim(),
+                      email: newGuestEmail.trim() || `${newGuestName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+                      category: newGuestCategory,
+                      avatarBg: "bg-amber-600",
+                    };
+                    setContacts((prev) => [newContact, ...prev]);
+                    setSelectedGuestIds((prev) => [...prev, newId]);
+                    setShowAddGuestModal(false);
+                    setNewGuestName("");
+                    setNewGuestEmail("");
+                  }
                 }}
-                className="h-10 flex-1 rounded-full border border-border bg-card text-xs font-semibold hover:bg-muted transition cursor-pointer flex items-center justify-center gap-1.5"
+                className="rounded-full bg-amber-400 px-5 py-1.5 text-xs font-bold text-black hover:bg-amber-300"
               >
-                <RefreshCw className="size-3.5" />
-                Change Template
+                Add Guest
               </button>
-
-              {generatedVideoUrl && (
-                <a
-                  href={generatedVideoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download="invitation-video.mp4"
-                  className="h-10 flex-1 rounded-full border border-border bg-card text-xs font-semibold hover:bg-muted transition cursor-pointer flex items-center justify-center gap-1.5 text-foreground"
-                >
-                  <Download className="size-3.5" />
-                  Download Video
-                </a>
-              )}
             </div>
-          </div>
-        </div>
-      ) : step === "settings" ? (
-        /* STEP 2: Settings */
-        <div className="flex max-h-[88svh] flex-col">
-          <div className="px-5 pb-4 pt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              Step 2 of 2
-            </p>
-            <h2 className="mt-1.5 font-display text-3xl font-extrabold leading-none tracking-tight">
-              Set up your event
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Pick a quick setup or open any group. You can change all of this later.
-            </p>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 flex flex-col gap-5">
-            {/* Presets */}
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Quick setup
-              </p>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-                {PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() =>
-                      setStatusMessage(
-                        `${preset.label} applied. Review the groups below, then save.`
-                      )
-                    }
-                    className="flex min-h-14 w-44 shrink-0 flex-col items-start justify-center rounded-2xl border border-border bg-card px-4 py-2 text-left transition hover:border-primary/60 active:scale-[0.98] cursor-pointer"
-                  >
-                    <span className="text-[15px] font-semibold leading-tight">
-                      {preset.label}
-                    </span>
-                    <span className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                      {preset.hint}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Accordion Groups */}
-            <div className="flex flex-col gap-3">
-              {SETTINGS_GROUPS.map((grp) => {
-                const Icon = grp.icon;
-                const isOpen = openSettingsGroup === grp.id;
-                return (
-                  <div
-                    key={grp.id}
-                    className="rounded-2xl border border-border bg-card overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenSettingsGroup(isOpen ? null : grp.id)
-                      }
-                      className="flex w-full items-center justify-between p-4 text-left transition hover:bg-muted/50 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-9 place-items-center rounded-xl bg-white/5 text-primary">
-                          <Icon className="size-4" aria-hidden="true" />
-                        </span>
-                        <div>
-                          <h3 className="text-sm font-semibold">{grp.title}</h3>
-                          <p className="text-xs text-muted-foreground">{grp.summary}</p>
-                        </div>
-                      </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-4 text-muted-foreground transition-transform duration-200",
-                          isOpen && "rotate-180"
-                        )}
-                      />
-                    </button>
-                    {isOpen && (
-                      <div className="border-t border-border p-4 text-xs text-muted-foreground space-y-2">
-                        <p>Configure {grp.title.toLowerCase()} preferences for your guests.</p>
-                        <div className="flex items-center justify-between py-1">
-                          <span className="text-foreground">Enable active option</span>
-                          <span className="text-primary font-semibold">Active</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="border-t border-border px-5 pb-6 pt-4 flex flex-wrap items-center gap-3">
-            <p className="min-w-0 flex-1 basis-48 text-sm text-muted-foreground">
-              {statusMessage || "All changes saved."}
-            </p>
-            <button
-              type="button"
-              onClick={() => setStep("done")}
-              className="h-12 rounded-full px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground cursor-pointer"
-            >
-              Skip for now
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep("done")}
-              className="h-12 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground transition active:scale-95 cursor-pointer hover:brightness-110"
-            >
-              Save and continue
-            </button>
-          </div>
-        </div>
-      ) : step === "done" ? (
-        /* STEP 3: Done Confirmation */
-        <div className="flex flex-col items-center gap-4 px-6 pb-10 pt-12 text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
-            <Check className="size-8" aria-hidden={true} />
-          </span>
-          <h2 className="font-display text-3xl font-extrabold tracking-tight">
-            Great start.
-          </h2>
-          <p className="max-w-xs text-pretty text-muted-foreground">
-            Next, create a free account and we&apos;ll build your event from this.
-            Your first event is free. No app required for your guests.
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-2 h-12 rounded-full bg-primary px-8 font-semibold text-primary-foreground hover:brightness-110 active:scale-95 transition cursor-pointer"
-          >
-            Done
-          </button>
-        </div>
-      ) : audience === "pro" ? (
-        /* PRO AUDIENCE SHEET */
-        <div className="flex max-h-[88svh] flex-col">
-          <div className="flex items-center justify-between px-5 pb-2 pt-4">
-            <div className="mx-auto h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden={true} />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-            <AudienceSwitch value="pro" onChange={setAudience} />
-            <h2 className="mt-5 font-display text-3xl font-extrabold leading-none tracking-tight">
-              Set up Eventizers Pro
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Post everywhere from one place, track every ticket, and answer every lead.
-            </p>
-            <div role="radiogroup" aria-label="Choose a plan" className="mt-5 flex flex-col gap-2">
-              {PRO_PLANS.map((plan) => {
-                const active = plan.id === selectedPlanId;
-                return (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setSelectedPlanId(plan.id)}
-                    className={cn(
-                      "flex min-h-[64px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition cursor-pointer",
-                      active
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card hover:bg-muted"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "grid size-5 shrink-0 place-items-center rounded-full border-2",
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-foreground/30"
-                      )}
-                      aria-hidden={true}
-                    >
-                      {active && <Check className="size-3" strokeWidth={3} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2 text-base font-semibold">
-                        {plan.name}
-                        {plan.featured && (
-                          <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
-                            Popular
-                          </span>
-                        )}
-                      </span>
-                      <span className="block truncate text-sm text-muted-foreground">
-                        {plan.who}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="font-display text-xl font-extrabold">
-                        ${plan.monthly}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">per month</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <ul className="mt-4 flex flex-col gap-2 rounded-2xl bg-card p-4 text-sm">
-              {selectedPlan.points.slice(0, 4).map((pt) => (
-                <li key={pt} className="flex items-start gap-2">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden={true} />
-                  <span>{pt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="border-t border-border px-5 pb-6 pt-4">
-            <Link
-              href="/pro"
-              onClick={onClose}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] hover:brightness-110"
-            >
-              Start 14-day free trial
-              <ArrowRight className="size-5" aria-hidden={true} />
-            </Link>
-            <p className="mt-2 text-center text-sm font-semibold text-primary">
-              {selectedPlan.name} free for 14 days, then ${selectedPlan.monthly} per month.
-            </p>
-            <Link
-              href="/pro"
-              onClick={onClose}
-              className="mt-1 flex h-11 w-full items-center justify-center text-sm font-semibold text-primary hover:underline"
-            >
-              See everything Pro includes
-            </Link>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Preview: this opens the demo dashboard with sample data.
-            </p>
-          </div>
-        </div>
-      ) : (
-        /* STEP 1: Main Create Event Modal */
-        <div className="flex max-h-[88svh] flex-col">
-          {/* Top Grab Handle & Close Button */}
-          <div className="flex items-center justify-between px-5 pb-2 pt-4">
-            <div
-              className="mx-auto h-1.5 w-10 rounded-full bg-white/20 sm:hidden"
-              aria-hidden={true}
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-            {/* Audience Switcher */}
-            <AudienceSwitch value="individual" onChange={setAudience} />
-
-            {/* Title & Subheading */}
-            <h2 className="mt-5 font-display text-3xl font-extrabold leading-none tracking-tight">
-              What are you celebrating?
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Pick a way to start. Eventizers takes it from there.
-            </p>
-
-            {/* 5 Tabs Grid */}
-            <div
-              role="tablist"
-              aria-label="How to start"
-              className="mt-5 grid grid-cols-2 gap-2"
-            >
-              {TABS.map((tab) => {
-                const Icon = tab.icon;
-                const active = tab.id === mode;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => {
-                      setMode(tab.id);
-                      if (tab.id === "video") {
-                        setIsChangingTemplate(true);
-                      } else if (tab.id === "viral") {
-                        setIsViral((prev) => !prev);
-                      } else if (tab.id === "photos" || tab.id === "upload") {
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                    className={cn(
-                      "flex min-h-[50px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition cursor-pointer",
-                      tab.id === "video" && "col-span-2",
-                      active
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card hover:bg-muted"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "size-[18px] shrink-0",
-                        active ? "text-primary" : "text-muted-foreground"
-                      )}
-                      aria-hidden={true}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold leading-tight">
-                        {tab.label}
-                      </span>
-                      {tab.id === "video" && (
-                        <span className="block text-xs leading-tight text-muted-foreground">
-                          {tab.hint}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* LIVE 9:16 PHONE FRAME PREVIEW (Template Preview or User's Photo Replacement) */}
-            <div className="mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/40 p-4">
-              <div className="relative aspect-[9/16] w-full max-w-[260px] sm:max-w-[280px] overflow-hidden rounded-[2.2rem] border-4 border-primary/50 bg-black shadow-2xl">
-                {userUploadedPhoto ? (
-                  <div className="relative size-full">
-                    <img
-                      src={userUploadedPhoto}
-                      alt={videoEventTitle || selectedTemplate?.title || "Your photo"}
-                      className="kb size-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
-                    <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 rounded-full bg-black/80 px-2.5 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/40 backdrop-blur-md shadow">
-                      <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Your Photo Applied</span>
-                    </div>
-                    <div className="absolute inset-x-4 bottom-6 text-center">
-                      <p className="font-display text-xl font-extrabold uppercase leading-tight text-white line-clamp-1">
-                        {videoEventTitle || selectedTemplate?.title || "Milestone Birthday"}
-                      </p>
-                      <span className="mt-2 inline-block rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow">
-                        You&apos;re Invited
-                      </span>
-                    </div>
-                  </div>
-                ) : selectedTemplate && "kind" in selectedTemplate.preview ? (
-                  <ExperienceVisual kind={selectedTemplate.preview.kind} className="size-full" />
-                ) : (
-                  <div className="relative size-full">
-                    <img
-                      src={displayPhoto}
-                      alt={selectedTemplate?.title || "Template"}
-                      className="kb size-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-                    <div className="absolute inset-x-4 bottom-6 text-center">
-                      <p className="font-display text-xl font-bold uppercase text-white">
-                        {selectedTemplate?.title || "Milestone Birthday"}
-                      </p>
-                      <span className="mt-2 inline-block rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow">
-                        You&apos;re Invited
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                {userUploadedPhoto
-                  ? "✓ Your photo will be animated into this video template by Replicate AI"
-                  : "Template preview. Upload your photo below to replace this image!"}
-              </p>
-            </div>
-
-            {/* Step-by-Step Flow: 1. Template -> 2. Prompt -> 3. Photo -> 4. Create Video Invite */}
-            <div className="mt-5 space-y-4">
-              {/* STEP 1: SELECTED TEMPLATE */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  1. Selected Template
-                </span>
-                {selectedTemplate && !isChangingTemplate ? (
-                  <div className="flex items-center gap-3 rounded-2xl border border-primary/60 bg-primary/10 p-3 shadow-sm">
-                    <span className="relative block aspect-[9/16] w-14 shrink-0 overflow-hidden rounded-xl border border-primary/40 bg-black">
-                      <TemplateThumb template={selectedTemplate} sizes="56px" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold uppercase tracking-wider text-primary">
-                        Base Style
-                      </span>
-                      <span className="mt-0.5 block truncate text-base font-semibold">
-                        {selectedTemplate.title}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {selectedTemplate.tier} • 9:16 AI Motion
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsChangingTemplate(true)}
-                      className="h-11 shrink-0 rounded-full border border-border bg-card px-4 text-sm font-semibold transition hover:bg-muted active:scale-95 cursor-pointer"
-                    >
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">Choose a template style</p>
-                      {selectedTemplate && (
-                        <button
-                          type="button"
-                          onClick={() => setIsChangingTemplate(false)}
-                          className="flex h-11 items-center px-1 text-sm font-semibold text-primary cursor-pointer hover:underline"
-                        >
-                          Keep {selectedTemplate.title}
-                        </button>
-                      )}
-                    </div>
-                    <ul
-                      ref={templateListRef}
-                      role="listbox"
-                      aria-label="Invitation templates"
-                      className="no-scrollbar relative -mx-5 mt-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2"
-                    >
-                      {TEMPLATES.map((item) => {
-                        const active = selectedTemplateId === item.id;
-                        return (
-                          <li key={item.id} className="w-[112px] shrink-0 snap-start">
-                            <button
-                              type="button"
-                              role="option"
-                              aria-selected={active}
-                              onClick={() => {
-                                setSelectedTemplateId(item.id);
-                                setIsChangingTemplate(false);
-                              }}
-                              className="block w-full text-left cursor-pointer"
-                            >
-                              <span
-                                className={cn(
-                                  "relative block aspect-[9/16] w-full overflow-hidden rounded-2xl border-2 transition",
-                                  active ? "border-primary" : "border-transparent"
-                                )}
-                              >
-                                <TemplateThumb template={item} sizes="112px" />
-                                {active && (
-                                  <span className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow">
-                                    <Check className="size-4" aria-hidden={true} />
-                                  </span>
-                                )}
-                              </span>
-                              <span className="mt-2 block text-[13px] font-semibold leading-tight">
-                                {item.title}
-                              </span>
-                              <span className="block text-xs text-muted-foreground">
-                                {item.tier}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* STEP 2: PROMPT & EVENT NOTES */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="create-video-notes"
-                    className="block text-sm font-semibold"
-                  >
-                    2. Tell us about your event{" "}
-                    <span className="font-normal text-muted-foreground">
-                      (optional)
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsViral(!isViral)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border transition cursor-pointer",
-                      isViral || mode === "viral"
-                        ? "border-amber-400 bg-amber-400/20 text-amber-300"
-                        : "border-border bg-card hover:bg-muted text-muted-foreground"
-                    )}
-                  >
-                    <Wand2 className="size-3 text-amber-400" />
-                    <span>Make it viral {isViral || mode === "viral" ? "✓" : ""}</span>
-                  </button>
-                </div>
-                <textarea
-                  id="create-video-notes"
-                  value={notes || prompt}
-                  onChange={(e) => {
-                    setNotes(e.target.value);
-                    setPrompt(e.target.value);
-                  }}
-                  rows={2}
-                  placeholder="Marcus turns 50 on June 21 at the rooftop… Add dress code or special theme"
-                  className="w-full resize-none rounded-2xl border border-border bg-card p-4 text-base leading-relaxed placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              {/* STEP 3: UPLOAD PHOTO (USE PHOTOS) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="block text-sm font-semibold">
-                    3. Upload personal photo
-                  </span>
-                  {hasUserUploadedPhoto ? (
-                    <span className="text-xs text-primary font-semibold flex items-center gap-1">
-                      <Check className="size-3.5" /> Your photo attached
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Required for video invite</span>
-                  )}
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/jpg"
-                  className="sr-only"
-                  onChange={handlePhotoUpload}
-                  aria-label="Upload photo"
-                />
-
-                {hasUserUploadedPhoto ? (
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/50 bg-card p-3 shadow-sm">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative size-14 shrink-0 rounded-xl overflow-hidden border-2 border-primary bg-black">
-                        <img src={userUploadedPhoto || displayPhoto} alt="Celebrant" className="size-full object-cover" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold uppercase tracking-wide text-primary">
-                          ✓ Your Photo Ready
-                        </span>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {photoFile?.name || "Will be animated with Replicate AI"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition cursor-pointer"
-                      >
-                        Change Photo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomVideoPhoto(null);
-                          setPhotos([]);
-                          setPhotoFile(null);
-                          if (fileInputRef.current) fileInputRef.current.value = "";
-                        }}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground transition cursor-pointer"
-                        title="Remove photo"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "group flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer transition",
-                      mode === "photos" || mode === "upload"
-                        ? "border-primary bg-primary/10"
-                        : "border-primary/40 bg-card hover:border-primary hover:bg-muted"
-                    )}
-                  >
-                    <div className="grid size-11 place-items-center rounded-full bg-primary/15 text-primary group-hover:scale-110 transition">
-                      <ImagePlus className="size-5.5" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-sm text-foreground block">
-                        Upload your photo (Celebrant / Guest of honor)
-                      </span>
-                      <span className="text-xs text-muted-foreground mt-0.5 block">
-                        PNG, JPG or WebP. Replicate AI will animate this photo into your {selectedTemplate?.title || "video"} invite!
-                      </span>
-                    </div>
-                    <span className="rounded-full bg-primary/20 border border-primary/40 px-3.5 py-1 text-xs font-semibold text-primary">
-                      Click to choose your photo
-                    </span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Bar: CREATE VIDEO INVITE WITH AI */}
-          <div className="border-t border-border px-5 pb-6 pt-4">
-            <button
-              type="button"
-              disabled={isGeneratingVideo}
-              onClick={() => {
-                if (!user) {
-                  pendingActionRef.current = () => {
-                    if (!hasUserUploadedPhoto) {
-                      fileInputRef.current?.click();
-                    } else {
-                      startVideoGeneration();
-                    }
-                  };
-                  setIsAuthModalOpen(true);
-                  return;
-                }
-
-                if (!hasUserUploadedPhoto) {
-                  fileInputRef.current?.click();
-                } else {
-                  startVideoGeneration();
-                }
-              }}
-              className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.98] hover:brightness-110 cursor-pointer flex items-center justify-center gap-2 shadow-lg"
-            >
-              {isGeneratingVideo ? (
-                <>
-                  <Loader2 className="size-5 animate-spin" />
-                  <span>Directing video invite with AI...</span>
-                </>
-              ) : (
-                <>
-                  <Clapperboard className="size-5" />
-                  <span>Create video invite with AI</span>
-                  <Sparkles className="size-4" />
-                </>
-              )}
-            </button>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              {hasUserUploadedPhoto
-                ? "Your photo will be animated into the video via Replicate AI."
-                : "Upload your photo above to animate it with Replicate AI."}
-            </p>
           </div>
         </div>
       )}
 
-      {/* Mandatory Sign-in Modal */}
+      {/* Success Published Modal */}
+      {isPublished && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-amber-400/30 bg-[#0c1015] p-6 text-white text-center space-y-5 shadow-2xl">
+            <div className="mx-auto grid size-16 place-items-center rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/40">
+              <Check className="size-8 stroke-[3]" />
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-extrabold tracking-tight">Your event is published!</h3>
+              <p className="text-xs text-white/60 mt-1">
+                Your event page and interactive invitation are live. Share the link with your guests!
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-amber-300 truncate mr-2">
+                /e/{cleanSlug}
+              </span>
+              <button
+                type="button"
+                onClick={copyEventLink}
+                className="inline-flex items-center gap-1 rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-bold text-black"
+              >
+                {copiedLink ? <CheckCheck className="size-3.5" /> : <Copy className="size-3.5" />}
+                <span>{copiedLink ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(`/e/${cleanSlug}`);
+                }}
+                className="rounded-full border border-white/20 bg-white/10 py-3 text-xs font-bold text-white hover:bg-white/20 cursor-pointer"
+              >
+                View Live Event
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push("/dashboard/events");
+                }}
+                className="rounded-full bg-amber-400 py-3 text-xs font-extrabold text-black hover:bg-amber-300 cursor-pointer"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Credit Notification Toast */}
+      {creditNotification && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full border border-amber-400/40 bg-black/95 px-4 py-2.5 text-xs font-bold text-amber-200 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200">
+          <Coins className="size-4 text-amber-400 shrink-0" />
+          <span>{creditNotification}</span>
+        </div>
+      )}
+
+      {/* Buy Credits Modal Dialog */}
+      {isBuyCreditsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl border border-amber-400/30 bg-[#0e131b] p-6 text-white shadow-[0_0_50px_rgba(251,191,36,0.2)]">
+            <button
+              type="button"
+              onClick={() => setIsBuyCreditsOpen(false)}
+              className="absolute top-4 right-4 grid size-8 place-items-center rounded-full bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <span className="grid size-12 place-items-center rounded-2xl bg-amber-400/15 border border-amber-400/30 text-amber-300">
+                <Coins className="size-6 text-amber-400" />
+              </span>
+              <div>
+                <h3 className="text-lg font-bold">Buy Creation Credits</h3>
+                <p className="text-xs text-white/60">
+                  Current balance: <span className="text-amber-300 font-bold">{credits} credits</span>
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/70 mb-5 leading-relaxed">
+              Video invites powered by ByteDance Seedance AI cost <strong className="text-amber-300">2 credits</strong> per generation. Select a credit pack to top-up instantly:
+            </p>
+
+            {/* Credit Pack Options */}
+            <div className="space-y-2.5 mb-6">
+              {[
+                {
+                  amount: 10,
+                  price: "$5",
+                  invites: "5 video invites",
+                  popular: false,
+                  badge: "Starter",
+                },
+                {
+                  amount: 25,
+                  price: "$10",
+                  invites: "12 video invites",
+                  popular: true,
+                  badge: "Most Popular",
+                },
+                {
+                  amount: 60,
+                  price: "$20",
+                  invites: "30 video invites",
+                  popular: false,
+                  badge: "Best Value",
+                },
+              ].map((pack) => {
+                const isSelected = selectedCreditPack === pack.amount;
+                return (
+                  <button
+                    key={pack.amount}
+                    type="button"
+                    onClick={() => setSelectedCreditPack(pack.amount)}
+                    className={cn(
+                      "w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition cursor-pointer",
+                      isSelected
+                        ? "border-amber-400 bg-amber-400/15 shadow-[0_0_15px_rgba(251,191,36,0.15)]"
+                        : "border-white/10 bg-white/5 hover:border-white/20"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={cn(
+                          "grid size-5 place-items-center rounded-full border text-[10px] font-bold",
+                          isSelected
+                            ? "border-amber-400 bg-amber-400 text-black"
+                            : "border-white/30"
+                        )}
+                      >
+                        {isSelected ? "✓" : ""}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-extrabold text-white">
+                            {pack.amount} Credits
+                          </span>
+                          {pack.badge && (
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase",
+                                pack.popular
+                                  ? "bg-amber-400 text-black"
+                                  : "bg-white/10 text-white/80"
+                              )}
+                            >
+                              {pack.badge}
+                            </span>
+                          )}
+                        </div>
+                        <span className="block text-[11px] text-white/50">
+                          {pack.invites}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-extrabold text-amber-300">
+                        {pack.price}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsBuyCreditsOpen(false)}
+                className="flex-1 rounded-full border border-white/15 py-2.5 text-xs font-semibold text-white/80 hover:bg-white/10 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBuyingCredits}
+                onClick={() => handleBuyCredits(selectedCreditPack)}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-amber-400 py-2.5 text-xs font-extrabold text-black hover:bg-amber-300 active:scale-95 transition shadow-[0_0_15px_rgba(251,191,36,0.25)] cursor-pointer"
+              >
+                {isBuyingCredits ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>Purchase {selectedCreditPack} Credits</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal Guard */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => {

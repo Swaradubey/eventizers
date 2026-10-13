@@ -7,7 +7,8 @@ interface ModalProps {
   open: boolean;
   onClose: () => void;
   label?: string;
-  variant?: "sheet" | "full";
+  variant?: "sheet" | "full" | "wide";
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -16,6 +17,7 @@ export default function Modal({
   onClose,
   label,
   variant = "sheet",
+  className,
   children,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -43,11 +45,14 @@ export default function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
       className={cn(
-        "fixed m-0 max-w-none border-0 bg-transparent p-0 text-foreground backdrop:bg-black/75 backdrop:backdrop-blur-sm",
+        "fixed m-0 max-w-none border-0 bg-transparent p-0 text-foreground backdrop:bg-black/80 backdrop:backdrop-blur-md",
         variant === "sheet" &&
           "inset-x-0 bottom-0 top-auto mx-auto w-full overflow-hidden rounded-t-[2rem] bg-[oklch(0.19_0.014_250)] open:animate-in open:slide-in-from-bottom-full open:duration-300 sm:bottom-auto sm:top-1/2 sm:max-w-lg sm:-translate-y-1/2 sm:rounded-[2rem]",
+        variant === "wide" &&
+          "inset-x-0 bottom-0 top-auto mx-auto w-full max-h-[96svh] overflow-hidden rounded-t-[1.5rem] bg-[#0c1015] border border-white/10 open:animate-in open:slide-in-from-bottom-full open:duration-300 sm:inset-0 sm:m-auto sm:h-[88vh] sm:max-h-[760px] sm:max-w-[95vw] md:max-w-[1080px] sm:rounded-[1.75rem] shadow-2xl flex flex-col",
         variant === "full" &&
-          "inset-0 h-svh w-screen overflow-hidden bg-background open:animate-in open:fade-in open:duration-200"
+          "inset-0 h-svh w-screen overflow-hidden bg-background open:animate-in open:fade-in open:duration-200",
+        className
       )}
     >
       {open ? children : null}

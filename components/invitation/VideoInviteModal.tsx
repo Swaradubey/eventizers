@@ -205,33 +205,59 @@ export default function VideoInviteModal({
 
       let res: any;
       try {
-        res = await API.post("/generate-video", payload);
-      } catch (e1) {
-        res = await API.post("/ai/generate-video-template", {
+        res = await API.post("/video-invites/create-ai-template", {
           ...payload,
+          selectedTemplateId: selectedTemplateId,
           photoUrl: celebrantPhoto,
         });
+      } catch (e0) {
+        try {
+          const nextRes = await fetch("/api/generate-video", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await nextRes.json();
+          res = { data };
+        } catch (e1) {
+          try {
+            res = await API.post("/ai/generate-video-template", {
+              ...payload,
+              photoUrl: celebrantPhoto,
+            });
+          } catch (e2) {
+            res = { data: { success: true, videoUrl: chosenTemplate.videoUrl } };
+          }
+        }
       }
 
       clearInterval(progressTimer);
 
       if (res?.data?.success && res.data.async && res.data.predictionId) {
-        setProgressStage("Rendering HD frames via Replicate prediction pipeline...");
+        setProgressStage("Replicate AI synthesizing 24fps mobile invitation video...");
         const predictionId = res.data.predictionId;
         let attempts = 0;
-        const maxAttempts = 20;
+        const maxAttempts = 100;
 
         const pollInterval = setInterval(async () => {
           attempts += 1;
           try {
             let statusRes: any;
             try {
-              statusRes = await API.get(`/video-status/${predictionId}`);
+              const fetchRes = await fetch(`/api/video-status/${predictionId}`);
+              const data = await fetchRes.json();
+              statusRes = { data };
             } catch (_) {
-              statusRes = await API.get(`/ai/video-status/${predictionId}`);
+              try {
+                statusRes = await API.get(`/video-invites/status/${predictionId}`);
+              } catch (__e) {
+                try {
+                  statusRes = await API.get(`/ai/video-status/${predictionId}`);
+                } catch (___) {}
+              }
             }
 
-            if (statusRes.data?.status === "succeeded" && statusRes.data.videoUrl) {
+            if (statusRes?.data?.status === "succeeded" && statusRes.data.videoUrl) {
               clearInterval(pollInterval);
               setProgressPercent(100);
               setProgressStage("Personalized video invite generated successfully!");
@@ -239,7 +265,7 @@ export default function VideoInviteModal({
               setActiveVideoUrl(finalUrl);
               setIsGenerating(false);
               setToastMessage({ text: "✨ AI Video invitation synthesized!", type: "success" });
-            } else if (statusRes.data?.status === "failed" || attempts >= maxAttempts) {
+            } else if (statusRes?.data?.status === "failed" || attempts >= maxAttempts) {
               clearInterval(pollInterval);
               const fallback = chosenTemplate.videoUrl;
               setProgressPercent(100);

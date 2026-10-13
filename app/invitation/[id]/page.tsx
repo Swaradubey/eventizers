@@ -309,8 +309,19 @@ export default function PublicInvitationPage() {
         transition={{ duration: 0.5 }}
         className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-black/5"
       >
-        {/* Header Cover Image */}
-        {coverImage && !coverImgError && (
+        {/* Header Cover Video or Image */}
+        {eventData?.videoUrl ? (
+          <div className="relative w-full overflow-hidden bg-black flex items-center justify-center">
+            <video
+              src={eventData.videoUrl}
+              autoPlay
+              loop
+              playsInline
+              controls
+              className="w-full max-h-[520px] object-cover block"
+            />
+          </div>
+        ) : coverImage && !coverImgError ? (
           <div className="relative w-full overflow-hidden bg-gray-50 flex items-center justify-center">
             <img
               src={coverImage}
@@ -320,15 +331,14 @@ export default function PublicInvitationPage() {
               onError={() => setCoverImgError(true)}
             />
           </div>
-        )}
-        {coverImage && coverImgError && (
+        ) : coverImage && coverImgError ? (
           <div className="w-full h-48 bg-gradient-to-br from-[#2D1B3D]/8 to-transparent flex flex-col items-center justify-center gap-2">
             <div className="w-10 h-10 rounded-full bg-[#2D1B3D]/10 flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-[#2D1B3D]/30" />
             </div>
             <p className="text-xs text-[#2D1B3D]/30 italic">Cover image could not be loaded</p>
           </div>
-        )}
+        ) : null}
 
         {/* Invitation Content Section */}
         <div className="p-8 sm:p-12 space-y-8" style={{ textAlign: textAlignment }}>

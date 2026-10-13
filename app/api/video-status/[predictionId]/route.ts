@@ -50,7 +50,10 @@ export async function GET(
       if (typeof prediction.output === "string") {
         videoUrl = prediction.output;
       } else if (Array.isArray(prediction.output) && prediction.output.length > 0) {
-        videoUrl = prediction.output[0];
+        const first = prediction.output[0];
+        videoUrl = typeof first === "string" ? first : (first?.url || String(first));
+      } else if (prediction.output?.url) {
+        videoUrl = typeof prediction.output.url === "function" ? prediction.output.url() : prediction.output.url;
       }
     }
 
