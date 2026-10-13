@@ -72,6 +72,8 @@ export async function generateMetadata({
   };
 }
 
+import PublicLivePreviewViewer from "@/components/invitation/PublicLivePreviewViewer";
+
 export default async function InvitePage({
   params,
   searchParams,
@@ -106,6 +108,20 @@ export default async function InvitePage({
 
   const invitation = data.invitation ?? {};
   const event = data.event ?? {};
+
+  // If this event has live preview template configuration (from editor wizard), render the identical Live Preview viewer
+  if (event || data.templateData) {
+    return (
+      <PublicLivePreviewViewer
+        event={event}
+        invitation={invitation}
+        rsvpSettings={data.rsvpSettings}
+        guestName={guestName}
+        guestMode={guestMode}
+      />
+    );
+  }
+
   const title = invitation.title || event.title || "You're Invited";
   const subtitle = invitation.subtitle || event.eventType || "";
   const body = invitation.mainText || event.description || "";
@@ -122,11 +138,6 @@ export default async function InvitePage({
 
   return (
     <>
-      {/* No-JS: hide the animated viewer and reveal the static card below. */}
-      <noscript>
-        <style>{`.ih-animated-viewer{display:none!important}`}</style>
-      </noscript>
-
       <div className="ih-animated-viewer">
         <InviteEnvelopeViewer
           invitationId={invitationId}

@@ -6,6 +6,7 @@ export interface Event {
   description?: string;
   eventType?: string;
   venue: string;
+  location?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -24,6 +25,7 @@ export interface Event {
   videoMetadata?: any;
   isVideo?: boolean;
   canvasState?: any;
+  templateData?: any;
   designData?: any;
   selectedTemplateId?: string | null;
   templateId?: string | null;
@@ -354,12 +356,87 @@ export const processNoShowsCron = async (): Promise<{
   return response.data;
 };
 
+export const publishEvent = async (
+  eventId: string,
+  payload: {
+    templateData?: any;
+    shareSlug?: string;
+    location?: string;
+    eventTitle?: string;
+    venue?: string;
+  }
+): Promise<{
+  success: boolean;
+  event: Event;
+  shareSlug: string;
+  shareLink: string;
+  publicUrl: string;
+  slugUrl: string;
+  message?: string;
+}> => {
+  const response = await API.post(`/events/${eventId}/publish`, payload);
+  return response.data;
+};
+
+export const sendInvites = async (
+  eventId: string,
+  payload: {
+    guests?: Array<{ name: string; email: string; id?: string }>;
+    guestIds?: string[];
+    hostNote?: string;
+  }
+): Promise<{
+  success: boolean;
+  message: string;
+  sentCount: number;
+  total: number;
+  results: any[];
+}> => {
+  const response = await API.post(`/events/${eventId}/send-invites`, payload);
+  return response.data;
+};
+
+export const getPublicEvent = async (eventIdOrSlug: string): Promise<{
+  success: boolean;
+  event: any;
+  invitation?: any;
+  rsvpSettings?: any;
+  designSettings?: any;
+}> => {
+  const response = await API.get(`/public/events/${eventIdOrSlug}`);
+  return response.data;
+};
+
+export const submitPublicRsvp = async (
+  eventIdOrSlug: string,
+  payload: {
+    name?: string;
+    email: string;
+    rsvpStatus: string;
+    adultsCount?: number;
+    additionalGuests?: number;
+    dietaryPreference?: string;
+    specialDietaryRequests?: string;
+  }
+): Promise<{
+  success: boolean;
+  message: string;
+  guest?: any;
+}> => {
+  const response = await API.post(`/public/events/${eventIdOrSlug}/rsvp`, payload);
+  return response.data;
+};
+
 const eventService = {
   getEvents,
   getEventById,
   createEvent,
   updateEvent,
   deleteEvent,
+  publishEvent,
+  sendInvites,
+  getPublicEvent,
+  submitPublicRsvp,
   getRsvpSettings,
   patchRsvpSettings,
   getReminders,

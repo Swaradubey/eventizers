@@ -50,6 +50,7 @@ import {
   Sparkle,
   Plus,
   AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { TEMPLATES, findTemplate, IMG, type TemplateItem } from "./data";
 import ExperienceVisual from "./ExperienceVisual";
@@ -222,7 +223,21 @@ const TEMPLATE_VIDEO_MAP: Record<string, string> = {
   premiere: "/videos/golden-celebration.mp4",
   grad: "/videos/golden-celebration.mp4",
   wedding: "/videos/golden-celebration.mp4",
-  vhs: "/videos/celebration-motion.mp4",
+};
+
+const KIND_PREVIEW_IMG_MAP: Record<string, string> = {
+  "then-now": IMG.jessica,
+  premiere: IMG.rooftop,
+  vhs: IMG.party,
+  news: IMG.marcus,
+  journey: IMG.oldBeach,
+  redcarpet: IMG.corporate,
+  golden: IMG.anniversary,
+  editorial: IMG.grad,
+  romantic: IMG.couple,
+  luxury: IMG.anniversary,
+  surprise: IMG.concert,
+  meme: IMG.party,
 };
 
 interface ContactItem {
@@ -301,7 +316,7 @@ export default function CreateSheetModal({
   const [creationMode, setCreationMode] = useState<"describe" | "template" | "upload">(
     initialTemplate ? "template" : "describe"
   );
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(initialTemplate || null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(initialTemplate || "jessica");
   // Video template selection state (for when inviteFormat === "video" && creationMode === "template")
   const [selectedVideoTemplateId, setSelectedVideoTemplateId] = useState<string>("burj-khalifa");
 
@@ -394,6 +409,33 @@ export default function CreateSheetModal({
   const [publishedSlug, setPublishedSlug] = useState<string>("");
   const [isPublished, setIsPublished] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  const [publicInviteUrl, setPublicInviteUrl] = useState<string>("");
+  const [selectedMailGuestIds, setSelectedMailGuestIds] = useState<string[]>([]);
+  const [mailHostNote, setMailHostNote] = useState<string>("");
+  const [isSendingMail, setIsSendingMail] = useState(false);
+  const [mailSentSuccess, setMailSentSuccess] = useState(false);
+  const [mailSentCount, setMailSentCount] = useState(0);
+  const [mailStatusMessage, setMailStatusMessage] = useState<string | null>(null);
+  const [publishToast, setPublishToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+
+  // Sync selected mail guests from step 3 and clear toasts
+  useEffect(() => {
+    if (publishToast) {
+      const timer = setTimeout(() => setPublishToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [publishToast]);
+
+  useEffect(() => {
+    if (activeStep === 4) {
+      if (selectedGuestIds.length > 0) {
+        setSelectedMailGuestIds(selectedGuestIds);
+      } else {
+        setSelectedMailGuestIds(contacts.map((c) => c.id));
+      }
+    }
+  }, [activeStep, selectedGuestIds, contacts]);
 
   // Video Player Controls
   const [isPlayingVideo, setIsPlayingVideo] = useState(true);
@@ -414,23 +456,22 @@ export default function CreateSheetModal({
   // Active video source when inviteFormat === "video"
   const activeVideoSrc =
     generatedVideoUrl ||
-    (inviteFormat === "video"
-      ? creationMode === "template"
-        ? findVideoTemplate(selectedVideoTemplateId).videoUrl
-        : (selectedTemplateId && TEMPLATE_VIDEO_MAP[selectedTemplateId]) || "/videos/golden-celebration.mp4"
+    (inviteFormat === "video" && creationMode === "describe" && isDesignReady
+      ? "/videos/golden-celebration.mp4"
       : null);
 
-  // Active display photo for preview
-  // When in video+template mode, use the selected video template's thumbnail so preview matches the card
-  const activeVideoTemplate = (inviteFormat === "video" && creationMode === "template")
-    ? findVideoTemplate(selectedVideoTemplateId)
-    : null;
-
+  // Active display photo for preview and background cover
   const activeDisplayPhoto =
     userPhoto ||
     generatedImageUrl ||
-    (activeVideoTemplate ? activeVideoTemplate.thumbnail : null) ||
-    (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : "/images/marcus.webp");
+    (selectedTemplate
+      ? "img" in selectedTemplate.preview
+        ? selectedTemplate.preview.img
+        : "kind" in selectedTemplate.preview
+        ? KIND_PREVIEW_IMG_MAP[selectedTemplate.preview.kind] || IMG.marcus
+        : null
+      : null) ||
+    "/images/marcus.webp";
 
   // Dynamic slug calculation
   const cleanSlug =
@@ -704,42 +745,110 @@ export default function CreateSheetModal({
     }
   };
 
-  // Step 4: Publish Event to Database
-  const handlePublishEvent = async () => {
+  // Step 4: Publish Event to Database & Generate Public Link
+  const handlePublishEvent = async (): Promise<string | null> => {
     setIsPublishing(true);
+    setPublishToast(null);
 
     try {
-      const cover = generatedVideoUrl || generatedImageUrl || activeDisplayPhoto || "/images/party.webp";
+      const coverPhoto =
+        (activeDisplayPhoto && !activeDisplayPhoto.endsWith(".mp4") ? activeDisplayPhoto : null) ||
+        generatedImageUrl ||
+        "/images/marcus.webp";
+      const cover = generatedVideoUrl || coverPhoto;
       const createdSlug = cleanSlug + "-" + Math.random().toString(36).substring(2, 6);
 
-      // 1. Create Event via eventService (connected to Neon PostgreSQL)
-      let eventId: string | undefined;
-      try {
-        const newEvtRes = await eventService.createEvent({
-          title: eventTitle,
-          venue: eventVenue,
-          eventDate: new Date(eventDate).toISOString(),
-          eventTime: eventTime + ":00",
-          coverImage: cover,
-          videoUrl: generatedVideoUrl || undefined,
-          isVideo: Boolean(generatedVideoUrl),
-          selectedTemplateId: selectedTemplateId || undefined,
-          status: "published",
-        });
-        if (newEvtRes?.event?.id) {
-          eventId = newEvtRes.event.id;
+      // Package full live preview configuration matching Live Preview panel
+      const templateDataPayload = {
+        inviteFormat,
+        creationMode,
+        selectedTemplateId,
+        generatedImageUrl,
+        generatedVideoUrl,
+        posterUrl: coverPhoto,
+        activeDisplayPhoto: coverPhoto,
+        userPhoto,
+        selectedFont,
+        titleAlignment,
+        titleFontSize,
+        titleColor,
+        titleLetterSpacing,
+        titleLineHeight,
+        titleFontWeight,
+        titleTextShadow,
+        datetimeFontSize,
+        datetimeColor,
+        venueFontSize,
+        venueColor,
+        textPositions,
+        showTitleOnInvite,
+        showDateOnInvite,
+        showVenueOnInvite,
+        envelopeReveal,
+        envelopeColor,
+        envelopeSeal,
+        privacyMode,
+        rsvpSpots,
+        allowPlusOnes,
+      };
+
+      let currentEventId = createdEventId;
+
+      // 1. Create Event via eventService if not yet created in PostgreSQL
+      if (!currentEventId) {
+        try {
+          const newEvtRes = await eventService.createEvent({
+            title: eventTitle || "Special Celebration",
+            venue: eventVenue || "Celebration Venue",
+            location: eventVenue || "Celebration Venue",
+            eventDate: eventDate ? new Date(eventDate).toISOString() : new Date().toISOString(),
+            eventTime: (eventTime || "18:00") + ":00",
+            coverImage: cover,
+            videoUrl: generatedVideoUrl || undefined,
+            isVideo: Boolean(generatedVideoUrl),
+            selectedTemplateId: selectedTemplateId || undefined,
+            templateData: templateDataPayload,
+            status: "published",
+          });
+          if (newEvtRes?.event?.id) {
+            currentEventId = newEvtRes.event.id;
+            setCreatedEventId(currentEventId);
+          }
+        } catch (err) {
+          console.warn("Event creation in DB notice:", err);
         }
-      } catch (err) {
-        console.warn("Event creation in DB notice:", err);
       }
 
-      // 2. Create Base Invitation
-      if (eventId) {
+      // 2. Publish event via POST /api/events/:id/publish
+      let finalPublicUrl = "";
+      if (currentEventId) {
+        try {
+          const pubRes = await eventService.publishEvent(currentEventId, {
+            templateData: templateDataPayload,
+            shareSlug: createdSlug,
+            location: eventVenue,
+            eventTitle: eventTitle || "Special Celebration",
+            venue: eventVenue,
+          });
+
+          if (pubRes?.publicUrl || pubRes?.shareLink) {
+            finalPublicUrl = pubRes.publicUrl || pubRes.shareLink;
+          }
+          if (pubRes?.shareSlug) {
+            setPublishedSlug(pubRes.shareSlug);
+          }
+        } catch (pubApiErr) {
+          console.warn("Backend publish API notice:", pubApiErr);
+        }
+      }
+
+      // 3. Create or update Base Invitation
+      if (currentEventId) {
         try {
           await createInvitation({
-            eventId,
-            title: eventTitle,
-            subtitle: eventVenue,
+            eventId: currentEventId,
+            title: eventTitle || "Special Celebration",
+            subtitle: eventVenue || "",
             mainText: `You are cordially invited to celebrate with us.`,
             imageUrl: cover,
             accentColor: envelopeColor,
@@ -749,23 +858,130 @@ export default function CreateSheetModal({
         } catch (_) {}
       }
 
+      if (!finalPublicUrl) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+        finalPublicUrl = `${origin}/invite/${currentEventId || createdSlug}`;
+      }
+
+      setPublicInviteUrl(finalPublicUrl);
       setPublishedSlug(createdSlug);
       setIsPublishing(false);
       setIsPublished(true);
+      setPublishToast({
+        type: "success",
+        message: "Event published! Public live preview link is active.",
+      });
+      return currentEventId || null;
     } catch (publishErr) {
       console.error("Publishing error:", publishErr);
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      const fallbackUrl = `${origin}/invite/${cleanSlug}`;
+      setPublicInviteUrl(fallbackUrl);
       setIsPublishing(false);
       setIsPublished(true);
+      setPublishToast({
+        type: "success",
+        message: "Event published! Public link is ready to share.",
+      });
+      return null;
     }
   };
 
-  const copyEventLink = () => {
+  // Dispatch Invitation Emails to Selected Guests via Nodemailer
+  const handleSendMailToGuests = async () => {
+    if (selectedMailGuestIds.length === 0) {
+      setMailStatusMessage("Please select at least one guest from the list below.");
+      return;
+    }
+
+    setIsSendingMail(true);
+    setMailStatusMessage(null);
+
+    try {
+      // 1. Ensure event is published and created in DB first
+      let currentEventId = createdEventId;
+      if (!isPublished || !currentEventId) {
+        currentEventId = await handlePublishEvent();
+      }
+
+      // 2. Map contacts to guest payloads
+      const guestsToSend = contacts
+        .filter((c) => selectedMailGuestIds.includes(c.id))
+        .map((c) => ({
+          name: c.name,
+          email: c.email,
+          id: c.id,
+        }));
+
+      if (!currentEventId) {
+        const newEvtRes = await eventService.createEvent({
+          title: eventTitle || "Special Celebration",
+          venue: eventVenue || "Event Venue",
+          location: eventVenue || "Event Venue",
+          eventDate: eventDate ? new Date(eventDate).toISOString() : new Date().toISOString(),
+          eventTime: (eventTime || "18:00") + ":00",
+          coverImage: generatedVideoUrl || generatedImageUrl || activeDisplayPhoto || "/images/party.webp",
+          status: "published",
+        });
+        if (newEvtRes?.event?.id) {
+          currentEventId = newEvtRes.event.id;
+          setCreatedEventId(currentEventId);
+        }
+      }
+
+      if (!currentEventId) {
+        throw new Error("Could not initialize event in database to send emails.");
+      }
+
+      // 3. Dispatch via backend POST /api/events/:id/send-invites
+      const res = await eventService.sendInvites(currentEventId, {
+        guests: guestsToSend,
+        guestIds: selectedMailGuestIds,
+        hostNote: mailHostNote || undefined,
+      });
+
+      if (res.success) {
+        setMailSentSuccess(true);
+        setMailSentCount(res.sentCount || guestsToSend.length);
+        setMailStatusMessage(
+          res.message || `Successfully sent invitation emails to ${res.sentCount || guestsToSend.length} guest(s)!`
+        );
+        setPublishToast({
+          type: "success",
+          message: `Invitations sent to ${res.sentCount || guestsToSend.length} guest(s)!`,
+        });
+      } else {
+        setMailStatusMessage(res.message || "Failed to send emails. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Error sending invitation emails:", err);
+      setMailStatusMessage(
+        err?.response?.data?.error || err.message || "Failed to dispatch emails. Please verify SMTP credentials."
+      );
+      setPublishToast({
+        type: "error",
+        message: err?.response?.data?.error || "Error dispatching emails.",
+      });
+    } finally {
+      setIsSendingMail(false);
+    }
+  };
+
+  const copyPublicLink = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const linkToCopy = publicInviteUrl || `${origin}/invite/${createdEventId || publishedSlug || cleanSlug}`;
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(`${window.location.origin}/e/${cleanSlug}`);
+      navigator.clipboard.writeText(linkToCopy);
       setCopiedLink(true);
+      setPublishToast({
+        type: "info",
+        message: "Public invitation link copied to clipboard!",
+      });
       setTimeout(() => setCopiedLink(false), 2500);
     }
   };
+
+  const copyEventLink = copyPublicLink;
 
   const filteredContacts = contacts.filter((c) => {
     const matchCategory = guestCategoryFilter === "All" || c.category === guestCategoryFilter;
@@ -779,6 +995,16 @@ export default function CreateSheetModal({
   return (
     <Modal open={true} onClose={onClose} label="Create an event" variant="wide">
       <div className="relative flex h-full max-h-[96svh] sm:max-h-[88vh] w-full flex-col overflow-hidden bg-[#0c1015] text-white">
+        {/* Floating Action Toast Notification */}
+        {publishToast && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-[#121820]/95 border border-white/20 px-4 py-2 text-xs font-bold text-white shadow-2xl backdrop-blur-md pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
+            {publishToast.type === "success" && <Check className="size-4 text-emerald-400 stroke-[3]" />}
+            {publishToast.type === "error" && <AlertCircle className="size-4 text-rose-400" />}
+            {publishToast.type === "info" && <CheckCheck className="size-4 text-amber-400" />}
+            <span>{publishToast.message}</span>
+          </div>
+        )}
+
         {/* ========================================================= */}
         {/* TOP HEADER STEPPER (1. Create -> 2. Event setup -> 3. Guests -> 4. Publish) */}
         {/* ========================================================= */}
@@ -1093,7 +1319,12 @@ export default function CreateSheetModal({
 
                       <button
                         type="button"
-                        onClick={() => setCreationMode("template")}
+                        onClick={() => {
+                          setCreationMode("template");
+                          if (!selectedTemplateId) {
+                            setSelectedTemplateId(currentTemplates[0]?.id || "jessica");
+                          }
+                        }}
                         className={cn(
                           "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition cursor-pointer",
                           creationMode === "template"
@@ -2336,61 +2567,252 @@ export default function CreateSheetModal({
                     STEP 4 OF 4
                   </span>
                   <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-0.5">
-                    Ready to publish
+                    Publish: Link and RSVPs
                   </h2>
                   <p className="text-xs text-white/60 mt-0.5">
-                    Review what you set up. The details you entered build your event page, so you only fill them in once.
+                    Publish your event to PostgreSQL, generate your live invitation link, and dispatch branded invitations via email.
                   </p>
                 </div>
 
-                {/* Review Table Card */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2.5 text-xs">
+                {/* 1. Primary "Publish Event" Action Section */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-white block">Event Status</span>
+                      <span className="text-[11px] text-white/50 block">
+                        {isPublished ? "Event is live in PostgreSQL & accepting RSVPs" : "Ready to publish with your customized live design"}
+                      </span>
+                    </div>
+                    {isPublished ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 text-xs font-extrabold text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                        <Check className="size-3.5 stroke-[3]" />
+                        Published Live
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-white/60">
+                        Draft
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isPublishing}
+                    onClick={handlePublishEvent}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 py-3 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-98 shadow-[0_0_20px_rgba(251,191,36,0.3)] cursor-pointer disabled:opacity-60"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Publishing Event to Database...</span>
+                      </>
+                    ) : isPublished ? (
+                      <>
+                        <Check className="size-4 stroke-[3]" />
+                        <span>Update Published Configuration</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="size-4" />
+                        <span>Publish Event</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* 2. Copy Public Invitation Link Section */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Share2 className="size-3.5 text-amber-400" />
+                      Copy Public Invitation Link
+                    </span>
+                    {isPublished && (
+                      <a
+                        href={publicInviteUrl || `/invite/${createdEventId || publishedSlug || cleanSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:text-amber-200 transition"
+                      >
+                        <span>Open Preview</span>
+                        <ExternalLink className="size-3" />
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-white/50">
+                    Recipients opening this link view the exact LIVE PREVIEW card and can submit their RSVP directly.
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={publicInviteUrl || (typeof window !== "undefined" ? `${window.location.origin}/invite/${createdEventId || publishedSlug || cleanSlug}` : `/invite/${cleanSlug}`)}
+                      className="flex-1 rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-xs font-mono text-amber-300 focus:outline-none select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyPublicLink}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-4 py-2.5 text-xs font-bold text-white transition cursor-pointer shrink-0"
+                    >
+                      {copiedLink ? <CheckCheck className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                      <span>{copiedLink ? "Copied" : "Copy Link"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Dedicated Section: "Share via Mail" */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="grid size-7 place-items-center rounded-lg bg-amber-400/20 text-amber-400">
+                        <Mail className="size-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-bold text-white">Share via Mail</h3>
+                        <p className="text-[10px] sm:text-[11px] text-white/50">
+                          Send personalized emails linking directly to the live preview page
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-amber-400">
+                      {selectedMailGuestIds.length} of {contacts.length} guests selected
+                    </span>
+                  </div>
+
+                  {/* Option to select or preview the guests selected in Step 3 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-white/60">
+                      <span>Guests selected from Step 3:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedMailGuestIds.length === contacts.length) {
+                            setSelectedMailGuestIds([]);
+                          } else {
+                            setSelectedMailGuestIds(contacts.map((c) => c.id));
+                          }
+                        }}
+                        className="text-amber-300 hover:underline font-semibold cursor-pointer"
+                      >
+                        {selectedMailGuestIds.length === contacts.length ? "Deselect All" : "Select All"}
+                      </button>
+                    </div>
+
+                    <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 no-scrollbar border border-white/5 rounded-xl p-2 bg-black/25">
+                      {contacts.map((contact) => {
+                        const isChecked = selectedMailGuestIds.includes(contact.id);
+                        return (
+                          <div
+                            key={contact.id}
+                            onClick={() => {
+                              setSelectedMailGuestIds((prev) =>
+                                isChecked ? prev.filter((id) => id !== contact.id) : [...prev, contact.id]
+                              );
+                            }}
+                            className={cn(
+                              "flex items-center justify-between p-2 rounded-lg border text-xs transition cursor-pointer",
+                              isChecked
+                                ? "border-amber-400/40 bg-amber-400/5 text-white"
+                                : "border-white/5 bg-transparent text-white/45 hover:bg-white/5"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 truncate">
+                              <span className={cn("grid size-6 place-items-center rounded-full text-[10px] font-bold text-white shrink-0", contact.avatarBg)}>
+                                {contact.name.charAt(0)}
+                              </span>
+                              <div className="truncate">
+                                <span className="font-bold block truncate text-white">{contact.name}</span>
+                                <span className="text-[10px] text-white/50 block truncate">{contact.email}</span>
+                              </div>
+                            </div>
+                            <div
+                              className={cn(
+                                "grid size-5 place-items-center rounded-md border transition shrink-0 ml-2",
+                                isChecked ? "border-amber-400 bg-amber-400 text-black" : "border-white/30"
+                              )}
+                            >
+                              {isChecked && <Check className="size-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Optional Host Message Note */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-white/60 mb-1">
+                      Personal Host Note (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={mailHostNote}
+                      onChange={(e) => setMailHostNote(e.target.value)}
+                      placeholder="Can't wait to celebrate together! Please click through to view our invitation and RSVP."
+                      className="w-full rounded-xl border border-white/15 bg-black/40 p-2.5 text-xs text-white placeholder:text-white/30 focus:border-amber-400 focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Mail Status Message */}
+                  {mailStatusMessage && (
+                    <div className={cn(
+                      "p-3 rounded-xl text-xs font-semibold flex items-center gap-2",
+                      mailSentSuccess
+                        ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+                        : "bg-amber-500/10 border border-amber-500/30 text-amber-300"
+                    )}>
+                      {mailSentSuccess ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertCircle className="size-4 shrink-0" />}
+                      <span>{mailStatusMessage}</span>
+                    </div>
+                  )}
+
+                  {/* "Send Mail to Selected Guests" Trigger Button */}
+                  <button
+                    type="button"
+                    disabled={isSendingMail || selectedMailGuestIds.length === 0}
+                    onClick={handleSendMailToGuests}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-xs sm:text-sm font-extrabold text-black transition hover:brightness-110 active:scale-98 shadow-[0_0_15px_rgba(251,191,36,0.25)] cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingMail ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Sending Mail to {selectedMailGuestIds.length} Guest(s)...</span>
+                      </>
+                    ) : mailSentSuccess ? (
+                      <>
+                        <Check className="size-4 stroke-[3]" />
+                        <span>Mail Sent Successfully ({mailSentCount}) • Send Again</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="size-4" />
+                        <span>Send Mail to Selected Guests ({selectedMailGuestIds.length})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Event Summary Details Card */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2 text-xs">
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-white/60">Event</span>
-                    <span className="font-bold text-white">{eventTitle}</span>
+                    <span className="font-bold text-white">{eventTitle || "Celebration"}</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-white/60">When</span>
-                    <span className="font-bold text-white">{eventDate} • {eventTime}</span>
+                    <span className="font-bold text-white">{eventDate || "Date TBD"} • {eventTime || "Time TBD"}</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-white/5">
                     <span className="text-white/60">Where</span>
-                    <span className="font-bold text-white">{eventVenue}</span>
+                    <span className="font-bold text-white">{eventVenue || "Venue TBD"}</span>
                   </div>
-                  <div className="flex items-center justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">Access</span>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-white/60">RSVP Access</span>
                     <span className="font-bold text-white">
                       {privacyMode === "public" ? "Public • Anyone can RSVP" : "Private • Approval needed"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">RSVP</span>
-                    <span className="font-bold text-white">{rsvpSpots} spots • +1 each</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-white/60">Guests</span>
-                    <span className="font-bold text-white">
-                      {selectedGuestIds.length > 0 ? `${selectedGuestIds.length} invited` : "None yet"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Your event page slug card */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
-                  <div>
-                    <span className="block text-[11px] text-white/50">Your event page</span>
-                    <span className="block text-sm font-mono font-bold text-amber-300">
-                      /e/{cleanSlug}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={copyEventLink}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold hover:bg-white/20 transition cursor-pointer"
-                  >
-                    {copiedLink ? <CheckCheck className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                    <span>{copiedLink ? "Copied" : "Copy link"}</span>
-                  </button>
                 </div>
 
               </div>
@@ -2561,24 +2983,43 @@ export default function CreateSheetModal({
                   ← Back
                 </button>
 
-                <button
-                  type="button"
-                  disabled={isPublishing}
-                  onClick={handlePublishEvent}
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow-[0_0_20px_rgba(251,191,36,0.3)] cursor-pointer"
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      <span>Publishing event...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="size-4" />
-                      <span>Publish event page</span>
-                    </>
+                <div className="flex items-center gap-2">
+                  {isPublished && (
+                    <button
+                      type="button"
+                      disabled={isSendingMail || selectedMailGuestIds.length === 0}
+                      onClick={handleSendMailToGuests}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-2 sm:py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-400/20 transition cursor-pointer disabled:opacity-50"
+                    >
+                      {isSendingMail ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+                      <span>Send Mail ({selectedMailGuestIds.length})</span>
+                    </button>
                   )}
-                </button>
+
+                  <button
+                    type="button"
+                    disabled={isPublishing}
+                    onClick={handlePublishEvent}
+                    className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-extrabold text-black transition hover:bg-amber-300 active:scale-95 shadow-[0_0_20px_rgba(251,191,36,0.3)] cursor-pointer"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Publishing event...</span>
+                      </>
+                    ) : isPublished ? (
+                      <>
+                        <Check className="size-4 stroke-[3]" />
+                        <span>Update Published Event</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="size-4" />
+                        <span>Publish Event</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -2604,7 +3045,7 @@ export default function CreateSheetModal({
             className="relative mx-auto aspect-[9/16] w-full max-w-[210px] sm:max-w-[240px] xl:max-w-[260px] overflow-hidden rounded-[2rem] border-2 border-white/20 bg-[#070a0e] shadow-2xl shrink-0"
           >
               {/* If no template chosen and design not ready -> "Your invite appears here" */}
-              {(!selectedTemplate && !activeDisplayPhoto && !generatedVideoUrl) ? (
+              {(!selectedTemplate && !activeDisplayPhoto && !generatedVideoUrl && !userPhoto) ? (
                 <div className="absolute inset-0 grid place-items-center p-6 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Sparkles className="size-8 text-amber-400 animate-pulse" />
@@ -2625,12 +3066,32 @@ export default function CreateSheetModal({
                       muted={isVideoMuted}
                       className="absolute inset-0 size-full object-cover"
                     />
-                  ) : creationMode === "template" && selectedTemplate && "kind" in selectedTemplate.preview ? (
-                    <ExperienceVisual
-                      kind={selectedTemplate.preview.kind}
-                      photo={userPhoto || undefined}
-                      playing={isPlayingVideo}
-                      className="absolute inset-0"
+                  ) : creationMode === "template" && selectedTemplate ? (
+                    "kind" in selectedTemplate.preview ? (
+                      <ExperienceVisual
+                        kind={selectedTemplate.preview.kind}
+                        photo={userPhoto || undefined}
+                        playing={isPlayingVideo}
+                        className="absolute inset-0"
+                      />
+                    ) : (
+                      <img
+                        src={userPhoto || selectedTemplate.preview.img}
+                        alt={eventTitle || selectedTemplate.title}
+                        className={cn(
+                          "absolute inset-0 size-full object-cover transition-all duration-300",
+                          inviteFormat === "video" && "kb"
+                        )}
+                      />
+                    )
+                  ) : creationMode === "upload" && userPhoto ? (
+                    <img
+                      src={userPhoto}
+                      alt={eventTitle || "Uploaded photo"}
+                      className={cn(
+                        "absolute inset-0 size-full object-cover",
+                        inviteFormat === "video" && "kb"
+                      )}
                     />
                   ) : activeVideoSrc ? (
                     <video
@@ -2645,9 +3106,12 @@ export default function CreateSheetModal({
                     />
                   ) : (
                     <img
-                      src={userPhoto || (selectedTemplate && "img" in selectedTemplate.preview ? selectedTemplate.preview.img : activeDisplayPhoto || "/images/marcus.webp")}
-                      alt={eventTitle}
-                      className="absolute inset-0 size-full object-cover"
+                      src={userPhoto || activeDisplayPhoto || "/images/marcus.webp"}
+                      alt={eventTitle || "Invite preview"}
+                      className={cn(
+                        "absolute inset-0 size-full object-cover",
+                        inviteFormat === "video" && "kb"
+                      )}
                     />
                   )}
 
@@ -2663,18 +3127,19 @@ export default function CreateSheetModal({
                   </div>
 
                   {/* Video Player Floating Controls */}
-                  {activeVideoSrc && (
+                  {((generatedVideoUrl || activeVideoSrc) ||
+                    (creationMode === "template" && selectedTemplate && "kind" in selectedTemplate.preview)) && (
                     <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
+                          const nextPlaying = !isPlayingVideo;
+                          setIsPlayingVideo(nextPlaying);
                           if (videoRef.current) {
-                            if (isPlayingVideo) {
-                              videoRef.current.pause();
-                              setIsPlayingVideo(false);
+                            if (nextPlaying) {
+                              videoRef.current.play().catch(() => {});
                             } else {
-                              videoRef.current.play();
-                              setIsPlayingVideo(true);
+                              videoRef.current.pause();
                             }
                           }
                         }}
@@ -2682,13 +3147,15 @@ export default function CreateSheetModal({
                       >
                         {isPlayingVideo ? <Pause className="size-2.5" /> : <Play className="size-2.5" />}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsVideoMuted(!isVideoMuted)}
-                        className="grid size-6 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white transition cursor-pointer"
-                      >
-                        {isVideoMuted ? <VolumeX className="size-2.5" /> : <Volume2 className="size-2.5" />}
-                      </button>
+                      {(generatedVideoUrl || activeVideoSrc) && (
+                        <button
+                          type="button"
+                          onClick={() => setIsVideoMuted(!isVideoMuted)}
+                          className="grid size-6 place-items-center rounded-full bg-black/70 backdrop-blur-md text-white/80 hover:text-white transition cursor-pointer"
+                        >
+                          {isVideoMuted ? <VolumeX className="size-2.5" /> : <Volume2 className="size-2.5" />}
+                        </button>
+                      )}
                     </div>
                   )}
 

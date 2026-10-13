@@ -20,7 +20,7 @@ export default function ExperienceVisual({
 
   return (
     <div
-      className={`@container relative size-full overflow-hidden bg-black text-white ${className}`}
+      className={`eventizers-root @container relative size-full overflow-hidden bg-black text-white ${className}`}
       style={style}
     >
       <VisualContent kind={kind} photo={photo} />
@@ -124,18 +124,18 @@ function VhsVisual({ photo }: { photo?: string }) {
         <img
           src={photo || IMG.party}
           alt=""
-          className="kb absolute inset-0 size-full object-cover contrast-125 saturate-150 [filter:hue-rotate(-8deg)]"
+          className="kb absolute inset-0 size-full object-cover contrast-125 saturate-150"
         />
       </div>
       <BackdropOverlay className="bg-gradient-to-t from-black/70 via-transparent to-black/40" />
-      <p className="absolute left-[5cqw] top-[6cqw] font-mono text-[5cqw] font-bold tracking-widest">
+      <p className="absolute left-[5cqw] top-[6cqw] font-mono text-[5cqw] font-bold tracking-widest text-white">
         PLAY ▶
       </p>
       <p className="absolute right-[5cqw] top-[6cqw] flex items-center gap-[1.5cqw] font-mono text-[5cqw] font-bold text-accent">
         <span className="blink size-[2.4cqw] rounded-full bg-accent" /> REC
       </p>
       <p
-        className="absolute inset-x-[5cqw] bottom-[17cqw] font-display text-[14cqw] font-extrabold uppercase leading-[0.9]"
+        className="absolute inset-x-[5cqw] bottom-[17cqw] font-display text-[14cqw] font-extrabold uppercase leading-[0.9] text-white"
         style={{
           textShadow: "0.6cqw 0 #ff3a5d, -0.6cqw 0 #38bdf8",
         }}
